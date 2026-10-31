@@ -130,6 +130,7 @@ while true; do
     id="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' <<<"$tijelo")"
     rijec="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["rijec"])' <<<"$tijelo")"
     prompt="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["prompt"])' <<<"$tijelo")"
+    stil="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("stil",""))' <<<"$tijelo")"
     ime="posao-$id"
     rm -f "$W/$ime".*
     log "#$id $rijec → agy"
@@ -161,7 +162,8 @@ Do not edit, crop or post-process it, do not create any other files, and do not 
     rez="$(api -X PUT -H "Content-Type: $mime" --data-binary "@$f" "$URL/api/runner/slika/$id")"
     log "#$id $rijec: $(basename "$f") $(stat -f %z "$f") B, $((SECONDS - t0)) s → $rez"
     slika_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("slikaId",""))' <<<"$rez" 2>/dev/null || true)"
-    if [[ -n "$slika_id" ]]; then
+    # SVG (potrace) samo za crno-bijelu bojanku; ilustracija u boji ostaje raster.
+    if [[ -n "$slika_id" && "$stil" == "bojanka" ]]; then
         svg="$(LOGOMEDO_URL="$URL" RUNNER_TOKEN="$TOKEN" "$KORIJEN/scripts/svg.sh" "$slika_id" "$f" 2>&1)" \
             && log "#$id $rijec: svg → $svg" || log "⚠️  #$id: svg nije poslan: $svg"
     fi
