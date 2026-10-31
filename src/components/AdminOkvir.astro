@@ -1,0 +1,156 @@
+---
+// Okvir admina: bočna traka (Katalog, Pregled, Red, Ključevi) i glavni dio.
+// Bez sesije baca (500) umjesto da prikaže stranicu, osim na prijavi (`javno`):
+// druga obrana ako middleware neku admin putanju ne prepozna.
+import Tema from "./Tema.astro";
+import Marka from "./Marka.astro";
+import Ikona from "./Ikona.astro";
+import { env } from "cloudflare:workers";
+
+interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "pregled" | "red" | "kljucevi"; puno?: boolean }
+const { naslov, javno = false, aktivno, puno = false } = Astro.props;
+const admin = Astro.locals.admin;
+if (!admin && !javno) throw new Error("Admin stranica bez sesije");
+
+let brojevi = { kandidata: 0, uRedu: 0, gresaka: 0 };
+if (admin) {
+  brojevi = (await env.DB.prepare(
+    `SELECT (SELECT COUNT(*) FROM slike WHERE status = 'kandidat') AS kandidata,
+       (SELECT COUNT(*) FROM generiranja WHERE status IN ('ceka','radi')) AS uRedu,
+       (SELECT COUNT(*) FROM generiranja WHERE status = 'greska') AS gresaka`,
+  ).first<typeof brojevi>()) ?? brojevi;
+}
+const stavke = [
+  { kod: "katalog", href: "/admin", tekst: "Katalog", ikona: "katalog", broj: 0 },
+  { kod: "pregled", href: "/admin/pregled", tekst: "Pregled", ikona: "pregled", broj: brojevi.kandidata },
+  { kod: "red", href: "/admin/red", tekst: "Red", ikona: "red", broj: brojevi.uRedu + brojevi.gresaka },
+  { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },
+] as const;
+---
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{naslov} · LogoMedo admin</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <Tema />
+  </head>
+  <body class:list={{ "s-trakom": !!admin }}>
+    {admin && (
+      <aside class="traka">
+        <div class="vrh"><Marka href="/admin" dodatak="admin" /></div>
+        <nav>
+          {stavke.map((s) => (
+            <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod }]}>
+              <Ikona ime={s.ikona} />
+              <span>{s.tekst}</span>
+              {s.broj > 0 && <span class="broj">{s.broj}</span>}
+            </a>
+          ))}
+        </nav>
+        <div class="dno">
+          <div class="tko" title={admin.email}>
+            <span class="avatar">{admin.email[0].toUpperCase()}</span>
+            <span class="email">{admin.email}</span>
+          </div>
+          <div class="alati">
+            <button type="button" class="ikona-gumb prekidac-teme" aria-label="Svijetlo / tamno" title="Svijetlo / tamno">
+              <span class="samo-dan"><Ikona ime="mjesec" /></span><span class="samo-noc"><Ikona ime="sunce" /></span>
+            </button>
+            <form method="post" action="/admin/logout"><button class="ikona-gumb" type="submit" aria-label="Odjava" title="Odjava"><Ikona ime="odjava" /></button></form>
+          </div>
+        </div>
+      </aside>
+    )}
+    <main class:list={["sadrzaj", { puno }]}><slot /></main>
+    <script>
+      for (const b of document.querySelectorAll<HTMLButtonElement>(".prekidac-teme")) {
+        b.onclick = () => {
+          const h = document.documentElement;
+          const tamno = h.dataset.tema ? h.dataset.tema === "tamna" : matchMedia("(prefers-color-scheme: dark)").matches;
+          h.dataset.tema = tamno ? "svijetla" : "tamna";
+          try { localStorage.setItem("logomedo-tema", h.dataset.tema); } catch {}
+        };
+      }
+    </script>
+    <style is:global>
+      body.s-trakom { display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+      .traka { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px; padding: 22px 14px 16px;
+        border-right: 1px solid var(--rub); background: var(--povrsina); }
+      .traka .vrh { padding: 0 8px; }
+      .traka nav { display: flex; flex-direction: column; gap: 2px; }
+      .stavka { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 10px; text-decoration: none;
+        color: var(--blijedo); font-weight: 550; transition: background .15s, color .15s; }
+      .stavka:hover { background: var(--povrsina-2); color: var(--tinta); }
+      .stavka.aktivno { background: var(--med-blago); color: var(--med-tamno); }
+      .stavka .broj { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--med); color: var(--med-tekst);
+        font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+      .traka .dno { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 12px 6px 0; border-top: 1px solid var(--rub); }
+      .tko { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
+      .avatar { flex: none; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font-weight: 700; font-size: .8rem;
+        background: var(--povrsina-2); color: var(--blijedo); border: 1px solid var(--rub); }
+      .email { font-size: .8rem; color: var(--blijedo); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .alati { display: flex; gap: 2px; }
+      .alati form { margin: 0; }
+      .ikona-gumb { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 0; border-radius: 8px; background: none;
+        color: var(--blijedo); cursor: pointer; }
+      .ikona-gumb:hover { background: var(--povrsina-2); color: var(--tinta); }
+      .sadrzaj { padding: 40px clamp(20px, 4vw, 56px) 80px; max-width: 1360px; width: 100%; }
+      .sadrzaj.puno { max-width: none; padding: 0; }
+
+      @media (max-width: 860px) {
+        body.s-trakom { grid-template-columns: 1fr; }
+        .traka { position: sticky; z-index: 10; height: auto; flex-direction: row; align-items: center; gap: 10px; padding: 10px 14px;
+          border-right: 0; border-bottom: 1px solid var(--rub); overflow-x: auto; }
+        .traka .vrh { padding: 0; } .traka .vrh .ime, .traka .vrh .dodatak { display: none; }
+        .traka nav { flex-direction: row; }
+        .stavka span:not(.broj) { display: none; }
+        .traka .dno { margin: 0 0 0 auto; border: 0; padding: 0; } .tko { display: none; }
+        .sadrzaj { padding: 24px 16px 64px; }
+      }
+
+      /* Zajednički elementi admina */
+      .naslov { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+      .naslov h1 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: clamp(1.9rem, 3vw, 2.5rem); letter-spacing: -.02em;
+        line-height: 1.1; font-variation-settings: "SOFT" 50, "opsz" 96; }
+      .podnaslov { margin: 6px 0 0; color: var(--blijedo); }
+      .mrvice { display: inline-flex; align-items: center; gap: 4px; margin-bottom: 14px; color: var(--blijedo); text-decoration: none; font-size: .88rem; font-weight: 550; }
+      .mrvice:hover { color: var(--tinta); }
+      .gumb { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 10px;
+        border: 1px solid var(--rub-jak); background: var(--povrsina); color: var(--tinta); font: inherit; font-weight: 600; font-size: .92rem;
+        cursor: pointer; text-decoration: none; box-shadow: var(--sjena-1); transition: transform .1s, box-shadow .15s, background .15s; white-space: nowrap; }
+      .gumb:hover { box-shadow: var(--sjena-2); }
+      .gumb:active { transform: translateY(1px); }
+      .gumb.glavni { background: var(--med); border-color: var(--med); color: var(--med-tekst); }
+      .gumb.tihi { background: none; box-shadow: none; border-color: transparent; color: var(--blijedo); }
+      .gumb.tihi:hover { background: var(--povrsina-2); color: var(--tinta); }
+      .gumb.mali { min-height: 32px; padding: 0 11px; font-size: .84rem; border-radius: 8px; }
+      .gumb.opasno { color: var(--greska); }
+      .gumb:disabled { opacity: .5; cursor: default; }
+      .ploha { background: var(--povrsina); border: 1px solid var(--rub); border-radius: 16px; box-shadow: var(--sjena-1); }
+      .oznaka { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .72rem; font-weight: 650;
+        background: var(--povrsina-2); color: var(--blijedo); white-space: nowrap; }
+      .oznaka.uspjeh { background: var(--uspjeh-blago); color: var(--uspjeh); }
+      .oznaka.med { background: var(--med-blago); color: var(--med-tamno); }
+      .oznaka.info { background: var(--info-blago); color: var(--info); }
+      .oznaka.greska { background: var(--greska-blago); color: var(--greska); }
+      .obavijest { display: flex; gap: 10px; align-items: center; padding: 12px 16px; margin-bottom: 20px; border-radius: 12px;
+        background: var(--med-blago); color: var(--med-tamno); font-weight: 550; }
+      input[type=text], textarea { width: 100%; font: inherit; padding: 9px 12px; border: 1px solid var(--rub-jak); border-radius: 10px;
+        background: var(--povrsina); color: var(--tinta); }
+      input[type=text]:focus, textarea:focus { outline: none; border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+      label { display: block; font-size: .8rem; font-weight: 650; color: var(--blijedo); margin: 0 0 6px; }
+      .prazno { padding: 56px 24px; text-align: center; color: var(--blijedo); }
+      .prazno h2 { margin: 0 0 6px; color: var(--tinta); font-family: var(--font-slova); font-weight: 600; }
+      table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+      th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--rub); vertical-align: middle; }
+      th { color: var(--blijedo); font-weight: 600; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; }
+      tr:last-child td { border-bottom: 0; }
+      .mono { font-family: ui-monospace, "SF Mono", monospace; font-size: .82rem; }
+      .blijedo { color: var(--blijedo); }
+      .rijec-tekst { text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+    </style>
+  </body>
+</html>

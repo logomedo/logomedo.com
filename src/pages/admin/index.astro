@@ -1,0 +1,85 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { glasovi, stil, ukupno } from "../../lib/katalog";
+
+const s = await stil();
+const [lista, u] = await Promise.all([glasovi(s.id), ukupno(s.id)]);
+const skupine = [...new Set(lista.map((g) => g.skupina ?? "ostalo"))];
+const posto = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
+const O = 2 * Math.PI * 26;
+---
+<AdminOkvir naslov="Katalog" aktivno="katalog">
+  <div class="naslov">
+    <div>
+      <h1>Katalog slika</h1>
+      <p class="podnaslov">Stil <b>{s.naziv}</b> · {u.rijeci} riječi · model <span class="mono">{s.model}</span></p>
+    </div>
+    {u.kandidata > 0 && <a class="gumb glavni" href="/admin/pregled"><Ikona ime="pregled" /> Pregledaj {u.kandidata} kandidata</a>}
+  </div>
+
+  <section class="brojke">
+    <div class="ploha brojka">
+      <span class="vrijednost">{u.odobreno}<small>/{u.rijeci}</small></span>
+      <span class="opis">odobrenih slika</span>
+      <div class="traka-napretka"><i style={`width:${posto(u.odobreno, u.rijeci)}%`}></i></div>
+    </div>
+    <div class="ploha brojka"><span class="vrijednost">{u.kandidata}</span><span class="opis">kandidata čeka pregled</span></div>
+    <div class="ploha brojka"><span class="vrijednost">{u.uRedu}</span><span class="opis">u redu za generiranje</span></div>
+    <div class="ploha brojka" class:list={{ upozorenje: u.gresaka > 0 }}><span class="vrijednost">{u.gresaka}</span><span class="opis">neuspjelih generiranja</span></div>
+  </section>
+
+  {skupine.map((sk) => (
+    <section class="skupina">
+      <h2>{sk}</h2>
+      <div class="glasovi">
+        {lista.filter((g) => (g.skupina ?? "ostalo") === sk).map((g) => (
+          <a class="ploha glas" href={`/admin/glas/${g.slug}`}>
+            <svg class="prsten" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="26" class="podloga" />
+              <circle cx="32" cy="32" r="26" class="kandidati" stroke-dasharray={`${(O * (g.odobreno + g.kandidata)) / Math.max(g.rijeci, 1)} ${O}`} />
+              <circle cx="32" cy="32" r="26" class="odobreno" stroke-dasharray={`${(O * g.odobreno) / Math.max(g.rijeci, 1)} ${O}`} />
+            </svg>
+            <span class="slovo">{g.oznaka}</span>
+            <span class="podaci">
+              <b>{g.odobreno}/{g.rijeci}</b> odobreno
+              <span class="sitno">
+                {g.kandidata > 0 && <span class="oznaka med">{g.kandidata} za pregled</span>}
+                {g.uRedu > 0 && <span class="oznaka info">{g.uRedu} u redu</span>}
+                {!g.kandidata && !g.uRedu && g.odobreno < g.rijeci && <span class="oznaka">{g.rijeci - g.odobreno} bez slike</span>}
+              </span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+</AdminOkvir>
+
+<style>
+  .brojke { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 40px; }
+  .brojka { padding: 18px 20px; display: flex; flex-direction: column; gap: 2px; }
+  .vrijednost { font-family: var(--font-slova); font-size: 2.1rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .vrijednost small { font-size: 1rem; color: var(--vrlo-blijedo); font-weight: 500; }
+  .opis { color: var(--blijedo); font-size: .86rem; }
+  .brojka.upozorenje .vrijednost { color: var(--greska); }
+  .traka-napretka { margin-top: 10px; height: 6px; border-radius: 999px; background: var(--povrsina-2); overflow: hidden; }
+  .traka-napretka i { display: block; height: 100%; background: var(--med); border-radius: inherit; }
+
+  .skupina { margin-bottom: 34px; }
+  .skupina h2 { margin: 0 0 12px; font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--blijedo); font-weight: 650; }
+  .glasovi { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .glas { position: relative; display: flex; align-items: center; gap: 18px; padding: 18px 20px; text-decoration: none;
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s, border-color .18s; }
+  .glas:hover { transform: translateY(-2px); box-shadow: var(--sjena-2); border-color: var(--rub-jak); }
+  .prsten { position: absolute; left: 14px; top: 50%; translate: 0 -50%; width: 92px; height: 92px; rotate: -90deg; }
+  .prsten circle { fill: none; stroke-width: 3.5; stroke-linecap: round; }
+  .prsten .podloga { stroke: var(--povrsina-2); }
+  .prsten .kandidati { stroke: var(--med-blago); }
+  .prsten .odobreno { stroke: var(--med); }
+  .slovo { flex: none; width: 80px; height: 80px; display: grid; place-items: center; position: relative;
+    font-family: var(--font-slova); font-size: 2.7rem; font-weight: 600; font-variation-settings: "SOFT" 100, "opsz" 144; line-height: 1; }
+  .podaci { display: flex; flex-direction: column; gap: 6px; color: var(--blijedo); font-size: .86rem; padding-left: 8px; }
+  .podaci b { color: var(--tinta); font-variant-numeric: tabular-nums; }
+  .sitno { display: flex; gap: 4px; flex-wrap: wrap; }
+</style>

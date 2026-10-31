@@ -1,0 +1,163 @@
+---
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { kad, rijec as nadji, NAZIV_POZICIJE } from "../../../lib/katalog";
+import { safeNext } from "../../../lib/admin/sesija";
+
+const r = await nadji(Astro.params.slug!);
+if (!r) return new Response("Nema te riječi", { status: 404 });
+const od = safeNext(Astro.url.searchParams.get("od"));
+const ovdje = `/admin/rijec/${r.slug}?od=${encodeURIComponent(od)}`;
+const odobrena = r.slike.find((s) => s.status === "odobrena");
+const kandidati = r.slike.filter((s) => s.status === "kandidat");
+const odbijene = r.slike.filter((s) => s.status === "odbijena");
+const uRedu = r.red.filter((q) => q.status !== "greska");
+const greske = r.red.filter((q) => q.status === "greska");
+const dodano = Astro.url.searchParams.get("dodano");
+---
+<AdminOkvir naslov={r.rijec.toLocaleUpperCase("hr")} aktivno="katalog">
+  <a class="mrvice" href={od}><Ikona ime="natrag" velicina={16} /> Natrag</a>
+
+  {dodano !== null && <div class="obavijest"><Ikona ime="red" /> {Number(dodano) ? "Dodano u red za generiranje." : "Već je u redu."}</div>}
+
+  <div class="raspored">
+    <div class="glavna ploha">
+      <div class="list veliki">
+        {odobrena ? <img src={`/admin/slika/${odobrena.id}`} alt={r.rijec} /> : <span class="bez">{r.rijec}</span>}
+      </div>
+      <div class="potpis">
+        <span class="rijec-tekst">{r.rijec}</span>
+        {odobrena ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> odobrena</span> : <span class="oznaka">nema odobrene</span>}
+      </div>
+    </div>
+
+    <div class="detalji">
+      <h1 class="naslov-rijeci">{r.rijec.toLocaleUpperCase("hr")}</h1>
+      <p class="podnaslov">
+        {r.izvor === "legacy" ? `Iz starog kataloga, na listićima ${r.legacy_koristeno}×` : "Dodana u adminu"}
+      </p>
+
+      <h2>Glasovi i pozicije</h2>
+      <div class="pozicije">
+        {r.pozicije.map((p) => (
+          <div class:list={["pozicija", { izvedena: !p.potvrdeno }]}>
+            <a href={`/admin/glas/${p.slug}?p=${p.pozicija}`} class="pg"><b>{p.oznaka}</b> {NAZIV_POZICIJE[p.pozicija].toLowerCase()}</a>
+            {!p.potvrdeno && (
+              <form method="post" action={`/admin/api/rijec/${r.id}`}>
+                <input type="hidden" name="glas" value={p.slug} /><input type="hidden" name="pozicija" value={p.pozicija} />
+                <input type="hidden" name="next" value={ovdje} />
+                <button class="gumb mali tihi" name="akcija" value="potvrdi" title="Potvrdi poziciju"><Ikona ime="kvacica" velicina={14} /></button>
+                <button class="gumb mali tihi" name="akcija" value="makni" title="Makni poziciju"><Ikona ime="x" velicina={14} /></button>
+              </form>
+            )}
+          </div>
+        ))}
+      </div>
+      {r.pozicije.some((p) => !p.potvrdeno) && <p class="sitno blijedo">Plave pozicije su izvedene iz pravopisa. Potvrdi ih ili makni.</p>}
+
+      <form class="ploha uredi" method="post" action={`/admin/api/rijec/${r.id}`}>
+        <input type="hidden" name="next" value={ovdje} />
+        <div>
+          <label for="opis">Opis za sliku (ide u prompt)</label>
+          <input id="opis" type="text" name="opis_za_sliku" value={r.opis_za_sliku ?? ""} maxlength="300"
+            placeholder="npr. luk kao povrće, ne oružje" />
+        </div>
+        <div>
+          <label for="recenica">Primjer rečenice</label>
+          <input id="recenica" type="text" name="recenica" value={r.recenica ?? ""} maxlength="300" />
+        </div>
+        <button class="gumb mali" type="submit">Spremi</button>
+      </form>
+
+      <form class="generiraj" method="post" action="/admin/api/generiraj">
+        <input type="hidden" name="rijec" value={r.id} /><input type="hidden" name="next" value={ovdje} />
+        <input type="text" name="napomena" placeholder="Dodatna uputa za ovu sliku (neobavezno)" maxlength="300" />
+        <button class="gumb glavni" type="submit" disabled={uRedu.length > 0}>
+          <Ikona ime="iskra" /> {uRedu.length ? "Već u redu" : "Generiraj novu"}
+        </button>
+      </form>
+      {greske.length > 0 && <p class="sitno" style="color:var(--greska)"><Ikona ime="upozorenje" velicina={14} /> Zadnje generiranje nije uspjelo: {greske[0].greska}</p>}
+    </div>
+  </div>
+
+  <section>
+    <h2 class="odjeljak">Kandidati <span>{kandidati.length}</span></h2>
+    {kandidati.length ? (
+      <div class="kandidati">
+        {kandidati.map((s) => (
+          <figure class="ploha kandidat">
+            <div class="list"><img src={`/admin/slika/${s.id}`} alt={`Kandidat ${s.id}`} loading="lazy" /></div>
+            <figcaption>
+              <span class="blijedo sitno">{kad(s.created_at)} · {s.model ?? s.izvor}</span>
+              <form method="post" action={`/admin/api/slika/${s.id}`} class="odluka">
+                <input type="hidden" name="next" value={ovdje} />
+                <input type="text" name="razlog" placeholder="Razlog odbijanja" maxlength="300" />
+                <button class="gumb mali" name="akcija" value="odbij"><Ikona ime="x" velicina={14} /> Odbij</button>
+                <button class="gumb mali glavni" name="akcija" value="odobri"><Ikona ime="kvacica" velicina={14} /> Odobri</button>
+              </form>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    ) : <p class="blijedo">{uRedu.length ? "Slika se generira; pojavit će se ovdje." : "Nema kandidata."}</p>}
+  </section>
+
+  {(odbijene.length > 0 || odobrena) && (
+    <details class="povijest">
+      <summary>Povijest ({odbijene.length} odbijenih)</summary>
+      <div class="kandidati mali">
+        {[...(odobrena ? [odobrena] : []), ...odbijene].map((s) => (
+          <figure class="ploha kandidat">
+            <div class="list"><img src={`/admin/slika/${s.id}`} alt="" loading="lazy" /></div>
+            <figcaption>
+              <span class:list={["oznaka", { uspjeh: s.status === "odobrena", greska: s.status === "odbijena" }]}>{s.status}</span>
+              {s.razlog && <span class="sitno blijedo">„{s.razlog}”</span>}
+              {s.status === "odbijena" && (
+                <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
+                  <button class="gumb mali tihi" name="akcija" value="vrati">Vrati u kandidate</button></form>
+              )}
+              {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </details>
+  )}
+</AdminOkvir>
+
+<style>
+  .raspored { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 36px; margin-bottom: 44px; align-items: start; }
+  @media (max-width: 900px) { .raspored { grid-template-columns: 1fr; } }
+  .glavna { padding: 14px; }
+  .list { aspect-ratio: 1; border-radius: 12px; background: var(--papir-slike); display: grid; place-items: center; overflow: hidden; border: 1px solid var(--rub); }
+  .list img { width: 100%; height: 100%; object-fit: contain; }
+  .bez { font-family: var(--font-slova); font-size: 2rem; text-transform: uppercase; letter-spacing: .06em; color: #c9bfae; }
+  .potpis { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px 2px; }
+  .naslov-rijeci { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: clamp(2rem, 4vw, 3rem); letter-spacing: .02em; line-height: 1.05;
+    font-variation-settings: "SOFT" 50, "opsz" 144; }
+  .detalji h2, .odjeljak { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--blijedo); font-weight: 650; margin: 26px 0 10px; }
+  .odjeljak span { color: var(--vrlo-blijedo); margin-left: 4px; }
+  .pozicije { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pozicija { display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 12px; border-radius: 999px; background: var(--povrsina);
+    border: 1px solid var(--rub-jak); }
+  .pozicija.izvedena { background: var(--info-blago); border-color: transparent; color: var(--info); }
+  .pozicija form { display: inline-flex; margin: 0; }
+  .pozicija .gumb.mali { min-height: 26px; padding: 0 6px; }
+  .pg { text-decoration: none; font-size: .86rem; padding: 3px 8px 3px 0; }
+  .pg b { font-family: var(--font-slova); font-size: 1rem; margin-right: 2px; }
+  .sitno { font-size: .8rem; margin: 8px 0 0; display: inline-flex; gap: 6px; align-items: center; }
+  .uredi { display: grid; gap: 14px; padding: 18px; margin-top: 26px; }
+  .uredi .gumb { justify-self: start; }
+  .generiraj { display: flex; gap: 10px; margin-top: 16px; }
+  .generiraj input { flex: 1; }
+  .kandidati { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .kandidati.mali { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-top: 14px; }
+  .kandidat { margin: 0; padding: 10px; }
+  .kandidat figcaption { display: flex; flex-direction: column; gap: 8px; padding: 10px 2px 2px; }
+  .odluka { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+  .odluka input { flex: 1 1 100%; padding: 6px 10px; font-size: .85rem; }
+  .odluka .gumb { flex: 1; }
+  .povijest { margin-top: 36px; }
+  .povijest summary { cursor: pointer; color: var(--blijedo); font-weight: 600; }
+  .prompt summary { font-size: .78rem; } .prompt p { margin: 6px 0 0; white-space: pre-wrap; color: var(--blijedo); }
+</style>

@@ -1,0 +1,55 @@
+---
+import { env } from "cloudflare:workers";
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { kad } from "../../lib/katalog";
+
+if (!Astro.locals.admin) return new Response(null, { status: 401 });
+const { email, method, createdAt } = Astro.locals.admin;
+if (Astro.request.method === "POST") {
+  const forma = await Astro.request.formData();
+  await env.DB.prepare("DELETE FROM admin_passkeys WHERE id = ? AND email = ?").bind(String(forma.get("id")), email).run();
+  return Astro.redirect("/admin/passkeys", 303);
+}
+const { results: kljucevi } = await env.DB.prepare(
+  "SELECT id, label, created_at, last_used_at FROM admin_passkeys WHERE email = ? ORDER BY created_at",
+).bind(email).all<{ id: string; label: string; created_at: string; last_used_at: string | null }>();
+const svjeza = method === "access" && Date.now() - Date.parse(createdAt) < 10 * 60_000;
+---
+<AdminOkvir naslov="Ključevi" aktivno="kljucevi">
+  <div class="naslov"><div><h1>Ključevi</h1><p class="podnaslov">Passkeyi za <b>{email}</b></p></div></div>
+  <div class="raspored">
+    <div class="ploha">
+      {kljucevi.length ? (
+        <table>
+          <thead><tr><th>Oznaka</th><th>Dodan</th><th>Zadnje korišten</th><th></th></tr></thead>
+          <tbody>
+            {kljucevi.map((k) => (
+              <tr>
+                <td><b>{k.label}</b></td><td class="blijedo">{kad(k.created_at)}</td><td class="blijedo">{kad(k.last_used_at)}</td>
+                <td><form method="post"><input type="hidden" name="id" value={k.id} /><button class="gumb mali tihi opasno" type="submit">Obriši</button></form></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : <div class="prazno"><h2>Još nema ključeva</h2><p>Dodaj passkey da sljedeći put uđeš bez koda na e-mail.</p></div>}
+    </div>
+    <form id="passkey-register" class="ploha dodaj">
+      <h2>Dodaj passkey</h2>
+      <p class="blijedo sitno">{svjeza ? "Prijava je svježa, možeš dodati ključ." : "Dodavanje traži prijavu kodom na e-mail mlađu od 10 minuta."}</p>
+      <input type="text" name="label" placeholder="Oznaka, npr. MacBook" maxlength="80" />
+      <button class="gumb glavni" type="submit"><Ikona ime="kljuc" /> Dodaj</button>
+      <p id="msg" hidden></p>
+    </form>
+  </div>
+</AdminOkvir>
+<script>import "../../lib/admin/klijent";</script>
+<style>
+  .raspored { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .raspored { grid-template-columns: 1fr; } }
+  .dodaj { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .dodaj h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; }
+  .sitno { font-size: .82rem; margin: 0; }
+  form { margin: 0; }
+  #msg { color: var(--greska); }
+</style>

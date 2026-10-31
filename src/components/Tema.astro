@@ -1,0 +1,52 @@
+---
+// Tokeni boja i fontovi: topli papir, tinta i med. Mod prati sustav dok korisnik ne
+// klikne prekidač; izbor je u localStorage `logomedo-tema` kao data-tema na <html>.
+import "@fontsource-variable/inter";
+import "@fontsource-variable/fraunces";
+---
+<script is:inline>
+  try { const t = localStorage.getItem("logomedo-tema"); if (t === "svijetla" || t === "tamna") document.documentElement.dataset.tema = t; } catch {}
+</script>
+<style is:global>
+  :root {
+    color-scheme: light;
+    --papir: #f8f5ef; --povrsina: #fffdf9; --povrsina-2: #f1ece3; --tinta: #1d1914; --blijedo: #6e6559; --vrlo-blijedo: #a39a8c;
+    --rub: #e7e0d4; --rub-jak: #d6cdbf; --med: #d48a06; --med-tekst: #ffffff; --med-tamno: #9c6300; --med-blago: #fbefd6;
+    --uspjeh: #2f7d4a; --uspjeh-blago: #e3f2e7; --greska: #b3261e; --greska-blago: #fbe9e7; --info: #3a5f8f; --info-blago: #e6edf6;
+    --sjena-1: 0 1px 2px rgb(60 40 10 / .06), 0 1px 1px rgb(60 40 10 / .04);
+    --sjena-2: 0 2px 4px rgb(60 40 10 / .05), 0 8px 24px rgb(60 40 10 / .08);
+    --sjena-3: 0 12px 48px rgb(40 25 5 / .18);
+    --papir-slike: #ffffff;
+    --dan: inline-flex; --noc: none;
+    --font: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-slova: "Fraunces Variable", Georgia, serif;
+  }
+  :root[data-tema="tamna"] {
+    color-scheme: dark;
+    --papir: #13110e; --povrsina: #1b1814; --povrsina-2: #24201a; --tinta: #f3ede4; --blijedo: #a99f90; --vrlo-blijedo: #6f675c;
+    --rub: #2e2922; --rub-jak: #3d362d; --med: #f0b03a; --med-tekst: #1d1408; --med-tamno: #f6c76e; --med-blago: #33270f;
+    --uspjeh: #71c98e; --uspjeh-blago: #16281c; --greska: #ff8a80; --greska-blago: #33181a; --info: #8fb2e0; --info-blago: #172334;
+    --sjena-1: 0 1px 2px rgb(0 0 0 / .4); --sjena-2: 0 2px 4px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .35); --sjena-3: 0 12px 48px rgb(0 0 0 / .6);
+    --papir-slike: #fbf9f4;
+    --dan: none; --noc: inline-flex;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-tema="svijetla"]) {
+      color-scheme: dark;
+      --papir: #13110e; --povrsina: #1b1814; --povrsina-2: #24201a; --tinta: #f3ede4; --blijedo: #a99f90; --vrlo-blijedo: #6f675c;
+      --rub: #2e2922; --rub-jak: #3d362d; --med: #f0b03a; --med-tekst: #1d1408; --med-tamno: #f6c76e; --med-blago: #33270f;
+      --uspjeh: #71c98e; --uspjeh-blago: #16281c; --greska: #ff8a80; --greska-blago: #33181a; --info: #8fb2e0; --info-blago: #172334;
+      --sjena-1: 0 1px 2px rgb(0 0 0 / .4); --sjena-2: 0 2px 4px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .35); --sjena-3: 0 12px 48px rgb(0 0 0 / .6);
+      --papir-slike: #fbf9f4;
+      --dan: none; --noc: inline-flex;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  body { margin: 0; background: var(--papir); color: var(--tinta); font: 15px/1.5 var(--font); font-feature-settings: "cv11", "ss01"; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--med); outline-offset: 2px; border-radius: 6px; }
+  [hidden] { display: none !important; }
+  .samo-dan { display: var(--dan) !important; }
+  .samo-noc { display: var(--noc) !important; }
+</style>

@@ -1,0 +1,34 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Marka from "../../components/Marka.astro";
+import Ikona from "../../components/Ikona.astro";
+import { accessConfigured, getSession, safeNext } from "../../lib/admin/sesija";
+
+const next = safeNext(Astro.url.searchParams.get("next"));
+if (await getSession(Astro.request.headers.get("cookie"))) return Astro.redirect(next, 302);
+const greska = Astro.url.searchParams.get("error") === "access" ? "Access prijava nije prihvaćena za ovaj admin." : null;
+const access = accessConfigured();
+---
+<AdminOkvir naslov="Prijava" javno>
+  <div class="prijava">
+    <div class="ploha okvir">
+      <Marka href="/" dodatak="admin" />
+      <h1>Prijava</h1>
+      <p class="blijedo">Katalog slika po glasovima i generiranje.</p>
+      <button id="passkey-login" class="gumb glavni puno" type="button" data-next={next}><Ikona ime="kljuc" /> Prijava passkeyem</button>
+      {access && <a class="gumb puno" href={`/admin/sso?next=${encodeURIComponent(next)}`}>Kod na e-mail (Cloudflare Access)</a>}
+      <p id="msg" hidden={!greska}>{greska}</p>
+      <p class="sitno blijedo">Prvi put: uđi kodom na e-mail, pa u „Ključevi” dodaj passkey.</p>
+    </div>
+  </div>
+</AdminOkvir>
+<script>import "../../lib/admin/klijent";</script>
+<style>
+  .prijava { min-height: calc(100vh - 120px); display: grid; place-items: center; }
+  .okvir { width: min(400px, 100%); padding: 32px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--sjena-2); }
+  h1 { margin: 18px 0 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.8rem; }
+  p { margin: 0 0 8px; }
+  .puno { width: 100%; min-height: 46px; }
+  #msg { color: var(--greska); }
+  .sitno { font-size: .8rem; margin-top: 8px; }
+</style>

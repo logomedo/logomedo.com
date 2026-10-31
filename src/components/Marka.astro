@@ -1,0 +1,20 @@
+---
+// Znak: saće (med) s inicijalom, uz ime. `dodatak` je mala oznaka desno (npr. „admin”).
+interface Props { dodatak?: string; href?: string }
+const { dodatak, href = "/" } = Astro.props;
+---
+<a class="marka" href={href}>
+  <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+    <path d="M16 1.8 28.3 8.9v14.2L16 30.2 3.7 23.1V8.9Z" fill="var(--med)" />
+    <path d="M12 9.5v12.5h8" fill="none" stroke="var(--med-tekst)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+  <span class="ime">Logo<b>Medo</b></span>
+  {dodatak && <span class="dodatak">{dodatak}</span>}
+</a>
+<style>
+  .marka { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--tinta); }
+  .ime { font-family: var(--font-slova); font-size: 1.28rem; font-weight: 500; letter-spacing: -.01em; font-variation-settings: "SOFT" 100, "opsz" 48; }
+  .ime b { font-weight: 700; color: var(--med-tamno); }
+  .dodatak { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--blijedo);
+    border: 1px solid var(--rub-jak); border-radius: 999px; padding: 1px 7px; }
+</style>

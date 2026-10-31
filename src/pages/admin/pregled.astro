@@ -1,0 +1,185 @@
+---
+// Pregled kandidata jedan po jedan, tipkovnicom: A odobri, X odbij (razlog, Enter),
+// S preskoči, Z poništi zadnju odluku. Odbijena slika odmah šalje novu u red.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { env } from "cloudflare:workers";
+
+const glas = Astro.url.searchParams.get("glas");
+const { results } = await env.DB.prepare(
+  `SELECT s.id, s.prompt, s.model, r.rijec, r.slug, r.opis_za_sliku,
+     (SELECT o.id FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena') AS odobrena_id,
+     (SELECT group_concat(g.oznaka || ' ' || rg.pozicija, ' · ') FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id) AS pozicije
+   FROM slike s JOIN rijeci r ON r.id = s.rijec_id
+   WHERE s.status = 'kandidat'
+     AND (?1 IS NULL OR EXISTS (SELECT 1 FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id AND g.slug = ?1))
+   ORDER BY s.id LIMIT 200`,
+).bind(glas).all<{ id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; pozicije: string }>();
+---
+<AdminOkvir naslov="Pregled" aktivno="pregled" puno>
+  {results.length ? (
+    <div class="pregled" id="pregled" data-kandidati={JSON.stringify(results)}>
+      <div class="pozornica">
+        <div class="list"><img id="slika" alt="" /></div>
+        <div class="usporedba" id="usporedba" hidden>
+          <span>Sadašnja odobrena</span>
+          <div class="list mali"><img id="slika-odobrena" alt="" /></div>
+        </div>
+      </div>
+      <aside class="ploca">
+        <div class="napredak"><span id="brojac"></span><div class="traka-napretka"><i id="traka"></i></div></div>
+        <h1 id="rijec" class="rijec"></h1>
+        <p id="pozicije" class="blijedo"></p>
+        <p id="opis" class="opis" hidden></p>
+
+        <div class="tipke">
+          <button class="gumb glavni veliki" id="odobri"><kbd>A</kbd> Odobri</button>
+          <button class="gumb veliki" id="odbij"><kbd>X</kbd> Odbij</button>
+          <div class="razlog" id="razlog-okvir" hidden>
+            <input type="text" id="razlog" maxlength="300" placeholder="Što ne valja? (ide u sljedeći prompt)" />
+            <label class="kvacica"><input type="checkbox" id="ponovi" checked /> Generiraj novu</label>
+            <span class="blijedo sitno"><kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span>
+          </div>
+          <div class="sporedne">
+            <button class="gumb tihi" id="preskoci"><kbd>S</kbd> Preskoči</button>
+            <button class="gumb tihi" id="ponisti" disabled><kbd>Z</kbd> Poništi</button>
+          </div>
+        </div>
+
+        <details class="prompt"><summary>Prompt</summary><p id="prompt" class="mono"></p></details>
+        <a id="link" class="sitno blijedo" href="#">Otvori riječ →</a>
+        <p id="poruka" class="poruka" hidden></p>
+      </aside>
+    </div>
+    <div class="gotovo" id="gotovo" hidden>
+      <div class="ploha prazno"><h2>Sve pregledano</h2><p>Novi kandidati stižu dok runner radi.</p><a class="gumb" href="/admin">Natrag na katalog</a></div>
+    </div>
+  ) : (
+    <div class="gotovo"><div class="ploha prazno">
+      <h2>Nema kandidata za pregled</h2>
+      <p>Generiraj slike iz kataloga; runner ih stavlja ovdje.</p>
+      <a class="gumb" href="/admin"><Ikona ime="katalog" /> Katalog</a>
+    </div></div>
+  )}
+</AdminOkvir>
+
+<script>
+  type K = { id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; pozicije: string };
+  const el = document.getElementById("pregled");
+  if (el) {
+    const kandidati: K[] = JSON.parse(el.dataset.kandidati!);
+    const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+    let i = 0;
+    const povijest: { i: number; id: number }[] = [];
+    let zauzeto = false;
+
+    const prikazi = () => {
+      if (i >= kandidati.length) { el.hidden = true; $("gotovo").hidden = false; return; }
+      const k = kandidati[i];
+      $<HTMLImageElement>("slika").src = `/admin/slika/${k.id}`;
+      $("usporedba").hidden = !k.odobrena_id;
+      if (k.odobrena_id) $<HTMLImageElement>("slika-odobrena").src = `/admin/slika/${k.odobrena_id}`;
+      $("rijec").textContent = k.rijec.toLocaleUpperCase("hr");
+      $("pozicije").textContent = k.pozicije ?? "";
+      $("opis").hidden = !k.opis_za_sliku; $("opis").textContent = k.opis_za_sliku ?? "";
+      $("prompt").textContent = k.prompt ?? "";
+      $<HTMLAnchorElement>("link").href = `/admin/rijec/${k.slug}?od=/admin/pregled`;
+      $("brojac").textContent = `${i + 1} / ${kandidati.length}`;
+      $("traka").style.width = `${(i / kandidati.length) * 100}%`;
+      $<HTMLButtonElement>("ponisti").disabled = !povijest.length;
+      zatvoriRazlog();
+      // Sljedeća slika unaprijed, da prijelaz bude trenutan.
+      if (kandidati[i + 1]) new Image().src = `/admin/slika/${kandidati[i + 1].id}`;
+    };
+
+    const poruka = (t: string) => { const p = $("poruka"); p.textContent = t; p.hidden = false; setTimeout(() => (p.hidden = true), 4000); };
+
+    async function posalji(id: number, tijelo: Record<string, unknown>) {
+      const r = await fetch(`/admin/api/slika/${id}`, { method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" }, body: JSON.stringify(tijelo) });
+      if (!r.ok) throw new Error(r.status === 401 ? "Sesija je istekla, prijavi se ponovno." : `HTTP ${r.status}`);
+    }
+
+    async function odluci(akcija: "odobri" | "odbij") {
+      if (zauzeto || i >= kandidati.length) return;
+      zauzeto = true;
+      const k = kandidati[i];
+      try {
+        await posalji(k.id, akcija === "odbij"
+          ? { akcija, razlog: $<HTMLInputElement>("razlog").value, ponovi: $<HTMLInputElement>("ponovi").checked ? "1" : "" }
+          : { akcija });
+        if (akcija === "odobri") for (const x of kandidati) if (x.slug === k.slug) x.odobrena_id = k.id;
+        povijest.push({ i, id: k.id });
+        i++; prikazi();
+      } catch (e) { poruka((e as Error).message); }
+      zauzeto = false;
+    }
+
+    async function ponisti() {
+      const z = povijest.pop();
+      if (!z || zauzeto) return;
+      zauzeto = true;
+      try { await posalji(z.id, { akcija: "vrati" }); i = z.i; prikazi(); }
+      catch (e) { poruka((e as Error).message); povijest.push(z); }
+      zauzeto = false;
+    }
+
+    const razlogOtvoren = () => !$("razlog-okvir").hidden;
+    function otvoriRazlog() { $("razlog-okvir").hidden = false; $<HTMLInputElement>("razlog").value = ""; $("razlog").focus(); }
+    function zatvoriRazlog() { $("razlog-okvir").hidden = true; ($("razlog") as HTMLInputElement).blur(); }
+
+    $("odobri").onclick = () => odluci("odobri");
+    $("odbij").onclick = () => (razlogOtvoren() ? odluci("odbij") : otvoriRazlog());
+    $("preskoci").onclick = () => { i++; prikazi(); };
+    $("ponisti").onclick = ponisti;
+    document.addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (razlogOtvoren()) {
+        if (e.key === "Enter") { e.preventDefault(); odluci("odbij"); }
+        if (e.key === "Escape") zatvoriRazlog();
+        return;
+      }
+      const k = e.key.toLowerCase();
+      if (k === "a") odluci("odobri");
+      else if (k === "x") { e.preventDefault(); otvoriRazlog(); }
+      else if (k === "s" || e.key === "ArrowRight") { i++; prikazi(); }
+      else if (k === "z") ponisti();
+    });
+    prikazi();
+  }
+</script>
+
+<style>
+  .pregled { display: grid; grid-template-columns: 1fr 380px; min-height: 100vh; }
+  .pozornica { position: relative; display: grid; place-items: center; padding: 40px; background:
+    radial-gradient(circle at 50% 40%, var(--povrsina) 0, var(--papir) 70%); }
+  .pozornica > .list { width: min(72vh, 100%); aspect-ratio: 1; border-radius: 20px; background: var(--papir-slike); box-shadow: var(--sjena-3);
+    display: grid; place-items: center; overflow: hidden; }
+  .list img { width: 100%; height: 100%; object-fit: contain; }
+  .usporedba { position: absolute; left: 24px; bottom: 24px; display: flex; flex-direction: column; gap: 6px; font-size: .74rem; color: var(--blijedo);
+    font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .usporedba .list.mali { width: 120px; aspect-ratio: 1; border-radius: 10px; background: var(--papir-slike); border: 1px solid var(--rub); overflow: hidden; }
+  .ploca { border-left: 1px solid var(--rub); background: var(--povrsina); padding: 32px 28px; display: flex; flex-direction: column; gap: 12px; }
+  .napredak { display: flex; flex-direction: column; gap: 8px; font-size: .8rem; color: var(--blijedo); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .traka-napretka { height: 4px; border-radius: 999px; background: var(--povrsina-2); overflow: hidden; }
+  .traka-napretka i { display: block; height: 100%; background: var(--med); transition: width .3s; }
+  .rijec { margin: 18px 0 0; font-family: var(--font-slova); font-weight: 600; font-size: 2.6rem; letter-spacing: .02em; line-height: 1.05;
+    font-variation-settings: "SOFT" 50, "opsz" 144; word-break: break-word; }
+  .opis { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--info-blago); color: var(--info); font-size: .88rem; }
+  .tipke { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .gumb.veliki { min-height: 52px; font-size: 1rem; justify-content: flex-start; }
+  kbd { font: 600 .72rem var(--font); min-width: 22px; padding: 2px 6px; border-radius: 6px; border: 1px solid currentColor; opacity: .7; }
+  .razlog { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--povrsina-2); }
+  .kvacica { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .86rem; color: var(--tinta); font-weight: 550; }
+  .sitno { font-size: .8rem; }
+  .sporedne { display: flex; gap: 6px; }
+  .prompt { margin-top: auto; font-size: .82rem; color: var(--blijedo); }
+  .prompt summary { cursor: pointer; font-weight: 600; } .prompt p { white-space: pre-wrap; }
+  .poruka { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-size: .86rem; }
+  .gotovo { padding: 60px clamp(20px, 4vw, 56px); max-width: 720px; }
+  @media (max-width: 900px) {
+    .pregled { grid-template-columns: 1fr; min-height: 0; }
+    .pozornica { padding: 16px; } .usporedba { display: none !important; }
+    .ploca { border-left: 0; border-top: 1px solid var(--rub); }
+  }
+</style>

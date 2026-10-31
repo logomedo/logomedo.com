@@ -1,0 +1,110 @@
+// Upiti kataloga za admin. Svi brojevi su po stilu (zasad samo „bojanka”).
+import { env } from "cloudflare:workers";
+import type { Pozicija } from "./fonemi";
+
+export interface Glas { id: number; oznaka: string; slug: string; skupina: string | null; skupine: number }
+export interface Stil { id: number; kod: string; naziv: string; predlozak: string; model: string }
+
+export interface GlasPregled extends Glas {
+  rijeci: number; odobreno: number; kandidata: number; uRedu: number;
+}
+
+export interface RijecRed {
+  id: number; rijec: string; slug: string; pozicija: Pozicija; potvrdeno: number;
+  legacy_koristeno: number; odobrena_id: number | null; kandidata: number; u_redu: number;
+}
+
+export interface Slika {
+  id: number; rijec_id: number; status: "kandidat" | "odobrena" | "odbijena"; razlog: string | null;
+  prompt: string | null; model: string | null; izvor: string; created_at: string; pregledao: string | null;
+}
+
+export const DB = () => env.DB;
+
+export async function stil(kod = "bojanka"): Promise<Stil> {
+  const s = await DB().prepare("SELECT id, kod, naziv, predlozak, model FROM stilovi WHERE kod = ?").bind(kod).first<Stil>();
+  if (!s) throw new Error(`Nema stila ${kod}: je li seed učitan?`);
+  return s;
+}
+
+export async function glasovi(stilId: number): Promise<GlasPregled[]> {
+  const { results } = await DB().prepare(
+    `SELECT g.id, g.oznaka, g.slug, g.skupina, g.skupine,
+       COUNT(DISTINCT rg.rijec_id) AS rijeci,
+       COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = rg.rijec_id AND s.stil_id = ?1 AND s.status = 'odobrena') THEN rg.rijec_id END) AS odobreno,
+       COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = rg.rijec_id AND s.stil_id = ?1 AND s.status = 'kandidat') THEN rg.rijec_id END) AS kandidata,
+       COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = rg.rijec_id AND q.stil_id = ?1 AND q.status IN ('ceka','radi')) THEN rg.rijec_id END) AS uRedu
+     FROM glasovi g LEFT JOIN rijec_glas rg ON rg.glas_id = g.id
+     GROUP BY g.id ORDER BY g.redoslijed`,
+  ).bind(stilId).all<GlasPregled>();
+  return results;
+}
+
+export async function glas(slug: string): Promise<Glas | null> {
+  return DB().prepare("SELECT id, oznaka, slug, skupina, skupine FROM glasovi WHERE slug = ?").bind(slug).first<Glas>();
+}
+
+export async function rijeciGlasa(glasId: number, stilId: number): Promise<RijecRed[]> {
+  const { results } = await DB().prepare(
+    `SELECT r.id, r.rijec, r.slug, rg.pozicija, rg.potvrdeno, r.legacy_koristeno,
+       (SELECT s.id FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ?2 AND s.status = 'odobrena') AS odobrena_id,
+       (SELECT COUNT(*) FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ?2 AND s.status = 'kandidat') AS kandidata,
+       (SELECT COUNT(*) FROM generiranja q WHERE q.rijec_id = r.id AND q.stil_id = ?2 AND q.status IN ('ceka','radi')) AS u_redu
+     FROM rijec_glas rg JOIN rijeci r ON r.id = rg.rijec_id
+     WHERE rg.glas_id = ?1 AND r.aktivna = 1
+     ORDER BY r.rijec COLLATE NOCASE`,
+  ).bind(glasId, stilId).all<RijecRed>();
+  return results;
+}
+
+export interface RijecDetalj {
+  id: number; rijec: string; slug: string; opis_za_sliku: string | null; recenica: string | null;
+  legacy_koristeno: number; izvor: string;
+}
+
+export async function rijec(slug: string) {
+  const r = await DB().prepare(
+    "SELECT id, rijec, slug, opis_za_sliku, recenica, legacy_koristeno, izvor FROM rijeci WHERE slug = ?",
+  ).bind(slug).first<RijecDetalj>();
+  if (!r) return null;
+  const [pozicije, slike, red] = await DB().batch([
+    DB().prepare(
+      `SELECT g.oznaka, g.slug, rg.pozicija, rg.potvrdeno FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id
+       WHERE rg.rijec_id = ? ORDER BY g.redoslijed`,
+    ).bind(r.id),
+    DB().prepare(
+      `SELECT id, rijec_id, status, razlog, prompt, model, izvor, created_at, pregledao FROM slike
+       WHERE rijec_id = ? ORDER BY CASE status WHEN 'odobrena' THEN 0 WHEN 'kandidat' THEN 1 ELSE 2 END, id DESC`,
+    ).bind(r.id),
+    DB().prepare(
+      "SELECT id, status, pokusaji, greska, created_at FROM generiranja WHERE rijec_id = ? AND status IN ('ceka','radi','greska') ORDER BY id DESC",
+    ).bind(r.id),
+  ]);
+  return {
+    ...r,
+    pozicije: pozicije.results as { oznaka: string; slug: string; pozicija: Pozicija; potvrdeno: number }[],
+    slike: slike.results as unknown as Slika[],
+    red: red.results as { id: number; status: string; pokusaji: number; greska: string | null; created_at: string }[],
+  };
+}
+
+/** Ukupni brojevi za zaglavlje. */
+export async function ukupno(stilId: number) {
+  return (await DB().prepare(
+    `SELECT (SELECT COUNT(*) FROM rijeci WHERE aktivna = 1) AS rijeci,
+       (SELECT COUNT(*) FROM slike WHERE stil_id = ?1 AND status = 'odobrena') AS odobreno,
+       (SELECT COUNT(*) FROM slike WHERE stil_id = ?1 AND status = 'kandidat') AS kandidata,
+       (SELECT COUNT(*) FROM generiranja WHERE stil_id = ?1 AND status IN ('ceka','radi')) AS uRedu,
+       (SELECT COUNT(*) FROM generiranja WHERE stil_id = ?1 AND status = 'greska') AS gresaka`,
+  ).bind(stilId).first<{ rijeci: number; odobreno: number; kandidata: number; uRedu: number; gresaka: number }>())!;
+}
+
+export const NAZIV_POZICIJE: Record<Pozicija, string> = {
+  inicijalna: "Inicijalna", medijalna: "Medijalna", finalna: "Finalna", skupina: "Skupine",
+};
+
+export function kad(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
+  return d.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+}

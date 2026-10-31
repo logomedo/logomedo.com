@@ -1,0 +1,35 @@
+---
+// Javna naslovnica dok aplikacija za logopede ne postoji.
+import Tema from "../components/Tema.astro";
+import Marka from "../components/Marka.astro";
+---
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LogoMedo · slikovni materijali za logopede</title>
+    <meta name="description" content="Radni listići s ilustracijama po glasovima i pozicijama, za logopedsku terapiju artikulacije." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <Tema />
+  </head>
+  <body>
+    <main>
+      <Marka />
+      <h1>Slike za svaki glas.<br /><em>Listić za tren.</em></h1>
+      <p>Novi LogoMedo nastaje: katalog ilustracija po glasovima i pozicijama, od kojih logoped složi radni listić i ispiše ga.</p>
+      <div class="slova" aria-hidden="true">{["C", "Č", "L", "R", "S", "Š", "Z", "Ž"].map((s) => <span>{s}</span>)}</div>
+    </main>
+  </body>
+</html>
+<style>
+  main { min-height: 100vh; max-width: 760px; margin: 0 auto; padding: 48px 24px; display: flex; flex-direction: column; justify-content: center; gap: 22px; }
+  h1 { margin: 24px 0 0; font-family: var(--font-slova); font-weight: 600; font-size: clamp(2.4rem, 7vw, 4.4rem); line-height: 1.02; letter-spacing: -.025em;
+    font-variation-settings: "SOFT" 100, "opsz" 144; }
+  h1 em { font-style: italic; color: var(--med-tamno); font-weight: 500; }
+  p { margin: 0; max-width: 520px; font-size: 1.1rem; color: var(--blijedo); }
+  .slova { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+  .slova span { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 14px; background: var(--povrsina); border: 1px solid var(--rub);
+    box-shadow: var(--sjena-1); font-family: var(--font-slova); font-size: 1.5rem; font-weight: 600; }
+  .slova span:nth-child(4) { background: var(--med); color: var(--med-tekst); border-color: var(--med); }
+</style>

@@ -1,0 +1,74 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { env } from "cloudflare:workers";
+import { kad } from "../../lib/katalog";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  if (f.get("akcija") === "greske") await env.DB.prepare("UPDATE generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska'").run();
+  if (f.get("akcija") === "isprazni") await env.DB.prepare("DELETE FROM generiranja WHERE status = 'ceka'").run();
+  return Astro.redirect("/admin/red", 303);
+}
+const { results: poslovi } = await env.DB.prepare(
+  `SELECT q.id, q.status, q.pokusaji, q.greska, q.created_at, q.uzeto_at, q.zavrseno_at, q.slika_id, r.rijec, r.slug
+   FROM generiranja q JOIN rijeci r ON r.id = q.rijec_id
+   ORDER BY CASE q.status WHEN 'radi' THEN 0 WHEN 'greska' THEN 1 WHEN 'ceka' THEN 2 ELSE 3 END, q.id DESC LIMIT 200`,
+).all<{ id: number; status: string; pokusaji: number; greska: string | null; created_at: string; uzeto_at: string | null; zavrseno_at: string | null; slika_id: number | null; rijec: string; slug: string }>();
+const broj = (s: string) => poslovi.filter((p) => p.status === s).length;
+const zadnjiRunner = poslovi.map((p) => p.uzeto_at).filter(Boolean).sort().at(-1) ?? null;
+const OZNAKA: Record<string, string> = { ceka: "čeka", radi: "radi", gotovo: "gotovo", greska: "greška" };
+const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh", greska: "greska" };
+---
+<AdminOkvir naslov="Red" aktivno="red">
+  <div class="naslov">
+    <div>
+      <h1>Red generiranja</h1>
+      <p class="podnaslov">{broj("ceka")} čeka · {broj("radi")} radi · {broj("greska")} grešaka · runner zadnje uzeo posao {kad(zadnjiRunner)}</p>
+    </div>
+    <form method="post" class="akcije">
+      {broj("greska") > 0 && <button class="gumb" name="akcija" value="greske">Vrati greške u red</button>}
+      {broj("ceka") > 0 && <button class="gumb tihi opasno" name="akcija" value="isprazni">Isprazni red</button>}
+    </form>
+  </div>
+
+  <div class="ploha runner">
+    <Ikona ime="iskra" />
+    <div>
+      <b>Slike generira runner na Macu</b> (tmux + agy, <span class="mono">gemini-3.8-flash-low</span>). Pokretanje:
+      <code class="mono">scripts/runner.sh</code>, gledanje: <code class="mono">tmux attach -t logomedo-agy -r</code>
+    </div>
+  </div>
+
+  {poslovi.length ? (
+    <div class="ploha tablica">
+      <table>
+        <thead><tr><th>#</th><th>Riječ</th><th>Status</th><th>Pokušaji</th><th>Dodano</th><th>Završeno</th><th></th></tr></thead>
+        <tbody>
+          {poslovi.map((p) => (
+            <tr>
+              <td class="mono blijedo">{p.id}</td>
+              <td><a class="rijec-tekst" href={`/admin/rijec/${p.slug}?od=/admin/red`}>{p.rijec}</a></td>
+              <td><span class:list={["oznaka", KLASA[p.status]]}>{OZNAKA[p.status]}</span>{p.greska && <div class="greska sitno">{p.greska}</div>}</td>
+              <td class="mono">{p.pokusaji}</td>
+              <td class="blijedo">{kad(p.created_at)}</td>
+              <td class="blijedo">{kad(p.zavrseno_at)}</td>
+              <td>{p.slika_id && <img class="mini" src={`/admin/slika/${p.slika_id}`} alt="" loading="lazy" />}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : <div class="ploha prazno"><h2>Red je prazan</h2><p>Na stranici glasa klikni „Generiraj bez slike”.</p></div>}
+</AdminOkvir>
+<style>
+  .akcije { display: flex; gap: 8px; margin: 0; }
+  .runner { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; margin-bottom: 22px; color: var(--blijedo); font-size: .9rem; }
+  .runner b { color: var(--tinta); }
+  .runner :global(svg) { color: var(--med); flex: none; margin-top: 2px; }
+  code { background: var(--povrsina-2); padding: 1px 6px; border-radius: 6px; }
+  .tablica { overflow-x: auto; }
+  .rijec-tekst { text-decoration: none; font-size: .86rem; }
+  .greska { color: var(--greska); font-size: .78rem; margin-top: 4px; max-width: 360px; }
+  .mini { width: 40px; height: 40px; object-fit: contain; background: var(--papir-slike); border-radius: 6px; border: 1px solid var(--rub); display: block; }
+</style>

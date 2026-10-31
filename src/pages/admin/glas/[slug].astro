@@ -1,0 +1,118 @@
+---
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { glas as nadjiGlas, rijeciGlasa, stil, NAZIV_POZICIJE } from "../../../lib/katalog";
+import { POZICIJE, type Pozicija } from "../../../lib/fonemi";
+
+const g = await nadjiGlas(Astro.params.slug!);
+if (!g) return new Response("Nema tog glasa", { status: 404 });
+const s = await stil();
+const sve = await rijeciGlasa(g.id, s.id);
+
+const pozicije = POZICIJE.filter((p) => p.kod !== "skupina" || g.skupine || sve.some((r) => r.pozicija === "skupina"));
+const trazena = Astro.url.searchParams.get("p") as Pozicija | null;
+const p = pozicije.some((x) => x.kod === trazena) ? trazena : null;
+const filtar = Astro.url.searchParams.get("f") ?? "";
+// Riječ s više pozicija istog glasa (S medijalno i finalno) u „Sve” je jedna kartica.
+const poRijeci = new Map<number, string[]>();
+for (const r of sve) poRijeci.set(r.id, [...(poRijeci.get(r.id) ?? []), NAZIV_POZICIJE[r.pozicija]]);
+const prikaz = sve.filter((r, i) => (p ? r.pozicija === p : sve.findIndex((x) => x.id === r.id) === i) && (
+  filtar === "bez" ? !r.odobrena_id && !r.kandidata && !r.u_redu :
+  filtar === "pregled" ? r.kandidata > 0 :
+  filtar === "izvedeno" ? !r.potvrdeno : true));
+const broj = (kod: Pozicija | null) => (kod ? sve.filter((r) => r.pozicija === kod).length : poRijeci.size);
+const bezSlike = sve.filter((r) => (!p || r.pozicija === p) && !r.odobrena_id && !r.kandidata && !r.u_redu).length;
+const odobreno = new Set(sve.filter((r) => r.odobrena_id).map((r) => r.id)).size;
+const ukupnoRijeci = new Set(sve.map((r) => r.id)).size;
+const dodano = Astro.url.searchParams.get("dodano");
+const url = (izmjena: Record<string, string | null>) => {
+  const u = new URL(Astro.url); u.searchParams.delete("dodano");
+  for (const [k, v] of Object.entries(izmjena)) v ? u.searchParams.set(k, v) : u.searchParams.delete(k);
+  return u.pathname + u.search;
+};
+const ovdje = url({});
+---
+<AdminOkvir naslov={`Glas ${g.oznaka}`} aktivno="katalog">
+  <a class="mrvice" href="/admin"><Ikona ime="natrag" velicina={16} /> Katalog</a>
+  <div class="naslov">
+    <div class="glava">
+      <span class="veliko-slovo">{g.oznaka}</span>
+      <div>
+        <h1>Glas {g.oznaka}</h1>
+        <p class="podnaslov">{g.skupina} · {ukupnoRijeci} riječi · {odobreno} s odobrenom slikom</p>
+      </div>
+    </div>
+    <form method="post" action="/admin/api/generiraj">
+      <input type="hidden" name="glas" value={g.slug} />
+      <input type="hidden" name="pozicija" value={p ?? ""} />
+      <input type="hidden" name="next" value={ovdje} />
+      <button class="gumb glavni" type="submit" disabled={!bezSlike}>
+        <Ikona ime="iskra" /> Generiraj {bezSlike} bez slike{p ? ` (${NAZIV_POZICIJE[p].toLowerCase()})` : ""}
+      </button>
+    </form>
+  </div>
+
+  {dodano !== null && <div class="obavijest"><Ikona ime="red" /> U red dodano: {dodano}. Runner ih uzima redom (<a href="/admin/red">Red</a>).</div>}
+
+  <div class="alatna">
+    <nav class="segmenti">
+      <a href={url({ p: null })} class:list={{ aktivno: !p }}>Sve <span>{broj(null)}</span></a>
+      {pozicije.map((x) => <a href={url({ p: x.kod })} class:list={{ aktivno: p === x.kod }}>{NAZIV_POZICIJE[x.kod]} <span>{broj(x.kod)}</span></a>)}
+    </nav>
+    <nav class="filtri">
+      {[["", "Sve"], ["bez", "Bez slike"], ["pregled", "Za pregled"], ["izvedeno", "Nepotvrđene pozicije"]].map(([k, t]) => (
+        <a href={url({ f: k || null })} class:list={["oznaka", { med: filtar === k }]}>{t}</a>
+      ))}
+    </nav>
+  </div>
+
+  {prikaz.length ? (
+    <div class="mreza">
+      {prikaz.map((r) => (
+        <a class="kartica" href={`/admin/rijec/${r.slug}?od=${encodeURIComponent(ovdje)}`}>
+          <div class="list">
+            {r.odobrena_id ? <img src={`/admin/slika/${r.odobrena_id}`} alt={r.rijec} loading="lazy" /> :
+              <span class="bez">{r.rijec}</span>}
+          </div>
+          <div class="ispod">
+            <span class="rijec-tekst">{r.rijec}</span>
+            <span class="znakovi">
+              {!p && poRijeci.get(r.id)!.map((n) => <span class="oznaka">{n}</span>)}
+              {!r.potvrdeno && <span class="oznaka info" title="Pozicija izvedena iz pravopisa, nije potvrđena">izvedeno</span>}
+              {r.odobrena_id ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> odobreno</span> :
+                r.kandidata ? <span class="oznaka med">{r.kandidata} za pregled</span> :
+                r.u_redu ? <span class="oznaka info"><Ikona ime="sat" velicina={12} /> u redu</span> : null}
+            </span>
+          </div>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="ploha prazno"><h2>Ništa za prikaz</h2><p>Promijeni poziciju ili filtar.</p></div>
+  )}
+</AdminOkvir>
+
+<style>
+  .glava { display: flex; align-items: center; gap: 18px; }
+  .veliko-slovo { width: 76px; height: 76px; border-radius: 20px; display: grid; place-items: center; background: var(--med); color: var(--med-tekst);
+    font-family: var(--font-slova); font-size: 2.8rem; font-weight: 600; font-variation-settings: "SOFT" 100, "opsz" 144; box-shadow: var(--sjena-2); }
+  .alatna { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .segmenti { display: inline-flex; padding: 4px; gap: 2px; border-radius: 12px; background: var(--povrsina-2); border: 1px solid var(--rub); flex-wrap: wrap; }
+  .segmenti a { padding: 7px 14px; border-radius: 9px; text-decoration: none; font-weight: 600; font-size: .88rem; color: var(--blijedo); }
+  .segmenti a span { color: var(--vrlo-blijedo); font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .segmenti a.aktivno { background: var(--povrsina); color: var(--tinta); box-shadow: var(--sjena-1); }
+  .filtri { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filtri .oznaka { text-decoration: none; padding: 5px 11px; font-size: .78rem; }
+  .mreza { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 16px; }
+  .kartica { display: flex; flex-direction: column; text-decoration: none; border-radius: 16px; background: var(--povrsina); border: 1px solid var(--rub);
+    box-shadow: var(--sjena-1); overflow: hidden; transition: transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s; }
+  .kartica:hover { transform: translateY(-3px); box-shadow: var(--sjena-2); }
+  .list { aspect-ratio: 1; margin: 10px 10px 0; border-radius: 10px; background: var(--papir-slike); display: grid; place-items: center; overflow: hidden;
+    border: 1px solid var(--rub); }
+  .list img { width: 100%; height: 100%; object-fit: contain; }
+  .bez { font-family: var(--font-slova); font-size: 1.15rem; text-transform: uppercase; letter-spacing: .06em; color: #c9bfae; padding: 12px; text-align: center;
+    word-break: break-word; }
+  .ispod { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .ispod .rijec-tekst { font-size: .86rem; color: var(--tinta); }
+  .znakovi { display: flex; gap: 4px; flex-wrap: wrap; min-height: 20px; }
+</style>
