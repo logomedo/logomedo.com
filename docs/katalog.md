@@ -107,3 +107,29 @@ slika). Za ispis (A4 na 300 dpi ≈ 2480 px) runner nakon svake slike zove `scri
 ImageMagick prag 50 % → potrace → `PUT /api/runner/svg/:slika_id`. SVG ide u R2 pod istim ključem
 s `.svg` (`slike.svg_kljuc`, migracija 0003), a za odobrene i u javni bucket. Tipično ~16 kB.
 Worker odbija SVG sa `<script>`, `javascript:` ili `on*=` atributima.
+
+## Kvota agyja (mjereno 31. 10. 2026.)
+
+- Brzina nije usko grlo: 12 slika za redom, 40–53 s po slici (prosjek ~45 s).
+- **Kvota alata za slike je.** Nakon 12–13 slika u danu agy javlja
+  `429 RESOURCE_EXHAUSTED on gemini-3.1-flash-image` i reset za ~3–5 h (Google AI Pro, prozor
+  Antigravityja). Katalog od 428 riječi preko agyja je zato pitanje dana, ne sati.
+- Runner to prepoznaje (`KVOTA_RE` u `runner.sh`): posao ide natrag u red bez trošenja pokušaja
+  (`POST /api/runner/odgodi/:id`), a runner spava do reseta pročitanog iz poruke
+  („at HH:MM UTC” ili „in N hours and M minutes”, inače 30 min).
+- Rezolucija je fiksno 1024×1024; zahtjev u promptu za 2K se ignorira (8 slika testirano).
+- Otvoreno: Gemini API s plaćenim ključem (isti model, bez prozora, procjena ~$0,04/sliku,
+  ≈ $17 za katalog; cijena nije provjerena) kao zamjena za agy pri masovnom generiranju.
+  Ne automatizirati gemini.google.com preko preglednika.
+
+## Plan: stilovi, dodaci, referentne slike (dogovoreno 31. 10. 2026., nije napravljeno)
+
+- **Stil** (jedan): `bojanka` (SVG) i novi `ilustracija` (raster u boji); `stilovi.vektor`.
+- **Dodaci** u skupinama (kao Adobe Firefly): unutar skupine jedan, skupine se kombiniraju
+  (npr. Pozadina: bez; Pogled: sprijeda/profil; Lice: veselo; Boje: pastelne/jarke). Tablica
+  `dodaci`, odabir spremljen u `generiranja.dodaci`, živi pregled cijelog prompta u adminu.
+  Stil može imati zadane dodatke („blueprint”). Primjer potrebe: astronaut je dobio mjesec,
+  raketu i zvjezdice; „bez pozadine” to rješava.
+- **Prvo test referentnih slika**: runner agyju da 2–3 odobrene slike stila kao style reference
+  (kao Midjourney `--sref`, Leonardo Image Guidance), za dosljednost 428 slika. Provjeriti na
+  2–3 riječi prije gradnje UI-ja. Odobrena je zasad samo zebra.

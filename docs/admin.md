@@ -17,7 +17,12 @@ skladu s njima.
 Deployano na D.O.M. račun: Worker `logomedo` (custom domain `logomedo.com` i `www`, a www
 ide 301 na apex), D1 `logomedo` (`e67d3840-…`, migrirano i seedano), R2 `logomedo-slike`,
 secret `RUNNER_TOKEN` (lokalno u `.env.production`, gitignored; `scripts/runner.sh --prod`).
-Access aplikacija „LogoMedo admin (sso)” (AUD 81d4dce3…). Politika treba biti vlastita „LogoMedo admini” (admin1@example.com, admin2@example.com, admin3@example.com), ne „OMM admini”. Deploy samo `npm run deploy` (build kopira wrangler.jsonc u dist).
+Access aplikacija „LogoMedo admin (sso)” (AUD 81d4dce3…). Politika treba biti vlastita „LogoMedo admini” (admin1@example.com, admin2@example.com, admin3@example.com), ne „OMM admini”.
+
+**Zamka (31. 10. 2026.):** u politici svaki e-mail mora biti **zasebno** Include → Email pravilo.
+Jedno pravilo s vrijednošću „a, b, c” Access uspoređuje doslovno kao jednu adresu, pa ne
+propušta nikoga, a OTP se tiho ne šalje (Anitin kod „nije stizao”). Provjera:
+`GET /accounts/<id>/access/policies/<id>` → `include` mora imati po jedan `{"email":{"email":…}}`. Deploy samo `npm run deploy` (build kopira wrangler.jsonc u dist).
 Stari Firebase A zapisi za apex i www su obrisani; `stage.logomedo.com` je ostao na Firebaseu.
 
 ## Bilo otvoreno prije produkcije (stavke 1–4 i 6 su gotove)
