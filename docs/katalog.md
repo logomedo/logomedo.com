@@ -130,6 +130,11 @@ Worker odbija SVG sa `<script>`, `javascript:` ili `on*=` atributima.
   `dodaci`, odabir spremljen u `generiranja.dodaci`, živi pregled cijelog prompta u adminu.
   Stil može imati zadane dodatke („blueprint”). Primjer potrebe: astronaut je dobio mjesec,
   raketu i zvjezdice; „bez pozadine” to rješava.
+- **Referentne slike stila (31. 10. 2026., uvedeno za `ilustracija`)**: runner za stil X traži
+  `~/git/.agy-logomedo/stil/X/*.jpg|png` (lokalno, nije u repou) i kaže agyju da ih da alatu kao
+  uzor samo za stil. Za ilustraciju su to tri izreza iz božićne abecede napravljene u Geminiju
+  (džemper, đumbirko, rukavice); prompt stila je prepisan prema njoj (migracija 0007).
+  Prvih nekoliko ilustracija treba usporediti s uzorom prije cijelog kataloga.
 - **Prvo test referentnih slika**: runner agyju da 2–3 odobrene slike stila kao style reference
   (kao Midjourney `--sref`, Leonardo Image Guidance), za dosljednost 428 slika. Provjeriti na
   2–3 riječi prije gradnje UI-ja. Odobrena je zasad samo zebra.

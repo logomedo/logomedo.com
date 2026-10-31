@@ -136,9 +136,19 @@ while true; do
     log "#$id $rijec → agy"
     t0=$SECONDS
 
+    # Referentne slike stila (lokalno, $W/stil/<stil>/*.jpg|png): agy ih daje alatu kao uzor stila.
+    ref=""; popis=""
+    for x in "$W/stil/$stil"/*.jpg "$W/stil/$stil"/*.jpeg "$W/stil/$stil"/*.png; do
+        if [[ -f "$x" ]]; then popis+="stil/$stil/$(basename "$x") "; fi
+    done
+    if [[ -n "$popis" ]]; then
+        ref="Use these images as style references and pass them to the image generation tool as reference images: ${popis% }. \
+Copy only their art style (line work, colored pencil and watercolor texture, warm palette, light cream background), never their subjects, objects or composition. "
+    fi
+
     pitaj "/clear"; sleep 3
     pitaj "Generate exactly one image with your image generation tool, using this prompt verbatim: \"$prompt\" \
-Save the generated image in the current directory as $ime.png (keep the original format's extension if it is not PNG). \
+${ref}Save the generated image in the current directory as $ime.png (keep the original format's extension if it is not PNG). \
 Do not edit, crop or post-process it, do not create any other files, and do not reply with anything except the file name."
 
     f="$(cekaj_datoteku "$W/$ime.*")" && rc=0 || rc=$?
