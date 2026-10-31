@@ -90,6 +90,13 @@ Dva R2 bucketa, isti ključ (`<stil>/<slug>/<16 hex sha256>.<ext>`):
 - `scripts/launchd/instaliraj.sh` instalira LaunchAgent `com.logomedo.runner` (`runner.sh --prod`,
   KeepAlive, ThrottleInterval 60 s). Log: `~/Library/Logs/logomedo-runner.log`.
   Uklanjanje: `instaliraj.sh --ukloni`. Restart nakon izmjene skripte: `launchctl kickstart -k gui/$(id -u)/com.logomedo.runner`.
+- **Praćenje bez Claude sesije:** `scripts/runner-obavijesti.sh` (pokrenut s `nohup … &`) prati log i
+  šalje macOS obavijest za svaku gotovu sliku, pauzu zbog kvote, grešku. Ne troši Claude kvotu
+  (pravilo o tokenima: napredak se ne prati Monitorom u sesiji). Ne preživi restart Maca.
+  Zaustavljanje: `pkill -f runner-obavijesti`.
+- **Prioritet u redu** je samo `ORDER BY id`. Da posao ide naprijed/natrag, kopija s novim id-em pa
+  brisanje starog (D1 ne dopušta `CREATE TEMP TABLE`: SQLITE_AUTH, a `--file` se tada vrati cijeli).
+  Prompt se sprema pri dodavanju u red: nakon promjene predloška stila poslove koji čekaju treba prepisati.
 - **Push umjesto pollinga.** Na praznom redu runner otvara WebSocket na `/api/runner/zvono`
   (`scripts/runner-cekaj.mjs`, bearer `RUNNER_TOKEN`). Durable Object `RunnerZvono`
   (`src/lib/runner-zvono.ts`, hibernacija, ping/pong bez buđenja) drži vezu; `dodajURed()` i
