@@ -3,6 +3,7 @@
 // ne generira ništa sam.
 import { env } from "cloudflare:workers";
 import type { Stil } from "./katalog";
+import { zazvoni } from "./runner-zvono";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
@@ -41,6 +42,7 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
     ));
     dodano += rijeci.length;
   }
+  if (dodano) await zazvoni();
   return dodano;
 }
 

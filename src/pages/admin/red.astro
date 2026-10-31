@@ -3,10 +3,14 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import { env } from "cloudflare:workers";
 import { kad } from "../../lib/katalog";
+import { spojenoRunnera, zazvoni } from "../../lib/runner-zvono";
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
-  if (f.get("akcija") === "greske") await env.DB.prepare("UPDATE generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska'").run();
+  if (f.get("akcija") === "greske") {
+    await env.DB.prepare("UPDATE generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska'").run();
+    await zazvoni();
+  }
   if (f.get("akcija") === "isprazni") await env.DB.prepare("DELETE FROM generiranja WHERE status = 'ceka'").run();
   return Astro.redirect("/admin/red", 303);
 }
@@ -17,6 +21,7 @@ const { results: poslovi } = await env.DB.prepare(
 ).all<{ id: number; status: string; pokusaji: number; greska: string | null; created_at: string; uzeto_at: string | null; zavrseno_at: string | null; slika_id: number | null; rijec: string; slug: string }>();
 const broj = (s: string) => poslovi.filter((p) => p.status === s).length;
 const zadnjiRunner = poslovi.map((p) => p.uzeto_at).filter(Boolean).sort().at(-1) ?? null;
+const spojeno = await spojenoRunnera();
 const OZNAKA: Record<string, string> = { ceka: "čeka", radi: "radi", gotovo: "gotovo", greska: "greška" };
 const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh", greska: "greska" };
 ---
@@ -35,8 +40,9 @@ const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh"
   <div class="ploha runner">
     <Ikona ime="iskra" />
     <div>
-      <b>Slike generira runner na Macu</b> (tmux + agy, <span class="mono">gemini-3.8-flash-low</span>). Pokretanje:
-      <code class="mono">scripts/runner.sh</code>, gledanje: <code class="mono">tmux attach -t logomedo-agy -r</code>
+      <b>Slike generira runner na Macu</b> (launchd, tmux + agy, <span class="mono">gemini-3.8-flash-low</span>):
+      {spojeno ? <span class="oznaka uspjeh">spojen</span> : <span class="oznaka greska">nije spojen</span>}
+      Novi posao ga budi odmah (WebSocket). Gledanje: <code class="mono">tmux attach -t logomedo-agy -r</code>
     </div>
   </div>
 
@@ -53,14 +59,44 @@ const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh"
               <td class="mono">{p.pokusaji}</td>
               <td class="blijedo">{kad(p.created_at)}</td>
               <td class="blijedo">{kad(p.zavrseno_at)}</td>
-              <td>{p.slika_id && <img class="mini" src={`/admin/slika/${p.slika_id}`} alt="" loading="lazy" />}</td>
+              <td>{p.slika_id && (
+                <button type="button" class="pregled" data-src={`/admin/slika/${p.slika_id}`} data-rijec={p.rijec} aria-label={`Veća slika: ${p.rijec}`}>
+                  <img class="mini" src={`/admin/slika/${p.slika_id}`} alt="" loading="lazy" />
+                </button>
+              )}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   ) : <div class="ploha prazno"><h2>Red je prazan</h2><p>Na stranici glasa klikni „Generiraj bez slike”.</p></div>}
+
+  <dialog id="velika">
+    <figure>
+      <img alt="" />
+      <figcaption><span class="rijec-tekst"></span> <span class="blijedo sitno">← → za listanje, Esc za zatvaranje</span></figcaption>
+    </figure>
+  </dialog>
 </AdminOkvir>
+<script>
+  const d = document.getElementById("velika") as HTMLDialogElement;
+  const img = d.querySelector("img")!;
+  const potpis = d.querySelector(".rijec-tekst")!;
+  const gumbi = [...document.querySelectorAll<HTMLButtonElement>("button.pregled")];
+  let i = 0;
+  const pokazi = (n: number) => {
+    i = (n + gumbi.length) % gumbi.length;
+    img.src = gumbi[i].dataset.src!;
+    img.alt = potpis.textContent = gumbi[i].dataset.rijec!;
+  };
+  gumbi.forEach((g, n) => g.addEventListener("click", () => { pokazi(n); d.showModal(); }));
+  d.addEventListener("click", () => d.close());
+  document.addEventListener("keydown", (e) => {
+    if (!d.open) return;
+    if (e.key === "ArrowRight") pokazi(i + 1);
+    if (e.key === "ArrowLeft") pokazi(i - 1);
+  });
+</script>
 <style>
   .akcije { display: flex; gap: 8px; margin: 0; }
   .runner { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; margin-bottom: 22px; color: var(--blijedo); font-size: .9rem; }
@@ -70,5 +106,11 @@ const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh"
   .tablica { overflow-x: auto; }
   .rijec-tekst { text-decoration: none; font-size: .86rem; }
   .greska { color: var(--greska); font-size: .78rem; margin-top: 4px; max-width: 360px; }
+  .pregled { padding: 0; border: 0; background: none; cursor: zoom-in; }
+  #velika { padding: 0; border: 0; border-radius: 14px; max-width: min(92vw, 860px); background: var(--papir-slike); }
+  #velika::backdrop { background: rgb(0 0 0 / .6); }
+  #velika figure { margin: 0; cursor: zoom-out; }
+  #velika img { display: block; width: 100%; height: auto; max-height: 84vh; object-fit: contain; }
+  #velika figcaption { padding: 10px 16px; display: flex; gap: 12px; align-items: baseline; justify-content: space-between; background: var(--povrsina, #fff); }
   .mini { width: 40px; height: 40px; object-fit: contain; background: var(--papir-slike); border-radius: 6px; border: 1px solid var(--rub); display: block; }
 </style>

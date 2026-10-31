@@ -7,6 +7,8 @@
   // (registracija i zona), pa vrijedi i Access tim domovina.cloudflareaccess.com.
   "account_id": "7dc7167b7e2e00923bfa7cd697df14e4",
   // Samo vlastita domena: admin i API ne smiju biti i na *.workers.dev (drugi origin).
+  // Vlastiti ulaz (Astro handler + Durable Object RunnerZvono); bez ovoga adapter koristi svoj.
+  "main": "./src/worker.ts",
   "workers_dev": false,
   "preview_urls": false,
 
@@ -25,6 +27,10 @@
     { "binding": "SLIKE", "bucket_name": "logomedo-slike" },
     { "binding": "JAVNO", "bucket_name": "logomedo-javno" }
   ],
+
+  // Push za runner na Macu: WebSocket /api/runner/zvono (src/lib/runner-zvono.ts).
+  "durable_objects": { "bindings": [{ "name": "RUNNER_ZVONO", "class_name": "RunnerZvono" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RunnerZvono"] }],
 
   "vars": {
     // /admin (docs/admin.md): Cloudflare Access na /admin/sso ili passkey.

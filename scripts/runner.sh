@@ -6,6 +6,10 @@
 #   scripts/runner.sh --jednom   # jedan posao pa kraj (za probu)
 #   scripts/runner.sh --prod     # produkcija: LOGOMEDO_URL i RUNNER_TOKEN iz .env.production (gitignored)
 #
+# Prazan red: runner ne pollira, nego čeka zvono (scripts/runner-cekaj.mjs, WebSocket na
+# /api/runner/zvono). Worker zvoni kad admin doda posao; za svaki slučaj provjera i svakih 10 min.
+# Trajno u pozadini: launchd (scripts/launchd/, docs/katalog.md).
+#
 # Okolina:
 #   LOGOMEDO_URL   default http://localhost:4321 (produkcija: https://logomedo.com)
 #   RUNNER_TOKEN   default iz .dev.vars (produkcija: isti kao `wrangler secret put RUNNER_TOKEN`)
@@ -87,7 +91,8 @@ while true; do
     kod="${odgovor##*$'\n'}"; tijelo="${odgovor%$'\n'*}"
     if [[ "$kod" == "204" ]]; then
         (( JEDNOM )) && { log "red je prazan"; exit 0; }
-        sleep 30; continue
+        LOGOMEDO_URL="$URL" RUNNER_TOKEN="$TOKEN" node "$KORIJEN/scripts/runner-cekaj.mjs" 600 || sleep 30
+        continue
     fi
     [[ "$kod" == "200" ]] || { log "uzmi: HTTP $kod $tijelo"; exit 1; }
 

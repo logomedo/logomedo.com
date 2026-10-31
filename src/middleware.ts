@@ -2,7 +2,8 @@
 // omm.domovina.ai i pay.domovina.ai). /api/runner/*: lokalni runner s bearer tokenom.
 import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
-import { getSession, sha256Hex } from "./lib/admin/sesija";
+import { getSession } from "./lib/admin/sesija";
+import { runnerOk } from "./lib/runner-auth";
 
 const JAVNO = new Set([
   "/admin/login",
@@ -22,17 +23,6 @@ const adminPutanja = (p: string) => {
 const lokalno = (h: string) => h === "localhost" || h === "127.0.0.1";
 const json = (data: unknown, status: number) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
-
-/** Usporedba tokena preko hasha: jednaka duljina, bez ranog izlaza po znaku. */
-async function runnerOk(request: Request): Promise<boolean> {
-  const dano = /^Bearer (\S+)$/.exec(request.headers.get("authorization") ?? "")?.[1];
-  const tajna = env.RUNNER_TOKEN;
-  if (!dano || !tajna) return false;
-  const [a, b] = await Promise.all([sha256Hex(dano), sha256Hex(tajna)]);
-  let razlika = 0;
-  for (let i = 0; i < a.length; i++) razlika |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return razlika === 0;
-}
 
 export const onRequest = defineMiddleware(async ({ request, url, locals }, next) => {
   // Jedan kanonski host: www → apex (passkey rpID i kolačić su vezani uz host).
