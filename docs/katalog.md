@@ -158,3 +158,18 @@ pregledniku (Claude in Chrome, Brave): #13 u gemini.google.com (Flash-Lite, 1024
 - Preporučeni put: Gemini API s plaćenim ključem kao backend u `runner.sh` (vidi Kvota
   agyja), po želji Leonardo API kao drugi backend.
 - #13 i #14 nisu poslani na produkciju; vratili su se u red nakon 15 min (`radi` → red).
+
+## Pregled s više admina (31. 10. 2026.)
+
+Zamka koja je stvarala slike „u krug”: astronaut je imao dva kandidata; Anita je odobrila
+jednog, drugog odbila s „Imam drugog”, a kvačica „Generiraj novu” bila je uvijek uključena, pa
+je za 50 s stigao novi kandidat. Sada:
+
+- „Odbij” traži novu sliku samo ako riječ nema odobrenu ni drugog kandidata u tom stilu;
+  u pregledu je kvačica tada isključena („riječ već ima odobrenu”).
+- Odobri/odbij su uvjetni UPDATE (`status = 'kandidat'`): pamti se prva odluka, kasnija dobiva
+  409 s time tko je bio brži (`odluci()` u `src/lib/generiranje.ts`).
+- Pregled se svake 3 s usklađuje preko `GET /admin/api/kandidati`: tuđe odluke nestaju s
+  ekrana, novi kandidati dolaze na kraj. Nije WebSocket; kašnjenje do 3 s, ispravnost jamči server.
+- Lokalni test s dvije sesije: odobri kod jednog → drugome nestane uz poruku; istovremeni
+  „Odbij” obaju → jedna odluka, nijedan novi posao u redu.
