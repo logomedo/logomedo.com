@@ -133,3 +133,28 @@ Worker odbija SVG sa `<script>`, `javascript:` ili `on*=` atributima.
 - **Prvo test referentnih slika**: runner agyju da 2–3 odobrene slike stila kao style reference
   (kao Midjourney `--sref`, Leonardo Image Guidance), za dosljednost 428 slika. Provjeriti na
   2–3 riječi prije gradnje UI-ja. Odobrena je zasad samo zebra.
+
+## Ručni test: Gemini web i Leonardo (31. 10. 2026.)
+
+Dok je agy čekao reset kvote, poslovi #13 (brisači) i #14 (crijep) ručno su generirani u
+pregledniku (Claude in Chrome, Brave): #13 u gemini.google.com (Flash-Lite, 1024×1024),
+#14 u Leonardo webu (Lucid Origin, Dynamic, free plan, ~136 tokena ostalo).
+
+- **Hrvatska riječ u promptu je glavni uzrok promašaja, ne alat.** S promptom iz reda
+  doslovno: Gemini je „BRISAČI” nacrtao kao gumicu za brisanje, Leonardo je „CRIJEP”
+  nacrtao kao *tekst* „crijep”. S engleskim pojmom („car windshield wipers”, „clay roof
+  tile”) oba su pogodila iz prvog puta.
+  → Otvoreno: polje `engleski` u katalogu (jednom popuniti za 632 riječi) i prompt
+  „BRISAČI (car windshield wipers)”. Vjerojatno smanjuje odbijanja više od promjene alata.
+- Izvlačenje slike: Leonardo slike su javne na `cdn.leonardo.ai/...jpg` (curl bez kolačića,
+  makni `?w=`). Gemini daje `blob:`; `fetch(blob)` pada, canvas `toDataURL` radi, ali slanje
+  na `http://127.0.0.1` iz stranice blokira CSP, a base64 kroz alat je ~100k tokena.
+  Ostaje gumb za preuzimanje (→ `~/Downloads`).
+- **Odluka: Gemini web se ne automatizira skriptom** (Playwright + Brave profil). Google
+  uvjeti zabranjuju automatizirani pristup, a račun je glavni (Gmail, Drive, Pro); jedan
+  billing account već je flagiran. Web vjerojatno troši istu Pro kvotu za slike kao agy
+  (nije provjereno). Leonardo web isto ne: ima službeni API (krediti odvojeni od web plana,
+  cijena nije provjerena).
+- Preporučeni put: Gemini API s plaćenim ključem kao backend u `runner.sh` (vidi Kvota
+  agyja), po želji Leonardo API kao drugi backend.
+- #13 i #14 nisu poslani na produkciju; vratili su se u red nakon 15 min (`radi` → red).
