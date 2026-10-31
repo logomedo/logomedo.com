@@ -10,6 +10,7 @@ Cloudflare Access (kod na e-mail) ili passkey, preneseno iz omm.domovina.ai.
 |---|---|
 | [docs/katalog.md](docs/katalog.md) | Shema, pozicije glasova, red generiranja i runner |
 | [docs/admin.md](docs/admin.md) | Prijava, sesija, postavljanje Accessa |
+| [docs/2026-10-31-selidba-na-dom-i-dns.md](docs/2026-10-31-selidba-na-dom-i-dns.md) | Selidba domene na D.O.M., DNS zamke, prvi deploy |
 
 ## Lokalno
 
