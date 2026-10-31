@@ -93,6 +93,22 @@ export async function predaj(posaoId: number, mime: string, tijelo: ArrayBuffer)
   return { slikaId: s!.id };
 }
 
+export const MAX_SVG_BAJTOVA = 2 * 1024 * 1024;
+
+/** SVG (potrace) uz postojeću sliku: R2 pod istim ključem s .svg, a ako je slika odobrena, i u javni bucket. */
+export async function predajSvg(slikaId: number, tijelo: ArrayBuffer): Promise<{ svgKljuc: string } | { greska: string }> {
+  if (tijelo.byteLength === 0 || tijelo.byteLength > MAX_SVG_BAJTOVA) return { greska: "prazan ili prevelik SVG" };
+  const pocetak = new TextDecoder().decode(tijelo.slice(0, 512));
+  if (!/<svg[\s>]/.test(pocetak) || /<script|javascript:|\son[a-z]+\s*=/i.test(new TextDecoder().decode(tijelo))) return { greska: "nije čist SVG" };
+  const s = await env.DB.prepare("SELECT r2_kljuc FROM slike WHERE id = ?").bind(slikaId).first<{ r2_kljuc: string }>();
+  if (!s) return { greska: "slika ne postoji" };
+  const kljuc = s.r2_kljuc.replace(/\.[a-z]+$/, ".svg");
+  await env.SLIKE.put(kljuc, tijelo, { httpMetadata: { contentType: "image/svg+xml" } });
+  await env.DB.prepare("UPDATE slike SET svg_kljuc = ? WHERE id = ?").bind(kljuc, slikaId).run();
+  await uskladiJavno([slikaId], true);
+  return { svgKljuc: kljuc };
+}
+
 /** Neuspjeh: natrag u red dok ne prijeđe MAX_POKUSAJA, onda 'greska'. */
 export async function neuspjeh(posaoId: number, greska: string) {
   await env.DB.prepare(
@@ -134,20 +150,24 @@ export const javniUrl = (r2Kljuc: string) => `${env.CDN_URL}/${r2Kljuc}`;
  * Ključ sadrži hash sadržaja, pa se smije keširati zauvijek; kad slika prestane biti
  * odobrena, briše se i (ako postoji CF_PURGE_TOKEN) čisti iz edge cachea.
  */
-export async function uskladiJavno(slikaIds: number[]) {
+export async function uskladiJavno(slikaIds: number[], prepisi = false) {
   for (const id of slikaIds) {
-    const s = await env.DB.prepare("SELECT r2_kljuc, mime, status FROM slike WHERE id = ?").bind(id).first<{ r2_kljuc: string; mime: string; status: string }>();
+    const s = await env.DB.prepare("SELECT r2_kljuc, svg_kljuc, mime, status FROM slike WHERE id = ?").bind(id)
+      .first<{ r2_kljuc: string; svg_kljuc: string | null; mime: string; status: string }>();
     if (!s) continue;
-    if (s.status === "odobrena") {
-      if (await env.JAVNO.head(s.r2_kljuc)) continue;
-      const o = await env.SLIKE.get(s.r2_kljuc);
-      if (!o) throw new Error(`nema ${s.r2_kljuc} u privatnom bucketu`);
-      await env.JAVNO.put(s.r2_kljuc, o.body, {
-        httpMetadata: { contentType: s.mime, cacheControl: "public, max-age=31536000, immutable" },
-      });
-    } else if (await env.JAVNO.head(s.r2_kljuc)) {
-      await env.JAVNO.delete(s.r2_kljuc);
-      await ocistiCache(javniUrl(s.r2_kljuc));
+    const datoteke = [{ kljuc: s.r2_kljuc, mime: s.mime }, ...(s.svg_kljuc ? [{ kljuc: s.svg_kljuc, mime: "image/svg+xml" }] : [])];
+    for (const d of datoteke) {
+      if (s.status === "odobrena") {
+        if (!prepisi && (await env.JAVNO.head(d.kljuc))) continue;
+        const o = await env.SLIKE.get(d.kljuc);
+        if (!o) throw new Error(`nema ${d.kljuc} u privatnom bucketu`);
+        await env.JAVNO.put(d.kljuc, o.body, {
+          httpMetadata: { contentType: d.mime, cacheControl: "public, max-age=31536000, immutable" },
+        });
+      } else if (await env.JAVNO.head(d.kljuc)) {
+        await env.JAVNO.delete(d.kljuc);
+        await ocistiCache(javniUrl(d.kljuc));
+      }
     }
   }
 }

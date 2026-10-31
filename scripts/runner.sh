@@ -36,6 +36,8 @@ MODEL="${AGY_MODEL:-gemini-3.8-flash-low}"
 SESSION="${AGY_SESSION:-logomedo-agy}"
 W="${AGY_DIR:-$HOME/git/.agy-logomedo}"
 TIMEOUT_S="${AGY_TIMEOUT:-300}"
+# launchd nema nvm u PATH-u: uzmi najnoviji nvm node ako `node` nije dostupan.
+NODE="${NODE:-$(command -v node || ls -d "$HOME"/.nvm/versions/node/*/bin/node 2>/dev/null | sort -V | tail -1)}"
 [[ -n "$TOKEN" ]] || { echo "Nema RUNNER_TOKEN (env ili .dev.vars)" >&2; exit 2; }
 mkdir -p "$W"
 
@@ -91,7 +93,7 @@ while true; do
     kod="${odgovor##*$'\n'}"; tijelo="${odgovor%$'\n'*}"
     if [[ "$kod" == "204" ]]; then
         (( JEDNOM )) && { log "red je prazan"; exit 0; }
-        LOGOMEDO_URL="$URL" RUNNER_TOKEN="$TOKEN" node "$KORIJEN/scripts/runner-cekaj.mjs" 600 || sleep 30
+        LOGOMEDO_URL="$URL" RUNNER_TOKEN="$TOKEN" "$NODE" "$KORIJEN/scripts/runner-cekaj.mjs" 600 || sleep 30
         continue
     fi
     [[ "$kod" == "200" ]] || { log "uzmi: HTTP $kod $tijelo"; exit 1; }
@@ -121,5 +123,10 @@ Do not edit, crop or post-process it, do not create any other files, and do not 
     fi
     rez="$(api -X PUT -H "Content-Type: $mime" --data-binary "@$f" "$URL/api/runner/slika/$id")"
     log "#$id $rijec: $(basename "$f") $(stat -f %z "$f") B, $((SECONDS - t0)) s → $rez"
+    slika_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("slikaId",""))' <<<"$rez" 2>/dev/null || true)"
+    if [[ -n "$slika_id" ]]; then
+        svg="$(LOGOMEDO_URL="$URL" RUNNER_TOKEN="$TOKEN" "$KORIJEN/scripts/svg.sh" "$slika_id" "$f" 2>&1)" \
+            && log "#$id $rijec: svg → $svg" || log "⚠️  #$id: svg nije poslan: $svg"
+    fi
     (( JEDNOM )) && exit 0
 done

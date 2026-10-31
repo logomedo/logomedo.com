@@ -84,3 +84,26 @@ Dva R2 bucketa, isti ključ (`<stil>/<slug>/<16 hex sha256>.<ext>`):
   postoji secret `CF_PURGE_TOKEN` (API token, Zone → Cache Purge, zona logomedo.com); bez njega
   Worker samo zapiše upozorenje u log.
 - Slike odobrene prije uvođenja javnog bucketa (31. 10. 2026.) nisu kopirane same: ponovno ih odobri.
+
+## Runner u pozadini (launchd + push)
+
+- `scripts/launchd/instaliraj.sh` instalira LaunchAgent `com.logomedo.runner` (`runner.sh --prod`,
+  KeepAlive, ThrottleInterval 60 s). Log: `~/Library/Logs/logomedo-runner.log`.
+  Uklanjanje: `instaliraj.sh --ukloni`. Restart nakon izmjene skripte: `launchctl kickstart -k gui/$(id -u)/com.logomedo.runner`.
+- **Push umjesto pollinga.** Na praznom redu runner otvara WebSocket na `/api/runner/zvono`
+  (`scripts/runner-cekaj.mjs`, bearer `RUNNER_TOKEN`). Durable Object `RunnerZvono`
+  (`src/lib/runner-zvono.ts`, hibernacija, ping/pong bez buđenja) drži vezu; `dodajURed()` i
+  „Vrati greške u red” zovu `zazvoni()`. Pri spajanju DO odmah zvoni ako nešto već čeka, a runner
+  ionako provjerava red svakih 10 min. `/admin/red` pokazuje je li runner spojen.
+- Zašto ne cloudflared tunel prema Macu: treba javni hostname + Access za lokalni servis i još jedan
+  proces koji mora živjeti; WebSocket je izlazna veza s Maca, bez ičega otvorenog prema van.
+- `src/worker.ts` je vlastiti ulaz (`main` u wrangler.jsonc): `/api/runner/zvono` ide mimo Astra
+  (odgovor 101 s WebSocketom), sve ostalo `handle()` iz `@astrojs/cloudflare/handler`.
+
+## SVG (vektorska bojanka)
+
+agy daje samo 1024×1024 (alat ignorira zahtjev za veću rezoluciju; provjereno 31. 10. 2026. na 8
+slika). Za ispis (A4 na 300 dpi ≈ 2480 px) runner nakon svake slike zove `scripts/svg.sh`:
+ImageMagick prag 50 % → potrace → `PUT /api/runner/svg/:slika_id`. SVG ide u R2 pod istim ključem
+s `.svg` (`slike.svg_kljuc`, migracija 0003), a za odobrene i u javni bucket. Tipično ~16 kB.
+Worker odbija SVG sa `<script>`, `javascript:` ili `on*=` atributima.
