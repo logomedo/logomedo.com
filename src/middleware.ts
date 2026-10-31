@@ -66,10 +66,12 @@ async function zastiti(odgovor: Response, admin: boolean): Promise<Response> {
   let tijelo: BodyInit | null = odgovor.body;
   if (html) tijelo = (await odgovor.text()).replace(/<script(?![^>]*\bsrc=)/g, `<script nonce="${nonce}"`);
   const h = new Headers(odgovor.headers);
+  // Javne bilježnice prikazuju odobrene slike s CDN-a (env.CDN_URL, zaseban host).
+  const cdn = (env.CDN_URL ?? "").replace(/\/+$/, "");
   h.set(
     "content-security-policy",
     `default-src 'none'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; ` +
-      `img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
+      `img-src 'self' data:${cdn ? ` ${cdn}` : ""}; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
   );
   h.set("x-content-type-options", "nosniff");
   // Admin: ne "no-referrer", jer uz nju preglednik na <form> POST šalje `Origin: null`.

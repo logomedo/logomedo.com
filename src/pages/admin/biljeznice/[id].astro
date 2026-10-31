@@ -1,0 +1,141 @@
+---
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { generirajSlike, poId, spremi, stanjeSlika, zadaciBiljeznice } from "../../../lib/biljeznice";
+import { brojEkrana } from "../../../lib/biljeznice-ekrani";
+import { popis as sviZadaci } from "../../../lib/zadaci/baza";
+import { VRSTE } from "../../../lib/zadaci/vrste";
+
+const id = Number(Astro.params.id);
+let b = await poId(id);
+if (!b) return new Response("Nema te bilježnice", { status: 404 });
+
+let poruka = "";
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  if (f.get("akcija") === "generiraj") {
+    const n = await generirajSlike(b, Astro.locals.admin!.email);
+    return Astro.redirect(`/admin/biljeznice/${id}?dodano=${n}`, 303);
+  }
+  if (f.get("akcija") === "spremi") {
+    // Redoslijed: polje red_<zadatak> (broj); prazno ili 0 = makni iz bilježnice. `dodaj` ide na kraj.
+    const redovi = [...f.keys()].filter((k) => k.startsWith("red_"))
+      .map((k) => ({ z: Number(k.slice(4)), r: Number(f.get(k)) }))
+      .filter((x) => x.z > 0 && x.r > 0).sort((a, c) => a.r - c.r).map((x) => x.z);
+    const dodaj = Number(f.get("dodaj"));
+    if (dodaj && !redovi.includes(dodaj)) redovi.push(dodaj);
+    await spremi(id, {
+      naslov: String(f.get("naslov") ?? "").trim() || b.naslov, podnaslov: String(f.get("podnaslov") ?? "").trim(),
+      slug: String(f.get("slug") ?? ""), javna: f.get("javna") === "1", zadaci: redovi,
+    });
+    return Astro.redirect(`/admin/biljeznice/${id}?spremljeno=1`, 303);
+  }
+}
+const dodano = Astro.url.searchParams.get("dodano");
+if (dodano !== null) poruka = Number(dodano) ? `U red za generiranje dodano ${dodano} slika. Runner ih radi na Macu (kvota agyja).` : "Nema riječi kojima treba nova slika.";
+if (Astro.url.searchParams.has("spremljeno")) poruka = "Spremljeno.";
+
+const [zadaci, stanje, svi] = await Promise.all([zadaciBiljeznice(id), stanjeSlika(b), sviZadaci()]);
+const ukljuceni = new Set(zadaci.map((z) => z.id));
+const ostali = svi.filter((z) => !ukljuceni.has(z.id));
+const ekrana = brojEkrana(zadaci);
+const odobrenih = stanje.filter((s) => s.odobrena).length;
+const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).length;
+---
+<AdminOkvir naslov={b.naslov} aktivno="biljeznice">
+  <div class="naslov">
+    <div>
+      <a class="mrvice" href="/admin/biljeznice"><Ikona ime="natrag" velicina={16} /> Bilježnice</a>
+      <h1>{b.naslov}</h1>
+      <p class="podnaslov">{ekrana} ekrana = {ekrana} lampica · slike u stilu <b>{b.stil}</b>: {odobrenih} od {stanje.length} odobreno</p>
+    </div>
+    <div class="akcije">
+      <a class="gumb" href={`/b/${b.slug}`} target="_blank" rel="noopener">Otvori igru</a>
+      <a class="gumb" href={`/b/${b.slug}/ispis`} target="_blank" rel="noopener">Ispis</a>
+    </div>
+  </div>
+
+  {poruka && <p class="ploha poruka">{poruka}</p>}
+
+  <div class="raspored">
+    <form method="post" class="ploha polja">
+      <input type="hidden" name="akcija" value="spremi" />
+      <label for="naslov">Naslov</label>
+      <input id="naslov" name="naslov" value={b.naslov} maxlength="120" required />
+      <label for="podnaslov">Podnaslov</label>
+      <input id="podnaslov" name="podnaslov" value={b.podnaslov ?? ""} maxlength="200" />
+      <label for="slug">Poveznica</label>
+      <div class="slug"><span class="mono blijedo">logomedo.com/b/</span><input id="slug" name="slug" value={b.slug} maxlength="80" class="mono" /></div>
+      <label class="kvacica"><input type="checkbox" name="javna" value="1" checked={!!b.javna} /> Javna (bez prijave, svatko s poveznicom)</label>
+
+      <h2 class="odjeljak">Zadaci redom</h2>
+      <p class="sitno blijedo">Broj je redoslijed; 0 makne zadatak iz bilježnice (zadatak ostaje u Zadacima).</p>
+      <ol class="zadaci">
+        {zadaci.map((z, i) => (
+          <li>
+            <input type="number" name={`red_${z.id}`} value={i + 1} min="0" max="99" aria-label="Redoslijed" />
+            <a href={`/admin/zadaci/${z.id}`}><b>{z.naslov || VRSTE[z.vrsta].naziv}</b></a>
+            <span class="oznaka">{VRSTE[z.vrsta].naziv}</span>
+          </li>
+        ))}
+      </ol>
+      {ostali.length > 0 && (
+        <>
+          <label for="dodaj">Dodaj zadatak na kraj</label>
+          <select id="dodaj" name="dodaj">
+            <option value="">—</option>
+            {ostali.map((z) => <option value={z.id}>{z.naslov || VRSTE[z.vrsta].naziv} ({VRSTE[z.vrsta].naziv}, #{z.id})</option>)}
+          </select>
+        </>
+      )}
+      <button class="gumb glavni" type="submit">Spremi</button>
+    </form>
+
+    <section class="ploha slike">
+      <div class="slike-vrh">
+        <h2 class="odjeljak">Slike riječi</h2>
+        <form method="post">
+          <input type="hidden" name="akcija" value="generiraj" />
+          <button class="gumb mali" type="submit" disabled={!bez}>Generiraj ilustracije ({bez})</button>
+        </form>
+      </div>
+      <p class="sitno blijedo">Javno se prikazuje samo odobrena slika: ilustracija, inače bojanka, inače riječ. Kandidate odobrava Pregled.</p>
+      <table>
+        <tbody>
+          {stanje.map((s) => (
+            <tr>
+              <td><a href={`/admin/rijec/${s.slug}`}><b>{s.rijec.toLocaleUpperCase("hr")}</b></a></td>
+              <td>
+                {s.odobrena ? <span class="oznaka uspjeh">odobrena</span>
+                  : s.kandidata ? <a class="oznaka med" href="/admin/pregled">{s.kandidata} za pregled</a>
+                  : s.u_redu ? <span class="oznaka info">u redu</span>
+                  : <span class="oznaka">nema</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  </div>
+</AdminOkvir>
+
+<style>
+  .akcije { display: flex; gap: 8px; }
+  .sitno { font-size: .82rem; margin: 0; }
+  .poruka { padding: 12px 16px; }
+  .raspored { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  @media (max-width: 1000px) { .raspored { grid-template-columns: 1fr; } }
+  .polja, .slike { padding: 18px; display: flex; flex-direction: column; gap: 6px; }
+  .polja label { margin-top: 8px; }
+  .polja input:not([type=checkbox]):not([type=number]), .polja select { font: inherit; padding: 8px 10px; border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); }
+  .slug { display: flex; align-items: center; gap: 4px; } .slug input { flex: 1; min-width: 0; }
+  .kvacica { display: flex; gap: 8px; align-items: center; font-weight: 550; }
+  .odjeljak { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--blijedo); font-weight: 650; margin: 20px 0 4px; }
+  .zadaci { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .zadaci li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--rub); border-radius: 10px; }
+  .zadaci input { width: 56px; font: inherit; padding: 4px 6px; border: 1px solid var(--rub-jak); border-radius: 8px; background: var(--povrsina); color: var(--tinta); }
+  .zadaci a { text-decoration: none; flex: 1; }
+  .polja .gumb { margin-top: 14px; align-self: flex-start; }
+  .slike-vrh { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .slike-vrh .odjeljak { margin: 0; }
+  .slike td a { text-decoration: none; }
+</style>

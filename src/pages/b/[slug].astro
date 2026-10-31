@@ -1,0 +1,246 @@
+---
+// Javna bilježnica (docs/biljeznice.md): igra za dijete, bez prijave i bez spremanja.
+// Svaki točno riješen ekran pali jednu lampicu na boru; na kraju se bor vrti.
+import "@fontsource-variable/nunito";
+import { poSlugu, podaci } from "../../lib/biljeznice";
+import { borSvg } from "../../lib/bor";
+import { brojEkrana } from "../../lib/biljeznice-ekrani";
+
+const b = await poSlugu(String(Astro.params.slug));
+if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
+const p = await podaci(b);
+const n = brojEkrana(p.zadaci);
+const za = {
+  naslov: b.naslov, podnaslov: b.podnaslov,
+  zadaci: p.zadaci.map((z) => ({ vrsta: z.vrsta, uputa: z.uputa, sadrzaj: z.sadrzaj })),
+  rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika })),
+};
+// JSON u <script type="application/json">: „</” se ne smije pojaviti doslovno.
+const json = JSON.stringify(za).replace(/</g, "\\u003c");
+---
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#1b2a5c" />
+    <title>{b.naslov} · LogoMedo</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="igra">
+    <div class="nebo" aria-hidden="true">
+      <div class="zvijezde"></div>
+      <svg class="krajolik" viewBox="0 0 1200 360" preserveAspectRatio="xMidYMax slice">
+        <path d="M0 210 Q180 150 360 190 T760 180 T1200 170 V360 H0Z" class="brijeg-dalje" />
+        <g class="selo" transform="translate(0 -28)">
+          <g transform="translate(120 150)">
+            <path d="M-6 40 L28 8 L62 40Z" class="krov" /><rect x="0" y="40" width="56" height="40" class="kuca" />
+            <rect x="8" y="50" width="12" height="12" class="prozor" /><rect x="36" y="50" width="12" height="12" class="prozor" />
+            <rect x="40" y="10" width="7" height="18" class="kuca" />
+          </g>
+          <g transform="translate(200 162)">
+            <path d="M-4 32 L22 6 L48 32Z" class="krov" /><rect x="0" y="32" width="44" height="34" class="kuca" />
+            <rect x="15" y="42" width="13" height="13" class="prozor" />
+          </g>
+          <g transform="translate(690 150) scale(.8)">
+            <path d="M-6 40 L28 8 L62 40Z" class="krov" /><rect x="0" y="40" width="56" height="40" class="kuca" />
+            <rect x="8" y="50" width="12" height="12" class="prozor" /><rect x="36" y="50" width="12" height="12" class="prozor" />
+          </g>
+          {[[60, 170, 1], [270, 170, .8], [640, 160, .7], [780, 158, .9], [40, 190, .7]].map(([x, y, s]) => (
+            <path transform={`translate(${x} ${y}) scale(${s})`} d="M0 -50 L18 -16 L9 -16 L24 10 L-24 10 L-9 -16 L-18 -16Z" class="jelka" />
+          ))}
+        </g>
+        <path d="M0 260 Q260 200 560 250 T1200 230 V360 H0Z" class="brijeg" />
+        <path d="M0 320 Q300 280 700 310 T1200 300 V360 H0Z" class="brijeg-blize" />
+      </svg>
+      <div class="pahulje s1"></div>
+      <div class="pahulje s2"></div>
+    </div>
+
+    <main class="pozornica">
+      <section id="ekran" class="ekran" aria-live="polite">
+        <div class="uvod">
+          <h1>{b.naslov}</h1>
+          {b.podnaslov && <p>{b.podnaslov}</p>}
+          <noscript><p>Za igru treba uključiti JavaScript.</p></noscript>
+        </div>
+      </section>
+      <aside class="stablo">
+        <Fragment set:html={borSvg(n)} />
+        <p class="brojac" id="brojac"></p>
+      </aside>
+    </main>
+    <script type="application/json" id="podaci" set:html={json}></script>
+  </body>
+</html>
+
+<script>
+  import { pokreni } from "../../lib/biljeznice-igra";
+  pokreni(document.getElementById("ekran")!, JSON.parse(document.getElementById("podaci")!.textContent!));
+</script>
+
+<style is:global>
+  :root { --nebo-1: #0f1a45; --nebo-2: #2b3f86; --nebo-3: #6b6fb5; --drvo-1: #b07a43; --drvo-2: #7a4a22; --drvo-3: #d49a5a;
+    --krem: #fbf3e2; --tinta: #2a2118; --plavo: #8fd0ff; --plavo-tamno: #2f7fc1; --zeleno: #3fae5a; --crveno: #d9483b;
+    --font: "Nunito Variable", "Nunito", ui-rounded, system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body.igra { font-family: var(--font); color: var(--tinta); background: var(--nebo-1); overflow: hidden; -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+
+  /* ---- Pozadina: nebo, zvijezde, brežuljci, snijeg ---- */
+  .nebo { position: fixed; inset: 0; background: linear-gradient(180deg, var(--nebo-1) 0%, var(--nebo-2) 55%, var(--nebo-3) 85%, #a9a6d6 100%); overflow: hidden; }
+  .zvijezde { position: absolute; inset: 0 0 40% 0; opacity: .8;
+    background-image: radial-gradient(1.5px 1.5px at 10% 20%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 30% 8%, #fff 50%, transparent 51%),
+      radial-gradient(2px 2px at 52% 30%, #fff8d0 50%, transparent 51%), radial-gradient(1px 1px at 70% 14%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 86% 26%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 20% 44%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 62% 52%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 92% 6%, #fff 50%, transparent 51%);
+    background-size: 420px 300px; animation: trepere 4s ease-in-out infinite alternate; }
+  @keyframes trepere { to { opacity: .45; } }
+  .krajolik { position: absolute; left: 0; bottom: 0; width: 100%; height: 42%; }
+  .brijeg-dalje { fill: #c9d3ee; } .brijeg { fill: #e6ecfa; } .brijeg-blize { fill: #f7f9ff; }
+  .kuca { fill: #c98c5a; } .krov { fill: #f4f7ff; } .prozor { fill: #ffd56b; filter: drop-shadow(0 0 6px #ffcf4a); } .jelka { fill: #2d5a4a; }
+  .pahulje { position: absolute; inset: -100% 0 0 0; pointer-events: none;
+    background-image: radial-gradient(3px 3px at 20px 30px, #fff 50%, transparent 51%), radial-gradient(2px 2px at 140px 90px, #fff 50%, transparent 51%),
+      radial-gradient(4px 4px at 80px 160px, #fff 50%, transparent 51%), radial-gradient(2.5px 2.5px at 200px 220px, #fff 50%, transparent 51%),
+      radial-gradient(3px 3px at 250px 40px, #fff 50%, transparent 51%);
+    background-size: 280px 260px; animation: pada 18s linear infinite; opacity: .9; }
+  .pahulje.s2 { background-size: 190px 210px; animation-duration: 11s; opacity: .55; filter: blur(.6px); }
+  @keyframes pada { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-40px, 50%, 0); } }
+  @media (prefers-reduced-motion: reduce) { .pahulje, .zvijezde { animation: none; } }
+
+  /* ---- Raspored: zadatak lijevo, bor desno ---- */
+  .pozornica { position: relative; z-index: 1; height: 100dvh; display: grid; grid-template-columns: 1fr min(30vw, 52vh); gap: 1vw;
+    padding: max(2vh, env(safe-area-inset-top)) max(2vw, env(safe-area-inset-right)) 2vh max(2vw, env(safe-area-inset-left)); }
+  .ekran { min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: 2vh; }
+  .stablo { align-self: end; display: flex; flex-direction: column; align-items: center; min-height: 0; }
+  .stablo .bor { width: 100%; max-height: 82vh; overflow: visible; filter: drop-shadow(0 10px 18px rgb(0 0 30 / .35)); }
+  .brojac { margin: .4vh 0 0; color: #fff; font-weight: 800; font-size: clamp(.9rem, 2.2vh, 1.3rem); text-shadow: 0 1px 4px #0008; min-height: 1.4em; }
+  @media (orientation: portrait) {
+    .pozornica { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+    .stablo { position: absolute; right: 2vw; bottom: 1vh; width: 22vw; z-index: -1; opacity: .95; }
+    .stablo .brojac { display: none; }
+  }
+
+  /* ---- Bor ---- */
+  .krosnja { fill: #2f7a4f; stroke: #1f5a39; stroke-width: 2; } .bor .snijeg { fill: #f4f8ff; opacity: .92; }
+  .deblo { fill: #7a4a22; } .girlanda { fill: none; stroke: #f1d27a; stroke-width: 2.5; stroke-dasharray: 2 5; stroke-linecap: round; opacity: .8; }
+  .zvijezda { fill: #ffd447; stroke: #e0a400; stroke-width: 2; stroke-linejoin: round; }
+  .kapica { fill: #c9b27a; }
+  .lampica .kugla { fill: #4a5a6e; stroke: #2c3846; stroke-width: 1.5; transition: fill .4s; }
+  .lampica .sjaj { fill: var(--boja); opacity: 0; transition: opacity .5s; }
+  .lampica .odsjaj { fill: #fff; opacity: .35; }
+  .lampica.upaljena .kugla { fill: var(--boja); stroke: #fff8; }
+  .lampica.upaljena .sjaj { opacity: .35; animation: sjaji 1.8s ease-in-out infinite alternate; }
+  .lampica.upaljena .odsjaj { opacity: .8; }
+  .lampica { transform-box: fill-box; transform-origin: center; }
+  .lampica.nova { animation: iskoci .7s cubic-bezier(.3, 1.8, .5, 1); }
+  @keyframes sjaji { to { opacity: .12; } }
+  @keyframes iskoci { 0% { transform: scale(1); } 40% { transform: scale(1.9); } 100% { transform: scale(1); } }
+
+  /* ---- Uvod i pitanje ---- */
+  .uvod { text-align: center; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 2vh; text-shadow: 0 2px 10px #0009; }
+  .uvod h1 { margin: 0; font-size: clamp(2.4rem, 9vh, 5.5rem); font-weight: 900; letter-spacing: .01em; }
+  .uvod p { margin: 0; font-size: clamp(1.1rem, 3vh, 1.6rem); font-weight: 700; max-width: 30ch; }
+  .pitanje { display: flex; align-items: center; gap: 1.2vh; background: rgb(240 244 255 / .93); border: 2px solid #fff; border-radius: 2vh;
+    padding: 1vh 1.2vh 1vh 2.4vh; box-shadow: 0 6px 20px rgb(0 0 40 / .3); font-size: clamp(1.15rem, 4.4vh, 2.6rem); font-weight: 800; line-height: 1.15; text-align: center; max-width: 100%; }
+  .gumb-kreni, .gumb-ponovi { font: inherit; font-weight: 900; font-size: clamp(1.4rem, 5vh, 2.6rem); color: #fff; padding: 1.6vh 6vh; border-radius: 999px; cursor: pointer;
+    border: 4px solid #fff; background: linear-gradient(#e8574a, #b7302a); box-shadow: 0 6px 0 #7d1d18, 0 12px 26px rgb(0 0 0 / .35); }
+  .gumb-kreni:active, .gumb-ponovi:active { translate: 0 4px; box-shadow: 0 2px 0 #7d1d18; }
+
+  /* ---- Zvučnik ---- */
+  .zvucnik { flex: none; width: var(--z, 5.4vh); height: var(--z, 5.4vh); border-radius: 50%; border: 2px solid #fff; cursor: pointer; padding: 0;
+    background: radial-gradient(circle at 35% 30%, #d9f0ff, var(--plavo) 55%, #5aa9e6); box-shadow: 0 2px 6px rgb(0 40 90 / .35); display: grid; place-items: center; color: #1d4f80; }
+  .zvucnik svg { width: 58%; height: 58%; }
+  .zvucnik.govori { animation: puls .6s ease-in-out infinite alternate; }
+  @keyframes puls { to { transform: scale(1.12); } }
+
+  /* ---- Kartice: drveni okvir, krem unutra ---- */
+  .kartica { --s: min(26vh, 17vw); width: var(--s); border-radius: 2.2vh; padding: 1.1vh; position: relative; cursor: pointer; flex: none;
+    background: linear-gradient(135deg, var(--drvo-3), var(--drvo-1) 40%, var(--drvo-2)); box-shadow: inset 0 0 0 2px #5a3414, 0 8px 18px rgb(0 0 30 / .35);
+    transition: transform .15s, box-shadow .2s; outline: none; }
+  .kartica:hover, .kartica:focus-visible { transform: translateY(-.6vh); }
+  .kartica:focus-visible { box-shadow: inset 0 0 0 2px #5a3414, 0 0 0 5px #fff, 0 8px 18px rgb(0 0 30 / .35); }
+  .unutra { background: var(--krem); border-radius: 1.4vh; box-shadow: inset 0 0 0 2px #5a341444, inset 0 0 18px #c99b5c55; display: flex; flex-direction: column; align-items: center;
+    padding: .9vh; gap: .4vh; }
+  .glava { display: flex; align-items: center; justify-content: center; gap: .8vh; width: 100%; min-height: calc(var(--s) * .17); }
+  .rijec { font-weight: 900; font-size: calc(var(--s) * .13); letter-spacing: .03em; white-space: nowrap; }
+  .kartica .zvucnik { --z: calc(var(--s) * .16); }
+  .slika { width: 100%; aspect-ratio: 1; display: grid; place-items: center; }
+  .slika img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; pointer-events: none; -webkit-user-drag: none; }
+  .slika .bez { font-weight: 900; font-size: calc(var(--s) * .2); color: #8a5a2c; text-align: center; overflow-wrap: anywhere; }
+  .bez-slike .unutra { position: relative; justify-content: center; min-height: var(--s); }
+  .bez-slike .glava { position: absolute; top: .6vh; right: .6vh; width: auto; min-height: 0; }
+  .bez-slike .glava .rijec { display: none; }
+  .bez-slike .slika { aspect-ratio: auto; }
+  .bez-slike .slika .bez { font-size: calc(var(--s) * .19); white-space: nowrap; overflow-wrap: normal; }
+  .povezi .bez-slike .unutra { min-height: calc(var(--s) * .62); width: calc(var(--s) * 1.7); }
+  .povezi .bez-slike .slika { width: auto; }
+  .zadana.bez-slike .slika { display: none; }
+  .zadana.bez-slike .unutra { padding: 4vh 9vh; }
+  .kartica.tocno { background: linear-gradient(135deg, #7fe08f, var(--zeleno) 45%, #22803c); }
+  .kartica.tocno .unutra { background: #effbea; }
+  .kartica.krivo { animation: trese .45s; }
+  .kartica.uljez::after { content: ""; position: absolute; inset: 18%; pointer-events: none;
+    background: linear-gradient(45deg, transparent 45%, var(--crveno) 45% 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, var(--crveno) 45% 55%, transparent 55%); }
+  .kartica.odabrana { transform: translateY(-.6vh) scale(1.04); box-shadow: inset 0 0 0 2px #5a3414, 0 0 0 6px #ffd447, 0 8px 18px rgb(0 0 30 / .35); }
+  .kartica.spojena { cursor: default; }
+  @keyframes trese { 0%, 100% { translate: 0 } 20%, 60% { translate: -1.4vh 0 } 40%, 80% { translate: 1.4vh 0 } }
+  .zakljucano .kartica { pointer-events: none; }
+
+  /* Zadana slika: široka kartica, riječ lijevo, slika desno */
+  .zadana { --s: min(34vh, 24vw); cursor: default; width: auto; }
+  .zadana:hover { transform: none; }
+  .zadana .unutra { flex-direction: row; padding: 1.2vh 1.6vh 1.2vh 3vh; gap: 2vh; position: relative; }
+  .zadana .rijec { font-size: calc(var(--s) * .3); color: #7a4a22; -webkit-text-stroke: 1px #3a220c; }
+  .zadana .slika { width: var(--s); }
+  .zadana .zvucnik { position: absolute; top: 1.2vh; right: 1.2vh; }
+
+  .red { display: flex; gap: 2.4vh; justify-content: center; flex-wrap: nowrap; }
+  .red .kartica { display: flex; } .red .kartica .unutra { flex: 1; }
+  .red.cetiri .kartica { --s: min(26vh, 15vw); }
+  .red.cetiri { gap: 1.6vw; }
+  .povezi { position: relative; display: flex; justify-content: space-between; width: min(100%, 92vh); }
+  .stupac { display: flex; flex-direction: column; gap: 1.4vh; position: relative; z-index: 1; }
+  .povezi .kartica { --s: min(15.5vh, 11vw); width: auto; }
+  .povezi .kartica .glava { min-height: 0; }
+  .povezi .kartica .unutra { flex-direction: row; padding: .6vh 1vh; }
+  .povezi .slika { width: calc(var(--s) * .9); }
+  .povezi .rijec { font-size: calc(var(--s) * .17); min-width: 4.2em; }
+  .povezi .glava { flex-direction: column; width: auto; }
+  .crte { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: visible; }
+  .crte line { stroke: #fff; stroke-width: 7; stroke-linecap: round; filter: drop-shadow(0 0 6px #ffe680); }
+  .crte line.u-tijeku { stroke-dasharray: 2 12; stroke-width: 6; }
+
+  /* Uski / uspravni ekrani (mobitel): složeno okomito, mjere po širini */
+  @media (orientation: portrait) {
+    .ekran { justify-content: center; padding-bottom: 12vh; gap: 3vh; }
+    .pitanje { font-size: clamp(1.1rem, 5.6vw, 2rem); }
+    .zvucnik { --z: 9vw; }
+    .zadana { --s: 40vw; }
+    .kartica { --s: 29vw; }
+    .red { gap: 2.5vw; }
+    .red.cetiri { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; }
+    .red.cetiri .kartica { --s: 38vw; }
+    .povezi { width: 100%; }
+    .povezi .kartica { --s: 19vw; }
+    .gumb-kreni, .gumb-ponovi { font-size: 7vw; }
+  }
+  @media (orientation: landscape) and (max-height: 500px) { .pitanje { font-size: 5.4vh; } }
+
+  /* ---- Kraj: bor u sredini se vrti, lampice trepere ---- */
+  .kraj .pozornica { grid-template-columns: 1fr; }
+  .kraj .stablo { position: fixed; inset: 0; z-index: 0; display: grid; place-items: center; width: auto; opacity: 1; pointer-events: none; }
+  .kraj .stablo .bor { height: 78vh; width: auto; animation: vrti 7s linear infinite; }
+  .kraj .stablo .brojac { display: none; }
+  .kraj .lampica.upaljena .kugla { animation: treperi 1s ease-in-out infinite alternate; }
+  .kraj .lampica:nth-of-type(3n) .kugla { animation-delay: .33s; } .kraj .lampica:nth-of-type(3n+1) .kugla { animation-delay: .66s; }
+  @keyframes treperi { to { opacity: .45; } }
+  @keyframes vrti { from { transform: perspective(900px) rotateY(0deg); } to { transform: perspective(900px) rotateY(360deg); } }
+  .bravo { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 2vh; color: #fff; text-shadow: 0 3px 14px #000a; }
+  .bravo h2 { margin: 0; font-size: clamp(3rem, 14vh, 8rem); font-weight: 900; color: #ffd447; -webkit-text-stroke: 2px #8a5a00; }
+  .kraj .ekran { justify-content: stretch; padding: 2vh 0 4vh; }
+  .kraj .ekran > .bravo { flex: 1; }
+  @media (prefers-reduced-motion: reduce) { .kraj .stablo .bor { animation: none; } }
+</style>

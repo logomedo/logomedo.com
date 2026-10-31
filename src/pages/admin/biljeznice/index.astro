@@ -1,0 +1,54 @@
+---
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import { kad } from "../../../lib/katalog";
+import { napraviBozicnu, popis } from "../../../lib/biljeznice";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  if (f.get("akcija") === "bozicna") {
+    const id = await napraviBozicnu(Astro.locals.admin!.email);
+    return Astro.redirect(`/admin/biljeznice/${id}`, 303);
+  }
+  return Astro.redirect("/admin/biljeznice", 303);
+}
+const biljeznice = await popis();
+---
+<AdminOkvir naslov="Bilježnice" aktivno="biljeznice">
+  <div class="naslov">
+    <div>
+      <h1>Bilježnice</h1>
+      <p class="podnaslov">Tematski niz zadataka s javnom poveznicom: igra za dijete i verzija za ispis. Ništa se ne sprema o djetetu.</p>
+    </div>
+    <form method="post">
+      <button class="gumb glavni" name="akcija" value="bozicna" type="submit">Napravi Božićnu rimu</button>
+    </form>
+  </div>
+
+  {biljeznice.length ? (
+    <div class="ploha">
+      <table>
+        <thead><tr><th>Naslov</th><th>Poveznica</th><th>Zadataka</th><th>Javna</th><th>Izmijenjeno</th></tr></thead>
+        <tbody>
+          {biljeznice.map((b) => (
+            <tr>
+              <td><a href={`/admin/biljeznice/${b.id}`}><b>{b.naslov}</b></a></td>
+              <td class="mono"><a href={`/b/${b.slug}`} target="_blank" rel="noopener">/b/{b.slug}</a></td>
+              <td>{b.zadataka}</td>
+              <td>{b.javna ? <span class="oznaka uspjeh">javna</span> : <span class="oznaka">skrivena</span>}</td>
+              <td class="blijedo">{kad(b.updated_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <div class="ploha prazno">
+      <h2>Još nema bilježnica</h2>
+      <p>„Napravi Božićnu rimu” doda božićne riječi u katalog, složi tri zadatka (odabir, uljez, povezivanje) i bilježnicu od 12 ekrana.</p>
+    </div>
+  )}
+</AdminOkvir>
+
+<style>
+  td a { text-decoration: none; } td a:hover { text-decoration: underline; }
+</style>

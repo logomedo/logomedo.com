@@ -1,0 +1,176 @@
+---
+// Bilježnica za ispis (A4): naslovnica s borom za bojanje lampica, pa zadaci.
+// Odabir 3 stavke po stranici, uljez 4, povezivanje 1. Svaki riješen red = jedna lampica.
+import "@fontsource-variable/nunito";
+import { poSlugu, podaci } from "../../../lib/biljeznice";
+import { borSvg } from "../../../lib/bor";
+import { brojEkrana } from "../../../lib/biljeznice-ekrani";
+import { VRSTE, type Odabir, type Povezivanje, type Uljez } from "../../../lib/zadaci/vrste";
+
+const b = await poSlugu(String(Astro.params.slug));
+if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
+const p = await podaci(b);
+const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
+const R = (id: number | null) => (id === null ? null : rijeci.get(id) ?? null);
+const VEL = (s: string) => s.toLocaleUpperCase("hr");
+
+const komadi = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
+type Stranica =
+  | { vrsta: "odabir"; uputa: string; stavke: Odabir["stavke"] }
+  | { vrsta: "uljez"; uputa: string; stavke: Uljez["stavke"] }
+  | { vrsta: "povezivanje"; uputa: string; s: Povezivanje };
+const stranice: Stranica[] = [];
+for (const z of p.zadaci) {
+  if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: VRSTE.odabir.uputa, stavke: k });
+  if (z.vrsta === "uljez") for (const k of komadi((z.sadrzaj as Uljez).stavke, 4)) stranice.push({ vrsta: "uljez", uputa: VRSTE.uljez.uputa, stavke: k });
+  if (z.vrsta === "povezivanje") stranice.push({ vrsta: "povezivanje", uputa: VRSTE.povezivanje.uputa, s: z.sadrzaj as Povezivanje });
+}
+const n = brojEkrana(p.zadaci);
+
+// Grančica jele s bobicama za kutove stranice (gornji lijevi kut; ostali su zrcaljeni).
+const grancica = `<svg viewBox="0 0 120 120" aria-hidden="true"><g fill="none" stroke="#2f6b45" stroke-width="2.2" stroke-linecap="round">
+  <path d="M4 4 Q50 20 96 66"/>${Array.from({ length: 9 }, (_, i) => {
+    const t = (i + 1) / 10, x = 4 + 92 * t, y = 4 + 16 * t * 2 * (1 - t) + 62 * t * t;
+    return `<path d="M${x.toFixed(1)} ${y.toFixed(1)} l-9 12 M${x.toFixed(1)} ${y.toFixed(1)} l12 -7"/>`;
+  }).join("")}
+  <path d="M8 6 Q16 50 60 100"/>${Array.from({ length: 7 }, (_, i) => {
+    const t = (i + 1) / 8, x = 8 + 52 * t, y = 6 + 94 * t;
+    return `<path d="M${x.toFixed(1)} ${y.toFixed(1)} l-11 4 M${x.toFixed(1)} ${y.toFixed(1)} l8 -9"/>`;
+  }).join("")}</g>
+  <circle cx="22" cy="22" r="6" fill="#d9483b"/><circle cx="32" cy="16" r="5" fill="#d9483b"/><circle cx="16" cy="33" r="5" fill="#d9483b"/></svg>`;
+---
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{b.naslov} · ispis · LogoMedo</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="alati">
+      <a href={`/b/${b.slug}`}>← Igra</a>
+      <button type="button" id="ispisi">Ispiši</button>
+    </div>
+
+    <article class="a4 naslovnica">
+      {["gl", "gd", "dl", "dd"].map((k) => <div class={`kut ${k}`} set:html={grancica} />)}
+      <h1>{b.naslov}</h1>
+      <p class="uputa">Za svaki točno riješen red oboji jednu lampicu na boru.</p>
+      <div class="bor-ispis" set:html={borSvg(n, { zaIspis: true })} />
+      <div class="ime">Ime: <span></span></div>
+      <footer>logomedo.com</footer>
+    </article>
+
+    {stranice.map((s) => (
+      <article class={`a4 a4-${s.vrsta}`}>
+        {["gl", "gd", "dl", "dd"].map((k) => <div class={`kut ${k}`} set:html={grancica} />)}
+        <h2>{s.uputa}</h2>
+        {s.vrsta === "odabir" && s.stavke.map((x) => (
+          <div class="red">
+            <figure class="slika zadana">
+              {R(x.zadana)?.slika ? <img src={R(x.zadana)!.slika!} alt="" /> : <span class="bez">{VEL(R(x.zadana)?.rijec ?? "")}</span>}
+              <figcaption>{VEL(R(x.zadana)?.rijec ?? "")}</figcaption>
+            </figure>
+            <div class="crta" />
+            {x.ponudeno.map((id) => (
+              <figure class="slika">
+                {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
+              </figure>
+            ))}
+          </div>
+        ))}
+        {s.vrsta === "uljez" && s.stavke.map((x) => (
+          <div class="red">
+            {x.slike.map((id) => (
+              <figure class="slika">
+                {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
+              </figure>
+            ))}
+          </div>
+        ))}
+        {s.vrsta === "povezivanje" && (
+          <div class="povezi">
+            <div class="stupac">
+              {s.s.parovi.map((x) => (
+                <div class="par">
+                  <figure class="slika">
+                    {R(x.lijevo)?.slika ? <img src={R(x.lijevo)!.slika!} alt="" /> : <span class="bez">{VEL(R(x.lijevo)?.rijec ?? "")}</span>}
+                    <figcaption>{VEL(R(x.lijevo)?.rijec ?? "")}</figcaption>
+                  </figure>
+                  <i class="tocka" />
+                </div>
+              ))}
+            </div>
+            <div class="stupac">
+              {s.s.desno_redoslijed.map((pi) => (
+                <div class="par">
+                  <i class="tocka" />
+                  <figure class="slika">
+                    {R(s.s.parovi[pi].desno)?.slika ? <img src={R(s.s.parovi[pi].desno)!.slika!} alt="" /> : <span class="bez">{VEL(R(s.s.parovi[pi].desno)?.rijec ?? "")}</span>}
+                    <figcaption>{VEL(R(s.s.parovi[pi].desno)?.rijec ?? "")}</figcaption>
+                  </figure>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        <footer>{b.naslov} · logomedo.com</footer>
+      </article>
+    ))}
+  </body>
+</html>
+
+<script>
+  document.getElementById("ispisi")?.addEventListener("click", () => print());
+</script>
+
+<style is:global>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9e4da; font-family: "Nunito Variable", "Nunito", system-ui, sans-serif; color: #1d1914; }
+  .alati { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #1b2a5c; }
+  .alati a { color: #fff; font-weight: 700; text-decoration: none; }
+  .alati button { font: inherit; font-weight: 800; padding: 8px 22px; border-radius: 999px; border: 0; background: #d9483b; color: #fff; cursor: pointer; }
+
+  .a4 { position: relative; width: 210mm; height: 297mm; margin: 16px auto; background: #fff; padding: 22mm 20mm 14mm; overflow: hidden;
+    box-shadow: 0 4px 24px rgb(0 0 0 / .15); display: flex; flex-direction: column; gap: 8mm; break-after: page; }
+  @media (max-width: 220mm) { .a4 { zoom: .45; } }
+  .kut { position: absolute; width: 34mm; height: 34mm; }
+  .kut svg { width: 100%; height: 100%; }
+  .kut.gl { left: 4mm; top: 4mm; } .kut.gd { right: 4mm; top: 4mm; transform: scaleX(-1); }
+  .kut.dl { left: 4mm; bottom: 4mm; transform: scaleY(-1); } .kut.dd { right: 4mm; bottom: 4mm; transform: scale(-1, -1); }
+  .a4 footer { margin-top: auto; text-align: center; font-size: 8pt; color: #9a907f; }
+  h1 { margin: 6mm 0 0; text-align: center; font-size: 34pt; font-weight: 900; }
+  h2 { margin: 0 12mm; text-align: center; font-size: 17pt; font-weight: 800; }
+  .uputa { margin: 0; text-align: center; font-size: 14pt; }
+  .bor-ispis { flex: 1; min-height: 0; display: grid; place-items: center; }
+  .bor-ispis svg { height: 100%; max-height: 175mm; width: auto; }
+  .bor-ispis .krosnja { fill: #fff; stroke: #000; stroke-width: 2.5; }
+  .bor-ispis .snijeg { fill: none; stroke: #000; stroke-width: 1.2; stroke-dasharray: 3 4; }
+  .bor-ispis .deblo, .bor-ispis .zvijezda { fill: #fff; stroke: #000; stroke-width: 2.5; }
+  .bor-ispis .girlanda { fill: none; stroke: #000; stroke-width: 1.5; stroke-dasharray: 2 4; }
+  .ime { font-size: 13pt; display: flex; gap: 2mm; justify-content: center; } .ime span { flex: 0 0 80mm; border-bottom: 1px solid #000; }
+
+  .slika { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 1.5mm; }
+  .slika img, .slika .bez { width: 100%; aspect-ratio: 1; object-fit: contain; border: 1.5px solid #000; border-radius: 4mm; padding: 2mm; background: #fff; }
+  .slika .bez { display: grid; place-items: center; font-weight: 900; font-size: 14pt; color: #5c5345; }
+  .slika figcaption { font-weight: 800; font-size: 12pt; letter-spacing: .04em; }
+  .red { display: flex; align-items: center; justify-content: center; gap: 6mm; }
+  .a4-odabir .red { flex: 1; } .a4-odabir .slika { width: 34mm; } .a4-odabir .zadana { width: 40mm; } .a4-odabir .zadana img, .a4-odabir .zadana .bez { border-width: 3px; }
+  .crta { width: 8mm; border-top: 2px dashed #000; }
+  .a4-uljez .red { flex: 1; justify-content: space-between; } .a4-uljez .slika { width: 37mm; }
+  .povezi { flex: 1; display: flex; justify-content: space-between; padding: 0 8mm; }
+  .stupac { display: flex; flex-direction: column; justify-content: space-around; }
+  .par { display: flex; align-items: center; gap: 4mm; } .par .slika { width: 40mm; }
+  .tocka { width: 4mm; height: 4mm; border-radius: 9px; background: #000; }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    body { background: #fff; }
+    .alati { display: none; }
+    .a4 { margin: 0; box-shadow: none; zoom: 1; }
+  }
+</style>

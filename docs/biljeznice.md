@@ -13,41 +13,34 @@ upaljenim lampicama.
   kasnije snimke logopedice po riječi (R2), koje imaju prednost.
 - **Pristup:** javna poveznica bez prijave; ništa se ne sprema o djetetu (samo igra i ispis).
 
-## Gotovo (nije deployano, migracija 0005 nije primijenjena)
+## Kako je složeno
 
-- `migrations/0005_biljeznice.sql`: stil `ilustracija` (prompt), tablice `biljeznice`,
-  `biljeznica_zadaci`.
-- `scripts/runner.sh`: SVG (potrace) samo za stil `bojanka`.
+- `migrations/0005_biljeznice.sql`: stil `ilustracija` (prompt), tablice `biljeznice`, `biljeznica_zadaci`.
 - `src/lib/biljeznice.ts`: popis, `podaci()` za javnu stranicu (odobrene slike, CDN URL),
-  `stanjeSlika()`, `generirajSlike()` (red za ilustracije), `spremi()`,
-  `napraviBozicnu()`: doda riječi s engleskim opisom za prompt i složi 3 zadatka:
-  - odabir (8): BOR→ŠATOR, POKLON→SLON, KAPA→ŠAPA, SVIJEĆA→VREĆA, KOLAČ→TRUBAČ, ČAJ→ZMAJ, ŠAL→VAL, SNIJEG→BRIJEG
-  - uljez (3): POKLON/SLON/BALON+SANJKE, BOR/ŠATOR/TRAKTOR+ZVONO, KOLAČ/TRUBAČ/PLIVAČ+SNIJEG
-  - povezivanje (4 para): KAPA–ŠAPA, ČAJ–ZMAJ, ŠAL–VAL, POKLON–SLON
-  - ukupno 12 ekrana = 12 lampica. Uputa odabira ima `{zadana}` (zamjenjuje se riječju).
-- `src/lib/bor.ts`: `borSvg(n, { zaIspis })`: SVG bor, n lampica na 4 girlande
-  (`#lampica-i`, klasa `upaljena`); za ispis prazni krugovi za bojanje. Raspored girlandi
-  još nije provjeren okom.
-- `@fontsource-variable/nunito` instaliran (zaobljeni font za djecu).
+  `stanjeSlika()`, `generirajSlike()` (red za ilustracije), `spremi()`, `napraviBozicnu()`
+  (doda riječi s engleskim opisom za prompt i složi odabir 8, uljez 3, povezivanje 4 para).
+- `src/lib/biljeznice-ekrani.ts` (+ test): ekrani igre. Stavka odabira/uljeza = ekran,
+  povezivanje = jedan ekran, listić se preskače, nepotpune stavke se ne broje. Broj ekrana =
+  broj lampica (`borSvg(n)`), isti na serveru i u pregledniku.
+- `src/lib/bor.ts`: `borSvg(n, { zaIspis })`, lampice na 4 girlande (`#lampica-i`, klasa `upaljena`).
+- **Igra** `src/pages/b/[slug].astro` + `src/lib/biljeznice-igra.ts`: uvod „Kreni” (dodir
+  otključa zvuk), pitanje se pročita (`speechSynthesis`, hr-HR, „Lana” ako postoji), kartice u
+  drvenom okviru sa zvučnikom; točno = zelena kartica + zvonce (WebAudio) + lampica; krivo =
+  trese se. Kraj: bor u sredini se vrti, lampice trepere, „Bravo!” i „Ponovi”. Kartica bez
+  odobrene slike prikazuje samo riječ. Tablet vodoravno: bor desno; uspravno: bor mali dolje desno.
+  CSS klasa `.snijeg` pripada boru; padajući snijeg je `.pahulje`.
+- **Ispis** `src/pages/b/[slug]/ispis.astro`: A4, naslovnica s borom za bojanje lampica,
+  odabir 3 / uljez 4 / povezivanje 1 po stranici, grančice u kutovima.
+- **CSP** (`src/middleware.ts`): `img-src` uključuje `env.CDN_URL`.
+- **Admin** `/admin/biljeznice` („Napravi Božićnu rimu”) i `/admin/biljeznice/[id]` (naslov,
+  podnaslov, slug, javna, redoslijed zadataka brojem, dodavanje zadatka, stanje slika,
+  „Generiraj ilustracije”, poveznice na igru i ispis). Stranice same obrađuju POST (kao `/admin/red`).
+- Provjereno lokalno u headless Chromiumu (31. 10. 2026.): svih 12 ekrana do kraja, bez grešaka u
+  konzoli; izgled sa slikama i bez njih, mobitel uspravno, ispis, spremanje u adminu, 404, CSP.
 
 ## Ostalo
 
-1. **Igra** `src/pages/b/[slug].astro` + klijent `src/lib/biljeznice-igra.ts`:
-   - ekrani: svaka stavka odabira i uljeza je jedan ekran, povezivanje je jedan ekran
-   - uvodni ekran „Kreni” (treba dodir zbog zvuka), pitanje se pročita naglas
-   - kartice: drveni okvir, krem unutra, riječ + slika + okrugli plavi zvučnik
-   - točno: zelena kartica, zvonce (WebAudio), lampica se pali; krivo: trese se
-   - kraj: bor se vrti (`rotateY`), lampice trepere, „Bravo!” i „Ponovi”
-   - pozadina: CSS noćno nebo, snijeg koji pada, SVG brežuljci i kućice; tablet vodoravno
-     je glavni format, mobitel uspravno složen
-2. **Ispis** `src/pages/b/[slug]/ispis.astro`: A4; naslovnica s borom za bojanje lampica,
-   odabir 3 stavke po stranici, uljez 4, povezivanje 1; svečani rub (SVG grančice u kutovima).
-3. **Middleware CSP**: `img-src` mora dopustiti `env.CDN_URL` za javne stranice.
-4. **Admin** `/admin/biljeznice` (popis, „Napravi Božićnu rimu”) i `/admin/biljeznice/[id]`
-   (naslov, slug, javna, redoslijed zadataka, stanje slika po riječi, „Generiraj ilustracije”,
-   poveznice na igru i ispis); stavka u izborniku `AdminOkvir`.
-5. Provjera (`npm test && npm run check && npm run build`), lokalni test u headless pregledniku
-   (scratchpad skripta playwright-core), `wrangler d1 migrations apply --remote` i deploy s
-   `CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4`.
-6. Generiranje ~22 ilustracije ide kroz kvotu agyja (~12 pa 3–5 h čekanja): pokrenuti iz admina
-   bilježnice nakon deploya.
+1. Generiranje ~22 ilustracije ide kroz kvotu agyja (~12 pa 3–5 h čekanja): gumb u adminu
+   bilježnice. Nakon toga ih odobriti u Pregledu (tek odobrene idu na CDN i u igru).
+2. Popis riječi i parova neka pregleda Anita (logopedica).
+3. Kasnije: snimke logopedice po riječi (R2) umjesto glasa preglednika.
