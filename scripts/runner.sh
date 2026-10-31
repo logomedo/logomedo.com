@@ -71,11 +71,40 @@ greska() {
         "$URL/api/runner/greska/$1" >/dev/null || true
 }
 
+odgodi() {
+    api -X POST -H "Content-Type: application/json" \
+        -d "$(python3 -c 'import json,sys; print(json.dumps({"razlog": sys.argv[1]}))' "$2")" \
+        "$URL/api/runner/odgodi/$1" >/dev/null || true
+}
+
+# Kvota alata za slike (429 RESOURCE_EXHAUSTED): agy javi i vrijeme reseta u UTC.
+KVOTA_RE='RESOURCE_EXHAUSTED|quota exhaust'
+
+# Koliko sekundi do reseta kvote. agy piše „reset at approximately 18:41 UTC” ili
+# „reset in approximately 3 hours and 15 minutes”; bez ijednog 30 min. +2 min rezerve.
+do_reseta() {
+    tmux capture-pane -p -J -t "$SESSION" | python3 -c '
+import re, sys, datetime as d
+t = sys.stdin.read()
+n = d.datetime.now(d.timezone.utc)
+m = re.findall(r"(\d{1,2}):(\d{2}) UTC", t)
+if m:
+    h, mi = map(int, m[-1]); c = n.replace(hour=h, minute=mi, second=0, microsecond=0)
+    if c <= n: c += d.timedelta(days=1)
+    s = (c - n).total_seconds()
+else:
+    h = re.findall(r"(\d+)\s*hours?", t); mi = re.findall(r"(\d+)\s*minutes?", t)
+    s = (int(h[-1]) * 3600 if h else 0) + (int(mi[-1]) * 60 if mi else 0) or 1800
+print(int(s) + 120)'
+}
+
 # Slika je gotova kad postoji i veličina joj se dva puta zaredom ne promijeni.
+# Izlaz 2: agy je javio potrošenu kvotu.
 cekaj_datoteku() {
     local uzorak="$1" t0=$SECONDS prethodna=-1 f vel
     while (( SECONDS - t0 < TIMEOUT_S )); do
         sleep 4
+        tmux capture-pane -p -J -t "$SESSION" | grep -qE "$KVOTA_RE" && return 2
         f="$(ls -t $uzorak 2>/dev/null | head -1 || true)"
         [[ -n "$f" && -s "$f" ]] || continue
         vel=$(stat -f %z "$f")
@@ -111,7 +140,15 @@ while true; do
 Save the generated image in the current directory as $ime.png (keep the original format's extension if it is not PNG). \
 Do not edit, crop or post-process it, do not create any other files, and do not reply with anything except the file name."
 
-    if ! f="$(cekaj_datoteku "$W/$ime.*")"; then
+    f="$(cekaj_datoteku "$W/$ime.*")" && rc=0 || rc=$?
+    if (( rc == 2 )); then
+        s="$(do_reseta)"
+        log "⏸  #$id $rijec: kvota za slike potrošena, natrag u red; spavam $((s / 60)) min"
+        odgodi "$id" "agy: kvota za slike potrošena (429), runner čeka reset"
+        (( JEDNOM )) && exit 3
+        sleep "$s"; continue
+    fi
+    if (( rc != 0 )); then
         log "⚠️  #$id: nema slike nakon ${TIMEOUT_S}s"
         tmux send-keys -t "$SESSION" Escape; sleep 2; tmux send-keys -t "$SESSION" Escape
         greska "$id" "agy: nema slike nakon ${TIMEOUT_S}s"

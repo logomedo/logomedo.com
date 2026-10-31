@@ -109,6 +109,13 @@ export async function predajSvg(slikaId: number, tijelo: ArrayBuffer): Promise<{
   return { svgKljuc: kljuc };
 }
 
+/** Kvota agyja potrošena: posao natrag u red bez trošenja pokušaja (runner spava do reseta). */
+export async function odgodi(posaoId: number, razlog: string) {
+  await env.DB.prepare(
+    "UPDATE generiranja SET status = 'ceka', pokusaji = MAX(pokusaji - 1, 0), uzeto_at = NULL, greska = ? WHERE id = ? AND status = 'radi'",
+  ).bind(razlog.slice(0, 500), posaoId).run();
+}
+
 /** Neuspjeh: natrag u red dok ne prijeđe MAX_POKUSAJA, onda 'greska'. */
 export async function neuspjeh(posaoId: number, greska: string) {
   await env.DB.prepare(
