@@ -124,29 +124,50 @@ export async function neuspjeh(posaoId: number, greska: string) {
   ).bind(greska.slice(0, 500), posaoId).run();
 }
 
-/** Odluka o kandidatu. Odobrena istiskuje dosadašnju odobrenu (ona postaje kandidat). */
-export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string) {
+/** Ishod odluke. `vec` = netko je bio brži: slika više nije kandidat (status i tko je odlučio). */
+export type Ishod = { ok: true } | { ok: false; nema?: true; vec?: { status: string; pregledao: string | null } };
+
+/**
+ * Odluka o kandidatu. Odobrena istiskuje dosadašnju odobrenu (ona postaje kandidat).
+ * Odobri/odbij vrijede samo dok je slika još kandidat: kad dvoje pregledava istovremeno,
+ * pamti se prva odluka, a druga dobiva `vec` (uvjetni UPDATE, ne provjera pa upis).
+ */
+export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string): Promise<Ishod> {
   const db = env.DB;
-  const s = await db.prepare("SELECT id, rijec_id, stil_id FROM slike WHERE id = ?").bind(slikaId).first<{ id: number; rijec_id: number; stil_id: number }>();
-  if (!s) return false;
+  const s = await db.prepare("SELECT id, rijec_id, stil_id, status, pregledao FROM slike WHERE id = ?").bind(slikaId)
+    .first<{ id: number; rijec_id: number; stil_id: number; status: string; pregledao: string | null }>();
+  if (!s) return { ok: false, nema: true };
+  // Tko je bio brži: čita se svježe, jer je status iz prvog SELECT-a možda već zastario.
+  const vec = async () => {
+    const t = await db.prepare("SELECT status, pregledao FROM slike WHERE id = ?").bind(s.id).first<{ status: string; pregledao: string | null }>();
+    return { ok: false as const, vec: t ?? { status: s.status, pregledao: s.pregledao } };
+  };
+  if (akcija !== "vrati" && s.status !== "kandidat") return vec();
   // Slike kojima se mijenja javnost: ova i dosadašnja odobrena (istisnuta postaje kandidat).
   const dirnute = [s.id];
   if (akcija === "odobri") {
     const prije = await db.prepare("SELECT id FROM slike WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena' AND id != ?")
       .bind(s.rijec_id, s.stil_id, s.id).all<{ id: number }>();
     dirnute.push(...prije.results.map((x) => x.id));
-    await db.batch([
-      db.prepare("UPDATE slike SET status = 'kandidat' WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'").bind(s.rijec_id, s.stil_id),
-      db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id),
+    // Batch je jedna transakcija; oba upita traže da je slika još kandidat, pa kasnija odluka ne mijenja ništa.
+    const [, r] = await db.batch([
+      db.prepare(
+        `UPDATE slike SET status = 'kandidat' WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'
+           AND EXISTS (SELECT 1 FROM slike k WHERE k.id = ? AND k.status = 'kandidat')`,
+      ).bind(s.rijec_id, s.stil_id, s.id),
+      db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
+        .bind(email, s.id),
     ]);
+    if (!r.meta.changes) return vec();
   } else if (akcija === "odbij") {
-    await db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ?")
+    const r = await db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
       .bind(razlog?.trim().slice(0, 300) || null, email, s.id).run();
+    if (!r.meta.changes) return vec();
   } else {
     await db.prepare("UPDATE slike SET status = 'kandidat', pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id).run();
   }
   await uskladiJavno(dirnute);
-  return true;
+  return { ok: true };
 }
 
 /** Javni URL odobrene slike (bucket logomedo-javno na cdn.logomedo.com). */

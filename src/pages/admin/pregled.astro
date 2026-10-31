@@ -1,24 +1,18 @@
 ---
 // Pregled kandidata jedan po jedan, tipkovnicom: A odobri, X odbij (razlog, Enter),
-// S preskoči, Z poništi zadnju odluku. Odbijena slika odmah šalje novu u red.
+// S preskoči, Z poništi zadnju odluku. Odbijena slika šalje novu u red samo ako riječ nema
+// odobrenu ni drugog kandidata. Više admina istovremeno: svake 3 s popis se usklađuje s bazom
+// (tuđe odluke nestaju, novi kandidati dolaze na kraj), a server pamti samo prvu odluku.
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
-import { env } from "cloudflare:workers";
+import { kandidati } from "../../lib/pregled";
 
 const glas = Astro.url.searchParams.get("glas");
-const { results } = await env.DB.prepare(
-  `SELECT s.id, s.prompt, s.model, r.rijec, r.slug, r.opis_za_sliku,
-     (SELECT o.id FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena') AS odobrena_id,
-     (SELECT group_concat(g.oznaka || ' ' || rg.pozicija, ' · ') FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id) AS pozicije
-   FROM slike s JOIN rijeci r ON r.id = s.rijec_id
-   WHERE s.status = 'kandidat'
-     AND (?1 IS NULL OR EXISTS (SELECT 1 FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id AND g.slug = ?1))
-   ORDER BY s.id LIMIT 200`,
-).bind(glas).all<{ id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; pozicije: string }>();
+const results = await kandidati(glas);
 ---
 <AdminOkvir naslov="Pregled" aktivno="pregled" puno>
-  {results.length ? (
-    <div class="pregled" id="pregled" data-kandidati={JSON.stringify(results)}>
+  <>
+    <div class="pregled" id="pregled" data-kandidati={JSON.stringify(results)} data-glas={glas ?? ""} hidden={!results.length}>
       <div class="pozornica">
         <div class="list"><img id="slika" alt="" /></div>
         <div class="usporedba" id="usporedba" hidden>
@@ -37,7 +31,7 @@ const { results } = await env.DB.prepare(
           <button class="gumb veliki" id="odbij"><kbd>X</kbd> Odbij</button>
           <div class="razlog" id="razlog-okvir" hidden>
             <input type="text" id="razlog" maxlength="300" placeholder="Što ne valja? (ide u sljedeći prompt)" />
-            <label class="kvacica"><input type="checkbox" id="ponovi" checked /> Generiraj novu</label>
+            <label class="kvacica"><input type="checkbox" id="ponovi" checked /> <span id="ponovi-tekst">Generiraj novu</span></label>
             <span class="blijedo sitno"><kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span>
           </div>
           <div class="sporedne">
@@ -51,102 +45,154 @@ const { results } = await env.DB.prepare(
         <p id="poruka" class="poruka" hidden></p>
       </aside>
     </div>
-    <div class="gotovo" id="gotovo" hidden>
-      <div class="ploha prazno"><h2>Sve pregledano</h2><p>Novi kandidati stižu dok runner radi.</p><a class="gumb" href="/admin">Natrag na katalog</a></div>
+    <div class="gotovo" id="gotovo" hidden={results.length > 0}>
+      <div class="ploha prazno">
+        <h2 id="gotovo-naslov">{results.length ? "Sve pregledano" : "Nema kandidata za pregled"}</h2>
+        <p>Novi kandidati stižu dok runner radi i pojavljuju se ovdje sami.</p>
+        <a class="gumb" href="/admin"><Ikona ime="katalog" /> Katalog</a>
+      </div>
     </div>
-  ) : (
-    <div class="gotovo"><div class="ploha prazno">
-      <h2>Nema kandidata za pregled</h2>
-      <p>Generiraj slike iz kataloga; runner ih stavlja ovdje.</p>
-      <a class="gumb" href="/admin"><Ikona ime="katalog" /> Katalog</a>
-    </div></div>
-  )}
+  </>
 </AdminOkvir>
 
 <script>
   type K = { id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; pozicije: string };
-  const el = document.getElementById("pregled");
-  if (el) {
-    const kandidati: K[] = JSON.parse(el.dataset.kandidati!);
-    const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-    let i = 0;
-    const povijest: { i: number; id: number }[] = [];
-    let zauzeto = false;
+  type Odluka = { id: number; status: string; pregledao: string | null };
+  const el = document.getElementById("pregled")!;
+  // `prosli` su već prikazani (odlučeni ili preskočeni) u ovoj kartici; `red` su preostali, red[0] je na ekranu.
+  let red: K[] = JSON.parse(el.dataset.kandidati!);
+  const glas = el.dataset.glas || "";
+  const ja = (document.querySelector(".tko") as HTMLElement | null)?.title ?? "";
+  const prosli = new Set<number>();
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const povijest: K[] = [];
+  let zauzeto = false;
+  let prikazana: number | null = null;
 
-    const prikazi = () => {
-      if (i >= kandidati.length) { el.hidden = true; $("gotovo").hidden = false; return; }
-      const k = kandidati[i];
-      $<HTMLImageElement>("slika").src = `/admin/slika/${k.id}`;
-      $("usporedba").hidden = !k.odobrena_id;
-      if (k.odobrena_id) $<HTMLImageElement>("slika-odobrena").src = `/admin/slika/${k.odobrena_id}`;
-      $("rijec").textContent = k.rijec.toLocaleUpperCase("hr");
-      $("pozicije").textContent = k.pozicije ?? "";
-      $("opis").hidden = !k.opis_za_sliku; $("opis").textContent = k.opis_za_sliku ?? "";
-      $("prompt").textContent = k.prompt ?? "";
-      $<HTMLAnchorElement>("link").href = `/admin/rijec/${k.slug}?od=/admin/pregled`;
-      $("brojac").textContent = `${i + 1} / ${kandidati.length}`;
-      $("traka").style.width = `${(i / kandidati.length) * 100}%`;
-      $<HTMLButtonElement>("ponisti").disabled = !povijest.length;
-      zatvoriRazlog();
-      // Sljedeća slika unaprijed, da prijelaz bude trenutan.
-      if (kandidati[i + 1]) new Image().src = `/admin/slika/${kandidati[i + 1].id}`;
-    };
+  const tko = (email: string | null) => (email ? email.split("@")[0] : "netko");
+  const opisOdluke = (o: { status: string; pregledao: string | null }) =>
+    `${o.pregledao === ja ? "Već si" : tko(o.pregledao) + " je već"} ${o.status === "odobrena" ? "odobrio/la" : o.status === "odbijena" ? "odbio/la" : "promijenio/la"} ovu sliku.`;
 
-    const poruka = (t: string) => { const p = $("poruka"); p.textContent = t; p.hidden = false; setTimeout(() => (p.hidden = true), 4000); };
-
-    async function posalji(id: number, tijelo: Record<string, unknown>) {
-      const r = await fetch(`/admin/api/slika/${id}`, { method: "POST", credentials: "same-origin",
-        headers: { "content-type": "application/json" }, body: JSON.stringify(tijelo) });
-      if (!r.ok) throw new Error(r.status === 401 ? "Sesija je istekla, prijavi se ponovno." : `HTTP ${r.status}`);
-    }
-
-    async function odluci(akcija: "odobri" | "odbij") {
-      if (zauzeto || i >= kandidati.length) return;
-      zauzeto = true;
-      const k = kandidati[i];
-      try {
-        await posalji(k.id, akcija === "odbij"
-          ? { akcija, razlog: $<HTMLInputElement>("razlog").value, ponovi: $<HTMLInputElement>("ponovi").checked ? "1" : "" }
-          : { akcija });
-        if (akcija === "odobri") for (const x of kandidati) if (x.slug === k.slug) x.odobrena_id = k.id;
-        povijest.push({ i, id: k.id });
-        i++; prikazi();
-      } catch (e) { poruka((e as Error).message); }
-      zauzeto = false;
-    }
-
-    async function ponisti() {
-      const z = povijest.pop();
-      if (!z || zauzeto) return;
-      zauzeto = true;
-      try { await posalji(z.id, { akcija: "vrati" }); i = z.i; prikazi(); }
-      catch (e) { poruka((e as Error).message); povijest.push(z); }
-      zauzeto = false;
-    }
-
-    const razlogOtvoren = () => !$("razlog-okvir").hidden;
-    function otvoriRazlog() { $("razlog-okvir").hidden = false; $<HTMLInputElement>("razlog").value = ""; $("razlog").focus(); }
-    function zatvoriRazlog() { $("razlog-okvir").hidden = true; ($("razlog") as HTMLInputElement).blur(); }
-
-    $("odobri").onclick = () => odluci("odobri");
-    $("odbij").onclick = () => (razlogOtvoren() ? odluci("odbij") : otvoriRazlog());
-    $("preskoci").onclick = () => { i++; prikazi(); };
-    $("ponisti").onclick = ponisti;
-    document.addEventListener("keydown", (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (razlogOtvoren()) {
-        if (e.key === "Enter") { e.preventDefault(); odluci("odbij"); }
-        if (e.key === "Escape") zatvoriRazlog();
-        return;
-      }
-      const k = e.key.toLowerCase();
-      if (k === "a") odluci("odobri");
-      else if (k === "x") { e.preventDefault(); otvoriRazlog(); }
-      else if (k === "s" || e.key === "ArrowRight") { i++; prikazi(); }
-      else if (k === "z") ponisti();
-    });
-    prikazi();
+  function prikazi() {
+    const k = red[0];
+    el.hidden = !k; $("gotovo").hidden = !!k;
+    $<HTMLButtonElement>("ponisti").disabled = !povijest.length;
+    if (!k) { prikazana = null; return; }
+    if (prikazana === k.id) return;            // ista slika: ne diraj (razlog koji se upisuje ostaje)
+    prikazana = k.id;
+    $<HTMLImageElement>("slika").src = `/admin/slika/${k.id}`;
+    $("usporedba").hidden = !k.odobrena_id;
+    if (k.odobrena_id) $<HTMLImageElement>("slika-odobrena").src = `/admin/slika/${k.odobrena_id}`;
+    $("rijec").textContent = k.rijec.toLocaleUpperCase("hr");
+    $("pozicije").textContent = k.pozicije ?? "";
+    $("opis").hidden = !k.opis_za_sliku; $("opis").textContent = k.opis_za_sliku ?? "";
+    $("prompt").textContent = k.prompt ?? "";
+    $<HTMLAnchorElement>("link").href = `/admin/rijec/${k.slug}?od=/admin/pregled`;
+    brojac();
+    zatvoriRazlog();
+    // Riječ s odobrenom slikom: odbijanje suvišnog kandidata ne traži novu sliku.
+    $<HTMLInputElement>("ponovi").checked = !k.odobrena_id && red.filter((x) => x.slug === k.slug).length < 2;
+    $("ponovi-tekst").textContent = k.odobrena_id ? "Generiraj novu (riječ već ima odobrenu)" : "Generiraj novu";
+    if (red[1]) new Image().src = `/admin/slika/${red[1].id}`;
   }
+  function brojac() {
+    const ukupno = prosli.size + red.length;
+    $("brojac").textContent = `${prosli.size + 1} / ${ukupno}`;
+    $("traka").style.width = `${ukupno ? (prosli.size / ukupno) * 100 : 0}%`;
+  }
+  const dalje = () => { const k = red.shift(); if (k) prosli.add(k.id); prikazi(); };
+
+  let porukaTimer = 0;
+  const poruka = (t: string, vrsta: "greska" | "info" = "greska") => {
+    const p = $("poruka"); p.textContent = t; p.hidden = false; p.dataset.vrsta = vrsta;
+    clearTimeout(porukaTimer); porukaTimer = window.setTimeout(() => (p.hidden = true), 5000);
+  };
+
+  async function posalji(id: number, tijelo: Record<string, unknown>) {
+    const r = await fetch(`/admin/api/slika/${id}`, { method: "POST", credentials: "same-origin",
+      headers: { "content-type": "application/json" }, body: JSON.stringify(tijelo) });
+    if (r.status === 401) throw new Error("Sesija je istekla, prijavi se ponovno.");
+    const j: any = await r.json().catch(() => ({}));
+    if (r.status === 409 && j.vec) return { vec: j.vec as Odluka };
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return { vec: null, generira: !!j.generira };
+  }
+
+  async function odluci(akcija: "odobri" | "odbij") {
+    const k = red[0];
+    if (zauzeto || !k) return;
+    zauzeto = true;
+    try {
+      const o = await posalji(k.id, akcija === "odbij"
+        ? { akcija, razlog: $<HTMLInputElement>("razlog").value, ponovi: $<HTMLInputElement>("ponovi").checked ? "1" : "" }
+        : { akcija });
+      if (o.vec) poruka(opisOdluke(o.vec), "info");
+      else {
+        if (akcija === "odobri") for (const x of red) if (x.slug === k.slug) x.odobrena_id = k.id;
+        povijest.push(k);
+      }
+      dalje();
+    } catch (e) { poruka((e as Error).message); }
+    zauzeto = false;
+  }
+
+  async function ponisti() {
+    const k = povijest.pop();
+    if (!k || zauzeto) return;
+    zauzeto = true;
+    try { await posalji(k.id, { akcija: "vrati" }); prosli.delete(k.id); red = [k, ...red.filter((x) => x.id !== k.id)]; prikazana = null; prikazi(); }
+    catch (e) { poruka((e as Error).message); povijest.push(k); }
+    zauzeto = false;
+  }
+
+  // Usklađivanje s bazom: tuđe odluke miču slike, novi kandidati idu na kraj reda.
+  async function uskladi() {
+    if (document.hidden || zauzeto) return;
+    try {
+      const r = await fetch(`/admin/api/kandidati${glas ? `?glas=${encodeURIComponent(glas)}` : ""}`, { credentials: "same-origin" });
+      if (!r.ok) return;
+      const { kandidati, odluke } = (await r.json()) as { kandidati: K[]; odluke: Odluka[] };
+      if (zauzeto) return;
+      const svjezi = new Map(kandidati.map((k) => [k.id, k]));
+      const naEkranu = red[0];
+      if (naEkranu && !svjezi.has(naEkranu.id)) {
+        const o = odluke.find((x) => x.id === naEkranu.id);
+        poruka(o ? opisOdluke(o) : "Ova slika više nije za pregled.", "info");
+      }
+      const poznati = new Set(red.map((k) => k.id));
+      red = [
+        ...red.filter((k) => svjezi.has(k.id)).map((k) => ({ ...k, odobrena_id: svjezi.get(k.id)!.odobrena_id })),
+        ...kandidati.filter((k) => !poznati.has(k.id) && !prosli.has(k.id)),
+      ];
+      if (red[0]?.id !== naEkranu?.id) prikazana = null;
+      prikazi(); brojac();
+    } catch { /* mreža: probaj opet za 3 s */ }
+  }
+  setInterval(uskladi, 3000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) uskladi(); });
+
+  const razlogOtvoren = () => !$("razlog-okvir").hidden;
+  function otvoriRazlog() { $("razlog-okvir").hidden = false; $<HTMLInputElement>("razlog").value = ""; $("razlog").focus(); }
+  function zatvoriRazlog() { $("razlog-okvir").hidden = true; ($("razlog") as HTMLInputElement).blur(); }
+
+  $("odobri").onclick = () => odluci("odobri");
+  $("odbij").onclick = () => (razlogOtvoren() ? odluci("odbij") : otvoriRazlog());
+  $("preskoci").onclick = dalje;
+  $("ponisti").onclick = ponisti;
+  document.addEventListener("keydown", (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || !red.length) return;
+    if (razlogOtvoren()) {
+      if (e.key === "Enter") { e.preventDefault(); odluci("odbij"); }
+      if (e.key === "Escape") zatvoriRazlog();
+      return;
+    }
+    const k = e.key.toLowerCase();
+    if (k === "a") odluci("odobri");
+    else if (k === "x") { e.preventDefault(); otvoriRazlog(); }
+    else if (k === "s" || e.key === "ArrowRight") dalje();
+    else if (k === "z") ponisti();
+  });
+  prikazi();
 </script>
 
 <style>
@@ -176,6 +222,7 @@ const { results } = await env.DB.prepare(
   .prompt { margin-top: auto; font-size: .82rem; color: var(--blijedo); }
   .prompt summary { cursor: pointer; font-weight: 600; } .prompt p { white-space: pre-wrap; }
   .poruka { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-size: .86rem; }
+  .poruka[data-vrsta="info"] { background: var(--info-blago); color: var(--info); }
   .gotovo { padding: 60px clamp(20px, 4vw, 56px); max-width: 720px; }
   @media (max-width: 900px) {
     .pregled { grid-template-columns: 1fr; min-height: 0; }

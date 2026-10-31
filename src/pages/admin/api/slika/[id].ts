@@ -14,13 +14,18 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
   const akcija = b.akcija as "odobri" | "odbij" | "vrati";
   if (!["odobri", "odbij", "vrati"].includes(akcija)) return Response.json({ error: "akcija" }, { status: 400 });
   const id = Number(params.id);
-  const ok = await odluci(id, akcija, locals.admin!.email, b.razlog);
-  // Odbijena bez drugog kandidata: odmah nova u red (razlog ulazi u prompt).
-  if (ok && akcija === "odbij" && b.ponovi) {
-    const s = await env.DB.prepare("SELECT rijec_id, stil_id FROM slike WHERE id = ?").bind(id).first<{ rijec_id: number; stil_id: number }>();
-    const st = await env.DB.prepare("SELECT kod FROM stilovi WHERE id = ?").bind(s!.stil_id).first<{ kod: string }>();
-    await dodajURed(await stil(st!.kod), [s!.rijec_id], locals.admin!.email);
+  const ishod = await odluci(id, akcija, locals.admin!.email, b.razlog);
+  // Odbijena: nova u red (razlog ulazi u prompt), ali samo ako riječ još nema odobrenu sliku ni
+  // drugog kandidata. Inače „Odbij” na suvišnom kandidatu stvara novog, i tako u krug (astronaut, 31. 10.).
+  let generira = false;
+  if (ishod.ok && akcija === "odbij" && b.ponovi) {
+    const s = await env.DB.prepare(
+      `SELECT s.rijec_id, s.stil_id, st.kod,
+         EXISTS (SELECT 1 FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status IN ('odobrena', 'kandidat')) AS pokrivena
+       FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.id = ?`,
+    ).bind(id).first<{ rijec_id: number; stil_id: number; kod: string; pokrivena: number }>();
+    if (s && !s.pokrivena) generira = (await dodajURed(await stil(s.kod), [s.rijec_id], locals.admin!.email)) > 0;
   }
-  if (jsonZahtjev) return Response.json({ ok }, { status: ok ? 200 : 404 });
+  if (jsonZahtjev) return Response.json({ ...ishod, generira }, { status: ishod.ok ? 200 : ishod.nema ? 404 : 409 });
   return new Response(null, { status: 303, headers: { location: safeNext(b.next) } });
 };
