@@ -36,10 +36,10 @@
 ## Access
 
 Aplikacija „LogoMedo admin (sso)” (AUD `81d4dce3…`, tim `domovina.cloudflareaccess.com`) štiti samo
-`logomedo.com/admin/sso`. Politike: „LogoMedo admini” (admin1@example.com, admin2@example.com,
-admin3@example.com) i „OMM admini”, a dovoljna je bilo koja. Isti popis mora biti u `ADMIN_EMAILS`.
+`logomedo.com/admin/sso`. Politike: „LogoMedo admini” (tri admina, isti
+popis kao secret `ADMIN_EMAILS`) i „OMM admini”, a dovoljna je bilo koja. Isti popis mora biti u `ADMIN_EMAILS`.
 
-**Otvoreno:** OTP kod nije stigao na admin3@example.com, iako je politika ispravna i vezana uz
+**Otvoreno:** OTP kod nije stigao jednoj adminici, iako je politika ispravna i vezana uz
 aplikaciju (provjereno u dashboardu). Treba pogledati Zero Trust → Logs → Access, Gmail Spam i
 Promocije te je li e-mail upisan točno.
 

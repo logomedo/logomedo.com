@@ -3,6 +3,8 @@ declare namespace Cloudflare {
   interface Env {
     /** Bearer token lokalnog runnera (scripts/runner.sh) za /api/runner/*. */
     RUNNER_TOKEN: string;
+    /** E-mailovi admina, zarezom odvojeni (secret: repo je javan). */
+    ADMIN_EMAILS: string;
   }
 }
 

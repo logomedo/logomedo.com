@@ -4,6 +4,9 @@ Kod je iz `~/git/domovinatv/omm.domovina.ai` (`src/lib/admin/*`, `src/middleware
 `migrations/0005_admin.sql`), a tamo iz pay.domovina.ai. Sigurnosnu logiku držati u
 skladu s njima.
 
+- **E-mailovi admina nisu u repou** (repo je javan): `ADMIN_EMAILS` je secret.
+  Promjena: `npx wrangler secret put ADMIN_EMAILS` (vrijednost „a@x,b@y”, bez razmaka),
+  lokalno u `.dev.vars`. Isti popis ide u Access politiku, svaki e-mail kao zasebno pravilo.
 - `/admin/sso` štiti Access aplikacija (One-time PIN na e-mail). Worker dodatno provjerava
   JWT (potpis, issuer, `ACCESS_AUD`) i `ADMIN_EMAILS`.
 - Passkey se dodaje samo u sesiji otvorenoj Accessom unutar zadnjih 10 min. Najviše 5 po e-mailu.
@@ -17,7 +20,7 @@ skladu s njima.
 Deployano na D.O.M. račun: Worker `logomedo` (custom domain `logomedo.com` i `www`, a www
 ide 301 na apex), D1 `logomedo` (`e67d3840-…`, migrirano i seedano), R2 `logomedo-slike`,
 secret `RUNNER_TOKEN` (lokalno u `.env.production`, gitignored; `scripts/runner.sh --prod`).
-Access aplikacija „LogoMedo admin (sso)” (AUD 81d4dce3…). Politika treba biti vlastita „LogoMedo admini” (admin1@example.com, admin2@example.com, admin3@example.com), ne „OMM admini”.
+Access aplikacija „LogoMedo admin (sso)” (AUD 81d4dce3…). Politika treba biti vlastita „LogoMedo admini” (isti e-mailovi kao secret `ADMIN_EMAILS`), ne „OMM admini”.
 
 **Zamka (31. 10. 2026.):** u politici svaki e-mail mora biti **zasebno** Include → Email pravilo.
 Jedno pravilo s vrijednošću „a, b, c” Access uspoređuje doslovno kao jednu adresu, pa ne
@@ -47,7 +50,7 @@ Access lokalno ne radi. Sesiju upiši u lokalni D1 i postavi kolačić:
 
 ```bash
 T=$(openssl rand -hex 24); H=$(printf %s "$T" | shasum -a 256 | cut -d' ' -f1)
-npx wrangler d1 execute logomedo --local --command "INSERT INTO admin_sessions (token_hash,email,method,created_at,expires_at,last_seen_at) VALUES ('$H','admin1@example.com','access',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now','+12 hours'),strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
+npx wrangler d1 execute logomedo --local --command "INSERT INTO admin_sessions (token_hash,email,method,created_at,expires_at,last_seen_at) VALUES ('$H','TVOJ_EMAIL','access',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now','+12 hours'),strftime('%Y-%m-%dT%H:%M:%fZ','now'))"
 echo "__Host-logomedo_admin=$T"   # kolačić za localhost:4321
 ```
 
