@@ -38,6 +38,15 @@ upaljenim lampicama.
 - Provjereno lokalno u headless Chromiumu (31. 10. 2026.): svih 12 ekrana do kraja, bez grešaka u
   konzoli; izgled sa slikama i bez njih, mobitel uspravno, ispis, spremanje u adminu, 404, CSP.
 
+## Riječi za božićnu vježbenicu (migracija 0006)
+
+`scripts/seed-bozic.ts` → `migrations/0006_rijeci_bozic.sql`: 103 riječi s dva rukom pisana
+popisa (abecedni božićni popis i riječi s 3 i 4 glasa), svaka s engleskim opisom za prompt.
+Opis je uobičajeno značenje, da se slike mogu koristiti i u drugim zadacima. Postojeće riječi
+zadržavaju svoj opis. Na produkciji primijenjeno 31. 10. 2026. (44 su već postojale, 59 novih).
+Izostavljen je GRINČ (zaštićeni lik); dvosmislene riječi BAL, DJED i GRAD imaju opće značenje
+(ples, djed, grad), pa ih po potrebi treba ispraviti na stranici riječi.
+
 ## Ostalo
 
 1. Generiranje ~22 ilustracije ide kroz kvotu agyja (~12 pa 3–5 h čekanja): gumb u adminu
