@@ -19,7 +19,12 @@
     }
   ],
   // Slike kataloga: <stil>/<slug riječi>/<id slike>.<ekstenzija>
-  "r2_buckets": [{ "binding": "SLIKE", "bucket_name": "logomedo-slike" }],
+  // SLIKE je privatan (kandidati, odbijene). JAVNO drži samo odobrene, isti ključ, a poslužuje ga
+  // R2 custom domena cdn.logomedo.com (edge cache, bez Workera). Usklađuje ga odluci() u lib/generiranje.ts.
+  "r2_buckets": [
+    { "binding": "SLIKE", "bucket_name": "logomedo-slike" },
+    { "binding": "JAVNO", "bucket_name": "logomedo-javno" }
+  ],
 
   "vars": {
     // /admin (docs/admin.md): Cloudflare Access na /admin/sso ili passkey.
@@ -31,9 +36,12 @@
     // AUD Access aplikacije „LogoMedo admin (sso)” (politika „OMM admini”, OTP na e-mail),
     // koja štiti logomedo.com/admin/sso. Prazan AUD = /admin/sso vraća 503.
     "ACCESS_TEAM_DOMAIN": "domovina.cloudflareaccess.com",
-    "ACCESS_AUD": "81d4dce3723d0cada52d1984319149f3a21a1e76d8f4affd04e1b7e0b4fe6e56"
+    "ACCESS_AUD": "81d4dce3723d0cada52d1984319149f3a21a1e76d8f4affd04e1b7e0b4fe6e56",
+    "CDN_URL": "https://cdn.logomedo.com",
+    "ZONE_ID": "c12293517eb61e46975c4145f8e66a61"
   },
   // Secret RUNNER_TOKEN (wrangler secret put / .dev.vars): lokalni runner, /api/runner/*.
+  // Secret CF_PURGE_TOKEN (opcionalan, Zone → Cache Purge za logomedo.com): čišćenje povučenih slika s cdn-a.
 
   // www se u middlewareu preusmjerava na apex. stage.logomedo.com ostaje stari Firebase stage.
   "routes": [

@@ -104,7 +104,12 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
   const db = env.DB;
   const s = await db.prepare("SELECT id, rijec_id, stil_id FROM slike WHERE id = ?").bind(slikaId).first<{ id: number; rijec_id: number; stil_id: number }>();
   if (!s) return false;
+  // Slike kojima se mijenja javnost: ova i dosadašnja odobrena (istisnuta postaje kandidat).
+  const dirnute = [s.id];
   if (akcija === "odobri") {
+    const prije = await db.prepare("SELECT id FROM slike WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena' AND id != ?")
+      .bind(s.rijec_id, s.stil_id, s.id).all<{ id: number }>();
+    dirnute.push(...prije.results.map((x) => x.id));
     await db.batch([
       db.prepare("UPDATE slike SET status = 'kandidat' WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'").bind(s.rijec_id, s.stil_id),
       db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id),
@@ -115,5 +120,43 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
   } else {
     await db.prepare("UPDATE slike SET status = 'kandidat', pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id).run();
   }
+  await uskladiJavno(dirnute);
   return true;
+}
+
+/** Javni URL odobrene slike (bucket logomedo-javno na cdn.logomedo.com). */
+export const javniUrl = (r2Kljuc: string) => `${env.CDN_URL}/${r2Kljuc}`;
+
+/**
+ * Javni bucket drži točno odobrene slike, pod istim ključem kao u privatnom.
+ * Ključ sadrži hash sadržaja, pa se smije keširati zauvijek; kad slika prestane biti
+ * odobrena, briše se i (ako postoji CF_PURGE_TOKEN) čisti iz edge cachea.
+ */
+export async function uskladiJavno(slikaIds: number[]) {
+  for (const id of slikaIds) {
+    const s = await env.DB.prepare("SELECT r2_kljuc, mime, status FROM slike WHERE id = ?").bind(id).first<{ r2_kljuc: string; mime: string; status: string }>();
+    if (!s) continue;
+    if (s.status === "odobrena") {
+      if (await env.JAVNO.head(s.r2_kljuc)) continue;
+      const o = await env.SLIKE.get(s.r2_kljuc);
+      if (!o) throw new Error(`nema ${s.r2_kljuc} u privatnom bucketu`);
+      await env.JAVNO.put(s.r2_kljuc, o.body, {
+        httpMetadata: { contentType: s.mime, cacheControl: "public, max-age=31536000, immutable" },
+      });
+    } else if (await env.JAVNO.head(s.r2_kljuc)) {
+      await env.JAVNO.delete(s.r2_kljuc);
+      await ocistiCache(javniUrl(s.r2_kljuc));
+    }
+  }
+}
+
+async function ocistiCache(url: string) {
+  const token = (env as { CF_PURGE_TOKEN?: string }).CF_PURGE_TOKEN;
+  if (!token) return console.warn(`CF_PURGE_TOKEN nije postavljen; ${url} ostaje u edge cacheu do isteka`);
+  const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.ZONE_ID}/purge_cache`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ files: [url] }),
+  });
+  if (!r.ok) console.error(`purge ${url}: HTTP ${r.status} ${await r.text()}`);
 }

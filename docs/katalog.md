@@ -65,3 +65,22 @@ sequenceDiagram
   **Za cijeli katalog (428 riječi) to je oko 21 h jednim runnerom.** Više paralelnih runnera
   traži zasebne tmux sesije (`AGY_SESSION`, `AGY_DIR`). `uzmi` je atomaran, pa je to sigurno.
 - Kvota: agy je na Google AI Pro pretplati, a ne na Claude kvoti.
+
+## Javne slike (cdn.logomedo.com)
+
+Dva R2 bucketa, isti ključ (`<stil>/<slug>/<16 hex sha256>.<ext>`):
+
+| Bucket | Binding | Sadržaj | Pristup |
+|---|---|---|---|
+| `logomedo-slike` | `SLIKE` | sve: kandidati, odobrene, odbijene | privatno, admin `/admin/slika/:id` |
+| `logomedo-javno` | `JAVNO` | **samo odobrene** | javno, R2 custom domena `cdn.logomedo.com` |
+
+- `odluci()` (`src/lib/generiranje.ts`) nakon svake odluke zove `uskladiJavno()`: odobrena se kopira
+  u javni bucket (`cache-control: public, max-age=31536000, immutable`), a slika koja prestane biti
+  odobrena (odbijena, vraćena, istisnuta novom) briše se iz njega.
+- Javni URL: `https://cdn.logomedo.com/<r2_kljuc>`; u adminu je link „javni URL” na stranici riječi.
+  Listanje bucketa preko domene ne postoji, a ključ ima 64-bitni hash, pa se ne da pogoditi.
+- Edge cache: zbog `immutable` povučena slika ostaje u cacheu dok se ne očisti. Purge radi samo ako
+  postoji secret `CF_PURGE_TOKEN` (API token, Zone → Cache Purge, zona logomedo.com); bez njega
+  Worker samo zapiše upozorenje u log.
+- Slike odobrene prije uvođenja javnog bucketa (31. 10. 2026.) nisu kopirane same: ponovno ih odobri.

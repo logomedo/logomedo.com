@@ -3,6 +3,7 @@ import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import { kad, rijec as nadji, NAZIV_POZICIJE } from "../../../lib/katalog";
 import { safeNext } from "../../../lib/admin/sesija";
+import { javniUrl } from "../../../lib/generiranje";
 
 const r = await nadji(Astro.params.slug!);
 if (!r) return new Response("Nema te riječi", { status: 404 });
@@ -28,6 +29,7 @@ const dodano = Astro.url.searchParams.get("dodano");
       <div class="potpis">
         <span class="rijec-tekst">{r.rijec}</span>
         {odobrena ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> odobrena</span> : <span class="oznaka">nema odobrene</span>}
+        {odobrena && <a href={javniUrl(odobrena.r2_kljuc)} target="_blank" rel="noopener">javni URL</a>}
       </div>
     </div>
 

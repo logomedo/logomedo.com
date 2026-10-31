@@ -16,7 +16,7 @@ export interface RijecRed {
 
 export interface Slika {
   id: number; rijec_id: number; status: "kandidat" | "odobrena" | "odbijena"; razlog: string | null;
-  prompt: string | null; model: string | null; izvor: string; created_at: string; pregledao: string | null;
+  prompt: string | null; model: string | null; izvor: string; created_at: string; pregledao: string | null; r2_kljuc: string;
 }
 
 export const DB = () => env.DB;
@@ -73,7 +73,7 @@ export async function rijec(slug: string) {
        WHERE rg.rijec_id = ? ORDER BY g.redoslijed`,
     ).bind(r.id),
     DB().prepare(
-      `SELECT id, rijec_id, status, razlog, prompt, model, izvor, created_at, pregledao FROM slike
+      `SELECT id, rijec_id, status, razlog, prompt, model, izvor, created_at, pregledao, r2_kljuc FROM slike
        WHERE rijec_id = ? ORDER BY CASE status WHEN 'odobrena' THEN 0 WHEN 'kandidat' THEN 1 ELSE 2 END, id DESC`,
     ).bind(r.id),
     DB().prepare(
