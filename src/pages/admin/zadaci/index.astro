@@ -1,0 +1,89 @@
+---
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import { kad } from "../../../lib/katalog";
+import { nazivPodrucja, podrucja as svaPodrucja, popis } from "../../../lib/zadaci/baza";
+import { VRSTE, type Vrsta } from "../../../lib/zadaci/vrste";
+
+const [zadaci, podrucja] = await Promise.all([popis(), svaPodrucja()]);
+const listovi = podrucja.filter((p) => p.roditelj_id !== null);
+const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima" };
+const vrste = Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][];
+const skupine = [...new Set(zadaci.map((z) => z.podrucje_id))].map((id) => ({ id, naziv: nazivPodrucja(podrucja, id), zadaci: zadaci.filter((z) => z.podrucje_id === id) }));
+
+// Mala shema rasporeda svake vrste (kvadratići = slike).
+const shema: Record<Vrsta, string> = {
+  odabir: `<rect x="34" y="4" width="20" height="20" rx="4" class="s-jaka"/><rect x="6" y="34" width="20" height="20" rx="4"/><rect x="34" y="34" width="20" height="20" rx="4" class="s-med"/><rect x="62" y="34" width="20" height="20" rx="4"/>`,
+  povezivanje: `<rect x="8" y="4" width="16" height="16" rx="3"/><rect x="8" y="23" width="16" height="16" rx="3"/><rect x="8" y="42" width="16" height="16" rx="3"/><rect x="64" y="4" width="16" height="16" rx="3"/><rect x="64" y="23" width="16" height="16" rx="3"/><rect x="64" y="42" width="16" height="16" rx="3"/><path d="M26 12 62 31M26 31 62 50M26 50 62 12" class="s-crta"/>`,
+  uljez: `<rect x="4" y="20" width="17" height="17" rx="3"/><rect x="25" y="20" width="17" height="17" rx="3"/><rect x="46" y="20" width="17" height="17" rx="3" class="s-med"/><rect x="67" y="20" width="17" height="17" rx="3"/><path d="M48 22l13 13M61 22 48 35" class="s-crta"/>`,
+  listic: `<rect x="8" y="4" width="20" height="16" rx="3"/><rect x="34" y="4" width="20" height="16" rx="3"/><rect x="60" y="4" width="20" height="16" rx="3"/><rect x="8" y="26" width="20" height="16" rx="3"/><rect x="34" y="26" width="20" height="16" rx="3"/><rect x="60" y="26" width="20" height="16" rx="3"/><path d="M10 48h16M36 48h16M62 48h16" class="s-crta"/>`,
+};
+---
+<AdminOkvir naslov="Zadaci" aktivno="zadaci">
+  <div class="naslov">
+    <div>
+      <h1>Zadaci</h1>
+      <p class="podnaslov">Vrsta je predložak; svaki zadatak je instanca sa svojim slikama. {zadaci.length} zadataka.</p>
+    </div>
+  </div>
+
+  <h2 class="odjeljak">Novi zadatak</h2>
+  <div class="vrste">
+    {vrste.map(([kod, v]) => (
+      <form class="ploha vrsta" method="post" action="/admin/api/zadatak">
+        <input type="hidden" name="vrsta" value={kod} />
+        <svg class="shema" viewBox="0 0 88 58" aria-hidden="true" set:html={shema[kod]} />
+        <div>
+          <b>{v.naziv}</b>
+          <p>{v.opis}</p>
+        </div>
+        <div class="dno">
+          <select name="podrucje" aria-label="Podpodručje">
+            {listovi.map((p) => <option value={p.id} selected={p.slug === zadano[kod]}>{nazivPodrucja(podrucja, p.id)}</option>)}
+          </select>
+          <button class="gumb glavni mali" type="submit">Napravi</button>
+        </div>
+      </form>
+    ))}
+  </div>
+
+  {skupine.length ? skupine.map((s) => (
+    <section>
+      <h2 class="odjeljak">{s.naziv} <span>{s.zadaci.length}</span></h2>
+      <div class="ploha">
+        <table>
+          <thead><tr><th>Naslov</th><th>Vrsta</th><th>Verzija</th><th>Rješavano</th><th>Autor</th><th>Izmijenjeno</th></tr></thead>
+          <tbody>
+            {s.zadaci.map((z) => (
+              <tr>
+                <td><a href={`/admin/zadaci/${z.id}`}><b>{z.naslov || VRSTE[z.vrsta].naziv}</b></a></td>
+                <td><span class="oznaka">{VRSTE[z.vrsta].naziv}</span></td>
+                <td class="mono">v{z.aktivna_verzija}</td>
+                <td>{z.rjesavanja}×</td>
+                <td class="blijedo">{z.autor}</td>
+                <td class="blijedo">{kad(z.updated_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )) : (
+    <div class="ploha prazno"><h2>Još nema zadataka</h2><p>Odaberi vrstu gore: zadatak se odmah složi iz kataloga, a onda ga urediš.</p></div>
+  )}
+</AdminOkvir>
+
+<style>
+  .odjeljak { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--blijedo); font-weight: 650; margin: 30px 0 12px; }
+  .odjeljak span { color: var(--vrlo-blijedo); margin-left: 4px; }
+  .vrste { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .vrsta { margin: 0; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .vrsta p { margin: 4px 0 0; color: var(--blijedo); font-size: .86rem; }
+  .shema { width: 100%; height: 74px; padding: 8px; border-radius: 10px; background: var(--povrsina-2); }
+  .shema :global(rect) { fill: var(--povrsina); stroke: var(--rub-jak); stroke-width: 1.4; }
+  .shema :global(.s-jaka) { fill: var(--med-blago); stroke: var(--med); }
+  .shema :global(.s-med) { stroke: var(--med); stroke-width: 2.2; }
+  .shema :global(.s-crta) { fill: none; stroke: var(--med); stroke-width: 1.6; stroke-linecap: round; }
+  .dno { margin-top: auto; display: flex; gap: 8px; }
+  select { flex: 1; min-width: 0; font: inherit; font-size: .84rem; padding: 0 8px; border: 1px solid var(--rub-jak); border-radius: 8px; background: var(--povrsina); color: var(--tinta); }
+  td a { text-decoration: none; } td a:hover { text-decoration: underline; }
+</style>

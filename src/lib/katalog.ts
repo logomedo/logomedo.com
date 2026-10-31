@@ -59,12 +59,12 @@ export async function rijeciGlasa(glasId: number, stilId: number): Promise<Rijec
 
 export interface RijecDetalj {
   id: number; rijec: string; slug: string; opis_za_sliku: string | null; recenica: string | null;
-  legacy_koristeno: number; izvor: string;
+  legacy_koristeno: number; izvor: string; rima: string | null;
 }
 
 export async function rijec(slug: string) {
   const r = await DB().prepare(
-    "SELECT id, rijec, slug, opis_za_sliku, recenica, legacy_koristeno, izvor FROM rijeci WHERE slug = ?",
+    "SELECT id, rijec, slug, opis_za_sliku, recenica, legacy_koristeno, izvor, rima FROM rijeci WHERE slug = ?",
   ).bind(slug).first<RijecDetalj>();
   if (!r) return null;
   const [pozicije, slike, red] = await DB().batch([

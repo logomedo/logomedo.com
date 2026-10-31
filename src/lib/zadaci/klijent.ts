@@ -1,0 +1,397 @@
+// Editor zadatka u pregledniku: tri pogleda istog sadržaja.
+//   Uredi  – slotovi za slike, točan odgovor, upozorenja, spremanje
+//   Dijete – interaktivno rješavanje na tabletu/ekranu (pregled; ne sprema se)
+//   Ispis  – A4 stranica za papir (window.print)
+// Sve se crta iz `stanje`; svaka promjena zove `osvjezi()`.
+
+import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
+import {
+  ocijeni, provjeri, rijeciU, slozi, VRSTE, PONUDENIH, U_REDU,
+  type Listic, type Odabir, type Odgovor, type Povezivanje, type RijecZadatka, type Sadrzaj, type Uljez, type Vrsta,
+} from "./vrste.ts";
+
+export interface Podaci {
+  zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; sadrzaj: Sadrzaj };
+  rijeci: RijecZadatka[];
+  podrucja: { id: number; naziv: string }[];
+}
+
+type Dijete = Node | string | null | undefined | false;
+function h<K extends keyof HTMLElementTagNameMap>(tag: K, a: Record<string, unknown> = {}, ...djeca: Dijete[]): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(a)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k.startsWith("on")) e.addEventListener(k.slice(2), v as EventListener);
+    else if (k === "class") e.className = String(v);
+    else if (k === "style") e.setAttribute("style", String(v));
+    else if (k === "value") (e as any).value = String(v);
+    else if (k in e && typeof v !== "string") (e as any)[k] = v;
+    else e.setAttribute(k, v === true ? "" : String(v));
+  }
+  dodaj(e, ...djeca);
+  return e;
+}
+// Tipovi Workera (HTMLRewriter) prepisuju globalni Element, pa DOM append/replaceChildren idu kroz ove dvije.
+const cisto = (d: Dijete[]) => d.filter((x): x is Node | string => x !== null && x !== undefined && x !== false);
+function dodaj(e: unknown, ...d: Dijete[]) { (e as any).append(...cisto(d)); }
+function zamijeni(e: unknown, ...d: Dijete[]) { (e as any).replaceChildren(...cisto(d)); }
+const VELIKO = (s: string) => s.toLocaleUpperCase("hr");
+const SVG = "http://www.w3.org/2000/svg";
+
+export function pokreni(korijen: HTMLElement, p: Podaci) {
+  const z = p.zadatak;
+  const vrsta = z.vrsta;
+  const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
+  let sadrzaj: Sadrzaj = structuredClone(z.sadrzaj);
+  let naslov = z.naslov, uputa = z.uputa ?? VRSTE[vrsta].uputa, podrucje = z.podrucje_id;
+  let pogled: "uredi" | "dijete" | "ispis" = (location.hash.slice(1) as any) || "uredi";
+  if (!["uredi", "dijete", "ispis"].includes(pogled)) pogled = "uredi";
+  let promijenjeno = false;
+  let sRijecima = false;
+  const postavke = { stavki: vrsta === "povezivanje" ? 4 : 4, maxSlogova: 3, samoSaSlikom: false };
+
+  const R = (id: number | null) => (id === null ? null : rijeci.get(id) ?? null);
+  const oznaci = () => { promijenjeno = true; spremiGumb.disabled = false; spremiGumb.textContent = "Spremi"; };
+
+  // ---------- Slike ----------
+
+  /** Slika riječi: prava slika ili riječ kao privremena „slika” dok slike nema. */
+  function slika(id: number | null, kl = "", natpis = sRijecima): HTMLElement {
+    const r = R(id);
+    if (!r) return h("div", { class: `z-slika prazna ${kl}` }, h("span", {}, "?"));
+    return h("div", { class: `z-slika ${kl}` },
+      r.slika ? h("img", { src: r.slika, alt: r.rijec, loading: "lazy", draggable: "false" })
+        : h("span", { class: "z-bez", style: r.rijec.length > 7 ? `--m:${Math.max(0.55, 1 - (r.rijec.length - 7) * 0.08)}` : undefined }, VELIKO(r.rijec)),
+      natpis && r.slika ? h("span", { class: "z-natpis" }, VELIKO(r.rijec)) : null,
+    );
+  }
+
+  // ---------- Odabir riječi (dialog) ----------
+
+  const dlg = h("dialog", { class: "z-birac" });
+  dodaj(korijen, dlg);
+  function biraj(trenutna: number | null, uzor: number | null, nacin: "rima" | "ne-rima" | null, gotovo: (id: number | null) => void) {
+    let filtar: "sve" | "rima" | "ne-rima" = nacin ?? "sve";
+    let samoSlika = false;
+    const u = R(uzor);
+    const trazi = h("input", { type: "text", placeholder: "Traži riječ ili rimu (npr. -ava)…", autofocus: true });
+    const lista = h("div", { class: "z-lista" });
+    const filtri = h("div", { class: "z-filtri" });
+    const crtaj = () => {
+      const q = trazi.value.trim().toLocaleLowerCase("hr");
+      const rima = q.startsWith("-") ? VELIKO(q.slice(1)) : null;
+      zamijeni(filtri, 
+        ...(u ? ([["sve", "Sve"], ["rima", `Rimuje se s ${VELIKO(u.rijec)}`], ["ne-rima", `Ne rimuje se s ${VELIKO(u.rijec)}`]] as const).map(([k, t]) =>
+          h("button", { type: "button", class: `z-cip${filtar === k ? " on" : ""}`, onclick: () => { filtar = k; crtaj(); } }, t)) : []),
+        h("button", { type: "button", class: `z-cip${samoSlika ? " on" : ""}`, onclick: () => { samoSlika = !samoSlika; crtaj(); } }, "Samo sa slikom"),
+      );
+      const svi = p.rijeci.filter((r) =>
+        (!q || (rima ? r.rima?.endsWith(rima) : r.rijec.toLocaleLowerCase("hr").includes(q))) &&
+        (!samoSlika || r.slika) &&
+        (!u || filtar === "sve" || (filtar === "rima" ? rimujuSe(u, r) : !rimujuSe(u, r) && r.id !== u.id)));
+      zamijeni(lista, 
+        ...svi.slice(0, 120).map((r) => h("button", {
+          type: "button", class: `z-izbor${r.id === trenutna ? " on" : ""}`,
+          onclick: () => { dlg.close(); gotovo(r.id); },
+        }, slika(r.id, "mala", false), h("b", {}, VELIKO(r.rijec)), h("small", {}, r.rima ? `-${r.rima.toLocaleLowerCase("hr")}` : "bez rime"))),
+        svi.length > 120 ? h("p", { class: "blijedo" }, `…i još ${svi.length - 120}. Suzi pretragu.`) : null,
+        !svi.length ? h("p", { class: "blijedo" }, "Nema takvih riječi.") : null,
+      );
+      const nova = trazi.value.trim();
+      if (nova && !rima && !p.rijeci.some((r) => r.rijec.toLocaleLowerCase("hr") === nova.toLocaleLowerCase("hr"))) {
+        dodaj(lista, h("button", { type: "button", class: "gumb mali", onclick: () => dodajRijec(nova) }, `+ Dodaj riječ „${VELIKO(nova)}” u katalog`));
+      }
+    };
+    async function dodajRijec(t: string) {
+      const o = await fetch("/admin/api/rijeci", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rijec: t }) });
+      const j: any = await o.json();
+      if (!o.ok) { alert(j.error ?? "Nije uspjelo"); return; }
+      p.rijeci.push(j); p.rijeci.sort((a, b) => a.rijec.localeCompare(b.rijec, "hr")); rijeci.set(j.id, j);
+      dlg.close(); gotovo(j.id);
+    }
+    trazi.oninput = crtaj;
+    zamijeni(dlg, 
+      h("div", { class: "z-birac-vrh" },
+        h("b", {}, u ? `Uz ${VELIKO(u.rijec)} (-${(u.rima ?? "?").toLocaleLowerCase("hr")})` : "Odaberi sliku"),
+        trenutna !== null ? h("button", { type: "button", class: "gumb mali tihi", onclick: () => { dlg.close(); gotovo(null); } }, "Isprazni") : null,
+        h("button", { type: "button", class: "gumb mali tihi", onclick: () => dlg.close() }, "Zatvori")),
+      trazi, filtri, lista);
+    crtaj();
+    dlg.showModal();
+  }
+
+  /** Slot u editoru: klik otvara birač. */
+  function slot(id: number | null, postavi: (id: number | null) => void, o: { uzor?: number | null; nacin?: "rima" | "ne-rima"; tocno?: boolean; naTocno?: () => void; oznakaTocno?: string } = {}) {
+    const r = R(id);
+    return h("div", { class: `z-slot${o.tocno ? " tocno" : ""}` },
+      h("button", { type: "button", class: "z-slot-slika", title: "Promijeni sliku",
+        onclick: () => biraj(id, o.uzor ?? null, o.nacin ?? null, (n) => { postavi(n); oznaci(); osvjezi(); }) },
+        r ? slika(id, "", false) : h("div", { class: "z-slika prazna" }, h("span", {}, "+"))),
+      h("div", { class: "z-slot-dno" },
+        h("span", { class: "z-rijec" }, r ? VELIKO(r.rijec) : "prazno"),
+        r?.rima ? h("span", { class: "z-rima" }, `-${r.rima.toLocaleLowerCase("hr")}`) : null),
+      o.naTocno ? h("button", { type: "button", class: `z-tocno${o.tocno ? " on" : ""}`, title: o.oznakaTocno, onclick: () => { o.naTocno!(); oznaci(); osvjezi(); } },
+        o.tocno ? `✓ ${o.oznakaTocno}` : o.oznakaTocno) : null,
+    );
+  }
+
+  const redGumbi = (niz: unknown[], i: number) => h("div", { class: "z-red-gumbi" },
+    h("button", { type: "button", class: "gumb mali tihi", title: "Gore", disabled: i === 0, onclick: () => { [niz[i - 1], niz[i]] = [niz[i], niz[i - 1]]; oznaci(); osvjezi(); } }, "↑"),
+    h("button", { type: "button", class: "gumb mali tihi", title: "Dolje", disabled: i === niz.length - 1, onclick: () => { [niz[i + 1], niz[i]] = [niz[i], niz[i + 1]]; oznaci(); osvjezi(); } }, "↓"),
+    h("button", { type: "button", class: "gumb mali tihi opasno", title: "Makni", onclick: () => { niz.splice(i, 1); oznaci(); osvjezi(); } }, "×"));
+
+  // ---------- Pogled: Uredi ----------
+
+  function uredi(): HTMLElement {
+    if (vrsta === "odabir") {
+      const s = sadrzaj as Odabir;
+      return h("div", { class: "z-uredi" },
+        ...s.stavke.map((x, i) => h("div", { class: "ploha z-red-uredi" },
+          h("div", { class: "z-red-broj" }, String(i + 1)),
+          h("div", { class: "z-odabir-zadana" }, h("small", {}, "Zadana"), slot(x.zadana, (n) => (x.zadana = n))),
+          h("div", { class: "z-strelica" }, "→"),
+          h("div", { class: "z-ponudeno" }, ...x.ponudeno.map((pid, j) => slot(pid, (n) => (x.ponudeno[j] = n), {
+            uzor: x.zadana, nacin: j === x.tocno ? "rima" : "ne-rima", tocno: j === x.tocno, naTocno: () => (x.tocno = j), oznakaTocno: "rimuje se",
+          }))),
+          redGumbi(s.stavke, i))),
+        h("button", { type: "button", class: "gumb", onclick: () => { s.stavke.push({ zadana: null, ponudeno: Array(PONUDENIH).fill(null), tocno: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
+    }
+    if (vrsta === "uljez") {
+      const s = sadrzaj as Uljez;
+      return h("div", { class: "z-uredi" },
+        ...s.stavke.map((x, i) => {
+          const uzor = x.slike.find((id, j) => j !== x.uljez && id !== null) ?? null;
+          return h("div", { class: "ploha z-red-uredi" },
+            h("div", { class: "z-red-broj" }, String(i + 1)),
+            h("div", { class: "z-cetiri" }, ...x.slike.map((pid, j) => slot(pid, (n) => (x.slike[j] = n), {
+              uzor: j === x.uljez ? uzor : x.slike.find((id, k) => k !== j && k !== x.uljez && id !== null) ?? null,
+              nacin: j === x.uljez ? "ne-rima" : "rima", tocno: j === x.uljez, naTocno: () => (x.uljez = j), oznakaTocno: "uljez",
+            }))),
+            redGumbi(s.stavke, i));
+        }),
+        h("button", { type: "button", class: "gumb", onclick: () => { s.stavke.push({ slike: Array(U_REDU).fill(null), uljez: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
+    }
+    if (vrsta === "povezivanje") {
+      const s = sadrzaj as Povezivanje;
+      const makni = (i: number) => {
+        s.parovi.splice(i, 1);
+        s.desno_redoslijed = s.desno_redoslijed.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x));
+        oznaci(); osvjezi();
+      };
+      return h("div", { class: "z-uredi" },
+        h("p", { class: "blijedo sitno" }, "Upiši parove koji se rimuju. Desni stupac se na ekranu i papiru prikazuje promiješan (redoslijed vidiš u Ispisu)."),
+        ...s.parovi.map((x, i) => h("div", { class: "ploha z-red-uredi" },
+          h("div", { class: "z-red-broj" }, String(i + 1)),
+          slot(x.lijevo, (n) => (x.lijevo = n)),
+          h("div", { class: "z-strelica" }, "⟷"),
+          slot(x.desno, (n) => (x.desno = n), { uzor: x.lijevo, nacin: "rima" }),
+          h("div", { class: "z-red-gumbi" }, h("button", { type: "button", class: "gumb mali tihi opasno", title: "Makni par", onclick: () => makni(i) }, "×")))),
+        h("div", { class: "z-gumbi" },
+          s.parovi.length < 8 ? h("button", { type: "button", class: "gumb", onclick: () => { s.parovi.push({ lijevo: null, desno: null }); s.desno_redoslijed.push(s.parovi.length - 1); oznaci(); osvjezi(); } }, "+ Dodaj par") : null,
+          h("button", { type: "button", class: "gumb tihi", onclick: () => { s.desno_redoslijed = promijesajRed(s.parovi.length); oznaci(); osvjezi(); } }, "Promiješaj desni stupac")));
+    }
+    const s = sadrzaj as Listic;
+    return h("div", { class: "z-uredi" },
+      h("div", { class: "z-listic-uredi" }, ...s.kartice.map((k, i) => h("div", { class: "ploha z-kartica-uredi" },
+        slot(k.rijec_id, (n) => { const stara = R(k.rijec_id); k.rijec_id = n; if (!k.tekst || (stara && k.tekst === VELIKO(stara.rijec))) k.tekst = n ? VELIKO(R(n)!.rijec) : ""; }),
+        h("input", { type: "text", value: k.tekst, placeholder: "Tekst ispod slike", maxLength: 200, oninput: (e: Event) => { k.tekst = (e.target as HTMLInputElement).value; oznaci(); } }),
+        redGumbi(s.kartice, i)))),
+      h("button", { type: "button", class: "gumb", onclick: () => { s.kartice.push({ rijec_id: null, tekst: "" }); oznaci(); osvjezi(); } }, "+ Dodaj karticu"));
+  }
+
+  function promijesajRed(n: number): number[] {
+    const r = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [r[i], r[j]] = [r[j], r[i]]; }
+    if (n > 1 && r.every((x, i) => x === i)) r.push(r.shift()!);
+    return r;
+  }
+
+  // ---------- Pogled: Dijete (interaktivno) ----------
+
+  let odgovori: Odgovor[] = [];
+  let rijeseno = new Set<number>();          // stavke / lijevi indeksi riješeni točno
+  let spojevi: { l: number; d: number }[] = [];
+  let odabranLijevi: number | null = null;
+
+  let t0 = performance.now();               // vrijeme odgovora od početka rješavanja, ne od zadnjeg crtanja
+  function resetRjesavanja() { odgovori = []; rijeseno = new Set(); spojevi = []; odabranLijevi = null; t0 = performance.now(); }
+
+  function dijete(): HTMLElement {
+    const ms = () => Math.round(performance.now() - t0);
+    const kraj = (ukupno: number) => {
+      if (rijeseno.size < ukupno) return null;
+      const o = ocijeni(vrsta, sadrzaj, odgovori);
+      return h("div", { class: "z-bravo" }, h("b", {}, "Bravo!"), ` Iz prvog pokušaja točno ${o.tocnih} od ${o.ukupno}.`,
+        h("button", { type: "button", class: "gumb mali", onclick: () => { resetRjesavanja(); osvjezi(); } }, "Ponovi"));
+    };
+    const glava = h("div", { class: "z-dijete-glava" }, h("h2", {}, naslov || VRSTE[vrsta].naziv), uputa ? h("p", {}, uputa) : null);
+
+    if (vrsta === "odabir" || vrsta === "uljez") {
+      const st = (sadrzaj as Odabir | Uljez).stavke;
+      const tocan = (i: number) => (vrsta === "odabir" ? (st[i] as Odabir["stavke"][0]).tocno : (st[i] as Uljez["stavke"][0]).uljez);
+      const igraj = (i: number, j: number, gumb: HTMLElement) => {
+        if (rijeseno.has(i)) return;
+        odgovori.push({ stavka: i, odabrano: j, ms: ms() });
+        if (j === tocan(i)) { rijeseno.add(i); osvjezi(); }
+        else { gumb.classList.remove("krivo"); void gumb.offsetWidth; gumb.classList.add("krivo"); }
+      };
+      return h("div", { class: `z-dijete z-${vrsta}` }, glava,
+        ...st.map((x, i) => {
+          const gotov = rijeseno.has(i);
+          if (vrsta === "odabir") {
+            const o = x as Odabir["stavke"][0];
+            return h("div", { class: `z-zadatak${gotov ? " gotov" : ""}` },
+              h("div", { class: "z-zadana" }, slika(o.zadana, "velika")),
+              h("div", { class: "z-izbori" }, ...o.ponudeno.map((pid, j) => {
+                const b = h("button", { type: "button", class: `z-karta${gotov && j === o.tocno ? " pogodak" : ""}`, onclick: () => igraj(i, j, b) }, slika(pid));
+                return b;
+              })));
+          }
+          const u = x as Uljez["stavke"][0];
+          return h("div", { class: `z-zadatak z-red4${gotov ? " gotov" : ""}` }, ...u.slike.map((pid, j) => {
+            const b = h("button", { type: "button", class: `z-karta${gotov && j === u.uljez ? " uljez-pogodak" : ""}`, onclick: () => igraj(i, j, b) }, slika(pid));
+            return b;
+          }));
+        }), kraj(st.length));
+    }
+
+    if (vrsta === "povezivanje") {
+      const s = sadrzaj as Povezivanje;
+      const platno = h("div", { class: "z-povezi" });
+      const svg = document.createElementNS(SVG, "svg");
+      svg.classList.add("z-crte");
+      const lijevi = s.parovi.map((par, i) => h("button", {
+        type: "button", class: `z-karta${odabranLijevi === i ? " odabran" : ""}${rijeseno.has(i) ? " spojen" : ""}`,
+        onclick: () => { if (!rijeseno.has(i)) { odabranLijevi = odabranLijevi === i ? null : i; osvjezi(); } },
+      }, slika(par.lijevo), h("i", { class: "z-tocka desno" })));
+      const desni = s.desno_redoslijed.map((pi, k) => {
+        const b = h("button", {
+          type: "button", class: `z-karta${spojevi.some((x) => x.d === k) ? " spojen" : ""}`,
+          onclick: () => {
+            if (odabranLijevi === null || spojevi.some((x) => x.d === k)) return;
+            odgovori.push({ lijevo: odabranLijevi, desno: k, ms: ms() });
+            if (pi === odabranLijevi) { spojevi.push({ l: odabranLijevi, d: k }); rijeseno.add(odabranLijevi); odabranLijevi = null; osvjezi(); }
+            else { b.classList.remove("krivo"); void b.offsetWidth; b.classList.add("krivo"); }
+          },
+        }, h("i", { class: "z-tocka lijevo" }), slika(s.parovi[pi].desno));
+        return b;
+      });
+      dodaj(platno, svg, h("div", { class: "z-stupac" }, ...lijevi), h("div", { class: "z-stupac" }, ...desni));
+      const crtajCrte = () => {
+        const o = platno.getBoundingClientRect();
+        zamijeni(svg, ...spojevi.map(({ l, d }) => {
+          const a = lijevi[l].querySelector(".z-tocka")!.getBoundingClientRect(), b = desni[d].querySelector(".z-tocka")!.getBoundingClientRect();
+          const c = document.createElementNS(SVG, "line");
+          c.setAttribute("x1", String(a.x + a.width / 2 - o.x)); c.setAttribute("y1", String(a.y + a.height / 2 - o.y));
+          c.setAttribute("x2", String(b.x + b.width / 2 - o.x)); c.setAttribute("y2", String(b.y + b.height / 2 - o.y));
+          return c;
+        }));
+      };
+      requestAnimationFrame(crtajCrte);
+      new ResizeObserver(crtajCrte).observe(platno);
+      return h("div", { class: "z-dijete" }, glava, platno, kraj(s.parovi.length));
+    }
+
+    return h("div", { class: "z-dijete" }, glava, listicMreza(sadrzaj as Listic));
+  }
+
+  function listicMreza(s: Listic) {
+    return h("div", { class: "z-listic" }, ...s.kartice.filter((k) => k.rijec_id || k.tekst).map((k) =>
+      h("figure", {}, slika(k.rijec_id, "", false), h("figcaption", {}, k.tekst))));
+  }
+
+  // ---------- Pogled: Ispis (A4) ----------
+
+  function ispis(): HTMLElement {
+    let tijelo: HTMLElement;
+    if (vrsta === "odabir") {
+      tijelo = h("div", { class: "a4-odabir" }, ...(sadrzaj as Odabir).stavke.map((x) => h("div", { class: "a4-red" },
+        h("div", { class: "a4-zadana" }, slika(x.zadana)), h("div", { class: "a4-crta" }),
+        ...x.ponudeno.map((pid) => h("div", { class: "a4-izbor" }, slika(pid))))));
+    } else if (vrsta === "uljez") {
+      tijelo = h("div", { class: "a4-uljez" }, ...(sadrzaj as Uljez).stavke.map((x) => h("div", { class: "a4-red" },
+        ...x.slike.map((pid) => h("div", { class: "a4-izbor" }, slika(pid))))));
+    } else if (vrsta === "povezivanje") {
+      const s = sadrzaj as Povezivanje;
+      tijelo = h("div", { class: "a4-povezi" },
+        h("div", { class: "a4-stupac" }, ...s.parovi.map((x) => h("div", { class: "a4-par" }, slika(x.lijevo), h("i", { class: "a4-tocka" })))),
+        h("div", { class: "a4-stupac" }, ...s.desno_redoslijed.map((pi) => h("div", { class: "a4-par" }, h("i", { class: "a4-tocka" }), slika(s.parovi[pi].desno)))));
+    } else {
+      tijelo = listicMreza(sadrzaj as Listic);
+    }
+    return h("div", { class: "a4-okvir" }, h("article", { class: `a4 a4-${vrsta}` },
+      h("header", {}, h("h1", {}, naslov || VRSTE[vrsta].naziv), uputa ? h("p", {}, uputa) : null,
+        h("div", { class: "a4-ime" }, "Ime: ", h("span", {}))),
+      tijelo,
+      h("footer", {}, "logomedo.com")));
+  }
+
+  // ---------- Okvir: kartice pogleda, bočna ploča, spremanje ----------
+
+  const spremiGumb = h("button", { type: "button", class: "gumb glavni", disabled: true, onclick: spremi }, "Spremljeno");
+  async function spremi() {
+    spremiGumb.disabled = true; spremiGumb.textContent = "Spremam…";
+    const o = await fetch(`/admin/api/zadatak/${z.id}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ naslov, uputa, podrucje_id: podrucje, sadrzaj }),
+    });
+    const j: any = await o.json().catch(() => ({}));
+    if (!o.ok) { spremiGumb.disabled = false; spremiGumb.textContent = "Spremi (greška)"; alert(j.error ?? `Greška ${o.status}`); return; }
+    promijenjeno = false; spremiGumb.textContent = j.verzija !== z.aktivna_verzija ? `Spremljeno kao verzija ${j.verzija}` : "Spremljeno";
+    z.aktivna_verzija = j.verzija;
+  }
+  addEventListener("beforeunload", (e) => { if (promijenjeno) e.preventDefault(); });
+  addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (promijenjeno) spremi(); } });
+
+  function ploca(): HTMLElement {
+    const upozorenja = provjeri(vrsta, sadrzaj, rijeci);
+    const brojStavki = h("input", { type: "number", min: 1, max: 12, value: postavke.stavki, oninput: (e: Event) => (postavke.stavki = Number((e.target as HTMLInputElement).value) || 4) });
+    return h("aside", { class: "z-ploca" },
+      h("div", { class: "ploha z-polja" },
+        h("label", {}, "Naslov"),
+        h("input", { type: "text", value: naslov, maxLength: 200, placeholder: VRSTE[vrsta].naziv, oninput: (e: Event) => { naslov = (e.target as HTMLInputElement).value; oznaci(); } }),
+        h("label", {}, "Uputa djetetu"),
+        h("textarea", { rows: 2, maxLength: 400, value: uputa, oninput: (e: Event) => { uputa = (e.target as HTMLTextAreaElement).value; oznaci(); } }),
+        h("label", {}, "Područje"),
+        h("select", { onchange: (e: Event) => { podrucje = Number((e.target as HTMLSelectElement).value) || null; oznaci(); } },
+          h("option", { value: "" }, "—"),
+          ...p.podrucja.map((x) => h("option", { value: x.id, selected: x.id === podrucje }, x.naziv))),
+        spremiGumb,
+        z.rjesavanja > 0 ? h("p", { class: "sitno blijedo" }, `Verzija ${z.aktivna_verzija} je rješavana ${z.rjesavanja}×: spremanje otvara novu verziju.`) : null),
+      upozorenja.length
+        ? h("div", { class: "ploha z-upozorenja" }, h("b", {}, `Upozorenja (${upozorenja.length})`),
+          h("ul", {}, ...upozorenja.map((u) => h("li", {}, h("span", { class: "blijedo" }, `${u.gdje}: `), u.poruka))))
+        : h("div", { class: "ploha z-upozorenja ok" }, "✓ Zadatak je ispravan."),
+      VRSTE[vrsta].odnos || vrsta === "listic" ? h("details", { class: "ploha z-slozi" },
+        h("summary", {}, "Složi automatski iz kataloga"),
+        h("label", {}, vrsta === "povezivanje" ? "Parova" : vrsta === "listic" ? "Kartica (do 12)" : "Redova"), brojStavki,
+        h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: postavke.maxSlogova === 3, onchange: (e: Event) => (postavke.maxSlogova = (e.target as HTMLInputElement).checked ? 3 : 0) }), " Najviše 3 sloga"),
+        h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: postavke.samoSaSlikom, onchange: (e: Event) => (postavke.samoSaSlikom = (e.target as HTMLInputElement).checked) }), " Samo riječi sa slikom"),
+        h("button", { type: "button", class: "gumb", onclick: () => {
+          if (rijeciU(vrsta, sadrzaj).length && !confirm("Zamijeniti sadržaj novim prijedlogom?")) return;
+          sadrzaj = slozi(vrsta, p.rijeci, postavke); oznaci(); resetRjesavanja(); osvjezi();
+        } }, "Složi")) : null);
+  }
+
+  const kartice = h("nav", { class: "z-kartice" });
+  const tijelo = h("div", { class: "z-tijelo" });
+  dodaj(korijen, kartice, tijelo);
+
+  function osvjezi() {
+    zamijeni(kartice, 
+      ...([["uredi", "Uredi"], ["dijete", "Dijete rješava"], ["ispis", "Ispis"]] as const).map(([k, t]) =>
+        h("button", { type: "button", class: `z-kartica${pogled === k ? " on" : ""}`, onclick: () => { pogled = k; history.replaceState(null, "", `#${k}`); resetRjesavanja(); osvjezi(); } }, t)),
+      h("span", { class: "z-razmak" }),
+      pogled !== "uredi" ? h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: sRijecima, onchange: (e: Event) => { sRijecima = (e.target as HTMLInputElement).checked; osvjezi(); } }), " Riječi ispod slika") : null,
+      pogled === "ispis" ? h("button", { type: "button", class: "gumb glavni mali", onclick: () => print() }, "Ispiši") : null,
+      pogled !== "uredi" ? h("button", { type: "button", class: "gumb mali", onclick: () => document.documentElement.requestFullscreen?.() }, "Cijeli zaslon") : null,
+    );
+    if (pogled === "uredi") zamijeni(tijelo, h("div", { class: "z-raspored" }, uredi(), ploca()));
+    else if (pogled === "dijete") zamijeni(tijelo, h("p", { class: "sitno blijedo z-napomena" }, "Pregled kako dijete rješava. U adminu se rješavanje ne sprema."), dijete());
+    else zamijeni(tijelo, ispis());
+  }
+  osvjezi();
+}
+
+// Za konzolu i testiranje ključa rime iz preglednika.
+(globalThis as any).logomedoRima = { izvediRimu, brojSlogova };

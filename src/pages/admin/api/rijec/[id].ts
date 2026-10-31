@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { safeNext } from "../../../../lib/admin/sesija";
 
-/** Opis za sliku i primjer rečenice; potvrda izvedene pozicije. */
+/** Opis za sliku, primjer rečenice i ručna rima; potvrda izvedene pozicije. */
 export const POST: APIRoute = async ({ request, params }) => {
   const f = await request.formData();
   const id = Number(params.id);
@@ -16,7 +16,9 @@ export const POST: APIRoute = async ({ request, params }) => {
       "DELETE FROM rijec_glas WHERE rijec_id = ? AND pozicija = ? AND glas_id = (SELECT id FROM glasovi WHERE slug = ?)",
     ).bind(id, String(f.get("pozicija")), String(f.get("glas"))).run();
   } else {
-    await env.DB.prepare("UPDATE rijeci SET opis_za_sliku = ?, recenica = ? WHERE id = ?").bind(t("opis_za_sliku"), t("recenica"), id).run();
+    const rima = t("rima")?.replace(/^-/, "").toLocaleUpperCase("hr").slice(0, 12) ?? null;
+    await env.DB.prepare("UPDATE rijeci SET opis_za_sliku = ?, recenica = ?, rima = ? WHERE id = ?")
+      .bind(t("opis_za_sliku"), t("recenica"), rima, id).run();
   }
   return new Response(null, { status: 303, headers: { location: safeNext(String(f.get("next") ?? "")) } });
 };

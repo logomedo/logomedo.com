@@ -4,6 +4,7 @@ import Ikona from "../../../components/Ikona.astro";
 import { kad, rijec as nadji, NAZIV_POZICIJE } from "../../../lib/katalog";
 import { safeNext } from "../../../lib/admin/sesija";
 import { javniUrl } from "../../../lib/generiranje";
+import { izvediRimu } from "../../../lib/zadaci/rima";
 
 const r = await nadji(Astro.params.slug!);
 if (!r) return new Response("Nema te riječi", { status: 404 });
@@ -67,6 +68,10 @@ const dodano = Astro.url.searchParams.get("dodano");
         <div>
           <label for="recenica">Primjer rečenice</label>
           <input id="recenica" type="text" name="recenica" value={r.recenica ?? ""} maxlength="300" />
+        </div>
+        <div>
+          <label for="rima">Rima (prazno = iz pravopisa: <span class="mono">-{(izvediRimu(r.rijec) ?? "?").toLocaleLowerCase("hr")}</span>)</label>
+          <input id="rima" type="text" name="rima" value={r.rima ?? ""} maxlength="12" placeholder={izvediRimu(r.rijec)?.toLocaleLowerCase("hr") ?? ""} />
         </div>
         <button class="gumb mali" type="submit">Spremi</button>
       </form>
