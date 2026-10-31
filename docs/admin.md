@@ -12,7 +12,15 @@ skladu s njima.
 - CSRF: svaki POST mora imati `Origin` jednak originu. CSP s nonceom.
 - `/api/runner/*` ne koristi sesiju nego bearer `RUNNER_TOKEN` (secret).
 
-## Otvoreno prije produkcije
+## Produkcija (31. 10. 2026.)
+
+Deployano na D.O.M. račun: Worker `logomedo` (custom domain `logomedo.com` i `www`, a www
+ide 301 na apex), D1 `logomedo` (`e67d3840-…`, migrirano i seedano), R2 `logomedo-slike`,
+secret `RUNNER_TOKEN` (lokalno u `.env.production`, gitignored; `scripts/runner.sh --prod`).
+Access aplikacija „LogoMedo admin (sso)” koristi postojeću politiku „OMM admini”.
+Stari Firebase A zapisi za apex i www su obrisani; `stage.logomedo.com` je ostao na Firebaseu.
+
+## Bilo otvoreno prije produkcije (stavke 1–4 i 6 su gotove)
 
 1. `wrangler d1 create logomedo` → upisati `database_id` u `wrangler.jsonc`; `npm run db:migrate`;
    seed remote (`wrangler d1 execute logomedo --remote --file seed/katalog.sql`).

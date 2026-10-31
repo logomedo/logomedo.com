@@ -4,6 +4,7 @@
 #
 #   scripts/runner.sh            # radi dok ga ne prekineš (Ctrl-C); prazan red = čeka 30 s
 #   scripts/runner.sh --jednom   # jedan posao pa kraj (za probu)
+#   scripts/runner.sh --prod     # produkcija: LOGOMEDO_URL i RUNNER_TOKEN iz .env.production (gitignored)
 #
 # Okolina:
 #   LOGOMEDO_URL   default http://localhost:4321 (produkcija: https://logomedo.com)
@@ -17,13 +18,20 @@
 set -euo pipefail
 
 KORIJEN="$(cd "$(dirname "$0")/.." && pwd)"
+JEDNOM=0
+for a in "$@"; do
+    case "$a" in
+        --jednom) JEDNOM=1 ;;
+        --prod) set -a; source "$KORIJEN/.env.production"; set +a ;;
+        *) echo "nepoznat argument: $a" >&2; exit 2 ;;
+    esac
+done
 URL="${LOGOMEDO_URL:-http://localhost:4321}"
 TOKEN="${RUNNER_TOKEN:-$(sed -n 's/^RUNNER_TOKEN=//p' "$KORIJEN/.dev.vars" 2>/dev/null || true)}"
 MODEL="${AGY_MODEL:-gemini-3.8-flash-low}"
 SESSION="${AGY_SESSION:-logomedo-agy}"
 W="${AGY_DIR:-$HOME/git/.agy-logomedo}"
 TIMEOUT_S="${AGY_TIMEOUT:-300}"
-JEDNOM=0; [[ "${1:-}" == "--jednom" ]] && JEDNOM=1
 [[ -n "$TOKEN" ]] || { echo "Nema RUNNER_TOKEN (env ili .dev.vars)" >&2; exit 2; }
 mkdir -p "$W"
 

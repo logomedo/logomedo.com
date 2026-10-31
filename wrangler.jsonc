@@ -14,8 +14,7 @@
     {
       "binding": "DB",
       "database_name": "logomedo",
-      // TODO: `wrangler d1 create logomedo` pa upisati pravi ID. Lokalno radi i ovako.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "e67d3840-b2bc-4fde-8915-a0d0cddc61d4",
       "migrations_dir": "./migrations"
     }
   ],
@@ -27,13 +26,17 @@
     // ADMIN_EMAILS se provjerava pri svakom zahtjevu; micanje iz popisa odmah gasi sesije.
     "ADMIN_EMAILS": "admin1@example.com,admin2@example.com",
     "ADMIN_HOST": "logomedo.com",
-    // TODO: Access aplikacija „LogoMedo admin (sso)” za logomedo.com/admin/sso, pa njen AUD ovdje.
-    // Dok je ACCESS_AUD prazan, /admin/sso vraća 503 (prijava samo passkeyem).
+    // AUD Access aplikacije „LogoMedo admin (sso)” (politika „OMM admini”, OTP na e-mail),
+    // koja štiti logomedo.com/admin/sso. Prazan AUD = /admin/sso vraća 503.
     "ACCESS_TEAM_DOMAIN": "domovina.cloudflareaccess.com",
-    "ACCESS_AUD": ""
+    "ACCESS_AUD": "81d4dce3723d0cada52d1984319149f3a21a1e76d8f4affd04e1b7e0b4fe6e56"
   },
   // Secret RUNNER_TOKEN (wrangler secret put / .dev.vars): lokalni runner, /api/runner/*.
 
-  "routes": [{ "pattern": "logomedo.com", "custom_domain": true }],
+  // www se u middlewareu preusmjerava na apex. stage.logomedo.com ostaje stari Firebase stage.
+  "routes": [
+    { "pattern": "logomedo.com", "custom_domain": true },
+    { "pattern": "www.logomedo.com", "custom_domain": true }
+  ],
   "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } }
 }

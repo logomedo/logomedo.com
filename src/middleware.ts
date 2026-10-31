@@ -35,6 +35,8 @@ async function runnerOk(request: Request): Promise<boolean> {
 }
 
 export const onRequest = defineMiddleware(async ({ request, url, locals }, next) => {
+  // Jedan kanonski host: www → apex (passkey rpID i kolačić su vezani uz host).
+  if (url.hostname === "www.logomedo.com") return Response.redirect(`https://logomedo.com${url.pathname}${url.search}`, 301);
   if (url.pathname.startsWith("/api/runner/")) {
     return (await runnerOk(request)) ? next() : json({ error: "unauthorized" }, 401);
   }
