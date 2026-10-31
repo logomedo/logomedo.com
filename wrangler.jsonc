@@ -24,7 +24,9 @@
   "vars": {
     // /admin (docs/admin.md): Cloudflare Access na /admin/sso ili passkey.
     // ADMIN_EMAILS se provjerava pri svakom zahtjevu; micanje iz popisa odmah gasi sesije.
-    "ADMIN_EMAILS": "admin1@example.com,admin2@example.com",
+    // Isti popis mora biti u Access politici „LogoMedo admini”. Deploy uvijek `npm run deploy`:
+    // Astro kod builda kopira ovu datoteku u dist/server/wrangler.json, a sam `wrangler deploy` šalje staru.
+    "ADMIN_EMAILS": "admin1@example.com,admin2@example.com,admin3@example.com",
     "ADMIN_HOST": "logomedo.com",
     // AUD Access aplikacije „LogoMedo admin (sso)” (politika „OMM admini”, OTP na e-mail),
     // koja štiti logomedo.com/admin/sso. Prazan AUD = /admin/sso vraća 503.

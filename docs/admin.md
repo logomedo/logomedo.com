@@ -17,7 +17,7 @@ skladu s njima.
 Deployano na D.O.M. račun: Worker `logomedo` (custom domain `logomedo.com` i `www`, a www
 ide 301 na apex), D1 `logomedo` (`e67d3840-…`, migrirano i seedano), R2 `logomedo-slike`,
 secret `RUNNER_TOKEN` (lokalno u `.env.production`, gitignored; `scripts/runner.sh --prod`).
-Access aplikacija „LogoMedo admin (sso)” koristi postojeću politiku „OMM admini”.
+Access aplikacija „LogoMedo admin (sso)” (AUD 81d4dce3…). Politika treba biti vlastita „LogoMedo admini” (admin1@example.com, admin2@example.com, admin3@example.com), ne „OMM admini”. Deploy samo `npm run deploy` (build kopira wrangler.jsonc u dist).
 Stari Firebase A zapisi za apex i www su obrisani; `stage.logomedo.com` je ostao na Firebaseu.
 
 ## Bilo otvoreno prije produkcije (stavke 1–4 i 6 su gotove)
