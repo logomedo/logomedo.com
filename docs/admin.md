@@ -17,12 +17,13 @@ skladu s njima.
 1. `wrangler d1 create logomedo` → upisati `database_id` u `wrangler.jsonc`; `npm run db:migrate`;
    seed remote (`wrangler d1 execute logomedo --remote --file seed/katalog.sql`).
 2. `wrangler r2 bucket create logomedo-slike`.
-3. Zero Trust organizacija na **ITalk** računu (zona logomedo.com je tamo, ne na D.O.M.-u
-   gdje je `domovina.cloudflareaccess.com`). Access aplikacija self-hosted, destinacija
-   `logomedo.com/admin/sso`, IdP One-time PIN, politika s e-mailovima iz `ADMIN_EMAILS`.
-   Upisati `ACCESS_TEAM_DOMAIN` i `ACCESS_AUD`.
+3. Access aplikacija na **D.O.M.** računu (tim `domovina.cloudflareaccess.com`, isti kao omm):
+   self-hosted, destinacija `logomedo.com/admin/sso`, IdP One-time PIN, politika s e-mailovima
+   iz `ADMIN_EMAILS`. Upisati njen `ACCESS_AUD`. Access sesija je po timu: tko je prijavljen u
+   omm ili MPT admin, ulazi bez novog koda.
 4. `wrangler secret put RUNNER_TOKEN` (isti token u okolini runnera).
-5. Domena: logomedo.com istječe 17. 11. 2026., a auto-renewal ne prolazi.
+5. Domena: logomedo.com istječe 17. 11. 2026. Registracija je od 31. 10. na D.O.M.-u.
+   Uključiti auto-renew i provjeriti karticu, jer obnova pinka.io i pinka.finance na D.O.M.-u nije prošla.
 6. Sada je na logomedo.com stari app (Firebase). `routes` s `custom_domain` preuzima apex
    kad se deploya. Odlučiti kad.
 

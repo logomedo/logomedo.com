@@ -3,8 +3,9 @@
   "name": "logomedo",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  // ITalk račun, na kojem je i zona logomedo.com.
-  "account_id": "ea7d40d3073ef5286f4903d33eb0bf7e",
+  // D.O.M. račun (kao omm.domovina.ai). logomedo.com je 31. 10. 2026. premješten s ITalka
+  // (registracija i zona), pa vrijedi i Access tim domovina.cloudflareaccess.com.
+  "account_id": "7dc7167b7e2e00923bfa7cd697df14e4",
   // Samo vlastita domena: admin i API ne smiju biti i na *.workers.dev (drugi origin).
   "workers_dev": false,
   "preview_urls": false,
@@ -26,9 +27,9 @@
     // ADMIN_EMAILS se provjerava pri svakom zahtjevu; micanje iz popisa odmah gasi sesije.
     "ADMIN_EMAILS": "admin1@example.com,admin2@example.com",
     "ADMIN_HOST": "logomedo.com",
-    // TODO: Zero Trust organizacija na ITalk računu i Access aplikacija za logomedo.com/admin/sso.
+    // TODO: Access aplikacija „LogoMedo admin (sso)” za logomedo.com/admin/sso, pa njen AUD ovdje.
     // Dok je ACCESS_AUD prazan, /admin/sso vraća 503 (prijava samo passkeyem).
-    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_TEAM_DOMAIN": "domovina.cloudflareaccess.com",
     "ACCESS_AUD": ""
   },
   // Secret RUNNER_TOKEN (wrangler secret put / .dev.vars): lokalni runner, /api/runner/*.
