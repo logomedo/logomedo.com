@@ -1,0 +1,244 @@
+// Radni listić / bilježnica kao PDF, složen u pregledniku (pdf-lib + fontkit, isti pristup
+// kao potvrda u energy.domovina.ai). Čista funkcija nad bajtovima fontova i slika: radi i
+// u testu (node) i u pregledniku, bez dijaloga za ispis i bez mreže u trenutku slaganja.
+//
+// Raspored prati HTML ispis (/b/<slug>/ispis i pogled „Ispis" u editoru): A4, mjere u mm.
+// Fontovi (Nunito 800/900, OFL) ugrađuju se kao podskup, pa hrvatska slova rade svugdje.
+
+import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
+import { borSvg } from "../bor.ts";
+import { BOR_ISPIS_STIL, GRANCICA } from "../ukrasi.ts";
+import type { DokumentPdf, SlikaPdf, StranicaPdf } from "./model.ts";
+import { nacrtajSvg, omjer } from "./svg.ts";
+
+export interface FontoviPdf { tekst: Uint8Array; naslov: Uint8Array }
+/** Slika po URL-u: JPEG ili PNG bajtovi (preglednik ih prije smanji, vidi preglednik.ts). */
+export type SlikePdf = Map<string, Uint8Array>;
+
+const MM = 72 / 25.4;
+const A4 = { w: 210, h: 297 };
+const TINTA = rgb(0x1d / 255, 0x19 / 255, 0x14 / 255);
+const BLIJEDO = rgb(0x9a / 255, 0x90 / 255, 0x7f / 255);
+const BEZ = rgb(0x5c / 255, 0x53 / 255, 0x45 / 255);
+const BIJELO = rgb(1, 1, 1);
+const CRNO = rgb(0, 0, 0);
+
+/** Crtanje u mm s ishodištem gore lijevo (pdf-lib ima točke i ishodište dolje lijevo). */
+class Platno {
+  page: PDFPage;
+  private f: { tekst: PDFFont; naslov: PDFFont };
+  constructor(page: PDFPage, f: { tekst: PDFFont; naslov: PDFFont }) { this.page = page; this.f = f; }
+  X = (mm: number) => mm * MM;
+  Y = (mm: number) => (A4.h - mm) * MM;
+
+  sirina(t: string, pt: number, naslov = false) { return (naslov ? this.f.naslov : this.f.tekst).widthOfTextAtSize(t, pt) / MM; }
+
+  /** Tekst centriran oko `cx`; `y` je vrh retka. Vraća visinu u mm. */
+  tekst(t: string, cx: number, y: number, pt: number, o: { naslov?: boolean; boja?: ReturnType<typeof rgb>; sirina?: number; poravnanje?: "c" | "l" | "d" } = {}) {
+    const font = o.naslov ? this.f.naslov : this.f.tekst;
+    const redovi = o.sirina ? prelomi(t, (s) => this.sirina(s, pt, o.naslov), o.sirina) : [t];
+    const razmak = (pt * 1.25) / MM;
+    redovi.forEach((r, i) => {
+      const w = this.sirina(r, pt, o.naslov);
+      const x = o.poravnanje === "l" ? cx : o.poravnanje === "d" ? cx - w : cx - w / 2;
+      // Osnovna crta je ~0.8 visine fonta ispod vrha retka.
+      this.page.drawText(r, { x: this.X(x), y: this.Y(y + i * razmak + (pt * 0.95) / MM), size: pt, font, color: o.boja ?? TINTA });
+    });
+    return redovi.length * razmak;
+  }
+
+  /** Zaobljeni pravokutnik (x, y gore lijevo, mm). */
+  okvir(x: number, y: number, w: number, h: number, r: number, debljinaPt: number) {
+    const d = `M${r} 0 H${w - r} Q${w} 0 ${w} ${r} V${h - r} Q${w} ${h} ${w - r} ${h} H${r} Q0 ${h} 0 ${h - r} V${r} Q0 0 ${r} 0 Z`;
+    this.page.drawSvgPath(d, { x: this.X(x), y: this.Y(y), scale: MM, color: BIJELO, borderColor: CRNO, borderWidth: debljinaPt / MM });
+  }
+
+  crtkano(x1: number, y: number, x2: number, debljinaPt: number) {
+    this.page.drawLine({ start: { x: this.X(x1), y: this.Y(y) }, end: { x: this.X(x2), y: this.Y(y) }, thickness: debljinaPt, color: CRNO, dashArray: [4, 3] });
+  }
+
+  crta(x1: number, y: number, x2: number) {
+    this.page.drawLine({ start: { x: this.X(x1), y: this.Y(y) }, end: { x: this.X(x2), y: this.Y(y) }, thickness: 0.75, color: CRNO });
+  }
+
+  tocka(cx: number, cy: number, r: number) {
+    this.page.drawCircle({ x: this.X(cx), y: this.Y(cy), size: r * MM, color: CRNO });
+  }
+
+  slika(img: PDFImage, x: number, y: number, w: number, h: number) {
+    // object-fit: contain
+    const s = Math.min(w / img.width, h / img.height);
+    const iw = img.width * s, ih = img.height * s;
+    this.page.drawImage(img, { x: this.X(x + (w - iw) / 2), y: this.Y(y + (h + ih) / 2), width: iw * MM, height: ih * MM });
+  }
+}
+
+/** Prelamanje po riječima (naslovi i upute su kratki, pa jednostavno mjerenje dosta). */
+export function prelomi(t: string, mjeri: (s: string) => number, sirina: number): string[] {
+  const out: string[] = [];
+  let red = "";
+  for (const r of t.split(/\s+/).filter(Boolean)) {
+    const pokus = red ? `${red} ${r}` : r;
+    if (red && mjeri(pokus) > sirina) { out.push(red); red = r; } else red = pokus;
+  }
+  if (red) out.push(red);
+  return out.length ? out : [""];
+}
+
+export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: FontoviPdf): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  pdf.registerFontkit(fontkit);
+  pdf.setTitle(dok.naslov);
+  pdf.setCreator("logomedo.com");
+  pdf.setProducer("logomedo.com");
+  pdf.setLanguage("hr");
+  const f = {
+    tekst: await pdf.embedFont(fontovi.tekst, { subset: true }),
+    naslov: await pdf.embedFont(fontovi.naslov, { subset: true }),
+  };
+
+  // Svaka slika se ugrađuje jednom, koliko god se puta pojavila.
+  const ugradene = new Map<string, PDFImage | null>();
+  const ugradi = async (url: string | null) => {
+    if (!url) return null;
+    if (ugradene.has(url)) return ugradene.get(url)!;
+    const b = slike.get(url);
+    let img: PDFImage | null = null;
+    if (b) {
+      try { img = b[0] === 0x89 ? await pdf.embedPng(b) : await pdf.embedJpg(b); } catch { img = null; }
+    }
+    ugradene.set(url, img);
+    return img;
+  };
+
+  const nova = () => {
+    const p = new Platno(pdf.addPage([A4.w * MM, A4.h * MM]), f);
+    if (dok.ukrasi) {
+      const k = 34, r = 4;
+      for (const [x, y, zx, zy] of [[r, r, false, false], [A4.w - r - k, r, true, false], [r, A4.h - r - k, false, true], [A4.w - r - k, A4.h - r - k, true, true]] as const)
+        nacrtajSvg(p.page, GRANCICA, { x: p.X(x), y: p.Y(y), sirina: k * MM, zrcaliX: zx, zrcaliY: zy });
+    }
+    return p;
+  };
+  const podnozje = (p: Platno, poravnanje: "c" | "d") =>
+    p.tekst(dok.podnozje, poravnanje === "c" ? A4.w / 2 : A4.w - 15, A4.h - 10, 8, { boja: BLIJEDO, poravnanje });
+
+  /** Slika u okviru s natpisom ispod; `y` je vrh okvira, `s` stranica kvadrata. Vraća ukupnu visinu. */
+  const slikaUOkviru = async (p: Platno, sl: SlikaPdf, x: number, y: number, s: number, debljinaPt = 1.1) => {
+    p.okvir(x, y, s, s, 4, debljinaPt);
+    const img = await ugradi(sl.url);
+    if (img) p.slika(img, x + 2, y + 2, s - 4, s - 4);
+    else {
+      // Bez slike: riječ u okviru, smanjena da stane.
+      let pt = 14;
+      while (pt > 7 && p.sirina(sl.rijec, pt, true) > s - 5) pt -= 0.5;
+      p.tekst(sl.rijec, x + s / 2, y + s / 2 - pt / MM / 1.6, pt, { naslov: true, boja: BEZ });
+    }
+    if (!sl.natpis) return s;
+    let pt = 12;
+    while (pt > 7 && p.sirina(sl.natpis, pt) > s + 4) pt -= 0.5;
+    p.tekst(sl.natpis, x + s / 2, y + s + 1.5, pt);
+    return s + 1.5 + (pt * 1.25) / MM;
+  };
+  const natpisa = (sl: SlikaPdf[]) => (sl.some((x) => x.natpis) ? 7 : 0);
+
+  // ---------- Naslovnica bilježnice ----------
+  if (dok.naslovnica) {
+    const p = nova();
+    const n = dok.naslovnica;
+    let y = 28;
+    y += p.tekst(n.naslov, A4.w / 2, y, 34, { naslov: true, sirina: 150 }) + 6;
+    y += p.tekst(n.uputa, A4.w / 2, y, 14, { sirina: 150 }) + 8;
+    const ime = A4.h - 14 - 10;
+    const svg = borSvg(n.lampica, { zaIspis: true });
+    const visina = Math.min(175, ime - 8 - y);
+    const sirina = visina / omjer(svg);
+    nacrtajSvg(p.page, svg, { x: p.X(A4.w / 2 - sirina / 2), y: p.Y(y + (ime - 8 - y - visina) / 2), sirina: sirina * MM, klase: BOR_ISPIS_STIL });
+    imeCrta(p, A4.w / 2, ime, 80, 13, true);
+    podnozje(p, "c");
+  }
+
+  function imeCrta(p: Platno, x: number, y: number, duljina: number, pt: number, centrirano: boolean) {
+    const oznaka = "Ime:";
+    const w = p.sirina(oznaka, pt) + 2 + duljina;
+    const x0 = centrirano ? x - w / 2 : x;
+    p.tekst(oznaka, x0, y, pt, { poravnanje: "l" });
+    p.crta(x0 + p.sirina(oznaka, pt) + 2, y + (pt * 1.1) / MM, x0 + w);
+  }
+
+  // ---------- Stranice zadataka ----------
+  for (const s of dok.stranice) {
+    const p = nova();
+    const L = dok.ukrasi ? 20 : 15, D = A4.w - L;
+    let y = dok.ukrasi ? 22 : 16;
+    if (s.naslov) y += p.tekst(s.naslov, L, y, 22, { naslov: true, poravnanje: "l", sirina: D - L }) + 1;
+    if (s.uputa) {
+      y += dok.ukrasi
+        ? p.tekst(s.uputa, A4.w / 2, y, 17, { naslov: true, sirina: D - L - 24 })
+        : p.tekst(s.uputa, L, y + 1, 13, { poravnanje: "l", sirina: D - L }) + 1;
+    }
+    if (s.ime) { imeCrta(p, L, y + 4, 70, 11, false); y += 10; }
+    y += 8;
+    const dno = A4.h - (dok.ukrasi ? 22 : 18);
+    await tijelo(p, s, L, D, y, dno);
+    podnozje(p, dok.ukrasi ? "c" : "d");
+  }
+
+  async function tijelo(p: Platno, s: StranicaPdf, L: number, D: number, vrh: number, dno: number) {
+    const t = s.tijelo;
+    const W = D - L, H = dno - vrh;
+    // Redovi raspoređeni po visini kao `justify-content: space-around`.
+    const raspodijeli = (n: number, visinaReda: number, max: number) => {
+      const razmak = Math.min(max, (H - n * visinaReda) / n);
+      const pocetak = vrh + (H - n * (visinaReda + razmak)) / 2 + razmak / 2;
+      return Array.from({ length: n }, (_, i) => pocetak + i * (visinaReda + razmak));
+    };
+
+    if (t.vrsta === "odabir") {
+      const z = 38, s3 = 32, g = 6, c = 8;
+      const sirinaReda = z + g + c + g + 3 * s3 + 2 * g;
+      const x0 = L + (W - sirinaReda) / 2;
+      const nat = natpisa(t.redovi.flatMap((r) => [r.zadana, ...r.ponudeno]));
+      const ys = raspodijeli(t.redovi.length, z + nat, 30);
+      for (const [i, r] of t.redovi.entries()) {
+        const y = ys[i];
+        await slikaUOkviru(p, r.zadana, x0, y, z, 2.25);
+        p.crtkano(x0 + z + g, y + z / 2, x0 + z + g + c, 1.5);
+        for (const [j, sl] of r.ponudeno.entries()) await slikaUOkviru(p, sl, x0 + z + 2 * g + c + j * (s3 + g), y + (z - s3) / 2, s3);
+      }
+    }
+
+    if (t.vrsta === "uljez") {
+      const s4 = 37;
+      const razmak = (W - 4 * s4) / 3;
+      const ys = raspodijeli(t.redovi.length, s4 + natpisa(t.redovi.flat()), 25);
+      for (const [i, red] of t.redovi.entries())
+        for (const [j, sl] of red.entries()) await slikaUOkviru(p, sl, L + j * (s4 + razmak), ys[i], s4);
+    }
+
+    if (t.vrsta === "povezivanje") {
+      const n = Math.max(t.lijevo.length, t.desno.length, 1);
+      const nat = natpisa([...t.lijevo, ...t.desno]);
+      const s = Math.min(40, (H - 6 * (n - 1)) / n - nat);
+      const ys = raspodijeli(n, s + nat, 25);
+      const xl = L + 8, xd = D - 8 - s;
+      for (const [i, sl] of t.lijevo.entries()) { await slikaUOkviru(p, sl, xl, ys[i], s); p.tocka(xl + s + 6, ys[i] + s / 2, 2); }
+      for (const [i, sl] of t.desno.entries()) { await slikaUOkviru(p, sl, xd, ys[i], s); p.tocka(xd - 6, ys[i] + s / 2, 2); }
+    }
+
+    if (t.vrsta === "listic") {
+      // 3 stupca × 4 retka; tekst ispod slike.
+      const g = 7, sirinaStupca = (W - 2 * g) / 3;
+      const visinaReda = (H - 3 * g) / 4;
+      const s = Math.min(sirinaStupca, visinaReda - 9);
+      for (const [i, k] of t.kartice.entries()) {
+        const x = L + (i % 3) * (sirinaStupca + g), y = vrh + Math.floor(i / 3) * (visinaReda + g);
+        if (k.slika) await slikaUOkviru(p, k.slika, x + (sirinaStupca - s) / 2, y, s);
+        if (k.tekst) p.tekst(k.tekst, x + sirinaStupca / 2, y + (k.slika ? s + 2 : s / 2), 12, { sirina: sirinaStupca });
+      }
+    }
+  }
+
+  return pdf.save();
+}

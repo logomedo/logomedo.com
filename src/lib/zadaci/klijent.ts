@@ -1,7 +1,7 @@
 // Editor zadatka u pregledniku: tri pogleda istog sadržaja.
 //   Uredi  – slotovi za slike, točan odgovor, upozorenja, spremanje
 //   Dijete – interaktivno rješavanje na tabletu/ekranu (pregled; ne sprema se)
-//   Ispis  – A4 stranica za papir (window.print)
+//   Ispis  – A4 stranica za papir: „Preuzmi PDF" (pdf-lib u pregledniku) ili window.print
 // Sve se crta iz `stanje`; svaka promjena zove `osvjezi()`.
 
 import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
@@ -326,6 +326,23 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       h("footer", {}, "logomedo.com")));
   }
 
+  async function preuzmiPdf(e: Event) {
+    const gumb = e.currentTarget as HTMLButtonElement;
+    const tekst = gumb.textContent;
+    gumb.disabled = true; gumb.textContent = "Pripremam PDF…";
+    try {
+      const [{ dokumentZadatka }, pdf] = await Promise.all([import("../pdf/model.ts"), import("../pdf/preglednik.ts")]);
+      const dok = dokumentZadatka({ vrsta, naslov, uputa, sadrzaj }, p.rijeci, sRijecima);
+      await pdf.preuzmiPdf(dok, pdf.imePdfa(dok.naslov), (g, u) => { gumb.textContent = u ? `Slike ${g}/${u}…` : "Pripremam PDF…"; });
+      gumb.textContent = tekst;
+    } catch (err) {
+      console.error(err);
+      gumb.textContent = "PDF nije uspio";
+    } finally {
+      gumb.disabled = false;
+    }
+  }
+
   // ---------- Okvir: kartice pogleda, bočna ploča, spremanje ----------
 
   const spremiGumb = h("button", { type: "button", class: "gumb glavni", disabled: true, onclick: spremi }, "Spremljeno");
@@ -383,7 +400,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("button", { type: "button", class: `z-kartica${pogled === k ? " on" : ""}`, onclick: () => { pogled = k; history.replaceState(null, "", `#${k}`); resetRjesavanja(); osvjezi(); } }, t)),
       h("span", { class: "z-razmak" }),
       pogled !== "uredi" ? h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: sRijecima, onchange: (e: Event) => { sRijecima = (e.target as HTMLInputElement).checked; osvjezi(); } }), " Riječi ispod slika") : null,
-      pogled === "ispis" ? h("button", { type: "button", class: "gumb glavni mali", onclick: () => print() }, "Ispiši") : null,
+      pogled === "ispis" ? h("button", { type: "button", class: "gumb mali", title: "Dijalog za ispis preglednika", onclick: () => print() }, "Ispiši") : null,
+      pogled === "ispis" ? h("button", { type: "button", class: "gumb glavni mali", onclick: preuzmiPdf }, "Preuzmi PDF") : null,
       pogled !== "uredi" ? h("button", { type: "button", class: "gumb mali", onclick: () => document.documentElement.requestFullscreen?.() }, "Cijeli zaslon") : null,
     );
     if (pogled === "uredi") zamijeni(tijelo, h("div", { class: "z-raspored" }, uredi(), ploca()));

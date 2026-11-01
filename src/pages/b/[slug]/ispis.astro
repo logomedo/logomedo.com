@@ -6,6 +6,8 @@ import { poSlugu, podaci } from "../../../lib/biljeznice";
 import { borSvg } from "../../../lib/bor";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
 import { VRSTE, type Odabir, type Povezivanje, type Uljez } from "../../../lib/zadaci/vrste";
+import { GRANCICA } from "../../../lib/ukrasi";
+import { dokumentBiljeznice } from "../../../lib/pdf/model";
 
 const b = await poSlugu(String(Astro.params.slug));
 if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
@@ -27,17 +29,9 @@ for (const z of p.zadaci) {
 }
 const n = brojEkrana(p.zadaci);
 
-// Grančica jele s bobicama za kutove stranice (gornji lijevi kut; ostali su zrcaljeni).
-const grancica = `<svg viewBox="0 0 120 120" aria-hidden="true"><g fill="none" stroke="#2f6b45" stroke-width="2.2" stroke-linecap="round">
-  <path d="M4 4 Q50 20 96 66"/>${Array.from({ length: 9 }, (_, i) => {
-    const t = (i + 1) / 10, x = 4 + 92 * t, y = 4 + 16 * t * 2 * (1 - t) + 62 * t * t;
-    return `<path d="M${x.toFixed(1)} ${y.toFixed(1)} l-9 12 M${x.toFixed(1)} ${y.toFixed(1)} l12 -7"/>`;
-  }).join("")}
-  <path d="M8 6 Q16 50 60 100"/>${Array.from({ length: 7 }, (_, i) => {
-    const t = (i + 1) / 8, x = 8 + 52 * t, y = 6 + 94 * t;
-    return `<path d="M${x.toFixed(1)} ${y.toFixed(1)} l-11 4 M${x.toFixed(1)} ${y.toFixed(1)} l8 -9"/>`;
-  }).join("")}</g>
-  <circle cx="22" cy="22" r="6" fill="#d9483b"/><circle cx="32" cy="16" r="5" fill="#d9483b"/><circle cx="16" cy="33" r="5" fill="#d9483b"/></svg>`;
+// Isti model crta PDF u pregledniku (gumb „Preuzmi PDF"); slike ostaju na CDN-u.
+const dok = dokumentBiljeznice(b, p.zadaci, p.rijeci, n);
+const grancica = GRANCICA;
 ---
 <!doctype html>
 <html lang="hr">
@@ -51,7 +45,10 @@ const grancica = `<svg viewBox="0 0 120 120" aria-hidden="true"><g fill="none" s
   <body>
     <div class="alati">
       <a href={`/b/${b.slug}`}>← Igra</a>
-      <button type="button" id="ispisi">Ispiši</button>
+      <span class="desno">
+        <button type="button" id="ispisi" class="sporedno" title="Otvara dijalog za ispis preglednika">Ispiši</button>
+        <button type="button" id="pdf">Preuzmi PDF</button>
+      </span>
     </div>
 
     <article class="a4 naslovnica">
@@ -124,8 +121,27 @@ const grancica = `<svg viewBox="0 0 120 120" aria-hidden="true"><g fill="none" s
   </body>
 </html>
 
+<script type="application/json" id="pdf-podaci" set:html={JSON.stringify(dok).replace(/</g, "\\u003c")} />
+
 <script>
+  import type { DokumentPdf } from "../../../lib/pdf/model";
   document.getElementById("ispisi")?.addEventListener("click", () => print());
+  const gumb = document.getElementById("pdf") as HTMLButtonElement;
+  gumb.addEventListener("click", async () => {
+    const tekst = gumb.textContent;
+    gumb.disabled = true; gumb.textContent = "Pripremam PDF…";
+    try {
+      const dok: DokumentPdf = JSON.parse(document.getElementById("pdf-podaci")!.textContent!);
+      const { preuzmiPdf, imePdfa } = await import("../../../lib/pdf/preglednik");
+      await preuzmiPdf(dok, imePdfa(dok.naslov), (g, u) => { gumb.textContent = u ? `Slike ${g}/${u}…` : "Pripremam PDF…"; });
+      gumb.textContent = tekst;
+    } catch (e) {
+      console.error(e);
+      gumb.textContent = "PDF nije uspio, pokušaj ponovno";
+    } finally {
+      gumb.disabled = false;
+    }
+  });
 </script>
 
 <style is:global>
@@ -133,6 +149,9 @@ const grancica = `<svg viewBox="0 0 120 120" aria-hidden="true"><g fill="none" s
   body { margin: 0; background: #e9e4da; font-family: "Nunito Variable", "Nunito", system-ui, sans-serif; color: #1d1914; }
   .alati { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #1b2a5c; }
   .alati a { color: #fff; font-weight: 700; text-decoration: none; }
+  .alati .desno { display: flex; gap: 8px; }
+  .alati button.sporedno { background: transparent; color: #fff; box-shadow: inset 0 0 0 2px rgb(255 255 255 / .5); }
+  .alati button:disabled { opacity: .7; cursor: progress; }
   .alati button { font: inherit; font-weight: 800; padding: 8px 22px; border-radius: 999px; border: 0; background: #d9483b; color: #fff; cursor: pointer; }
 
   .a4 { position: relative; width: 210mm; height: 297mm; margin: 16px auto; background: #fff; padding: 22mm 20mm 14mm; overflow: hidden;

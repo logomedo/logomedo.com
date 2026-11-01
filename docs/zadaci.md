@@ -64,7 +64,15 @@ flowchart LR
 | Ključ rime, slogovi | `src/lib/zadaci/rima.ts` (+ test) |
 | Upiti, verzije | `src/lib/zadaci/baza.ts` |
 | Editor, „Dijete rješava”, A4 ispis (DOM u pregledniku) | `src/lib/zadaci/klijent.ts`, `src/pages/admin/zadaci/[id].astro` |
+| PDF za ispis (u pregledniku, pdf-lib + fontkit) | `src/lib/pdf/`: `model.ts` (stranice), `ispis-pdf.ts` (crtanje, + test), `svg.ts` (bor i grančice kao vektor), `preglednik.ts` (fontovi, slike, preuzimanje); slike s CDN-a kroz `/cdn/<ključ>` (`src/pages/cdn/[...kljuc].ts`) |
 | API | `POST /admin/api/zadatak` (novi), `POST /admin/api/zadatak/:id` (JSON spremi, form obriši), `POST /admin/api/rijeci` (nova riječ) |
+
+**PDF.** Glavni ispis je „Preuzmi PDF” (pogled Ispis u editoru i `/b/<slug>/ispis`), kao u starom
+LogoMedu (pdfmake). PDF se slaže u pregledniku: Nunito 800/900 iz `public/fonts/` kao podskup (hrvatska
+slova), slike smanjene na ≤ 800 px JPEG (PDF bilježnice ~1–2 MB, ne 6 MB), raspored kao HTML ispis
+(odabir 3 reda, uljez 4, povezivanje 1 stranica, listić 3 × 4). Slike idu kroz `/cdn/` jer
+cdn.logomedo.com nema CORS, a CSP stranice dopušta `connect-src 'self'`. „Ispiši” (dijalog preglednika)
+ostaje kao sporedni gumb.
 
 U editoru se slika bira iz cijelog kataloga (pretraga po riječi ili `-rima`, filtri „rimuje se / ne rimuje
 se s …”); riječ koje nema može se odmah dodati u katalog (bez glasa), a slika joj se generira na
