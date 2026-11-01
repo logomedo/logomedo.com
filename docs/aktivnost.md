@@ -57,7 +57,7 @@ vraćanja slika usklađuje se javni bucket (`uskladiJavno`), a nakon vraćenih p
 - **Vraćeni posao ne zna svoj id unaprijed.** Nalazi se po `id > MAX prije` + `zatrazio` + `ceka`.
   Teoretski može uhvatiti posao koji je isti admin istovremeno dodao u drugoj kartici.
 - **Generirani stupac** `rijec_id` (VIRTUAL, s indeksom) i `json_group_array(... ORDER BY ...)`
-  rade na D1, provjereno lokalno i na produkciji (migracija 0009).
+  rade lokalno (miniflare D1); na produkciji je migracija 0009 prošla, a sami upisi još nisu viđeni.
 - **Nije u dnevniku:** zadaci, „Vrati greške u red”, runnerovo uzimanje i greške poslova,
   izmjene ravno u bazi (`wrangler d1 execute`, seed). Takve izmjene ne mijenjaju zapise, ali
   „Vrati” na starom zapisu prepisat će ih bez upozorenja, osim oznake „kasnije mijenjano”
