@@ -66,6 +66,20 @@ sequenceDiagram
   traži zasebne tmux sesije (`AGY_SESSION`, `AGY_DIR`). `uzmi` je atomaran, pa je to sigurno.
 - Kvota: agy je na Google AI Pro pretplati, a ne na Claude kvoti.
 
+### Ručni upload (1. 11. 2026.)
+
+Na stranici riječi, „Dodaj sliku iz vanjskog alata”: slika (PNG/JPEG/WebP, do 8 MB), stil,
+alat/model (slobodan tekst, npr. „Gemini web”) i **obavezni prompt** kako je slika nastala.
+Ulazi kao `kandidat` s `izvor = 'upload'` (`slike.model` = alat), dalje isti pregled i javni
+bucket kao za agy. Isti R2 ključ (hash sadržaja) kao runner; ista datoteka dvaput se odbija.
+SVG se za upload ne radi (potrace je samo u runneru).
+
+### Tražilica
+
+Polje u bočnoj traci admina (prečac `/`). `GET /admin/api/trazi` vrati sve aktivne riječi
+jednom (na prvi fokus), filtrira se u pregledniku bez dijakritika (c = č/ć, dj = đ), prvo
+riječi koje počinju upitom. Točka: zelena = odobrena slika, žuta = kandidat.
+
 ## Javne slike (cdn.logomedo.com)
 
 Dva R2 bucketa, isti ključ (`<stil>/<slug>/<16 hex sha256>.<ext>`):

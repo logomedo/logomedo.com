@@ -1,7 +1,7 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
-import { kad, rijec as nadji, NAZIV_POZICIJE } from "../../../lib/katalog";
+import { kad, rijec as nadji, NAZIV_POZICIJE, stiloviAktivni } from "../../../lib/katalog";
 import { safeNext } from "../../../lib/admin/sesija";
 import { javniUrl } from "../../../lib/generiranje";
 import { izvediRimu } from "../../../lib/zadaci/rima";
@@ -16,10 +16,15 @@ const odbijene = r.slike.filter((s) => s.status === "odbijena");
 const uRedu = r.red.filter((q) => q.status !== "greska");
 const greske = r.red.filter((q) => q.status === "greska");
 const dodano = Astro.url.searchParams.get("dodano");
+const ucitano = Astro.url.searchParams.get("ucitano");
+const greskaUploada = Astro.url.searchParams.get("greska");
+const stilovi = await stiloviAktivni();
 ---
 <AdminOkvir naslov={r.rijec.toLocaleUpperCase("hr")} aktivno="katalog">
   <a class="mrvice" href={od}><Ikona ime="natrag" velicina={16} /> Natrag</a>
 
+  {ucitano && <div class="obavijest"><Ikona ime="kvacica" /> Slika je učitana kao kandidat.</div>}
+  {greskaUploada && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Upload nije uspio: {greskaUploada}</div>}
   {dodano !== null && <div class="obavijest"><Ikona ime="red" /> {Number(dodano) ? "Dodano u red za generiranje." : "Već je u redu."}</div>}
 
   <div class="raspored">
@@ -83,6 +88,37 @@ const dodano = Astro.url.searchParams.get("dodano");
           <Ikona ime="iskra" /> {uRedu.length ? "Već u redu" : "Generiraj novu"}
         </button>
       </form>
+      <details class="ploha upload" open={!!greskaUploada}>
+        <summary><Ikona ime="slika" velicina={16} /> Dodaj sliku iz vanjskog alata</summary>
+        <form method="post" action="/admin/api/upload" enctype="multipart/form-data">
+          <input type="hidden" name="rijec" value={r.id} /><input type="hidden" name="next" value={ovdje} />
+          <div class="upload-red">
+            <label class="odabir">
+              <input type="file" name="slika" accept="image/png,image/jpeg,image/webp" required />
+              <img class="pretpregled" alt="" hidden />
+              <span class="poziv">PNG, JPEG ili WebP, do 8 MB</span>
+            </label>
+            <div class="upload-polja">
+              <div class="dva">
+                <div>
+                  <label for="u-stil">Stil</label>
+                  <select id="u-stil" name="stil">{stilovi.map((x) => <option value={x.kod}>{x.naziv}</option>)}</select>
+                </div>
+                <div>
+                  <label for="u-alat">Alat / model</label>
+                  <input id="u-alat" type="text" name="alat" maxlength="100" placeholder="npr. Gemini web, Leonardo" list="alati" />
+                  <datalist id="alati"><option value="Gemini web" /><option value="Leonardo" /><option value="ChatGPT" /><option value="Midjourney" /><option value="ručno nacrtano" /></datalist>
+                </div>
+              </div>
+              <div>
+                <label for="u-prompt">Prompt kako je slika nastala</label>
+                <textarea id="u-prompt" name="prompt" rows="5" maxlength="4000" required placeholder="Zalijepi točan prompt iz alata"></textarea>
+              </div>
+              <button class="gumb glavni" type="submit"><Ikona ime="kvacica" /> Učitaj kao kandidata</button>
+            </div>
+          </div>
+        </form>
+      </details>
       {greske.length > 0 && <p class="sitno" style="color:var(--greska)"><Ikona ime="upozorenje" velicina={14} /> Zadnje generiranje nije uspjelo: {greske[0].greska}</p>}
     </div>
   </div>
@@ -95,7 +131,8 @@ const dodano = Astro.url.searchParams.get("dodano");
           <figure class="ploha kandidat">
             <div class="list"><img src={`/admin/slika/${s.id}`} alt={`Kandidat ${s.id}`} loading="lazy" /></div>
             <figcaption>
-              <span class="blijedo sitno">{kad(s.created_at)} · {s.model ?? s.izvor}</span>
+              <span class="blijedo sitno">{kad(s.created_at)} · {s.izvor === "upload" ? `upload${s.model ? `: ${s.model}` : ""}` : s.model ?? s.izvor}</span>
+              {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
               <form method="post" action={`/admin/api/slika/${s.id}`} class="odluka">
                 <input type="hidden" name="next" value={ovdje} />
                 <input type="text" name="razlog" placeholder="Razlog odbijanja" maxlength="300" />
@@ -132,6 +169,18 @@ const dodano = Astro.url.searchParams.get("dodano");
   )}
 </AdminOkvir>
 
+<script>
+  for (const ulaz of document.querySelectorAll<HTMLInputElement>(".upload input[type=file]")) {
+    ulaz.onchange = () => {
+      const img = ulaz.parentElement!.querySelector<HTMLImageElement>(".pretpregled")!;
+      const f = ulaz.files?.[0];
+      if (img.src) URL.revokeObjectURL(img.src);
+      img.hidden = !f;
+      if (f) img.src = URL.createObjectURL(f);
+    };
+  }
+</script>
+
 <style>
   .raspored { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 36px; margin-bottom: 44px; align-items: start; }
   @media (max-width: 900px) { .raspored { grid-template-columns: 1fr; } }
@@ -165,6 +214,22 @@ const dodano = Astro.url.searchParams.get("dodano");
   .odluka input { flex: 1 1 100%; padding: 6px 10px; font-size: .85rem; }
   .odluka .gumb { flex: 1; }
   .povijest { margin-top: 36px; }
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+  .upload { margin-top: 16px; padding: 0; }
+  .upload summary { cursor: pointer; padding: 12px 16px; font-weight: 600; display: flex; gap: 8px; align-items: center; color: var(--blijedo); }
+  .upload[open] summary { color: var(--tinta); border-bottom: 1px solid var(--rub); }
+  .upload form { padding: 16px; margin: 0; }
+  .upload-red { display: grid; grid-template-columns: 160px 1fr; gap: 16px; }
+  @media (max-width: 600px) { .upload-red { grid-template-columns: 1fr; } }
+  .odabir { position: relative; aspect-ratio: 1; border: 2px dashed var(--rub-jak); border-radius: 12px; display: grid; place-items: center;
+    text-align: center; cursor: pointer; overflow: hidden; background: var(--papir-slike); margin: 0; }
+  .odabir input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .odabir .poziv { padding: 10px; font-size: .78rem; }
+  .pretpregled { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; background: var(--papir-slike); }
+  .upload-polja { display: grid; gap: 12px; align-content: start; }
+  .upload-polja .gumb { justify-self: start; }
+  .dva { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  select { width: 100%; font: inherit; padding: 9px 12px; border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); }
   .povijest summary { cursor: pointer; color: var(--blijedo); font-weight: 600; }
   .prompt summary { font-size: .78rem; } .prompt p { margin: 6px 0 0; white-space: pre-wrap; color: var(--blijedo); }
 </style>

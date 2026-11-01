@@ -71,9 +71,6 @@ export const MAX_BAJTOVA = 8 * 1024 * 1024;
 
 /** Slika od runnera: u R2, u `slike` kao kandidat, posao gotov. */
 export async function predaj(posaoId: number, mime: string, tijelo: ArrayBuffer): Promise<{ slikaId: number } | { greska: string }> {
-  const ext = MIME[mime];
-  if (!ext) return { greska: `nepodržan tip ${mime}` };
-  if (tijelo.byteLength === 0 || tijelo.byteLength > MAX_BAJTOVA) return { greska: "prazna ili prevelika slika" };
   const db = env.DB;
   const p = await db.prepare(
     `SELECT q.id, q.rijec_id, q.stil_id, q.prompt, r.slug, s.kod, s.model FROM generiranja q
@@ -81,19 +78,43 @@ export async function predaj(posaoId: number, mime: string, tijelo: ArrayBuffer)
   ).bind(posaoId).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; slug: string; kod: string; model: string }>();
   if (!p) return { greska: "posao ne postoji ili nije u radu" };
 
-  const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", tijelo))].map((b) => b.toString(16).padStart(2, "0")).join("");
-  const kljuc = `${p.kod}/${p.slug}/${hash.slice(0, 16)}.${ext}`;
-  await env.SLIKE.put(kljuc, tijelo, { httpMetadata: { contentType: mime } });
-  const s = await db.prepare(
-    `INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, prompt, model, izvor)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'agy') RETURNING id`,
-  ).bind(p.rijec_id, p.stil_id, kljuc, hash, mime, tijelo.byteLength, p.prompt, p.model).first<{ id: number }>();
+  const sp = await spremi({ rijecId: p.rijec_id, stilId: p.stil_id, stilKod: p.kod, slug: p.slug }, mime, tijelo, p.prompt, p.model, "agy");
+  if ("greska" in sp) return sp;
   await db.prepare("UPDATE generiranja SET status = 'gotovo', zavrseno_at = datetime('now'), slika_id = ?, greska = NULL WHERE id = ?")
-    .bind(s!.id, p.id).run();
-  return { slikaId: s!.id };
+    .bind(sp.slikaId, p.id).run();
+  return sp;
 }
 
 export const MAX_SVG_BAJTOVA = 2 * 1024 * 1024;
+
+/** Zajedničko runneru i ručnom uploadu: R2 (ključ = hash sadržaja) + redak u `slike` kao kandidat. */
+async function spremi(
+  c: { rijecId: number; stilId: number; stilKod: string; slug: string },
+  mime: string, tijelo: ArrayBuffer, prompt: string | null, model: string | null, izvor: "agy" | "upload",
+): Promise<{ slikaId: number } | { greska: string }> {
+  const ext = MIME[mime];
+  if (!ext) return { greska: `nepodržan tip ${mime || "(nepoznat)"}; samo PNG, JPEG ili WebP` };
+  if (tijelo.byteLength === 0 || tijelo.byteLength > MAX_BAJTOVA) return { greska: "prazna ili prevelika slika (najviše 8 MB)" };
+  const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", tijelo))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const kljuc = `${c.stilKod}/${c.slug}/${hash.slice(0, 16)}.${ext}`;
+  const ista = await env.DB.prepare("SELECT id FROM slike WHERE r2_kljuc = ?").bind(kljuc).first<{ id: number }>();
+  if (ista) return { greska: `ista slika već postoji (#${ista.id})` };
+  await env.SLIKE.put(kljuc, tijelo, { httpMetadata: { contentType: mime } });
+  const s = await env.DB.prepare(
+    `INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, prompt, model, izvor)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+  ).bind(c.rijecId, c.stilId, kljuc, hash, mime, tijelo.byteLength, prompt, model, izvor).first<{ id: number }>();
+  return { slikaId: s!.id };
+}
+
+/** Ručni upload slike iz vanjskog alata (Gemini web, Leonardo…) s promptom kako je nastala. Ulazi kao kandidat. */
+export async function ucitaj(rijecId: number, stilKod: string, mime: string, tijelo: ArrayBuffer, prompt: string, alat: string | null) {
+  const c = await env.DB.prepare(
+    "SELECT r.id AS rijecId, r.slug, s.id AS stilId, s.kod AS stilKod FROM rijeci r, stilovi s WHERE r.id = ? AND s.kod = ?",
+  ).bind(rijecId, stilKod).first<{ rijecId: number; slug: string; stilId: number; stilKod: string }>();
+  if (!c) return { greska: "nema te riječi ili stila" };
+  return spremi(c, mime, tijelo, prompt, alat, "upload");
+}
 
 /** SVG (potrace) uz postojeću sliku: R2 pod istim ključem s .svg, a ako je slika odobrena, i u javni bucket. */
 export async function predajSvg(slikaId: number, tijelo: ArrayBuffer): Promise<{ svgKljuc: string } | { greska: string }> {

@@ -43,6 +43,11 @@ const stavke = [
     {admin && (
       <aside class="traka">
         <div class="vrh"><Marka href="/admin" dodatak="admin" /></div>
+        <div class="trazilica" role="search">
+          <input type="search" id="trazi" placeholder="Traži riječ…  /" autocomplete="off" spellcheck="false"
+            aria-label="Traži riječ u katalogu" aria-controls="trazi-rezultati" aria-expanded="false" />
+          <ul id="trazi-rezultati" role="listbox" hidden></ul>
+        </div>
         <nav>
           {stavke.map((s) => (
             <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod }]}>
@@ -68,6 +73,62 @@ const stavke = [
     )}
     <main class:list={["sadrzaj", { puno }]}><slot /></main>
     <script>
+      // Tražilica riječi: indeks se dohvati jednom (na prvi fokus), filtrira se lokalno.
+      // Bez dijakritika (c = č/ć, dj = đ), prvo riječi koje počinju upitom.
+      const ulaz = document.querySelector<HTMLInputElement>("#trazi");
+      const lista = document.querySelector<HTMLUListElement>("#trazi-rezultati");
+      if (ulaz && lista) {
+        type R = { r: string; s: string; o: number; k: number; n?: string };
+        const norm = (t: string) => t.toLocaleLowerCase("hr").replace(/đ/g, "dj").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        let indeks: R[] | null = null;
+        let ucitava: Promise<void> | null = null;
+        let odabran = 0;
+        const ucitaj = () => (ucitava ??= fetch("/admin/api/trazi").then((r) => r.json() as Promise<R[]>).then((d) => {
+          indeks = d.map((x) => ({ ...x, n: norm(x.r) }));
+          if (ulaz.value) prikazi();
+        }).catch(() => { ucitava = null; }));
+        const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+        const prikazi = () => {
+          const q = norm(ulaz.value);
+          if (!q || !indeks) { lista.hidden = true; ulaz.setAttribute("aria-expanded", "false"); return; }
+          const pocinje = indeks.filter((x) => x.n!.startsWith(q));
+          const sadrzi = indeks.filter((x) => !x.n!.startsWith(q) && x.n!.includes(q));
+          const nadeno = [...pocinje, ...sadrzi].slice(0, 12);
+          odabran = 0;
+          lista.innerHTML = nadeno.length
+            ? nadeno.map((x, i) => `<li role="option" aria-selected="${i === 0}"><a href="/admin/rijec/${x.s}">
+                <span class="tocka ${x.o ? "da" : x.k ? "kand" : ""}" title="${x.o ? "odobrena slika" : x.k ? x.k + " kandidata" : "nema slike"}"></span>
+                <span>${esc(x.r)}</span></a></li>`).join("")
+            : `<li class="nista">Nema riječi „${esc(ulaz.value)}”</li>`;
+          lista.hidden = false;
+          ulaz.setAttribute("aria-expanded", "true");
+        };
+        const oznaci = (i: number) => {
+          const st = [...lista.querySelectorAll("li[role=option]")];
+          if (!st.length) return;
+          odabran = (i + st.length) % st.length;
+          st.forEach((li, j) => li.setAttribute("aria-selected", String(j === odabran)));
+          st[odabran].scrollIntoView({ block: "nearest" });
+        };
+        ulaz.addEventListener("focus", () => { ucitaj(); if (ulaz.value) prikazi(); });
+        ulaz.addEventListener("input", () => { ucitaj(); prikazi(); });
+        ulaz.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowDown") { e.preventDefault(); oznaci(odabran + 1); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); oznaci(odabran - 1); }
+          else if (e.key === "Enter") {
+            const a = lista.querySelectorAll<HTMLAnchorElement>("li[role=option] a")[odabran];
+            if (a) { e.preventDefault(); location.href = a.href; }
+          } else if (e.key === "Escape") { ulaz.value = ""; prikazi(); ulaz.blur(); }
+        });
+        ulaz.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== ulaz) lista.hidden = true; }, 150));
+        document.addEventListener("keydown", (e) => {
+          const t = e.target as HTMLElement;
+          if (e.key === "/" && !e.metaKey && !e.ctrlKey && !["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) && !t.isContentEditable) {
+            e.preventDefault(); ulaz.focus(); ulaz.select();
+          }
+        });
+      }
+
       for (const b of document.querySelectorAll<HTMLButtonElement>(".prekidac-teme")) {
         b.onclick = () => {
           const h = document.documentElement;
@@ -82,6 +143,18 @@ const stavke = [
       .traka { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 22px; padding: 22px 14px 16px;
         border-right: 1px solid var(--rub); background: var(--povrsina); }
       .traka .vrh { padding: 0 8px; }
+      .trazilica { position: relative; padding: 0 2px; }
+      .trazilica input { width: 100%; font: inherit; font-size: .88rem; padding: 8px 11px; border: 1px solid var(--rub-jak); border-radius: 10px;
+        background: var(--povrsina); color: var(--tinta); }
+      .trazilica input:focus { outline: none; border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+      #trazi-rezultati { position: absolute; z-index: 30; left: 2px; right: 2px; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none;
+        max-height: 60vh; overflow-y: auto; background: var(--povrsina); border: 1px solid var(--rub-jak); border-radius: 12px; box-shadow: var(--sjena-2); }
+      #trazi-rezultati a { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 8px; text-decoration: none; color: var(--tinta);
+        text-transform: uppercase; letter-spacing: .04em; font-weight: 650; font-size: .84rem; }
+      #trazi-rezultati li[aria-selected=true] a, #trazi-rezultati a:hover { background: var(--med-blago); color: var(--med-tamno); }
+      #trazi-rezultati .nista { padding: 8px 10px; color: var(--blijedo); font-size: .84rem; }
+      .tocka { flex: none; width: 8px; height: 8px; border-radius: 999px; background: var(--rub-jak); }
+      .tocka.da { background: var(--uspjeh); } .tocka.kand { background: var(--med); }
       .traka nav { display: flex; flex-direction: column; gap: 2px; }
       .stavka { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 10px; text-decoration: none;
         color: var(--blijedo); font-weight: 550; transition: background .15s, color .15s; }
@@ -108,6 +181,7 @@ const stavke = [
           border-right: 0; border-bottom: 1px solid var(--rub); overflow-x: auto; }
         .traka .vrh { padding: 0; } .traka .vrh .ime, .traka .vrh .dodatak { display: none; }
         .traka nav { flex-direction: row; }
+        .trazilica { flex: 1 0 150px; padding: 0; } #trazi-rezultati { min-width: 240px; }
         .stavka span:not(.broj) { display: none; }
         .traka .dno { margin: 0 0 0 auto; border: 0; padding: 0; } .tko { display: none; }
         .sadrzaj { padding: 24px 16px 64px; }

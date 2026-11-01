@@ -108,3 +108,18 @@ export function kad(iso: string | null): string {
   const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
   return d.toLocaleString("hr-HR", { timeZone: "Europe/Zagreb", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
 }
+
+/** Aktivni stilovi (za izbor pri uploadu). */
+export async function stiloviAktivni() {
+  return (await DB().prepare("SELECT kod, naziv FROM stilovi WHERE aktivan = 1 ORDER BY id").all<{ kod: string; naziv: string }>()).results;
+}
+
+/** Sve aktivne riječi za tražilicu: r = riječ, s = slug, o = ima odobrenu sliku (bilo koji stil), k = broj kandidata. */
+export async function indeksRijeci() {
+  return (await DB().prepare(
+    `SELECT r.rijec AS r, r.slug AS s,
+       EXISTS (SELECT 1 FROM slike x WHERE x.rijec_id = r.id AND x.status = 'odobrena') AS o,
+       (SELECT COUNT(*) FROM slike x WHERE x.rijec_id = r.id AND x.status = 'kandidat') AS k
+     FROM rijeci r WHERE r.aktivna = 1 ORDER BY r.rijec`,
+  ).all<{ r: string; s: string; o: number; k: number }>()).results;
+}
