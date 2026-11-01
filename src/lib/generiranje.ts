@@ -4,6 +4,7 @@
 import { env } from "cloudflare:workers";
 import { stil as stilPoKodu, type Stil } from "./katalog";
 import { zazvoni } from "./runner-zvono";
+import { novaGrupa, sZapisom, zapisNastalih, zapisSkupa } from "./aktivnost";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
@@ -21,8 +22,8 @@ export function sloziPrompt(stil: Stil, r: { rijec: string; opis_za_sliku: strin
     .trim();
 }
 
-/** Dodaje posao za svaku riječ koja ga već nema u redu. Vraća broj dodanih. */
-export async function dodajURed(stil: Stil, rijecIds: number[], email: string, napomena?: string): Promise<number> {
+/** Dodaje posao za svaku riječ koja ga već nema u redu. Vraća broj dodanih. `grupa`: dio veće radnje u dnevniku. */
+export async function dodajURed(stil: Stil, rijecIds: number[], email: string, napomena?: string, grupa = novaGrupa()): Promise<number> {
   if (!rijecIds.length) return 0;
   const db = env.DB;
   let dodano = 0;
@@ -36,10 +37,14 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
          AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = r.id AND q.stil_id = ? AND q.status IN ('ceka','radi'))`,
     ).bind(stil.id, ...dio, stil.id).all<{ id: number; rijec: string; opis_za_sliku: string | null; razlozi: string }>();
     if (!rijeci.length) continue;
-    await db.batch(rijeci.map((r) =>
-      db.prepare("INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio) VALUES (?, ?, ?, ?)")
-        .bind(r.id, stil.id, sloziPrompt(stil, r, JSON.parse(r.razlozi ?? "[]").slice(-3), napomena), email),
-    ));
+    await db.batch([
+      ...rijeci.map((r) =>
+        db.prepare("INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio) VALUES (?, ?, ?, ?)")
+          .bind(r.id, stil.id, sloziPrompt(stil, r, JSON.parse(r.razlozi ?? "[]").slice(-3), napomena), email)),
+      // Batch je transakcija, pa su zadnjih n poslova upravo ovi.
+      zapisNastalih({ tko: email, radnja: "generiranje.zatrazeno", tablica: "generiranja", grupa },
+        { sql: "x.id IN (SELECT id FROM generiranja ORDER BY id DESC LIMIT ?)", args: [rijeci.length] }),
+    ]);
     dodano += rijeci.length;
   }
   if (dodano) await zazvoni();
@@ -78,7 +83,7 @@ export async function predaj(posaoId: number, mime: string, tijelo: ArrayBuffer)
   ).bind(posaoId).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; slug: string; kod: string; model: string }>();
   if (!p) return { greska: "posao ne postoji ili nije u radu" };
 
-  const sp = await spremi({ rijecId: p.rijec_id, stilId: p.stil_id, stilKod: p.kod, slug: p.slug }, mime, tijelo, p.prompt, p.model, "agy");
+  const sp = await spremi({ rijecId: p.rijec_id, stilId: p.stil_id, stilKod: p.kod, slug: p.slug }, mime, tijelo, p.prompt, p.model, "agy", "runner");
   if ("greska" in sp) return sp;
   await db.prepare("UPDATE generiranja SET status = 'gotovo', zavrseno_at = datetime('now'), slika_id = ?, greska = NULL WHERE id = ?")
     .bind(sp.slikaId, p.id).run();
@@ -90,7 +95,7 @@ export const MAX_SVG_BAJTOVA = 2 * 1024 * 1024;
 /** Zajedničko runneru i ručnom uploadu: R2 (ključ = hash sadržaja) + redak u `slike` kao kandidat. */
 async function spremi(
   c: { rijecId: number; stilId: number; stilKod: string; slug: string },
-  mime: string, tijelo: ArrayBuffer, prompt: string | null, model: string | null, izvor: "agy" | "upload",
+  mime: string, tijelo: ArrayBuffer, prompt: string | null, model: string | null, izvor: "agy" | "upload", tko: string,
 ): Promise<{ slikaId: number } | { greska: string }> {
   const ext = MIME[mime];
   if (!ext) return { greska: `nepodržan tip ${mime || "(nepoznat)"}; samo PNG, JPEG ili WebP` };
@@ -100,20 +105,24 @@ async function spremi(
   const ista = await env.DB.prepare("SELECT id FROM slike WHERE r2_kljuc = ?").bind(kljuc).first<{ id: number }>();
   if (ista) return { greska: `ista slika već postoji (#${ista.id})` };
   await env.SLIKE.put(kljuc, tijelo, { httpMetadata: { contentType: mime } });
-  const s = await env.DB.prepare(
-    `INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, prompt, model, izvor)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-  ).bind(c.rijecId, c.stilId, kljuc, hash, mime, tijelo.byteLength, prompt, model, izvor).first<{ id: number }>();
-  return { slikaId: s!.id };
+  const [, upis] = await env.DB.batch(sZapisom(
+    { tko, radnja: izvor === "agy" ? "slika.nova" : "slika.ucitana", tablica: "slike", grupa: novaGrupa() },
+    { sql: "SELECT id FROM slike WHERE r2_kljuc = ?", args: [kljuc] },
+    [env.DB.prepare(
+      `INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, prompt, model, izvor)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    ).bind(c.rijecId, c.stilId, kljuc, hash, mime, tijelo.byteLength, prompt, model, izvor)],
+  ));
+  return { slikaId: (upis.results[0] as { id: number }).id };
 }
 
 /** Ručni upload slike iz vanjskog alata (Gemini web, Leonardo…) s promptom kako je nastala. Ulazi kao kandidat. */
-export async function ucitaj(rijecId: number, stilKod: string, mime: string, tijelo: ArrayBuffer, prompt: string, alat: string | null) {
+export async function ucitaj(rijecId: number, stilKod: string, mime: string, tijelo: ArrayBuffer, prompt: string, alat: string | null, email: string) {
   const c = await env.DB.prepare(
     "SELECT r.id AS rijecId, r.slug, s.id AS stilId, s.kod AS stilKod FROM rijeci r, stilovi s WHERE r.id = ? AND s.kod = ?",
   ).bind(rijecId, stilKod).first<{ rijecId: number; slug: string; stilId: number; stilKod: string }>();
   if (!c) return { greska: "nema te riječi ili stila" };
-  return spremi(c, mime, tijelo, prompt, alat, "upload");
+  return spremi(c, mime, tijelo, prompt, alat, "upload", email);
 }
 
 /** SVG (potrace) uz postojeću sliku: R2 pod istim ključem s .svg, a ako je slika odobrena, i u javni bucket. */
@@ -153,8 +162,9 @@ export type Ishod = { ok: true } | { ok: false; nema?: true; vec?: { status: str
  * Odobri/odbij vrijede samo dok je slika još kandidat: kad dvoje pregledava istovremeno,
  * pamti se prva odluka, a druga dobiva `vec` (uvjetni UPDATE, ne provjera pa upis).
  */
-export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string): Promise<Ishod> {
+export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, grupa = novaGrupa()): Promise<Ishod> {
   const db = env.DB;
+  const zapis = (radnja: string) => ({ tko: email, radnja, tablica: "slike" as const, grupa });
   const s = await db.prepare("SELECT id, rijec_id, stil_id, status, pregledao FROM slike WHERE id = ?").bind(slikaId)
     .first<{ id: number; rijec_id: number; stil_id: number; status: string; pregledao: string | null }>();
   if (!s) return { ok: false, nema: true };
@@ -171,21 +181,29 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
       .bind(s.rijec_id, s.stil_id, s.id).all<{ id: number }>();
     dirnute.push(...prije.results.map((x) => x.id));
     // Batch je jedna transakcija; oba upita traže da je slika još kandidat, pa kasnija odluka ne mijenja ništa.
-    const [, r] = await db.batch([
-      db.prepare(
-        `UPDATE slike SET status = 'kandidat' WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'
-           AND EXISTS (SELECT 1 FROM slike k WHERE k.id = ? AND k.status = 'kandidat')`,
-      ).bind(s.rijec_id, s.stil_id, s.id),
-      db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
-        .bind(email, s.id),
+    const rez = await db.batch([
+      ...zapisSkupa(zapis("slika.istisnuta"),
+        { sql: "x.rijec_id = ? AND x.stil_id = ? AND x.status = 'odobrena' AND x.id != ?", args: [s.rijec_id, s.stil_id, s.id] },
+        [db.prepare(
+          `UPDATE slike SET status = 'kandidat' WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'
+             AND EXISTS (SELECT 1 FROM slike k WHERE k.id = ? AND k.status = 'kandidat')`,
+        ).bind(s.rijec_id, s.stil_id, s.id)]),
+      ...sZapisom(zapis("slika.odobrena"), s.id, [
+        db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
+          .bind(email, s.id),
+      ]),
     ]);
-    if (!r.meta.changes) return vec();
+    if (!rez[rez.length - 3].meta.changes) return vec();
   } else if (akcija === "odbij") {
-    const r = await db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
-      .bind(razlog?.trim().slice(0, 300) || null, email, s.id).run();
+    const [, r] = await db.batch(sZapisom(zapis("slika.odbijena"), s.id, [
+      db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
+        .bind(razlog?.trim().slice(0, 300) || null, email, s.id),
+    ]));
     if (!r.meta.changes) return vec();
   } else {
-    await db.prepare("UPDATE slike SET status = 'kandidat', pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id).run();
+    await db.batch(sZapisom(zapis("slika.u_kandidate"), s.id, [
+      db.prepare("UPDATE slike SET status = 'kandidat', pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id),
+    ]));
   }
   await uskladiJavno(dirnute);
   return { ok: true };
@@ -197,7 +215,8 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
  * stvara novog, i tako u krug (astronaut, 31. 10.).
  */
 export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, ponovi = false) {
-  const ishod = await odluci(slikaId, akcija, email, razlog);
+  const grupa = novaGrupa();
+  const ishod = await odluci(slikaId, akcija, email, razlog, grupa);
   let generira = false;
   if (ishod.ok && akcija === "odbij" && ponovi) {
     const s = await env.DB.prepare(
@@ -205,7 +224,7 @@ export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" 
          EXISTS (SELECT 1 FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status IN ('odobrena', 'kandidat')) AS pokrivena
        FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.id = ?`,
     ).bind(slikaId).first<{ rijec_id: number; stil_id: number; kod: string; pokrivena: number }>();
-    if (s && !s.pokrivena) generira = (await dodajURed(await stilPoKodu(s.kod), [s.rijec_id], email)) > 0;
+    if (s && !s.pokrivena) generira = (await dodajURed(await stilPoKodu(s.kod), [s.rijec_id], email, undefined, grupa)) > 0;
   }
   return { ...ishod, generira };
 }

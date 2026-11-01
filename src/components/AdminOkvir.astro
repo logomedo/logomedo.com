@@ -1,5 +1,5 @@
 ---
-// Okvir admina: bočna traka (Katalog, Zadaci, Bilježnice, Pregled, Red, Ključevi) i glavni dio.
+// Okvir admina: bočna traka (Katalog, Zadaci, Bilježnice, Pregled, Red, Aktivnost, Ključevi) i glavni dio.
 // Bez sesije baca (500) umjesto da prikaže stranicu, osim na prijavi (`javno`):
 // druga obrana ako middleware neku admin putanju ne prepozna.
 import Tema from "./Tema.astro";
@@ -7,7 +7,7 @@ import Marka from "./Marka.astro";
 import Ikona from "./Ikona.astro";
 import { env } from "cloudflare:workers";
 
-interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "zadaci" | "biljeznice" | "pregled" | "red" | "kljucevi"; puno?: boolean }
+interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "zadaci" | "biljeznice" | "pregled" | "red" | "aktivnost" | "kljucevi"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
@@ -26,6 +26,7 @@ const stavke = [
   { kod: "biljeznice", href: "/admin/biljeznice", tekst: "Bilježnice", ikona: "biljeznica", broj: 0 },
   { kod: "pregled", href: "/admin/pregled", tekst: "Pregled", ikona: "pregled", broj: brojevi.kandidata },
   { kod: "red", href: "/admin/red", tekst: "Red", ikona: "red", broj: brojevi.uRedu + brojevi.gresaka },
+  { kod: "aktivnost", href: "/admin/aktivnost", tekst: "Aktivnost", ikona: "sat", broj: 0 },
   { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },
 ] as const;
 ---

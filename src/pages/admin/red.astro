@@ -4,6 +4,7 @@ import Ikona from "../../components/Ikona.astro";
 import { env } from "cloudflare:workers";
 import { kad } from "../../lib/katalog";
 import { spojenoRunnera, zazvoni } from "../../lib/runner-zvono";
+import { novaGrupa, zapisSkupa } from "../../lib/aktivnost";
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -11,7 +12,13 @@ if (Astro.request.method === "POST") {
     await env.DB.prepare("UPDATE generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska'").run();
     await zazvoni();
   }
-  if (f.get("akcija") === "isprazni") await env.DB.prepare("DELETE FROM generiranja WHERE status = 'ceka'").run();
+  if (f.get("akcija") === "isprazni") {
+    await env.DB.batch(zapisSkupa(
+      { tko: Astro.locals.admin!.email, radnja: "generiranje.uklonjeno", tablica: "generiranja", grupa: novaGrupa() },
+      { sql: "x.status = 'ceka'", args: [] },
+      [env.DB.prepare("DELETE FROM generiranja WHERE status = 'ceka'")],
+    ));
+  }
   return Astro.redirect("/admin/red", 303);
 }
 const { results: poslovi } = await env.DB.prepare(

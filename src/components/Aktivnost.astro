@@ -1,0 +1,218 @@
+---
+// Dnevnik aktivnosti (docs/aktivnost.md): najnovije na vrhu, osvježava se uživo svakih 5 s.
+// Cijeli se iscrtava u pregledniku (isti kod za prvi prikaz i nove stavke); `rijec` ga sužava na jednu riječ.
+interface Props { rijec?: number; limit?: number; filtri?: boolean; autori?: string[] }
+const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
+---
+<section class="aktivnost" data-aktivnost data-rijec={rijec ?? ""} data-limit={limit}>
+  {filtri && (
+    <div class="filtri">
+      <label>Tko
+        <select data-tko>
+          <option value="">svi</option>
+          {autori.map((a) => <option value={a}>{a}</option>)}
+        </select>
+      </label>
+      <span class="uzivo" data-uzivo title="Osvježava se svakih 5 s"><i></i> uživo</span>
+    </div>
+  )}
+  <p class="poruka" data-poruka hidden></p>
+  <ol class="popis" data-popis></ol>
+  <p class="prazno blijedo" data-prazno hidden>Još nema zabilježenih izmjena.</p>
+  <button type="button" class="gumb tihi starije" data-starije hidden>Starije</button>
+</section>
+
+<script>
+  import { grupiraj, oznakaRadnje, razlike, relativno, tkoKratko, datum, type StavkaPrikaz as S } from "../lib/aktivnost-prikaz";
+
+  const esc = (t: unknown) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  const skrati = (t: string, n = 160) => (t.length > n ? t.slice(0, n) + "…" : t);
+  const PRIKAZI = 6; // stavki po grupi prije „još N”
+  const izmjena = (n: number) => `${n} ${n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "izmjene" : "izmjena"}`;
+
+  for (const el of document.querySelectorAll<HTMLElement>("[data-aktivnost]")) pokreni(el);
+
+  function pokreni(el: HTMLElement) {
+    const $ = <T extends HTMLElement>(s: string) => el.querySelector<T>(s)!;
+    const popisEl = $<HTMLOListElement>("[data-popis]");
+    const porukaEl = $("[data-poruka]");
+    const starijeEl = $<HTMLButtonElement>("[data-starije]");
+    const tkoEl = el.querySelector("[data-tko]") as HTMLSelectElement | null;
+    const limit = Number(el.dataset.limit) || 60;
+    let stavke: S[] = [];
+    let nove = new Set<number>();
+    let ima_starijih = false;
+
+    const url = (p: Record<string, string | number | undefined>) => {
+      const q = new URLSearchParams();
+      if (el.dataset.rijec) q.set("rijec", el.dataset.rijec);
+      if (tkoEl?.value) q.set("tko", tkoEl.value);
+      for (const [k, v] of Object.entries(p)) if (v !== undefined) q.set(k, String(v));
+      return `/admin/api/aktivnost?${q}`;
+    };
+    const dohvati = async (p: Record<string, string | number | undefined>) => {
+      const r = await fetch(url(p), { credentials: "same-origin" });
+      if (!r.ok) throw new Error(String(r.status));
+      return ((await r.json()) as { stavke: S[] }).stavke;
+    };
+
+    let porukaTimer = 0;
+    function poruka(t: string, vrsta: "info" | "greska" = "info") {
+      porukaEl.textContent = t; porukaEl.dataset.vrsta = vrsta; porukaEl.hidden = false;
+      clearTimeout(porukaTimer); porukaTimer = window.setTimeout(() => (porukaEl.hidden = true), 6000);
+    }
+
+    function meta(s: S) {
+      if (s.tablica === "biljeznice") return `<a href="/admin/biljeznice/${s.redak_id}">${esc(s.biljeznica ?? `bilježnica #${s.redak_id}`)}</a>`;
+      const r = s.slug ? `<a href="/admin/rijec/${esc(s.slug)}" class="rijec-tekst">${esc(s.rijec)}</a>` : "";
+      return [r, s.stil ? `<span class="blijedo">${esc(s.stil)}</span>` : ""].filter(Boolean).join(" · ");
+    }
+
+    function stavkaHtml(s: S) {
+      const rz = razlike(s.prije, s.poslije);
+      const slika = s.tablica === "slike"
+        ? `<a class="mini" href="/admin/slika/${s.redak_id}" target="_blank" rel="noopener"><img src="/admin/slika/${s.redak_id}" alt="" loading="lazy" /></a>` : "";
+      const naziv = s.tablica === "slike" ? `slika #${s.redak_id}` : s.tablica === "generiranja" ? `posao #${s.redak_id}` : "";
+      return `<li class="izmjena">${slika}<div>
+        <div class="sitno">${meta(s)} ${naziv ? `<span class="mono blijedo">${naziv}</span>` : ""}
+          ${s.prije === null ? '<span class="oznaka info">novo</span>' : s.poslije === null ? '<span class="oznaka greska">uklonjeno</span>' : ""}</div>
+        ${rz.length ? `<dl>${rz.map((d) => `<dt>${esc(d.polje)}</dt><dd><s title="${esc(d.prije)}">${esc(skrati(d.prije))}</s> → <b title="${esc(d.poslije)}">${esc(skrati(d.poslije))}</b></dd>`).join("")}</dl>` : ""}
+      </div></li>`;
+    }
+
+    function grupaHtml(g: S[]) {
+      const s = g[0];
+      const vraca = s.vraca_id ? ` <span class="blijedo">· vraćanjem zapisa #${s.vraca_id} (${esc(oznakaRadnje(s.vraca_radnja ?? ""))})</span>` : "";
+      const n = Math.max(s.u_grupi, g.length);
+      const vise = n > 1 ? ` <span class="blijedo">· ${izmjena(n)}</span>` : "";
+      const radnje = [...new Set(g.map((x) => x.radnja))];
+      const naslov = radnje.map(oznakaRadnje).join(" + ");
+      const kasnije = g.some((x) => x.kasnije);
+      const vidljive = g.slice(0, PRIKAZI);
+      const ostale = g.slice(PRIKAZI);
+      return `<li class="grupa${g.some((x) => nove.has(x.id)) ? " nova" : ""}" data-id="${s.id}">
+        <div class="glava">
+          <span class="avatar" title="${esc(s.tko)}">${esc(tkoKratko(s.tko)[0]?.toUpperCase())}</span>
+          <div class="opis-grupe"><b>${esc(naslov)}</b>${vraca}${vise}<div class="sitno blijedo">${esc(tkoKratko(s.tko))} ·
+            <time datetime="${datum(s.at).toISOString()}" title="${esc(datum(s.at).toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" }))}">${esc(relativno(s.at))}</time>
+            · <span class="mono">#${s.id}</span>${kasnije ? ' · <span class="oznaka" title="Isti redak je poslije ove izmjene opet mijenjan">kasnije mijenjano</span>' : ""}</div></div>
+          <div class="akcije">
+            <button type="button" class="gumb tihi" data-smjer="ponisti" title="Vrati stanje prije ove izmjene (kao novu izmjenu)">Poništi</button>
+            <button type="button" class="gumb tihi" data-smjer="vrati" title="Vrati stanje odmah nakon ove izmjene (kao novu izmjenu)">Vrati na ovo</button>
+          </div>
+        </div>
+        <ul class="izmjene">${vidljive.map(stavkaHtml).join("")}</ul>
+        ${ostale.length ? `<details><summary class="sitno">još ${ostale.length}</summary><ul class="izmjene">${ostale.map(stavkaHtml).join("")}</ul></details>` : ""}
+      </li>`;
+    }
+
+    function iscrtaj() {
+      const otvoreni = new Set([...popisEl.querySelectorAll("li.grupa")].filter((li) => li.querySelector("details[open]")).map((li) => (li as HTMLElement).dataset.id));
+      popisEl.innerHTML = grupiraj(stavke).map(grupaHtml).join("");
+      for (const id of otvoreni) popisEl.querySelector(`li.grupa[data-id="${id}"] details`)?.setAttribute("open", "");
+      $("[data-prazno]").hidden = stavke.length > 0;
+      starijeEl.hidden = !ima_starijih;
+    }
+
+    async function ucitaj() {
+      try {
+        stavke = await dohvati({ limit });
+        ima_starijih = stavke.length >= limit;
+        nove = new Set();
+        iscrtaj();
+      } catch { poruka("Dnevnik se nije učitao.", "greska"); }
+    }
+
+    async function osvjezi() {
+      if (document.hidden) return;
+      try {
+        const svjeze = await dohvati({ nakon: stavke[0]?.id ?? 0, limit: 300 });
+        if (!svjeze.length) return iscrtajVrijeme();
+        nove = new Set(svjeze.map((s) => s.id));
+        // Starije stavke istog retka sad su „kasnije mijenjane”.
+        const dirnuti = new Set(svjeze.map((s) => `${s.tablica}|${s.redak_id}`));
+        stavke = [...svjeze, ...stavke.map((s) => (dirnuti.has(`${s.tablica}|${s.redak_id}`) ? { ...s, kasnije: 1 } : s))];
+        iscrtaj();
+      } catch { /* mreža: probaj opet za 5 s */ }
+    }
+    function iscrtajVrijeme() {
+      for (const t of popisEl.querySelectorAll("time")) t.textContent = relativno(t.getAttribute("datetime")!);
+    }
+
+    starijeEl.addEventListener("click", async () => {
+      const starije = await dohvati({ prije: stavke.at(-1)?.id, limit });
+      ima_starijih = starije.length >= limit;
+      nove = new Set();
+      stavke = [...stavke, ...starije];
+      iscrtaj();
+    });
+    tkoEl?.addEventListener("change", ucitaj);
+
+    // Dvoklik potvrda: prvi klik pita, drugi (unutar 4 s) izvršava. Bez confirm() dijaloga.
+    popisEl.addEventListener("click", async (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-smjer]");
+      if (!b) return;
+      const id = Number(b.closest<HTMLElement>("li.grupa")!.dataset.id);
+      const smjer = b.dataset.smjer!;
+      if (!b.dataset.pitam) {
+        const tekst = b.textContent;
+        b.dataset.pitam = "1"; b.textContent = "Sigurno?"; b.classList.add("opasno");
+        setTimeout(() => { delete b.dataset.pitam; b.textContent = tekst; b.classList.remove("opasno"); }, 4000);
+        return;
+      }
+      b.disabled = true;
+      try {
+        const r = await fetch(`/admin/api/aktivnost/${id}`, {
+          method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ smjer }),
+        });
+        const d = (await r.json()) as { ok: boolean; promjena?: number; greska?: string };
+        if (d.ok) poruka(d.promjena ? `${smjer === "ponisti" ? "Poništeno" : "Vraćeno"}: ${izmjena(d.promjena)} (nova stavka na vrhu).` : "Stanje je već takvo, nema promjene.");
+        else poruka(d.greska ?? "Nije uspjelo.", "greska");
+        await osvjezi();
+      } catch { poruka("Nije uspjelo (mreža).", "greska"); }
+      finally { b.disabled = false; }
+    });
+
+    ucitaj();
+    setInterval(osvjezi, 5000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) osvjezi(); });
+  }
+</script>
+
+<style>
+  .aktivnost { display: flex; flex-direction: column; gap: 12px; }
+  .filtri { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: .86rem; }
+  .filtri label { display: flex; gap: 8px; align-items: center; }
+  .uzivo { display: inline-flex; gap: 6px; align-items: center; color: var(--blijedo); font-size: .8rem; }
+  .uzivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--uspjeh, #2a9d5b); animation: puls 2s infinite; }
+  @keyframes puls { 50% { opacity: .35; } }
+  .popis { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .popis :global(.grupa) { border: 1px solid var(--rub); border-radius: 14px; background: var(--povrsina); padding: 12px 14px; }
+  .popis :global(.grupa.nova) { animation: nova 2.5s ease-out; }
+  @keyframes nova { from { box-shadow: 0 0 0 3px var(--med); } to { box-shadow: 0 0 0 0 transparent; } }
+  .popis :global(.glava) { display: flex; gap: 12px; align-items: flex-start; }
+  .popis :global(.avatar) { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--povrsina-2); font-weight: 700; font-size: .8rem; }
+  .popis :global(.opis-grupe) { flex: 1; min-width: 0; font-size: .9rem; }
+  .popis :global(.akcije) { display: flex; gap: 6px; flex: none; }
+  .popis :global(.akcije .gumb) { padding: 4px 10px; min-height: 0; font-size: .78rem; }
+  .popis :global(.izmjene) { list-style: none; margin: 8px 0 0 42px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .popis :global(.izmjena) { display: flex; gap: 10px; align-items: flex-start; }
+  .popis :global(.mini) { flex: none; display: block; width: 44px; height: 44px; border-radius: 8px; overflow: hidden; border: 1px solid var(--rub); background: var(--papir-slike); }
+  .popis :global(.mini img) { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .popis :global(dl) { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 4px 0 0; font-size: .8rem; }
+  .popis :global(dt) { color: var(--blijedo); }
+  .popis :global(dd) { margin: 0; overflow-wrap: anywhere; }
+  .popis :global(dd s) { color: var(--blijedo); }
+  .popis :global(details) { margin: 6px 0 0 42px; }
+  .popis :global(details .izmjene) { margin-left: 0; }
+  .popis :global(.rijec-tekst) { text-decoration: none; }
+  .poruka { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--info-blago); color: var(--info); font-size: .86rem; }
+  .poruka[data-vrsta="greska"] { background: var(--greska-blago); color: var(--greska); }
+  .starije { align-self: center; }
+  @media (max-width: 640px) {
+    .popis :global(.glava) { flex-wrap: wrap; }
+    .popis :global(.akcije) { width: 100%; padding-left: 42px; }
+    .popis :global(.izmjene), .popis :global(details) { margin-left: 0; }
+  }
+</style>

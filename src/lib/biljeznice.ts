@@ -4,6 +4,7 @@
 import { env } from "cloudflare:workers";
 import { slug as uSlug } from "./fonemi";
 import { dodajURed, javniUrl } from "./generiranje";
+import { novaGrupa, sZapisom } from "./aktivnost";
 import { stil as nadjiStil } from "./katalog";
 import { korisnikId, stvori } from "./zadaci/baza";
 import { normaliziraj, rijeciU, type Sadrzaj, type Vrsta } from "./zadaci/vrste";
@@ -81,15 +82,15 @@ export async function generirajSlike(b: Biljeznica, email: string): Promise<numb
   return dodajURed(await nadjiStil(b.stil), bez, email);
 }
 
-export async function spremi(id: number, x: { naslov: string; podnaslov: string; slug: string; javna: boolean; zadaci: number[] }) {
+export async function spremi(id: number, email: string, x: { naslov: string; podnaslov: string; slug: string; javna: boolean; zadaci: number[] }) {
   const s = uSlug(x.slug) || `biljeznica-${id}`;
-  await DB().batch([
+  await DB().batch(sZapisom({ tko: email, radnja: "biljeznica.spremljena", tablica: "biljeznice", grupa: novaGrupa() }, id, [
     DB().prepare("UPDATE biljeznice SET naslov = ?, podnaslov = ?, slug = ?, javna = ?, updated_at = datetime('now') WHERE id = ?")
       .bind(x.naslov.slice(0, 120), x.podnaslov.slice(0, 200) || null, s, x.javna ? 1 : 0, id),
     DB().prepare("DELETE FROM biljeznica_zadaci WHERE biljeznica_id = ?").bind(id),
     ...x.zadaci.slice(0, 40).map((z, i) =>
       DB().prepare("INSERT OR IGNORE INTO biljeznica_zadaci (biljeznica_id, zadatak_id, redoslijed) VALUES (?, ?, ?)").bind(id, z, i)),
-  ]);
+  ]));
 }
 
 // ---- Primjer: božićna rima ----

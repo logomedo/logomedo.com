@@ -1,0 +1,25 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Aktivnost from "../../components/Aktivnost.astro";
+import { env } from "cloudflare:workers";
+import { autori } from "../../lib/aktivnost";
+
+const rijecId = Number(Astro.url.searchParams.get("rijec")) || undefined;
+const rijec = rijecId
+  ? await env.DB.prepare("SELECT rijec, slug FROM rijeci WHERE id = ?").bind(rijecId).first<{ rijec: string; slug: string }>()
+  : null;
+---
+<AdminOkvir naslov="Aktivnost" aktivno="aktivnost">
+  <div class="naslov">
+    <div>
+      <h1>Aktivnost</h1>
+      <p class="podnaslov">
+        {rijec
+          ? <>Izmjene riječi <a href={`/admin/rijec/${rijec.slug}`}>{rijec.rijec}</a> i njenih slika · <a href="/admin/aktivnost">sve izmjene</a></>
+          : "Sve izmjene kataloga, svih admina i runnera, najnovije gore."}{" "}
+        „Poništi” vraća stanje prije izmjene, „Vrati na ovo” stanje nakon nje. Oboje je nova izmjena: povijest ostaje cijela.
+      </p>
+    </div>
+  </div>
+  <Aktivnost rijec={rijecId} limit={80} filtri autori={await autori()} />
+</AdminOkvir>

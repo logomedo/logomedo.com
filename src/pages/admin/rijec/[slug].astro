@@ -1,6 +1,7 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
+import Aktivnost from "../../../components/Aktivnost.astro";
 import { kad, rijec as nadji, NAZIV_POZICIJE, stiloviAktivni } from "../../../lib/katalog";
 import { safeNext } from "../../../lib/admin/sesija";
 import { javniUrl } from "../../../lib/generiranje";
@@ -170,6 +171,11 @@ const stilovi = await stiloviAktivni();
       </div>
     </details>
   )}
+
+  <details class="povijest" open>
+    <summary>Izmjene ove riječi i njenih slika · <a href={`/admin/aktivnost?rijec=${r.id}`}>cijeli dnevnik</a></summary>
+    <Aktivnost rijec={r.id} limit={20} />
+  </details>
 </AdminOkvir>
 
 <script>

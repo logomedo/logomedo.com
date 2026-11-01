@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { pojave, slug } from "../../../lib/fonemi";
 import { dodajURed } from "../../../lib/generiranje";
 import { stil } from "../../../lib/katalog";
+import { novaGrupa, sZapisom } from "../../../lib/aktivnost";
 
 const DOPUSTENO = /^[a-zčćđšž]+(?:[ -][a-zčćđšž]+)*$/;
 
@@ -35,23 +36,26 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const rima = t("rima", 12)?.replace(/^-/, "").toLocaleUpperCase("hr") ?? null;
 
   // Neaktivna (npr. prije maknuta) se vraća i dobiva nove podatke; inače nova, izvor 'admin'.
-  const r = await db.prepare(
-    `INSERT INTO rijeci (rijec, slug, opis_za_sliku, recenica, rima, izvor) VALUES (?, ?, ?, ?, ?, 'admin')
-     ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, opis_za_sliku = excluded.opis_za_sliku, recenica = excluded.recenica, rima = excluded.rima
-     RETURNING id, slug`,
-  ).bind(rijec, slug(rijec), t("opis_za_sliku"), t("recenica"), rima).first<{ id: number; slug: string }>()
-    .catch(() => null); // slug već zauzet drugom riječju (UNIQUE)
+  // Riječ, glasovi i poslovi u redu su jedna grupa u dnevniku: „Poništi” ih vraća zajedno.
+  const email = locals.admin!.email;
+  const grupa = novaGrupa();
+  const idRijeci = "(SELECT id FROM rijeci WHERE rijec = ?)";
+  const upisano = await db.batch(sZapisom({ tko: email, radnja: "rijec.nova", tablica: "rijeci", grupa },
+    { sql: idRijeci, args: [rijec] }, [
+      db.prepare(
+        `INSERT INTO rijeci (rijec, slug, opis_za_sliku, recenica, rima, izvor) VALUES (?, ?, ?, ?, ?, 'admin')
+         ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, opis_za_sliku = excluded.opis_za_sliku, recenica = excluded.recenica, rima = excluded.rima`,
+      ).bind(rijec, slug(rijec), t("opis_za_sliku"), t("recenica"), rima),
+      ...spremi.map((p) =>
+        db.prepare(`INSERT OR REPLACE INTO rijec_glas (rijec_id, glas_id, pozicija, potvrdeno) VALUES (${idRijeci}, ?, ?, 1)`)
+          .bind(rijec, idGlasa.get(p.glas)!, p.pozicija)),
+    ])).then(() => true, () => false); // slug već zauzet drugom riječju (UNIQUE)
+  const r = upisano && await db.prepare("SELECT id, slug FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string }>();
   if (!r) return natrag(`Adresa „${slug(rijec)}” je već zauzeta drugom riječju.`);
-  if (spremi.length) {
-    await db.batch(spremi.map((p) =>
-      db.prepare("INSERT OR REPLACE INTO rijec_glas (rijec_id, glas_id, pozicija, potvrdeno) VALUES (?, ?, ?, 1)")
-        .bind(r.id, idGlasa.get(p.glas)!, p.pozicija),
-    ));
-  }
 
   let uRed = 0;
   for (const kod of f.getAll("generiraj").map(String)) {
-    uRed += await dodajURed(await stil(kod), [r.id], locals.admin!.email).catch(() => 0);
+    uRed += await dodajURed(await stil(kod), [r.id], email, undefined, grupa).catch(() => 0);
   }
   return new Response(null, { status: 303, headers: { location: `/admin/rijec/${r.slug}?nova=1${uRed ? `&dodano=${uRed}` : ""}` } });
 };
