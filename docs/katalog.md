@@ -157,6 +157,31 @@ Worker odbija SVG sa `<script>`, `javascript:` ili `on*=` atributima.
   ≈ $17 za katalog; cijena nije provjerena) kao zamjena za agy pri masovnom generiranju.
   Ne automatizirati gemini.google.com preko preglednika.
 
+### Noć 31. 10. → 1. 11. (izmjereno iz `~/Library/Logs/logomedo-runner.log`)
+
+| Krug (lokalno) | Slike |
+|---|---|
+| 19:43–20:42 | 11 (#13–#23) |
+| 00:43–00:52 | 12 (#39–#50) |
+| 01:30 | 1 (#51, usred čekanja: prozor je vjerojatno klizni) |
+| 05:33–05:51 | 10 (#52–#61) |
+
+≈ 11–12 slika po krugu, krugovi ~5 h razmaka. Ujutro 1. 11. u redu 118 poslova
+(103 ilustracije, 15 bojanki) → ~10 krugova, procjena kraja 3. 11. oko 8 h.
+
+Zamka (popravljeno 7c7fe18): agy je napisao reset sa sekundama (`00:41:30 UTC`), stari regex
+je „41” pročitao kao sat i Python se srušio; runner je pao, a launchd ga je ponovno pokrenuo.
+
+### Vertex AI na `bimbo-sync-prod`: blokiran (provjereno 1. 11. 2026.)
+
+Ideja je bila prenijeti `lib/vertex_auth.js` iz `~/git/domovinatv/fetch.domovina.tv`. Svaki
+poziv (tekst `gemini-3.8-flash`, slika `gemini-2.5-flash-image`, global i us-central1) vraća
+`403 Request rejected in accordance with our terms of use and policies`, isto kao u fetchu od
+28. 10. Billing je uključen, krediti $123,01 od $300 (vrijede do 14. 12. 2026.), račun je još
+free trial. Nije rate-limit ni nedostatak kredita. Matija je odustao od toga puta; novi projekt
+na istom billingu samo da se zaobiđe blokada ne raditi. Ručni upload (gore) pokriva slike
+iz vanjskih alata.
+
 ## Plan: stilovi, dodaci, referentne slike (dogovoreno 31. 10. 2026., nije napravljeno)
 
 - **Stil** (jedan): `bojanka` (SVG) i novi `ilustracija` (raster u boji); `stilovi.vektor`.
