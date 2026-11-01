@@ -4,6 +4,7 @@ import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSession } from "./lib/admin/sesija";
 import { runnerOk } from "./lib/runner-auth";
+import { appSesija } from "./lib/app/sesija";
 
 const JAVNO = new Set([
   "/admin/login",
@@ -30,6 +31,7 @@ export const onRequest = defineMiddleware(async ({ request, url, locals }, next)
   if (url.pathname.startsWith("/api/runner/")) {
     return (await runnerOk(request)) ? next() : json({ error: "unauthorized" }, 401);
   }
+  if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) return apiV1(request, url, locals, next);
   if (!adminPutanja(url.pathname)) return zastiti(await next(), false);
 
   // 1. Jedan host: rpID passkeya je hostname, a Access štiti samo ADMIN_HOST/admin/sso.
@@ -57,6 +59,28 @@ export const onRequest = defineMiddleware(async ({ request, url, locals }, next)
 
   return zastiti(await next(), true);
 });
+
+/**
+ * /api/v1: mobilna aplikacija (docs/app-api.md). Samo bearer token, kolačići se ne gledaju,
+ * pa nema CSRF-a. /api/v1/admin/* traži ulogu admin.
+ */
+const API_JAVNO = new Set(["/api/v1/prijava/token"]);
+async function apiV1(request: Request, url: URL, locals: App.Locals, next: () => Promise<Response>) {
+  const host = (env.ADMIN_HOST ?? "").trim();
+  if (host && url.hostname !== host && !lokalno(url.hostname)) return json({ error: "wrong_host", host }, 421);
+  if (!API_JAVNO.has(url.pathname)) {
+    const s = await appSesija(request);
+    if (!s) return json({ error: "unauthorized" }, 401);
+    if (url.pathname.startsWith("/api/v1/admin/") && s.uloga !== "admin") return json({ error: "forbidden" }, 403);
+    locals.app = s;
+  }
+  const odgovor = await next();
+  const h = new Headers(odgovor.headers);
+  h.set("x-content-type-options", "nosniff");
+  h.set("x-robots-tag", "noindex");
+  if (!h.has("cache-control")) h.set("cache-control", "no-store");
+  return new Response(odgovor.body, { status: odgovor.status, statusText: odgovor.statusText, headers: h });
+}
 
 /** Sigurnosna zaglavlja; inline skripte koje Astro umeće dobivaju nonce. */
 async function zastiti(odgovor: Response, admin: boolean): Promise<Response> {

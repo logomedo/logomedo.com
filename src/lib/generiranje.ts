@@ -2,7 +2,7 @@
 // ih uzima preko /api/runner/* i vraća sliku. agy radi samo na Macu, pa Worker
 // ne generira ništa sam.
 import { env } from "cloudflare:workers";
-import type { Stil } from "./katalog";
+import { stil as stilPoKodu, type Stil } from "./katalog";
 import { zazvoni } from "./runner-zvono";
 
 const ZASTARIO_MIN = 15;
@@ -189,6 +189,25 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
   }
   await uskladiJavno(dirnute);
   return { ok: true };
+}
+
+/**
+ * Odluka s weba ili iz aplikacije. Odbijena s `ponovi`: nova u red (razlog ulazi u prompt), ali
+ * samo ako riječ još nema odobrenu sliku ni drugog kandidata. Inače „Odbij” na suvišnom kandidatu
+ * stvara novog, i tako u krug (astronaut, 31. 10.).
+ */
+export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, ponovi = false) {
+  const ishod = await odluci(slikaId, akcija, email, razlog);
+  let generira = false;
+  if (ishod.ok && akcija === "odbij" && ponovi) {
+    const s = await env.DB.prepare(
+      `SELECT s.rijec_id, s.stil_id, st.kod,
+         EXISTS (SELECT 1 FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status IN ('odobrena', 'kandidat')) AS pokrivena
+       FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.id = ?`,
+    ).bind(slikaId).first<{ rijec_id: number; stil_id: number; kod: string; pokrivena: number }>();
+    if (s && !s.pokrivena) generira = (await dodajURed(await stilPoKodu(s.kod), [s.rijec_id], email)) > 0;
+  }
+  return { ...ishod, generira };
 }
 
 /** Javni URL odobrene slike (bucket logomedo-javno na cdn.logomedo.com). */
