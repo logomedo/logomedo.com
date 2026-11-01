@@ -87,7 +87,7 @@ do_reseta() {
 import re, sys, datetime as d
 t = sys.stdin.read()
 n = d.datetime.now(d.timezone.utc)
-m = re.findall(r"(\d{1,2}):(\d{2}) UTC", t)
+m = re.findall(r"(?<![\d:])(\d{1,2}):(\d{2})(?::\d{2})?\s*UTC", t)
 if m:
     h, mi = map(int, m[-1]); c = n.replace(hour=h, minute=mi, second=0, microsecond=0)
     if c <= n: c += d.timedelta(days=1)
