@@ -74,6 +74,12 @@ slova), slike smanjene na ≤ 800 px JPEG (PDF bilježnice ~1–2 MB, ne 6 MB), 
 cdn.logomedo.com nema CORS, a CSP stranice dopušta `connect-src 'self'`. „Ispiši” (dijalog preglednika)
 ostaje kao sporedni gumb.
 
+Izmjereno na produkciji 1. 11. 2026. (Božićna rima, 6 stranica, 14 slika): 1009 KB, ~1,5 s od klika.
+Bez smanjivanja slika isti PDF ima 5,8 MB. Zamke: u `drawSvgPath` pdf-lib skalira i debljinu crte i
+crtkanje (pišu se u SVG jedinicama, ne u točkama); `color` bez `borderWidth` samo puni, bez obruba. U
+lokalnom devu prvi `import()` pdf-lib-a zna izazvati Vite reload stranice (optimizacija ovisnosti).
+Gumb u admin editoru nije isproban u pregledniku (prijava passkeyem), dijeli kod s javnim ispisom.
+
 U editoru se slika bira iz cijelog kataloga (pretraga po riječi ili `-rima`, filtri „rimuje se / ne rimuje
 se s …”); riječ koje nema može se odmah dodati u katalog (bez glasa), a slika joj se generira na
 stranici riječi. Dok riječ nema sliku, prikazuje se riječ.
