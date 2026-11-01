@@ -47,6 +47,9 @@ sequenceDiagram
   u Chromeu blokira i preusmjeravanje forme na drugu shemu.
 - Kod se briše pri prvom pokušaju zamjene, bez obzira na ishod (krivi verifikator ga troši).
 - Povratna adresa je fiksna u kodu (`APP_POVRATAK`), nikad iz zahtjeva.
+- **Potvrđeno na produkciji 1. 11. 2026.** (Xiaomi 17 Ultra): sesija u `app_sesije`, kod potrošen.
+  Aplikacija dobiva identitet onoga tko je već prijavljen u pregledniku uređaja (tamo je bila
+  Anitina passkey sesija, pa je i aplikacija njezina). Detalji: `../app/docs/2026-11-01-prvi-test-na-uredajima.md`.
 
 Kasnije (nije napravljeno): App Link `https://logomedo.com/app/...` umjesto sheme i native passkey
 kroz Android Credential Manager. Oboje traži `/.well-known/assetlinks.json` s SHA-256 otiskom
