@@ -23,6 +23,8 @@ const stilovi = await stiloviAktivni();
 <AdminOkvir naslov={r.rijec.toLocaleUpperCase("hr")} aktivno="katalog">
   <a class="mrvice" href={od}><Ikona ime="natrag" velicina={16} /> Natrag</a>
 
+  {Astro.url.searchParams.get("nova") && <div class="obavijest"><Ikona ime="kvacica" /> Riječ je dodana u katalog.</div>}
+  {Astro.url.searchParams.get("postoji") && <div class="obavijest"><Ikona ime="upozorenje" /> Ta riječ je već u katalogu.</div>}
   {ucitano && <div class="obavijest"><Ikona ime="kvacica" /> Slika je učitana kao kandidat.</div>}
   {greskaUploada && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Upload nije uspio: {greskaUploada}</div>}
   {dodano !== null && <div class="obavijest"><Ikona ime="red" /> {Number(dodano) ? "Dodano u red za generiranje." : "Već je u redu."}</div>}

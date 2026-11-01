@@ -1,0 +1,125 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { DB, stiloviAktivni } from "../../lib/katalog";
+
+const q = Astro.url.searchParams;
+const [stilovi, { results: glasovi }] = await Promise.all([
+  stiloviAktivni(),
+  DB().prepare("SELECT oznaka, skupine FROM glasovi ORDER BY redoslijed").all<{ oznaka: string; skupine: number }>(),
+]);
+const v = (k: string) => q.get(k) ?? "";
+---
+<AdminOkvir naslov="Nova riječ" aktivno="katalog">
+  <a class="mrvice" href="/admin"><Ikona ime="natrag" velicina={16} /> Katalog</a>
+  <div class="naslov"><div>
+    <h1>Nova riječ</h1>
+    <p class="podnaslov">Glasovi i pozicije izvode se iz pravopisa dok pišeš. Ostavi označene one koje vrijede.</p>
+  </div></div>
+
+  {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
+
+  <form class="ploha forma" method="post" action="/admin/api/nova-rijec" data-glasovi={JSON.stringify(glasovi)}>
+    <div class="polje-rijec">
+      <label for="n-rijec">Riječ</label>
+      <input id="n-rijec" type="text" name="rijec" value={v("rijec")} required maxlength="40" autocomplete="off" spellcheck="false"
+        autofocus pattern="[a-zA-ZčćđšžČĆĐŠŽ]+([ \-][a-zA-ZčćđšžČĆĐŠŽ]+)*" title="Samo slova, razmak ili crtica" placeholder="npr. krastavac" />
+      <p class="pomoc">Malim slovima, kako se izgovara: <span class="mono adresa">/admin/rijec/…</span></p>
+    </div>
+
+    <fieldset>
+      <legend>Glasovi i pozicije</legend>
+      <div class="pozicije" aria-live="polite"><span class="blijedo prazno-poz">Upiši riječ.</span></div>
+      <p class="pomoc">Riječ bez ijednog od glasova ({glasovi.map((g) => g.oznaka).join(", ")}) ulazi u katalog bez glasa; dobro je za rime i zadatke.</p>
+    </fieldset>
+
+    <div class="dva">
+      <div>
+        <label for="n-opis">Opis za sliku <span class="blijedo">(ide u prompt)</span></label>
+        <input id="n-opis" type="text" name="opis_za_sliku" value={v("opis_za_sliku")} maxlength="300"
+          placeholder="engleski pomaže: a green cucumber, vegetable" />
+        <p class="pomoc">Za homonime obavezno (LUK: povrće, ne oružje). Engleski opis model pogađa bolje.</p>
+      </div>
+      <div>
+        <label for="n-rima">Rima <span class="blijedo">(prazno = iz pravopisa)</span></label>
+        <input id="n-rima" type="text" name="rima" value={v("rima")} maxlength="12" placeholder="-" />
+      </div>
+    </div>
+
+    <div>
+      <label for="n-recenica">Primjer rečenice</label>
+      <input id="n-recenica" type="text" name="recenica" value={v("recenica")} maxlength="300" placeholder="npr. KRASTAVAC JE ZELEN" />
+    </div>
+
+    <fieldset>
+      <legend>Slika</legend>
+      <div class="stilovi">
+        {stilovi.map((s) => (
+          <label class="kvacica"><input type="checkbox" name="generiraj" value={s.kod} /> Generiraj {s.naziv.toLowerCase()}</label>
+        ))}
+      </div>
+      <p class="pomoc">Neoznačeno: riječ je bez slike, a sliku možeš učitati ili generirati na njezinoj stranici.</p>
+    </fieldset>
+
+    <div class="akcije">
+      <button class="gumb glavni" type="submit"><Ikona ime="kvacica" /> Dodaj riječ</button>
+      <a class="gumb tihi" href="/admin">Odustani</a>
+    </div>
+  </form>
+</AdminOkvir>
+
+<script>
+  import { pojave, slug } from "../../lib/fonemi";
+  import { izvediRimu } from "../../lib/zadaci/rima";
+
+  const NAZIV: Record<string, string> = { inicijalna: "inicijalna", medijalna: "medijalna", finalna: "finalna", skupina: "skupina" };
+  const forma = document.querySelector<HTMLFormElement>(".forma")!;
+  const glasovi = JSON.parse(forma.dataset.glasovi!) as { oznaka: string; skupine: number }[];
+  const ulaz = forma.querySelector<HTMLInputElement>("#n-rijec")!;
+  const rima = forma.querySelector<HTMLInputElement>("#n-rima")!;
+  const kutija = forma.querySelector<HTMLElement>(".pozicije")!;
+  const adresa = forma.querySelector<HTMLElement>(".adresa")!;
+  const iskljuceno = new Set<string>();
+
+  const osvjezi = () => {
+    const r = ulaz.value.trim().toLocaleLowerCase("hr").replace(/\s+/g, " ");
+    adresa.textContent = `/admin/rijec/${r ? slug(r) : "…"}`;
+    rima.placeholder = r ? `-${(izvediRimu(r) ?? "").toLocaleLowerCase("hr")}` : "-";
+    if (!r) { kutija.innerHTML = '<span class="blijedo">Upiši riječ.</span>'; return; }
+    const p = pojave(r, glasovi.map((g) => g.oznaka), glasovi.filter((g) => g.skupine).map((g) => g.oznaka));
+    kutija.innerHTML = p.length
+      ? p.map((x) => {
+          const k = `${x.glas}|${x.pozicija}`;
+          return `<label class="cip"><input type="checkbox" name="pozicija" value="${k}" ${iskljuceno.has(k) ? "" : "checked"} />
+            <b>${x.glas}</b> ${NAZIV[x.pozicija]}</label>`;
+        }).join("")
+      : '<span class="blijedo">Nema glasova iz kataloga.</span>';
+  };
+  kutija.addEventListener("change", (e) => {
+    const c = e.target as HTMLInputElement;
+    if (c.checked) iskljuceno.delete(c.value); else iskljuceno.add(c.value);
+  });
+  ulaz.addEventListener("input", osvjezi);
+  osvjezi();
+</script>
+
+<style>
+  .forma { display: grid; gap: 22px; padding: 26px; max-width: 760px; }
+  .polje-rijec input { font-family: var(--font-slova); font-size: 1.6rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 10px 14px; }
+  .pomoc { margin: 6px 0 0; font-size: .78rem; color: var(--blijedo); }
+  fieldset { border: 0; padding: 0; margin: 0; }
+  legend { font-size: .8rem; font-weight: 650; color: var(--blijedo); margin-bottom: 8px; padding: 0; }
+  .pozicije { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; align-items: center; }
+  .pozicije :global(.cip) { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 5px 12px 5px 9px; border-radius: 999px;
+    border: 1px solid var(--rub-jak); background: var(--povrsina); color: var(--tinta); font-size: .86rem; font-weight: 550; cursor: pointer; }
+  .pozicije :global(.cip b) { font-family: var(--font-slova); font-size: 1rem; }
+  .pozicije :global(.cip:has(input:checked)) { background: var(--med-blago); border-color: var(--med); color: var(--med-tamno); }
+  .pozicije :global(.cip input) { accent-color: var(--med); margin: 0; }
+  .dva { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .dva { grid-template-columns: 1fr; } .forma { padding: 18px; } }
+  .stilovi { display: flex; flex-wrap: wrap; gap: 18px; }
+  .kvacica { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-size: .92rem; font-weight: 550; color: var(--tinta); cursor: pointer; }
+  .kvacica input { accent-color: var(--med); width: 16px; height: 16px; margin: 0; }
+  .akcije { display: flex; gap: 10px; }
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+</style>

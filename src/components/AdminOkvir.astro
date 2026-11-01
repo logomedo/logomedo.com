@@ -99,7 +99,8 @@ const stavke = [
             ? nadeno.map((x, i) => `<li role="option" aria-selected="${i === 0}"><a href="/admin/rijec/${x.s}">
                 <span class="tocka ${x.o ? "da" : x.k ? "kand" : ""}" title="${x.o ? "odobrena slika" : x.k ? x.k + " kandidata" : "nema slike"}"></span>
                 <span>${esc(x.r)}</span></a></li>`).join("")
-            : `<li class="nista">Nema riječi „${esc(ulaz.value)}”</li>`;
+            : `<li role="option" aria-selected="true"><a href="/admin/nova-rijec?rijec=${encodeURIComponent(ulaz.value.trim())}" class="dodaj">
+                <span class="tocka"></span><span>+ Dodaj „${esc(ulaz.value.trim())}”</span></a></li>`;
           lista.hidden = false;
           ulaz.setAttribute("aria-expanded", "true");
         };
@@ -152,6 +153,7 @@ const stavke = [
       #trazi-rezultati a { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 8px; text-decoration: none; color: var(--tinta);
         text-transform: uppercase; letter-spacing: .04em; font-weight: 650; font-size: .84rem; }
       #trazi-rezultati li[aria-selected=true] a, #trazi-rezultati a:hover { background: var(--med-blago); color: var(--med-tamno); }
+      #trazi-rezultati a.dodaj { text-transform: none; letter-spacing: 0; color: var(--med-tamno); }
       #trazi-rezultati .nista { padding: 8px 10px; color: var(--blijedo); font-size: .84rem; }
       .tocka { flex: none; width: 8px; height: 8px; border-radius: 999px; background: var(--rub-jak); }
       .tocka.da { background: var(--uspjeh); } .tocka.kand { background: var(--med); }

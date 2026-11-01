@@ -27,6 +27,12 @@ export async function stil(kod = "bojanka"): Promise<Stil> {
   return s;
 }
 
+/** Stil iz URL-a (`?stil=`); nepoznat ili prazan = bojanka. */
+export async function stilIzUrla(url: URL): Promise<Stil> {
+  const kod = url.searchParams.get("stil");
+  return (kod && (await DB().prepare("SELECT id, kod, naziv, predlozak, model FROM stilovi WHERE kod = ?").bind(kod).first<Stil>())) || stil();
+}
+
 export async function glasovi(stilId: number): Promise<GlasPregled[]> {
   const { results } = await DB().prepare(
     `SELECT g.id, g.oznaka, g.slug, g.skupina, g.skupine,
@@ -86,6 +92,15 @@ export async function rijec(slug: string) {
     slike: slike.results as unknown as Slika[],
     red: red.results as { id: number; status: string; pokusaji: number; greska: string | null; created_at: string }[],
   };
+}
+
+/** Brojevi za sve stilove zajedno (isti kao u bočnoj traci). */
+export async function ukupnoSvihStilova() {
+  return (await DB().prepare(
+    `SELECT (SELECT COUNT(*) FROM slike WHERE status = 'kandidat') AS kandidata,
+       (SELECT COUNT(*) FROM generiranja WHERE status IN ('ceka','radi')) AS uRedu,
+       (SELECT COUNT(*) FROM generiranja WHERE status = 'greska') AS gresaka`,
+  ).first<{ kandidata: number; uRedu: number; gresaka: number }>())!;
 }
 
 /** Ukupni brojevi za zaglavlje. */

@@ -1,12 +1,12 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
-import { glas as nadjiGlas, rijeciGlasa, stil, NAZIV_POZICIJE } from "../../../lib/katalog";
+import { glas as nadjiGlas, rijeciGlasa, stilIzUrla, NAZIV_POZICIJE } from "../../../lib/katalog";
 import { POZICIJE, type Pozicija } from "../../../lib/fonemi";
 
 const g = await nadjiGlas(Astro.params.slug!);
 if (!g) return new Response("Nema tog glasa", { status: 404 });
-const s = await stil();
+const s = await stilIzUrla(Astro.url);
 const sve = await rijeciGlasa(g.id, s.id);
 
 const pozicije = POZICIJE.filter((p) => p.kod !== "skupina" || g.skupine || sve.some((r) => r.pozicija === "skupina"));
@@ -33,17 +33,18 @@ const url = (izmjena: Record<string, string | null>) => {
 const ovdje = url({});
 ---
 <AdminOkvir naslov={`Glas ${g.oznaka}`} aktivno="katalog">
-  <a class="mrvice" href="/admin"><Ikona ime="natrag" velicina={16} /> Katalog</a>
+  <a class="mrvice" href={s.kod === "bojanka" ? "/admin" : `/admin?stil=${s.kod}`}><Ikona ime="natrag" velicina={16} /> Katalog</a>
   <div class="naslov">
     <div class="glava">
       <span class="veliko-slovo">{g.oznaka}</span>
       <div>
         <h1>Glas {g.oznaka}</h1>
-        <p class="podnaslov">{g.skupina} · {ukupnoRijeci} riječi · {odobreno} s odobrenom slikom</p>
+        <p class="podnaslov">{g.skupina} · {ukupnoRijeci} riječi · {odobreno} s odobrenom slikom ({s.naziv.toLowerCase()})</p>
       </div>
     </div>
     <form method="post" action="/admin/api/generiraj">
       <input type="hidden" name="glas" value={g.slug} />
+      <input type="hidden" name="stil" value={s.kod} />
       <input type="hidden" name="pozicija" value={p ?? ""} />
       <input type="hidden" name="next" value={ovdje} />
       <button class="gumb glavni" type="submit" disabled={!bezSlike}>

@@ -1,10 +1,13 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
-import { glasovi, stil, ukupno } from "../../lib/katalog";
+import { glasovi, stilIzUrla, stiloviAktivni, ukupno, ukupnoSvihStilova } from "../../lib/katalog";
 
-const s = await stil();
-const [lista, u] = await Promise.all([glasovi(s.id), ukupno(s.id)]);
+const s = await stilIzUrla(Astro.url);
+const [lista, u, svi, stilovi] = await Promise.all([glasovi(s.id), ukupno(s.id), ukupnoSvihStilova(), stiloviAktivni()]);
+const uzStil = (href: string) => (s.kod === "bojanka" ? href : `${href}?stil=${s.kod}`);
+// Ispod brojke: koliko je u svim stilovima, ako se razlikuje (bočna traka broji sve stilove).
+const sviNapomena = (ovaj: number, sviBroj: number) => (sviBroj !== ovaj ? `${sviBroj} u svim stilovima` : "");
 const skupine = [...new Set(lista.map((g) => g.skupina ?? "ostalo"))];
 const posto = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 const O = 2 * Math.PI * 26;
@@ -13,9 +16,15 @@ const O = 2 * Math.PI * 26;
   <div class="naslov">
     <div>
       <h1>Katalog slika</h1>
-      <p class="podnaslov">Stil <b>{s.naziv}</b> · {u.rijeci} riječi · model <span class="mono">{s.model}</span></p>
+      <p class="podnaslov">{u.rijeci} riječi · model <span class="mono">{s.model}</span></p>
+      <nav class="stilovi-prekidac" aria-label="Stil">
+        {stilovi.map((x) => <a href={x.kod === "bojanka" ? "/admin" : `/admin?stil=${x.kod}`} class:list={{ aktivno: x.kod === s.kod }} aria-current={x.kod === s.kod ? "page" : undefined}>{x.naziv}</a>)}
+      </nav>
     </div>
-    {u.kandidata > 0 && <a class="gumb glavni" href="/admin/pregled"><Ikona ime="pregled" /> Pregledaj {u.kandidata} kandidata</a>}
+    <div class="gumbi">
+      <a class="gumb" href="/admin/nova-rijec"><Ikona ime="plus" /> Nova riječ</a>
+      {u.kandidata > 0 && <a class="gumb glavni" href="/admin/pregled"><Ikona ime="pregled" /> Pregledaj {u.kandidata} kandidata</a>}
+    </div>
   </div>
 
   <section class="brojke">
@@ -24,9 +33,9 @@ const O = 2 * Math.PI * 26;
       <span class="opis">odobrenih slika</span>
       <div class="traka-napretka"><i style={`width:${posto(u.odobreno, u.rijeci)}%`}></i></div>
     </div>
-    <div class="ploha brojka"><span class="vrijednost">{u.kandidata}</span><span class="opis">kandidata čeka pregled</span></div>
-    <div class="ploha brojka"><span class="vrijednost">{u.uRedu}</span><span class="opis">u redu za generiranje</span></div>
-    <div class="ploha brojka" class:list={{ upozorenje: u.gresaka > 0 }}><span class="vrijednost">{u.gresaka}</span><span class="opis">neuspjelih generiranja</span></div>
+    <div class="ploha brojka"><span class="vrijednost">{u.kandidata}</span><span class="opis">kandidata čeka pregled</span><span class="svi">{sviNapomena(u.kandidata, svi.kandidata)}</span></div>
+    <div class="ploha brojka"><span class="vrijednost">{u.uRedu}</span><span class="opis">u redu za generiranje</span><span class="svi">{sviNapomena(u.uRedu, svi.uRedu)}</span></div>
+    <div class="ploha brojka" class:list={{ upozorenje: u.gresaka > 0 }}><span class="vrijednost">{u.gresaka}</span><span class="opis">neuspjelih generiranja</span><span class="svi">{sviNapomena(u.gresaka, svi.gresaka)}</span></div>
   </section>
 
   {skupine.map((sk) => (
@@ -34,7 +43,7 @@ const O = 2 * Math.PI * 26;
       <h2>{sk}</h2>
       <div class="glasovi">
         {lista.filter((g) => (g.skupina ?? "ostalo") === sk).map((g) => (
-          <a class="ploha glas" href={`/admin/glas/${g.slug}`}>
+          <a class="ploha glas" href={uzStil(`/admin/glas/${g.slug}`)}>
             <svg class="prsten" viewBox="0 0 64 64" aria-hidden="true">
               <circle cx="32" cy="32" r="26" class="podloga" />
               <circle cx="32" cy="32" r="26" class="kandidati" stroke-dasharray={`${(O * (g.odobreno + g.kandidata)) / Math.max(g.rijeci, 1)} ${O}`} />
@@ -57,6 +66,11 @@ const O = 2 * Math.PI * 26;
 </AdminOkvir>
 
 <style>
+  .stilovi-prekidac { display: inline-flex; gap: 2px; margin-top: 12px; padding: 3px; border-radius: 10px; background: var(--povrsina-2); }
+  .stilovi-prekidac a { padding: 5px 14px; border-radius: 8px; text-decoration: none; color: var(--blijedo); font-weight: 600; font-size: .86rem; }
+  .stilovi-prekidac a.aktivno { background: var(--povrsina); color: var(--tinta); box-shadow: var(--sjena-1); }
+  .svi { color: var(--vrlo-blijedo); font-size: .76rem; }
+  .gumbi { display: flex; gap: 10px; flex-wrap: wrap; }
   .brojke { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 40px; }
   .brojka { padding: 18px 20px; display: flex; flex-direction: column; gap: 2px; }
   .vrijednost { font-family: var(--font-slova); font-size: 2.1rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }

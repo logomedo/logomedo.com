@@ -74,6 +74,20 @@ Ulazi kao `kandidat` s `izvor = 'upload'` (`slike.model` = alat), dalje isti pre
 bucket kao za agy. Isti R2 ključ (hash sadržaja) kao runner; ista datoteka dvaput se odbija.
 SVG se za upload ne radi (potrace je samo u runneru).
 
+### Nova riječ (1. 11. 2026.)
+
+`/admin/nova-rijec` (gumb „Nova riječ” u Katalogu, ili „+ Dodaj …” u tražilici kad riječi nema).
+Polja prate tablicu `rijeci`: riječ (samo hrvatska slova, razmak, crtica; do 40), opis za sliku,
+primjer rečenice, rima. Glasovi i pozicije (`rijec_glas`) izvode se iz pravopisa dok se piše
+(`fonemi.ts` u pregledniku); spremaju se samo označene, s `potvrdeno = 1`, a server ih izvodi
+ponovno (ne vjeruje formi). Neobavezno odmah u red za generiranje po stilu. Postojeća aktivna
+riječ preusmjerava na svoju stranicu; neaktivna se vraća s novim podacima. `izvor = 'admin'`.
+
+### Brojke po stilu
+
+Katalog i stranice glasova pokazuju jedan stil (prekidač, `?stil=ilustracija`; bez parametra
+bojanka). Bočna traka broji sve stilove, pa pločice ispod broja pišu i „N u svim stilovima”.
+
 ### Tražilica
 
 Polje u bočnoj traci admina (prečac `/`). `GET /admin/api/trazi` vrati sve aktivne riječi
