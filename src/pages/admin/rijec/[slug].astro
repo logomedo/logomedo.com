@@ -98,6 +98,7 @@ const stilovi = await stiloviAktivni();
               <img class="pretpregled" alt="" hidden />
               <span class="poziv">PNG, JPEG ili WebP, do 8 MB</span>
             </label>
+            <span class="odabrano sitno blijedo" aria-live="polite"></span>
             <div class="upload-polja">
               <div class="dva">
                 <div>
@@ -170,14 +171,26 @@ const stilovi = await stiloviAktivni();
 </AdminOkvir>
 
 <script>
+  // Pregled odabrane slike. FileReader (data URL) umjesto blob URL-a, slušamo i change i input,
+  // a ispod okvira uvijek piše ime i veličina: ako na mobitelu nema ni toga, događaj nije stigao.
   for (const ulaz of document.querySelectorAll<HTMLInputElement>(".upload input[type=file]")) {
-    ulaz.onchange = () => {
-      const img = ulaz.parentElement!.querySelector<HTMLImageElement>(".pretpregled")!;
+    const okvir = ulaz.closest(".odabir")!;
+    const img = okvir.querySelector<HTMLImageElement>(".pretpregled")!;
+    const info = ulaz.closest("form")!.querySelector<HTMLElement>(".odabrano")!;
+    const pokazi = () => {
       const f = ulaz.files?.[0];
-      if (img.src) URL.revokeObjectURL(img.src);
-      img.hidden = !f;
-      if (f) img.src = URL.createObjectURL(f);
+      img.hidden = true;
+      img.removeAttribute("src");
+      if (!f) { info.textContent = ""; return; }
+      info.textContent = `${f.name} · ${(f.size / 1024 / 1024).toFixed(1)} MB · ${f.type || "nepoznat tip"}`;
+      const r = new FileReader();
+      r.onload = () => { img.src = String(r.result); img.hidden = false; };
+      r.onerror = () => { info.textContent += " · pregled nije moguć"; };
+      r.readAsDataURL(f);
     };
+    img.onerror = () => { img.hidden = true; info.textContent += " · pregled nije moguć"; };
+    ulaz.addEventListener("change", pokazi);
+    ulaz.addEventListener("input", pokazi);
   }
 </script>
 
@@ -220,13 +233,15 @@ const stilovi = await stiloviAktivni();
   .upload[open] summary { color: var(--tinta); border-bottom: 1px solid var(--rub); }
   .upload form { padding: 16px; margin: 0; }
   .upload-red { display: grid; grid-template-columns: 160px 1fr; gap: 16px; }
-  @media (max-width: 600px) { .upload-red { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) { .upload-red { grid-template-columns: 1fr; } .upload-polja { grid-row: auto; grid-column: auto; } }
   .odabir { position: relative; aspect-ratio: 1; border: 2px dashed var(--rub-jak); border-radius: 12px; display: grid; place-items: center;
     text-align: center; cursor: pointer; overflow: hidden; background: var(--papir-slike); margin: 0; }
   .odabir input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .odabir .poziv { padding: 10px; font-size: .78rem; }
   .pretpregled { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; background: var(--papir-slike); }
-  .upload-polja { display: grid; gap: 12px; align-content: start; }
+  .odabrano { grid-column: 1; margin: -8px 0 0; word-break: break-all; display: block; }
+  .odabrano:empty { display: none; }
+  .upload-polja { grid-row: 1 / span 2; grid-column: 2; display: grid; gap: 12px; align-content: start; }
   .upload-polja .gumb { justify-self: start; }
   .dva { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   select { width: 100%; font: inherit; padding: 9px 12px; border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); }
