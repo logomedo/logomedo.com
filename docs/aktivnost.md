@@ -46,3 +46,24 @@ Posebni slučajevi: slika koja postaje odobrena prvo istisne dosadašnju (zapisa
 nova riječ se samo deaktivira (`aktivna = 0`); poništen zahtjev za generiranje briše posao samo
 ako još čeka; vraćeni posao ulazi u red kao novi, ako ta riječ i stil već nemaju posao. Nakon
 vraćanja slika usklađuje se javni bucket (`uskladiJavno`), a nakon vraćenih poslova budi se runner.
+
+## Zamke i ograničenja (1. 11. 2026.)
+
+- **Broj naredbi u batchu.** `sZapisom` dodaje tri naredbe po retku. Za red generiranja
+  (do 428 riječi) to bi bilo preko tisuću upita u jednom pozivu Workera, pa red ide skupno
+  (`zapisNastalih`, `zapisSkupa`) i vraćanje poslova je skupno. D1 dopušta najviše 100
+  parametara po upitu, pa se popisi id-ova šalju kao JSON kroz `json_each(?)`.
+- **„Zadnji zapis” = `MAX(id)`.** To vrijedi jer je batch jedna transakcija. Izvan batcha ne vrijedi.
+- **Vraćeni posao ne zna svoj id unaprijed.** Nalazi se po `id > MAX prije` + `zatrazio` + `ceka`.
+  Teoretski može uhvatiti posao koji je isti admin istovremeno dodao u drugoj kartici.
+- **Generirani stupac** `rijec_id` (VIRTUAL, s indeksom) i `json_group_array(... ORDER BY ...)`
+  rade na D1, provjereno lokalno i na produkciji (migracija 0009).
+- **Nije u dnevniku:** zadaci, „Vrati greške u red”, runnerovo uzimanje i greške poslova,
+  izmjene ravno u bazi (`wrangler d1 execute`, seed). Takve izmjene ne mijenjaju zapise, ali
+  „Vrati” na starom zapisu prepisat će ih bez upozorenja, osim oznake „kasnije mijenjano”
+  ako je u međuvremenu bio i zabilježeni zapis.
+- **Rast tablice.** Nema čišćenja; red generiranja upisuje po jedan redak po poslu. Kad bude
+  smetalo: brisati zapise starije od N dana, ili grupe `generiranje.*` sažimati.
+
+Vezani dokumenti: `docs/katalog.md` (shema kataloga, red generiranja), `docs/app-api.md`
+(odluke iz aplikacije idu kroz isti `odluci()` i bilježe se).
