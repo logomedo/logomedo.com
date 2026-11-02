@@ -1,6 +1,6 @@
 # Zadaci: predlošci, instance, rješavanja
 
-Status (2026-11-02): vrsta `scena` i pozadine lokalno gotove (migracija 0010), nisu na produkciji.
+Status (2026-11-02): vrsta `scena` i pozadine na produkciji (migracija 0010, deploy 2. 11.); na produkciji još nema nijedne pozadine.
 Status (2026-10-31): baza (`migrations/0004_zadaci.sql`) i admin za sve četiri vrste su na produkciji
 (`/admin/zadaci`): editor, pregled „Dijete rješava” i A4 ispis. Djeca i spremanje rješavanja još nemaju UI. Vrste zadataka se dopisuju
 u odjeljak „Vrste zadataka” kako ih Matija opisuje.
@@ -234,3 +234,14 @@ iz drugih skupina. Admin onda mijenja pojedinu sliku. Spremljen je samo rezultat
 Naslov + niz kartica (slika iz kataloga + uređivi tekst ispod). Ispis PDF. Prijenos starog
 `working-sheets` dokumenta: `header.title` → `naslov`, `cards[].header.title` → tekst kartice,
 `cards[].body.image` → `rijec_id` po staroj putanji iz `preuzimanje/data/catalog.csv`.
+
+### Deploy dok paralelna sesija radi u istoj mapi (2. 11. 2026.)
+
+`npm run deploy` builda **radnu mapu**, ne commit. Kad druga sesija ima necommitane izmjene
+(tog dana runner na Vertex: `generiranje.ts`, `api/runner/*`), deploy bi njezin nedovršeni kod
+poslao na produkciju. Deploy iz čistog worktreeja zadnjeg commita:
+
+```bash
+W=$(mktemp -d)/wt; git worktree add --detach "$W" HEAD && ln -s "$PWD/node_modules" "$W/node_modules"
+(cd "$W" && CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 npm run deploy); git worktree remove --force "$W"
+```
