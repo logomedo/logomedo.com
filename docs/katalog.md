@@ -244,6 +244,14 @@ iz vanjskih alata.
 - Alternative (fal.ai, OpenRouter, Gemini Batch), cijene i besplatni krediti:
   [2026-11-02-nano-banana-servisi.md](2026-11-02-nano-banana-servisi.md).
 
+**Zamka: istekao token (2. 11. 2026., 17:41–21:15).** `gcloud auth print-access-token` vraća
+keširani token, koji može isteći par minuta nakon što ga runner uzme. Runner ga je obnavljao tek svakih
+50 min, pa je 68 poslova tri puta dobilo HTTP 401 i palo u `greska` (401 se ne naplaćuje). Sad:
+token svakih 10 min, a 401 (izlazni kod 4 iz `vertex-slika.py`) odmah traži novi i vraća posao u red
+bez trošenja pokušaja; nakon 4 uzastopna 401 runner staje (`gcloud auth login`). Pale poslove vraća
+`UPDATE generiranja SET status='ceka', pokusaji=0, greska=NULL WHERE status='greska' AND greska LIKE '%HTTP 401%'`.
+Trošak iz loga: $0,039 po slici (ulaz ~3600 tokena, s promptom v4 ~4060; izlaz 1120).
+
 ## Plan: stilovi, dodaci, referentne slike (dogovoreno 31. 10. 2026., nije napravljeno)
 
 - **Stil** (jedan): `bojanka` (SVG) i novi `ilustracija` (raster u boji); `stilovi.vektor`.
