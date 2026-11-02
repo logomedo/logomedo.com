@@ -34,16 +34,19 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
     const mjesta = dio.map(() => "?").join(",");
     const { results: rijeci } = await db.prepare(
       `SELECT r.id, r.rijec, r.opis_za_sliku,
-         (SELECT json_group_array(s.razlog) FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ? AND s.status = 'odbijena' AND s.razlog IS NOT NULL) AS razlozi
+         (SELECT json_group_array(s.razlog) FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ? AND s.status = 'odbijena' AND s.razlog IS NOT NULL) AS razlozi,
+         EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ? AND s.status = 'odbijena') AS odbijena
        FROM rijeci r WHERE r.id IN (${mjesta})
          AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = r.id AND q.stil_id = ? AND q.status IN ('ceka','radi'))`,
-    ).bind(stil.id, ...dio, stil.id).all<{ id: number; rijec: string; opis_za_sliku: string | null; razlozi: string }>();
+    ).bind(stil.id, stil.id, ...dio, stil.id).all<{ id: number; rijec: string; opis_za_sliku: string | null; razlozi: string; odbijena: number }>();
     if (!rijeci.length) continue;
     await db.batch([
       ...rijeci.map((r) =>
-        db.prepare(`INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija)
-                      VALUES (?1, ?2, ?3, ?4, (SELECT predlozak_verzija FROM stilovi WHERE id = ?2))`)
-          .bind(r.id, stil.id, sloziPrompt(stil, r, JSON.parse(r.razlozi ?? "[]").slice(-3), napomena), email)),
+        // Riječ s odbijenom slikom u ovom stilu ide ispred backfilla (prioritet 1, migracija 0015).
+        db.prepare(`INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija, prioritet)
+                      VALUES (?1, ?2, ?3, ?4, (SELECT predlozak_verzija FROM stilovi WHERE id = ?2), ?5)`)
+          .bind(r.id, stil.id, sloziPrompt(stil, r, JSON.parse(r.razlozi ?? "[]").slice(-3), napomena), email,
+            r.odbijena ? 1 : 0)),
       // Batch je transakcija, pa su zadnjih n poslova upravo ovi.
       zapisNastalih({ tko: email, radnja: "generiranje.zatrazeno", tablica: "generiranja", grupa },
         { sql: "x.id IN (SELECT id FROM generiranja ORDER BY id DESC LIMIT ?)", args: [rijeci.length] }),
@@ -81,7 +84,7 @@ export async function uzmi(): Promise<Posao | null> {
   const verzija = await aktivnaSistemska();
   const p = await db.prepare(
     `UPDATE generiranja SET status = 'radi', uzeto_at = datetime('now'), pokusaji = pokusaji + 1, sistemski = ?, sistemski_verzija = ?
-     WHERE id = (SELECT id FROM generiranja WHERE status = 'ceka' ORDER BY id LIMIT 1) AND status = 'ceka'
+     WHERE id = (SELECT id FROM generiranja WHERE status = 'ceka' ORDER BY prioritet DESC, id LIMIT 1) AND status = 'ceka'
      RETURNING id, rijec_id, stil_id, prompt, pokusaji`,
   ).bind(sistemski, verzija).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; pokusaji: number }>();
   if (!p) return null;

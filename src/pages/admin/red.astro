@@ -23,13 +23,13 @@ if (Astro.request.method === "POST") {
   return Astro.redirect("/admin/red", 303);
 }
 const { results: poslovi } = await env.DB.prepare(
-  `SELECT q.id, q.status, q.pokusaji, q.greska, q.created_at, q.uzeto_at, q.zavrseno_at, q.slika_id, r.rijec, r.slug,
+  `SELECT q.id, q.status, q.pokusaji, q.greska, q.created_at, q.uzeto_at, q.zavrseno_at, q.slika_id, q.prioritet, r.rijec, r.slug,
      st.naziv AS stil, vs.broj AS sistemski_v, vp.broj AS predlozak_v
    FROM generiranja q JOIN rijeci r ON r.id = q.rijec_id JOIN stilovi st ON st.id = q.stil_id
    LEFT JOIN prompt_verzije vs ON vs.id = q.sistemski_verzija
    LEFT JOIN prompt_verzije vp ON vp.id = q.predlozak_verzija
-   ORDER BY CASE q.status WHEN 'radi' THEN 0 WHEN 'greska' THEN 1 WHEN 'ceka' THEN 2 ELSE 3 END, q.id DESC LIMIT 200`,
-).all<{ id: number; status: string; pokusaji: number; greska: string | null; created_at: string; uzeto_at: string | null; zavrseno_at: string | null; slika_id: number | null; rijec: string; slug: string;
+   ORDER BY CASE q.status WHEN 'radi' THEN 0 WHEN 'greska' THEN 1 WHEN 'ceka' THEN 2 ELSE 3 END, q.prioritet DESC, CASE WHEN q.status = 'ceka' THEN q.id END, q.id DESC LIMIT 200`,
+).all<{ id: number; status: string; pokusaji: number; greska: string | null; created_at: string; uzeto_at: string | null; zavrseno_at: string | null; slika_id: number | null; prioritet: number; rijec: string; slug: string;
   stil: string; sistemski_v: number | null; predlozak_v: number | null }>();
 // Posao koji čeka dobit će sistemski prompt tek kad ga runner uzme: pokaži aktivnu verziju.
 const aktivniSistemski = (await env.DB.prepare(
@@ -80,7 +80,7 @@ const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh"
               <td class="mono sitno" title={p.status === "ceka" ? "sistemski prompt se dodaje kad runner uzme posao" : undefined}>
                 {sistemskiV(p) ? `v${sistemskiV(p)}` : "–"} · {p.predlozak_v ? `v${p.predlozak_v}` : "–"}
               </td>
-              <td><span class:list={["oznaka", KLASA[p.status]]}>{OZNAKA[p.status]}</span>{p.greska && <div class="greska sitno">{p.greska}</div>}</td>
+              <td><span class:list={["oznaka", KLASA[p.status]]}>{OZNAKA[p.status]}</span>{p.prioritet > 0 && p.status !== "gotovo" && <span class="oznaka info" title="riječ ima odbijenu sliku: ide ispred ostalih">prvo</span>}{p.greska && <div class="greska sitno">{p.greska}</div>}</td>
               <td class="mono">{p.pokusaji}</td>
               <td class="blijedo">{kad(p.created_at)}</td>
               <td class="blijedo">{kad(p.zavrseno_at)}</td>
