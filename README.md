@@ -19,7 +19,7 @@ npm install
 npm run db:migrate:local
 npm run seed && npm run seed:local     # 428 riječi iz ../preuzimanje/data/catalog.csv
 npm run dev                            # http://localhost:4321
-scripts/runner.sh                      # generiranje slika (tmux + agy), drugi terminal
+scripts/runner.sh                      # generiranje slika (Vertex AI), drugi terminal
 ```
 
 Access lokalno ne radi, a passkey treba postojeću sesiju. Sesiju upiši ručno, kao u

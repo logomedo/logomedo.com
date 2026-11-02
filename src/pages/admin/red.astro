@@ -5,6 +5,7 @@ import { env } from "cloudflare:workers";
 import { kad } from "../../lib/katalog";
 import { spojenoRunnera, zazvoni } from "../../lib/runner-zvono";
 import { novaGrupa, zapisSkupa } from "../../lib/aktivnost";
+import { redPauziran } from "../../lib/postavke";
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -29,6 +30,8 @@ const { results: poslovi } = await env.DB.prepare(
 const broj = (s: string) => poslovi.filter((p) => p.status === s).length;
 const zadnjiRunner = poslovi.map((p) => p.uzeto_at).filter(Boolean).sort().at(-1) ?? null;
 const spojeno = await spojenoRunnera();
+const pauza = await redPauziran();
+const model = (await env.DB.prepare("SELECT model FROM stilovi ORDER BY id LIMIT 1").first<{ model: string }>())?.model ?? "";
 const OZNAKA: Record<string, string> = { ceka: "čeka", radi: "radi", gotovo: "gotovo", greska: "greška" };
 const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh", greska: "greska" };
 ---
@@ -47,9 +50,10 @@ const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh"
   <div class="ploha runner">
     <Ikona ime="iskra" />
     <div>
-      <b>Slike generira runner na Macu</b> (launchd, tmux + agy, <span class="mono">gemini-3.8-flash-low</span>):
+      <b>Slike generira runner na Macu</b> (launchd, Vertex AI, <span class="mono">{model}</span>):
       {spojeno ? <span class="oznaka uspjeh">spojen</span> : <span class="oznaka greska">nije spojen</span>}
-      Novi posao ga budi odmah (WebSocket). Gledanje: <code class="mono">tmux attach -t logomedo-agy -r</code>
+      {pauza && <span class="oznaka greska">pauzirano</span>}
+      Novi posao ga budi odmah (WebSocket). Prompt, sistemski prompt i pauza: <a href="/admin/prompt">Prompt</a>.
     </div>
   </div>
 

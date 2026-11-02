@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Lokalni runner za generiranje slika kataloga: uzima posao iz reda (/api/runner/uzmi),
-# traži od `agy` (Antigravity CLI, Gemini) da nacrta sliku i vraća je (/api/runner/slika/:id).
+# traži sliku od Vertex AI (Gemini image, scripts/vertex-slika.py) i vraća je (/api/runner/slika/:id).
 #
-#   scripts/runner.sh            # radi dok ga ne prekineš (Ctrl-C); prazan red = čeka 30 s
+#   scripts/runner.sh            # radi dok ga ne prekineš (Ctrl-C); prazan red = čeka zvono
 #   scripts/runner.sh --jednom   # jedan posao pa kraj (za probu)
 #   scripts/runner.sh --prod     # produkcija: LOGOMEDO_URL i RUNNER_TOKEN iz .env.production (gitignored)
 #
@@ -11,14 +11,13 @@
 # Trajno u pozadini: launchd (scripts/launchd/, docs/katalog.md).
 #
 # Okolina:
-#   LOGOMEDO_URL   default http://localhost:4321 (produkcija: https://logomedo.com)
-#   RUNNER_TOKEN   default iz .dev.vars (produkcija: isti kao `wrangler secret put RUNNER_TOKEN`)
-#   AGY_MODEL      default gemini-3.8-flash-low
-#
-# Zašto tmux: `agy -p` pošalje zahtjev, ali odgovor nikad ne stigne na izlaz (bug od 1.3.5),
-# radi samo interaktivni način. Uzorak je ~/.claude/scripts/agy_glasovna.sh.
-# Radni direktorij mora biti „trusted” u agy-ju; ~/git je trusted roditelj, pa je ovdje
-# ~/git/.agy-logomedo (izvan repoa). Gledanje: tmux attach -t logomedo-agy -r
+#   LOGOMEDO_URL     default http://localhost:4321 (produkcija: https://logomedo.com)
+#   RUNNER_TOKEN     default iz .dev.vars (produkcija: isti kao `wrangler secret put RUNNER_TOKEN`)
+#   VERTEX_ACCOUNT   gcloud račun za token (obavezno; u .env.production/.dev.vars, gitignored)
+#   VERTEX_PROJECT   default project-80b5a036-aed8-4b40-bd2
+#   VERTEX_MODEL     default gemini-nano-banana-2.1 (VERTEX_THINKING LOW, VERTEX_ASPECT 1:1)
+#   STIL_DIR         referentne slike stila, <STIL_DIR>/<stil>/*.jpg|png (default ~/git/.agy-logomedo/stil)
+#   RADNI_DIR        gdje se spremaju slike (default ~/git/.agy-logomedo)
 set -euo pipefail
 
 KORIJEN="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,37 +31,29 @@ for a in "$@"; do
 done
 URL="${LOGOMEDO_URL:-http://localhost:4321}"
 TOKEN="${RUNNER_TOKEN:-$(sed -n 's/^RUNNER_TOKEN=//p' "$KORIJEN/.dev.vars" 2>/dev/null || true)}"
-MODEL="${AGY_MODEL:-gemini-3.8-flash-low}"
-SESSION="${AGY_SESSION:-logomedo-agy}"
-W="${AGY_DIR:-$HOME/git/.agy-logomedo}"
-TIMEOUT_S="${AGY_TIMEOUT:-300}"
-# launchd nema nvm u PATH-u: uzmi najnoviji nvm node ako `node` nije dostupan.
+export VERTEX_PROJECT="${VERTEX_PROJECT:-project-80b5a036-aed8-4b40-bd2}"
+export VERTEX_MODEL="${VERTEX_MODEL:-gemini-nano-banana-2.1}"
+VERTEX_ACCOUNT="${VERTEX_ACCOUNT:-$(sed -n 's/^VERTEX_ACCOUNT=//p' "$KORIJEN/.dev.vars" 2>/dev/null || true)}"
+[[ -n "$VERTEX_ACCOUNT" ]] || { echo "Nema VERTEX_ACCOUNT (env, .env.production ili .dev.vars)" >&2; exit 2; }
+W="${RADNI_DIR:-$HOME/git/.agy-logomedo}"
+STIL_DIR="${STIL_DIR:-$W/stil}"
+# launchd nema nvm ni google-cloud-sdk u PATH-u.
 NODE="${NODE:-$(command -v node || ls -d "$HOME"/.nvm/versions/node/*/bin/node 2>/dev/null | sort -V | tail -1)}"
+GCLOUD="${GCLOUD:-$(command -v gcloud || echo "$HOME/google-cloud-sdk/bin/gcloud")}"
 [[ -n "$TOKEN" ]] || { echo "Nema RUNNER_TOKEN (env ili .dev.vars)" >&2; exit 2; }
 mkdir -p "$W"
 
 log() { echo "[$(date +%H:%M:%S)] $*" >&2; }
 api() { curl -sS -H "Authorization: Bearer $TOKEN" "$@"; }
 
-pokreni_sesiju() {
-    if tmux has-session -t "$SESSION" 2>/dev/null; then return; fi
-    tmux new-session -d -s "$SESSION" -x 180 -y 50 -c "$W"
-    tmux send-keys -t "$SESSION" "agy --model $MODEL --dangerously-skip-permissions" Enter
-    for _ in $(seq 1 60); do
-        sleep 1
-        local ekran; ekran="$(tmux capture-pane -p -t "$SESSION")"
-        if grep -qi "trust the contents" <<<"$ekran"; then tmux send-keys -t "$SESSION" Enter; continue; fi
-        grep -q "for shortcuts" <<<"$ekran" && return
-    done
-    log "agy se nije pokrenuo (prijava? pokreni 'agy' u pravom terminalu). Ekran:"
-    tmux capture-pane -p -t "$SESSION" | tail -12 >&2
-    exit 1
-}
-
-pitaj() {
-    tmux send-keys -t "$SESSION" -l "$1"
-    sleep 0.5
-    tmux send-keys -t "$SESSION" Enter
+# Google access token živi ~60 min; obnavlja se svakih 50.
+VERTEX_TOKEN=""; TOKEN_T=-99999
+vertex_token() {
+    if (( SECONDS - TOKEN_T > 3000 )); then
+        VERTEX_TOKEN="$("$GCLOUD" auth print-access-token --account="$VERTEX_ACCOUNT")" \
+            || { log "gcloud nema token za $VERTEX_ACCOUNT (gcloud auth login $VERTEX_ACCOUNT)"; exit 1; }
+        TOKEN_T=$SECONDS
+    fi
 }
 
 greska() {
@@ -77,45 +68,9 @@ odgodi() {
         "$URL/api/runner/odgodi/$1" >/dev/null || true
 }
 
-# Kvota alata za slike (429 RESOURCE_EXHAUSTED): agy javi i vrijeme reseta u UTC.
-KVOTA_RE='RESOURCE_EXHAUSTED|quota exhaust'
-
-# Koliko sekundi do reseta kvote. agy piše „reset at approximately 18:41 UTC” ili
-# „reset in approximately 3 hours and 15 minutes”; bez ijednog 30 min. +2 min rezerve.
-do_reseta() {
-    tmux capture-pane -p -J -t "$SESSION" | python3 -c '
-import re, sys, datetime as d
-t = sys.stdin.read()
-n = d.datetime.now(d.timezone.utc)
-m = re.findall(r"(?<![\d:])(\d{1,2}):(\d{2})(?::\d{2})?\s*UTC", t)
-if m:
-    h, mi = map(int, m[-1]); c = n.replace(hour=h, minute=mi, second=0, microsecond=0)
-    if c <= n: c += d.timedelta(days=1)
-    s = (c - n).total_seconds()
-else:
-    h = re.findall(r"(\d+)\s*hours?", t); mi = re.findall(r"(\d+)\s*minutes?", t)
-    s = (int(h[-1]) * 3600 if h else 0) + (int(mi[-1]) * 60 if mi else 0) or 1800
-print(int(s) + 120)'
-}
-
-# Slika je gotova kad postoji i veličina joj se dva puta zaredom ne promijeni.
-# Izlaz 2: agy je javio potrošenu kvotu.
-cekaj_datoteku() {
-    local uzorak="$1" t0=$SECONDS prethodna=-1 f vel
-    while (( SECONDS - t0 < TIMEOUT_S )); do
-        sleep 4
-        tmux capture-pane -p -J -t "$SESSION" | grep -qE "$KVOTA_RE" && return 2
-        f="$(ls -t $uzorak 2>/dev/null | head -1 || true)"
-        [[ -n "$f" && -s "$f" ]] || continue
-        vel=$(stat -f %z "$f")
-        if [[ "$vel" == "$prethodna" ]]; then echo "$f"; return 0; fi
-        prethodna=$vel
-    done
-    return 1
-}
-
-pokreni_sesiju
-log "runner: $URL, model $MODEL, tmux $SESSION"
+vertex_token
+log "runner: $URL, Vertex $VERTEX_MODEL na $VERTEX_PROJECT ($VERTEX_ACCOUNT)"
+PAUZA=60   # nakon 429 ili 5xx; udvostručuje se do 30 min, uspjeh je vraća na 60 s
 
 while true; do
     odgovor="$(api -X POST -w '\n%{http_code}' "$URL/api/runner/uzmi")"
@@ -133,44 +88,37 @@ while true; do
     stil="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("stil",""))' <<<"$tijelo")"
     ime="posao-$id"
     rm -f "$W/$ime".*
-    log "#$id $rijec → agy"
     t0=$SECONDS
 
-    # Referentne slike stila (lokalno, $W/stil/<stil>/*.jpg|png): agy ih daje alatu kao uzor stila.
-    ref=""; popis=""
-    for x in "$W/stil/$stil"/*.jpg "$W/stil/$stil"/*.jpeg "$W/stil/$stil"/*.png; do
-        if [[ -f "$x" ]]; then popis+="stil/$stil/$(basename "$x") "; fi
+    # Referentne slike stila idu modelu kao uzor (samo stil, ne sadržaj).
+    refs=()
+    for x in "$STIL_DIR/$stil"/*.jpg "$STIL_DIR/$stil"/*.jpeg "$STIL_DIR/$stil"/*.png; do
+        [[ -f "$x" ]] && refs+=("$x")
     done
-    if [[ -n "$popis" ]]; then
-        ref="Use these images as style references and pass them to the image generation tool as reference images: ${popis% }. \
-Copy only their art style (line work, colored pencil and watercolor texture, warm palette, light cream background), never their subjects, objects or composition. "
-    fi
+    log "#$id $rijec → vertex (${#refs[@]} ref.)"
 
-    pitaj "/clear"; sleep 3
-    pitaj "Generate exactly one image with your image generation tool, using this prompt verbatim: \"$prompt\" \
-${ref}Save the generated image in the current directory as $ime.png (keep the original format's extension if it is not PNG). \
-Do not edit, crop or post-process it, do not create any other files, and do not reply with anything except the file name."
+    vertex_token
+    f="$(VERTEX_TOKEN="$VERTEX_TOKEN" python3 "$KORIJEN/scripts/vertex-slika.py" "$W/$ime" "$prompt" ${refs[@]+"${refs[@]}"} 2>"$W/$ime.err")" && rc=0 || rc=$?
+    poruka="$(tail -1 "$W/$ime.err" 2>/dev/null || true)"; rm -f "$W/$ime.err"
 
-    f="$(cekaj_datoteku "$W/$ime.*")" && rc=0 || rc=$?
-    if (( rc == 2 )); then
-        s="$(do_reseta)"
-        log "⏸  #$id $rijec: kvota za slike potrošena, natrag u red; spavam $((s / 60)) min"
-        odgodi "$id" "agy: kvota za slike potrošena (429), runner čeka reset"
+    if (( rc == 2 || rc == 3 )); then
+        log "⏸  #$id $rijec: $poruka; natrag u red, spavam $((PAUZA / 60)) min"
+        odgodi "$id" "$poruka"
         (( JEDNOM )) && exit 3
-        sleep "$s"; continue
+        sleep "$PAUZA"; PAUZA=$(( PAUZA * 2 > 1800 ? 1800 : PAUZA * 2 )); continue
     fi
     if (( rc != 0 )); then
-        log "⚠️  #$id: nema slike nakon ${TIMEOUT_S}s"
-        tmux send-keys -t "$SESSION" Escape; sleep 2; tmux send-keys -t "$SESSION" Escape
-        greska "$id" "agy: nema slike nakon ${TIMEOUT_S}s"
+        log "⚠️  #$id $rijec: $poruka"
+        greska "$id" "$poruka"
         (( JEDNOM )) && exit 1; continue
     fi
+    PAUZA=60
     mime="$(file -b --mime-type "$f")"
     if [[ "$mime" != image/* ]]; then
-        greska "$id" "agy: $f nije slika ($mime)"; log "⚠️  #$id: $mime"; (( JEDNOM )) && exit 1; continue
+        greska "$id" "vertex: $f nije slika ($mime)"; log "⚠️  #$id: $mime"; (( JEDNOM )) && exit 1; continue
     fi
-    rez="$(api -X PUT -H "Content-Type: $mime" --data-binary "@$f" "$URL/api/runner/slika/$id")"
-    log "#$id $rijec: $(basename "$f") $(stat -f %z "$f") B, $((SECONDS - t0)) s → $rez"
+    rez="$(api -X PUT -H "Content-Type: $mime" -H "X-Model: $VERTEX_MODEL" --data-binary "@$f" "$URL/api/runner/slika/$id")"
+    log "#$id $rijec: $(basename "$f") $(stat -f %z "$f") B, $((SECONDS - t0)) s, $poruka → $rez"
     slika_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("slikaId",""))' <<<"$rez" 2>/dev/null || true)"
     # SVG (potrace) samo za crno-bijelu bojanku; ilustracija u boji ostaje raster.
     if [[ -n "$slika_id" && "$stil" == "bojanka" ]]; then

@@ -46,25 +46,39 @@ sequenceDiagram
   participant A as Admin
   participant W as Worker (D1, R2)
   participant R as scripts/runner.sh (Mac)
-  participant G as agy (tmux, gemini-3.8-flash-low)
+  participant G as Vertex AI (gemini-nano-banana-2.1)
   A->>W: Generiraj (riječ ili sve bez slike za glas/poziciju)
   R->>W: POST /api/runner/uzmi
   W-->>R: {id, prompt, rijec}
-  R->>G: prompt preko tmux send-keys
-  G-->>R: posao-<id>.jpg|png u ~/git/.agy-logomedo
+  R->>G: generateContent (prompt + referentne slike stila)
+  G-->>R: slika (inlineData) → posao-<id>.png u ~/git/.agy-logomedo
   R->>W: PUT /api/runner/slika/:id (tijelo = slika)
   W->>W: R2 bojanka/<slug>/<hash>.jpg, slike: kandidat
   A->>W: Pregled (A odobri, X odbij + razlog → nova u red)
 ```
 
-- `agy` radi samo interaktivno, pa runner koristi tmux (isto kao `~/.claude/scripts/agy_glasovna.sh`).
-  Gledanje: `tmux attach -t logomedo-agy -r`.
+- Od 2. 11. 2026. runner zove Vertex AI izravno (`scripts/vertex-slika.py`), vidi „Vertex AI na
+  novom projektu” niže. Do tada je išao kroz agy u tmuxu; to je opisano u povijesnim odjeljcima.
 - Posao u stanju `radi` stariji od 15 min vraća se u red. Nakon 3 neuspjeha je `greska`,
   a na stranici Red ide natrag jednim klikom.
 - Izmjereno 31. 10. 2026.: RAK, 177 s, JPEG 1024×1024, 220 kB, uredna bojanka iz prvog pokušaja.
-  **Za cijeli katalog (428 riječi) to je oko 21 h jednim runnerom.** Više paralelnih runnera
-  traži zasebne tmux sesije (`AGY_SESSION`, `AGY_DIR`). `uzmi` je atomaran, pa je to sigurno.
-- Kvota: agy je na Google AI Pro pretplati, a ne na Claude kvoti.
+  (Bilo je preko agyja; Vertex treba ~12 s po slici.) `uzmi` je atomaran, pa je više
+  paralelnih runnera sigurno.
+- Trošak: Vertex se plaća s billinga projekta (ne Claude kvota, ne Google AI Pro).
+
+### Prompt, sistemski prompt i pauza (`/admin/prompt`, 2. 11. 2026.)
+
+- Konačni prompt = predložak stila (slaže se kad se riječ doda u red, `generiranja.prompt`) +
+  **sistemski prompt** (postavka `sistemski_prompt`, dodaje se kad runner uzme posao, pa vrijedi i
+  za poslove koji već čekaju). Snimak sistemskog ide u `generiranja.sistemski`, a u `slike.prompt`
+  ide spojeni tekst. Migracija 0012 (`postavke`, `postavke_povijest`).
+- Početni sistemski prompt zabranjuje lica na predmetima (Anita: smajlići na dimu, dimnjaku…).
+  Uzrok je i predložak `ilustracija` („characters have gentle cheerful faces”).
+- **Pauza / Nastavi**: dok je `red_pauza = 1`, `uzmi` vraća 204; slika u radu se završi. Nastavi zvoni runneru.
+- Svaka izmjena (sistemski prompt, predložak, pauza) ide u `postavke_povijest`, vidljivo na stranici.
+- `uzmi` prije svakog posla briše poslove za koje je nakon dodavanja nastala odobrena slika ili
+  kandidat istog stila (zapis `generiranje.uklonjeno`, tko = `runner`). Povod: 110 poslova od 31. 10.
+  čekalo je agyjev limit, a Anita je u međuvremenu ručno učitala dio slika (mašna je ipak dobila duplikat).
 
 ### Ručni upload (1. 11. 2026.)
 
@@ -195,6 +209,28 @@ poziv (tekst `gemini-3.8-flash`, slika `gemini-2.5-flash-image`, global i us-cen
 free trial. Nije rate-limit ni nedostatak kredita. Matija je odustao od toga puta; novi projekt
 na istom billingu samo da se zaobiđe blokada ne raditi. Ručni upload (gore) pokriva slike
 iz vanjskih alata.
+
+### Vertex AI na novom projektu: radi (2. 11. 2026.)
+
+- Projekt `project-80b5a036-aed8-4b40-bd2`, billing `01FCCE…` (ne blokirani `01FAEA…`),
+  Google račun je u `VERTEX_ACCOUNT` (`.env.production`/`.dev.vars`, gitignored), Owner, gcloud konfiguracija `logomedo`.
+  Globalna `default` konfiguracija ostaje na drugom računu; runner traži token s
+  `gcloud auth print-access-token --account=…` (`VERTEX_ACCOUNT`), pa ne ovisi o aktivnom računu.
+- Model `gemini-nano-banana-2.1` (Nano Banana 2.1, GA 6. 10. 2026., nasljednik `gemini-3.1-flash-image`;
+  na projektu su još `gemini-3.1-flash-lite-image` i `gemini-3-pro-image`; `…-3.8-…-image` ne postoji), lokacija `global`, `thinkingLevel: LOW`, `aspectRatio: 1:1`.
+  Prva slika: ~12 s, 1.120 izlaznih tokena za sliku + ~600 tokena razmišljanja.
+  `gemini-3.1-flash` ne postoji (404); tekstni je `gemini-3.1-flash-lite`.
+- Prvih ~15 min nakon dodjele Ownera svaki poziv je vraćao `403 aiplatform.endpoints.predict`
+  (propagacija IAM-a), a ne blokadu.
+- `vertex-slika.py`: 429 i 5xx → izlaz 2/3, runner posao vraća u red (`odgodi`) i čeka
+  60 s, udvostručeno do 30 min. Blokada sadržaja ili odgovor bez slike → `greska` (troši pokušaj).
+- Runner šalje `X-Model`, pa `slike.model` bilježi model koji je stvarno nacrtao sliku
+  (prije je bio default stila, `gemini-3.8-flash-low`, što je glavni model agyja; slike je crtao
+  njegov alat `gemini-3.1-flash-image`, pa su stari zapisi 2. 11. ispravljeni na to). `slike.izvor` ostaje `agy` (CHECK u
+  shemi); to znači „runner”.
+- Matija ne želi AI Studio ni Vertex Studio u konzoli, samo API.
+- Alternative (fal.ai, OpenRouter, Gemini Batch), cijene i besplatni krediti:
+  [2026-11-02-nano-banana-servisi.md](2026-11-02-nano-banana-servisi.md).
 
 ## Plan: stilovi, dodaci, referentne slike (dogovoreno 31. 10. 2026., nije napravljeno)
 

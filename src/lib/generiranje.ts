@@ -1,10 +1,12 @@
 // Red generiranja slika. Admin dodaje poslove, lokalni runner (scripts/runner.sh)
-// ih uzima preko /api/runner/* i vraća sliku. agy radi samo na Macu, pa Worker
+// ih uzima preko /api/runner/* i vraća sliku (Vertex AI preko gcloud prijave na Macu), pa Worker
 // ne generira ništa sam.
 import { env } from "cloudflare:workers";
 import { stil as stilPoKodu, type Stil } from "./katalog";
 import { zazvoni } from "./runner-zvono";
 import { novaGrupa, sZapisom, zapisNastalih, zapisSkupa } from "./aktivnost";
+import { postavka, redPauziran } from "./postavke";
+import { spojiPrompt } from "./prompt";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
@@ -51,39 +53,55 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
   return dodano;
 }
 
+/** Za posao `x` već postoji odobrena slika ili kandidat istog stila, nastao nakon posla. */
+const IMA_NOVIJU = `EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = x.rijec_id AND s.stil_id = x.stil_id
+  AND s.status IN ('odobrena', 'kandidat') AND s.created_at > x.created_at)`;
+
 export interface Posao { id: number; prompt: string; rijec: string; slug: string; stil: string; pokusaji: number }
 
-/** Uzima najstariji posao. Zaglavljeni ('radi' > 15 min) prvo se vraćaju u red. */
+/**
+ * Uzima najstariji posao. Zaglavljeni ('radi' > 15 min) prvo se vraćaju u red. Dok je red pauziran
+ * (/admin/prompt) ne daje ništa. Prompt koji runner dobije = prompt posla + sistemski prompt u tom trenutku.
+ */
 export async function uzmi(): Promise<Posao | null> {
   const db = env.DB;
   await db.prepare(
     `UPDATE generiranja SET status = 'ceka' WHERE status = 'radi' AND uzeto_at < datetime('now', '-${ZASTARIO_MIN} minutes')`,
   ).run();
+  if (await redPauziran()) return null;
+  // Slika nastala nakon što je posao dodan (ručni upload, drugi posao) znači da posao više ne treba:
+  // makni ga iz reda prije nego runner potroši poziv na duplikat.
+  await db.batch(zapisSkupa(
+    { tko: "runner", radnja: "generiranje.uklonjeno", tablica: "generiranja", grupa: novaGrupa() },
+    { sql: `x.status = 'ceka' AND ${IMA_NOVIJU}`, args: [] },
+    [db.prepare(`DELETE FROM generiranja AS x WHERE x.status = 'ceka' AND ${IMA_NOVIJU}`)],
+  ));
+  const sistemski = await postavka("sistemski_prompt");
   const p = await db.prepare(
-    `UPDATE generiranja SET status = 'radi', uzeto_at = datetime('now'), pokusaji = pokusaji + 1
+    `UPDATE generiranja SET status = 'radi', uzeto_at = datetime('now'), pokusaji = pokusaji + 1, sistemski = ?
      WHERE id = (SELECT id FROM generiranja WHERE status = 'ceka' ORDER BY id LIMIT 1) AND status = 'ceka'
      RETURNING id, rijec_id, stil_id, prompt, pokusaji`,
-  ).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; pokusaji: number }>();
+  ).bind(sistemski).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; pokusaji: number }>();
   if (!p) return null;
   const r = await db.prepare(
     "SELECT r.rijec, r.slug, s.kod AS stil FROM rijeci r, stilovi s WHERE r.id = ? AND s.id = ?",
   ).bind(p.rijec_id, p.stil_id).first<{ rijec: string; slug: string; stil: string }>();
-  return { id: p.id, prompt: p.prompt, pokusaji: p.pokusaji, ...r! };
+  return { id: p.id, prompt: spojiPrompt(p.prompt, sistemski), pokusaji: p.pokusaji, ...r! };
 }
 
 export const MIME: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
 export const MAX_BAJTOVA = 8 * 1024 * 1024;
 
 /** Slika od runnera: u R2, u `slike` kao kandidat, posao gotov. */
-export async function predaj(posaoId: number, mime: string, tijelo: ArrayBuffer): Promise<{ slikaId: number } | { greska: string }> {
+export async function predaj(posaoId: number, mime: string, tijelo: ArrayBuffer, model?: string | null): Promise<{ slikaId: number } | { greska: string }> {
   const db = env.DB;
   const p = await db.prepare(
-    `SELECT q.id, q.rijec_id, q.stil_id, q.prompt, r.slug, s.kod, s.model FROM generiranja q
+    `SELECT q.id, q.rijec_id, q.stil_id, q.prompt, q.sistemski, r.slug, s.kod, s.model FROM generiranja q
      JOIN rijeci r ON r.id = q.rijec_id JOIN stilovi s ON s.id = q.stil_id WHERE q.id = ? AND q.status = 'radi'`,
-  ).bind(posaoId).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; slug: string; kod: string; model: string }>();
+  ).bind(posaoId).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; sistemski: string | null; slug: string; kod: string; model: string }>();
   if (!p) return { greska: "posao ne postoji ili nije u radu" };
 
-  const sp = await spremi({ rijecId: p.rijec_id, stilId: p.stil_id, stilKod: p.kod, slug: p.slug }, mime, tijelo, p.prompt, p.model, "agy", "runner");
+  const sp = await spremi({ rijecId: p.rijec_id, stilId: p.stil_id, stilKod: p.kod, slug: p.slug }, mime, tijelo, spojiPrompt(p.prompt, p.sistemski), model?.trim().slice(0, 100) || p.model, "agy", "runner");
   if ("greska" in sp) return sp;
   await db.prepare("UPDATE generiranja SET status = 'gotovo', zavrseno_at = datetime('now'), slika_id = ?, greska = NULL WHERE id = ?")
     .bind(sp.slikaId, p.id).run();
@@ -139,7 +157,7 @@ export async function predajSvg(slikaId: number, tijelo: ArrayBuffer): Promise<{
   return { svgKljuc: kljuc };
 }
 
-/** Kvota agyja potrošena: posao natrag u red bez trošenja pokušaja (runner spava do reseta). */
+/** Kvota/rate limit modela: posao natrag u red bez trošenja pokušaja (runner spava do reseta). */
 export async function odgodi(posaoId: number, razlog: string) {
   await env.DB.prepare(
     "UPDATE generiranja SET status = 'ceka', pokusaji = MAX(pokusaji - 1, 0), uzeto_at = NULL, greska = ? WHERE id = ? AND status = 'radi'",

@@ -1,0 +1,121 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { env } from "cloudflare:workers";
+import { kad, type Stil } from "../../lib/katalog";
+import { MAX_PROMPT, postavi, postaviPredlozak, postavka, povijest } from "../../lib/postavke";
+import { zazvoni } from "../../lib/runner-zvono";
+
+// Sistemski prompt (vrijedi za svaki posao kad ga runner uzme), predlošci stilova i pauza reda.
+let poruka = "";
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const tko = Astro.locals.admin!.email;
+  const akcija = String(f.get("akcija") ?? "");
+  if (akcija === "pauza") await postavi("red_pauza", "1", tko);
+  if (akcija === "nastavi") { await postavi("red_pauza", "0", tko); await zazvoni(); }
+  if (akcija === "sistemski") {
+    const v = String(f.get("vrijednost") ?? "").trim().slice(0, MAX_PROMPT);
+    if (v !== (await postavka("sistemski_prompt"))) await postavi("sistemski_prompt", v, tko);
+  }
+  if (akcija === "predlozak") {
+    const kod = String(f.get("kod") ?? "");
+    const v = String(f.get("vrijednost") ?? "").trim().slice(0, MAX_PROMPT);
+    if (!v.includes("{rijec}")) poruka = "Predložak mora sadržavati {rijec}.";
+    else await postaviPredlozak(kod, v, tko);
+  }
+  if (!poruka) return Astro.redirect("/admin/prompt?spremljeno=1", 303);
+}
+
+const sistemski = await postavka("sistemski_prompt");
+const pauza = (await postavka("red_pauza")) === "1";
+const { results: stilovi } = await env.DB.prepare("SELECT id, kod, naziv, predlozak, model FROM stilovi ORDER BY id").all<Stil>();
+const izmjene = await povijest(15);
+const uRedu = (await env.DB.prepare("SELECT COUNT(*) AS n FROM generiranja WHERE status = 'ceka'").first<{ n: number }>())?.n ?? 0;
+const OZNAKA_KLJUCA = (k: string) =>
+  k === "sistemski_prompt" ? "sistemski prompt" : k === "red_pauza" ? "pauza reda" : k.replace("predlozak:", "predložak ");
+const spremljeno = Astro.url.searchParams.has("spremljeno");
+---
+<AdminOkvir naslov="Prompt" aktivno="prompt">
+  <div class="naslov">
+    <div>
+      <h1>Prompt za slike</h1>
+      <p class="podnaslov">Što točno ide modelu uz svaku sliku. {uRedu} poslova čeka u redu.</p>
+    </div>
+  </div>
+
+  {poruka && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {poruka}</div>}
+  {spremljeno && !poruka && <div class="obavijest uspjeh"><Ikona ime="kvacica" /> Spremljeno.</div>}
+
+  <form method="post" class:list={["ploha", "pauza", { aktivna: pauza }]}>
+    <div>
+      <b>Generiranje je {pauza ? "pauzirano" : "u tijeku"}.</b>
+      <span class="blijedo">
+        {pauza
+          ? " Runner ne uzima nove poslove. Slika koja se upravo crta još će se završiti."
+          : " Pauziraj prije izmjene prompta, da poslovi u redu ne odu sa starim tekstom."}
+      </span>
+    </div>
+    {pauza
+      ? <button class="gumb" name="akcija" value="nastavi">Nastavi</button>
+      : <button class="gumb tihi" name="akcija" value="pauza">Pauziraj</button>}
+  </form>
+
+  <form method="post" class="ploha blok">
+    <h2>Sistemski prompt</h2>
+    <p class="blijedo sitno">
+      Dodaje se na kraj prompta <b>svake</b> slike, u trenutku kad je runner uzme. Izmjena vrijedi odmah,
+      i za poslove koji već čekaju. Model čita engleski najpouzdanije.
+    </p>
+    <textarea name="vrijednost" rows="5" maxlength={MAX_PROMPT}>{sistemski}</textarea>
+    <div class="dno"><button class="gumb" name="akcija" value="sistemski">Spremi sistemski prompt</button></div>
+  </form>
+
+  {stilovi.map((s) => (
+    <form method="post" class="ploha blok">
+      <h2>Predložak stila: {s.naziv} <span class="mono blijedo sitno">{s.model}</span></h2>
+      <p class="blijedo sitno">
+        Od njega se slaže prompt posla kad se riječ doda u red; vrijedi za <b>nove</b> poslove, ne one koji već čekaju.
+        Zamjene: <code>{"{rijec}"}</code> riječ, <code>{"{opis}"}</code> opis za sliku, <code>{"{napomena}"}</code> napomena i razlozi odbijanja.
+        Stil uz to dobiva referentne slike s Maca (<span class="mono">stil/{s.kod}/</span>).
+      </p>
+      <input type="hidden" name="kod" value={s.kod} />
+      <textarea name="vrijednost" rows="7" maxlength={MAX_PROMPT}>{s.predlozak}</textarea>
+      <div class="dno"><button class="gumb tihi" name="akcija" value="predlozak">Spremi predložak</button></div>
+    </form>
+  ))}
+
+  {izmjene.length > 0 && (
+    <div class="ploha blok">
+      <h2>Povijest izmjena</h2>
+      <ul class="povijest">
+        {izmjene.map((z) => (
+          <li>
+            <div class="sitno blijedo">{kad(z.created_at)} · {OZNAKA_KLJUCA(z.kljuc)} · {z.izmijenio ?? "migracija"}</div>
+            {z.kljuc !== "red_pauza"
+              ? <details><summary class="sitno">tekst</summary><pre>{z.vrijednost}</pre></details>
+              : <div class="sitno">{z.vrijednost === "1" ? "pauzirano" : "nastavljeno"}</div>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+</AdminOkvir>
+<style>
+  .blok { padding: 18px 20px; margin-bottom: 18px; }
+  .blok h2 { font-size: 1.02rem; margin: 0 0 6px; }
+  .blok p { margin: 0 0 10px; }
+  textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: .9rem; line-height: 1.45; padding: 10px 12px;
+    border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); resize: vertical; }
+  .dno { display: flex; justify-content: flex-end; margin-top: 10px; }
+  .pauza { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; margin-bottom: 18px; }
+  .pauza.aktivna { background: var(--greska-blago); }
+  .pauza button { flex: none; }
+  code { background: var(--povrsina-2); padding: 1px 6px; border-radius: 6px; }
+  .povijest { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  pre { white-space: pre-wrap; font-size: .82rem; background: var(--povrsina-2); padding: 8px 10px; border-radius: 8px; margin: 6px 0 0; }
+  .obavijest { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 10px; margin-bottom: 16px; }
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+  .obavijest.uspjeh { background: var(--uspjeh-blago, var(--med-blago)); color: var(--uspjeh, var(--med-tamno)); }
+  @media (max-width: 640px) { .pauza { flex-direction: column; align-items: stretch; } }
+</style>

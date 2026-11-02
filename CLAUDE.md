@@ -7,6 +7,6 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
 - `/api/v1` je API za Flutter aplikaciju (`../app`), samo bearer token: `docs/app-api.md`.
 - `src/lib/admin/*` i `src/middleware.ts` su iz omm.domovina.ai; sigurnosne izmjene držati u skladu.
 - Imena u kodu i UI-ju su hrvatska (kao u omm/e-satnici).
-- Slike generira `scripts/runner.sh` (tmux + agy). Ne pokretati ga u petlji iz Claude
-  sesije s notifikacijama po slici: jedna slika traje ~3 min, a katalog ima 428 riječi.
+- Slike generira `scripts/runner.sh` (Vertex AI, `gemini-nano-banana-2.1`). Ne pokretati ga u petlji iz Claude
+  sesije s notifikacijama po slici: katalog ima 428 riječi, a Vertex se plaća.
 - Prije commita: `npm test && npm run check && npm run build`.
