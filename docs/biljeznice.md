@@ -53,3 +53,25 @@ Izostavljen je GRINČ (zaštićeni lik); dvosmislene riječi BAL, DJED i GRAD im
    bilježnice. Nakon toga ih odobriti u Pregledu (tek odobrene idu na CDN i u igru).
 2. Popis riječi i parova neka pregleda Anita (logopedica).
 3. Kasnije: snimke logopedice po riječi (R2) umjesto glasa preglednika.
+
+## U izradi (2. 11. 2026.): nova bilježnica i teme
+
+Gotovo, ali još nije spojeno ni deployano:
+- `migrations/0011_teme.sql`: tema `proljece` u CHECK-u (`biljeznice` složena ponovno, stavke
+  sa strane kao u 0010). Lokalno primijenjeno i provjereno na kopiji baze; **na produkciji NIJE**.
+- `src/lib/teme.ts` (registar tema: ukras, stil ispisa, kutovi, tekstovi) i `src/lib/jabuka.ts`
+  (stablo s N plodova; isti razredi kao lampice bora, pa igra pali plodove istim kodom).
+- `biljeznice.ts`: `nova()` (prazna bilježnica, poveznica iz naslova), `provjeriPolja()`
+  (naslov ≥ 3, poveznica ≥ 3 i nezauzeta), `spremi()` prima `tema`. Dnevnik aktivnosti pamti temu.
+
+Ostalo za napraviti:
+1. `/admin/biljeznice`: forma „Nova bilježnica” (naslov, tema, podnaslov, poveznica) s provjerom
+   u pregledniku i na serveru (`provjeriPolja`), „Napravi Božićnu rimu” ostaje kao primjer.
+2. `/admin/biljeznice/[id]`: izbor teme, poruka greške za zauzetu poveznicu, uz svaki zadatak
+   „nije spreman za igru” kad `ekrani([z])` daje 0 ekrana.
+3. `/b/[slug].astro`: pozadina i ukras po temi (`TEME[b.tema].ukras`), klasa `tema-<kod>` na body,
+   CSS proljeća (dnevno nebo, sunce, livada; neupaljeni plod svijetlozelen; na kraju bez okretanja).
+   `biljeznice-igra.ts`: tekst kraja iz teme.
+4. Ispis (`/b/[slug]/ispis.astro`) i PDF (`model.ts` naslovnica + `ispis-pdf.ts`): ukras i stil po
+   temi, kutovi samo za božić.
+5. Upute za logopedicu: `docs/upute-vjezbenice.md` + PDF (tražio Matija za Anitu).

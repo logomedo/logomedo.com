@@ -26,7 +26,7 @@ if (Astro.request.method === "POST") {
     if (dodaj && !redovi.includes(dodaj)) redovi.push(dodaj);
     await spremi(id, Astro.locals.admin!.email, {
       naslov: String(f.get("naslov") ?? "").trim() || b.naslov, podnaslov: String(f.get("podnaslov") ?? "").trim(),
-      slug: String(f.get("slug") ?? ""), javna: f.get("javna") === "1", zadaci: redovi,
+      slug: String(f.get("slug") ?? ""), javna: f.get("javna") === "1", tema: b.tema, zadaci: redovi,
     });
     return Astro.redirect(`/admin/biljeznice/${id}?spremljeno=1`, 303);
   }

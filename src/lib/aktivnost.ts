@@ -21,7 +21,7 @@ const SNIMAK: Record<Tablica, string> = {
   slike: `json_object('rijec_id', x.rijec_id, 'stil_id', x.stil_id, 'status', x.status, 'razlog', x.razlog,
     'pregledao', x.pregledao, 'pregledano_at', x.pregledano_at)`,
   generiranja: `json_object('rijec_id', x.rijec_id, 'stil_id', x.stil_id, 'prompt', x.prompt, 'status', x.status)`,
-  biljeznice: `json_object('naslov', x.naslov, 'podnaslov', x.podnaslov, 'slug', x.slug, 'javna', x.javna,
+  biljeznice: `json_object('naslov', x.naslov, 'podnaslov', x.podnaslov, 'slug', x.slug, 'javna', x.javna, 'tema', x.tema,
     'zadaci', (SELECT json_group_array(bz.zadatak_id ORDER BY bz.redoslijed) FROM biljeznica_zadaci bz WHERE bz.biljeznica_id = x.id))`,
 };
 
@@ -182,7 +182,7 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string): Promise
       naredbe.push(...sZapisom(z("biljeznice", radnja), r.redak_id, [
         db.prepare(
           `UPDATE biljeznice SET naslov = json_extract(?1, '$.naslov'), podnaslov = json_extract(?1, '$.podnaslov'), slug = json_extract(?1, '$.slug'),
-             javna = json_extract(?1, '$.javna'), updated_at = datetime('now') WHERE id = ?2`,
+             javna = json_extract(?1, '$.javna'), tema = COALESCE(json_extract(?1, '$.tema'), tema), updated_at = datetime('now') WHERE id = ?2`,
         ).bind(JSON.stringify(s), r.redak_id),
         db.prepare("DELETE FROM biljeznica_zadaci WHERE biljeznica_id = ?").bind(r.redak_id),
         db.prepare(

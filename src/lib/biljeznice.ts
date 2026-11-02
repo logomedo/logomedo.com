@@ -10,11 +10,12 @@ import { korisnikId, stvori } from "./zadaci/baza";
 import { normaliziraj, rijeciU, type Sadrzaj, type Vrsta } from "./zadaci/vrste";
 import { brojSlogova, izvediRimu } from "./zadaci/rima";
 import { poIds as pozadinePoId, pozadineU, type Pozadina } from "./pozadine";
+import type { Tema } from "./teme";
 
 const DB = () => env.DB;
 
 export interface Biljeznica {
-  id: number; slug: string; naslov: string; podnaslov: string | null; tema: "bozic"; stil: string; javna: number; updated_at: string;
+  id: number; slug: string; naslov: string; podnaslov: string | null; tema: Tema; stil: string; javna: number; updated_at: string;
 }
 export interface ZadatakBiljeznice { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; sadrzaj: Sadrzaj }
 export interface RijecBiljeznice { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null }
@@ -84,11 +85,34 @@ export async function generirajSlike(b: Biljeznica, email: string): Promise<numb
   return dodajURed(await nadjiStil(b.stil), bez, email);
 }
 
-export async function spremi(id: number, email: string, x: { naslov: string; podnaslov: string; slug: string; javna: boolean; zadaci: number[] }) {
+/** Provjera naslova i poveznice (nova bilježnica i spremanje); vraća poruku ili null. */
+export async function provjeriPolja(x: { naslov: string; slug: string }, id: number | null): Promise<string | null> {
+  if (x.naslov.trim().length < 3) return "Naslov mora imati barem 3 znaka.";
+  const s = uSlug(x.slug);
+  if (x.slug.trim() && s.length < 3) return "Poveznica mora imati barem 3 slova ili broja.";
+  if (s) {
+    const ista = await poSlugu(s);
+    if (ista && ista.id !== id) return `Poveznica /b/${s} je već zauzeta („${ista.naslov}”).`;
+  }
+  return null;
+}
+
+/** Prazna bilježnica; poveznica iz naslova ako nije zadana (s brojem ako je zauzeta). */
+export async function nova(email: string, x: { naslov: string; podnaslov: string; slug: string; tema: Tema }): Promise<number> {
+  const osnova = uSlug(x.slug) || uSlug(x.naslov) || "biljeznica";
+  let slug = osnova;
+  for (let n = 2; await poSlugu(slug); n++) slug = `${osnova}-${n}`;
+  const b = await DB().prepare(
+    "INSERT INTO biljeznice (slug, naslov, podnaslov, tema, autor_id) VALUES (?, ?, ?, ?, ?) RETURNING id",
+  ).bind(slug, x.naslov.trim().slice(0, 120), x.podnaslov.trim().slice(0, 200) || null, x.tema, await korisnikId(email)).first<{ id: number }>();
+  return b!.id;
+}
+
+export async function spremi(id: number, email: string, x: { naslov: string; podnaslov: string; slug: string; javna: boolean; tema: Tema; zadaci: number[] }) {
   const s = uSlug(x.slug) || `biljeznica-${id}`;
   await DB().batch(sZapisom({ tko: email, radnja: "biljeznica.spremljena", tablica: "biljeznice", grupa: novaGrupa() }, id, [
-    DB().prepare("UPDATE biljeznice SET naslov = ?, podnaslov = ?, slug = ?, javna = ?, updated_at = datetime('now') WHERE id = ?")
-      .bind(x.naslov.slice(0, 120), x.podnaslov.slice(0, 200) || null, s, x.javna ? 1 : 0, id),
+    DB().prepare("UPDATE biljeznice SET naslov = ?, podnaslov = ?, slug = ?, javna = ?, tema = ?, updated_at = datetime('now') WHERE id = ?")
+      .bind(x.naslov.slice(0, 120), x.podnaslov.slice(0, 200) || null, s, x.javna ? 1 : 0, x.tema, id),
     DB().prepare("DELETE FROM biljeznica_zadaci WHERE biljeznica_id = ?").bind(id),
     ...x.zadaci.slice(0, 40).map((z, i) =>
       DB().prepare("INSERT OR IGNORE INTO biljeznica_zadaci (biljeznica_id, zadatak_id, redoslijed) VALUES (?, ?, ?)").bind(id, z, i)),
