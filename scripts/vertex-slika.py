@@ -5,7 +5,8 @@
 
 Na stdout ispiše putanju spremljene slike (ekstenzija prema MIME-u).
 Izlazni kodovi: 0 slika, 2 kvota/rate limit (429, posao natrag u red),
-3 privremena greška (5xx, mreža), 1 sve ostalo (blokada, nema slike, 4xx).
+3 privremena greška (5xx, mreža), 4 istekao/neispravan token (401, posao natrag u red),
+1 sve ostalo (blokada, nema slike, 4xx).
 Poruka greške ide na stderr, jedan red.
 
 Okolina: VERTEX_PROJECT, VERTEX_LOCATION (global), VERTEX_MODEL
@@ -59,7 +60,7 @@ def main() -> int:
         except Exception:
             pass
         print(f"vertex HTTP {e.code}: {poruka[:300]}", file=sys.stderr)
-        return 2 if e.code == 429 else 3 if e.code >= 500 else 1
+        return 2 if e.code == 429 else 4 if e.code == 401 else 3 if e.code >= 500 else 1
     except (urllib.error.URLError, TimeoutError) as e:
         print(f"vertex mreža: {e}", file=sys.stderr)
         return 3

@@ -46,10 +46,12 @@ mkdir -p "$W"
 log() { echo "[$(date +%H:%M:%S)] $*" >&2; }
 api() { curl -sS -H "Authorization: Bearer $TOKEN" "$@"; }
 
-# Google access token živi ~60 min; obnavlja se svakih 50.
-VERTEX_TOKEN=""; TOKEN_T=-99999
+# Google access token živi ~60 min, ali `gcloud auth print-access-token` vraća keširani
+# token koji može isteći za par minuta (2.11.: 70 poslova palo na 401 13 min nakon starta).
+# Zato se pita svakih 10 min, a na 401 odmah (rc 4).
+VERTEX_TOKEN=""; TOKEN_T=-99999; TOKEN_401=0
 vertex_token() {
-    if (( SECONDS - TOKEN_T > 3000 )); then
+    if (( SECONDS - TOKEN_T > 600 )); then
         VERTEX_TOKEN="$("$GCLOUD" auth print-access-token --account="$VERTEX_ACCOUNT")" \
             || { log "gcloud nema token za $VERTEX_ACCOUNT (gcloud auth login $VERTEX_ACCOUNT)"; exit 1; }
         TOKEN_T=$SECONDS
@@ -101,6 +103,14 @@ while true; do
     f="$(VERTEX_TOKEN="$VERTEX_TOKEN" python3 "$KORIJEN/scripts/vertex-slika.py" "$W/$ime" "$prompt" ${refs[@]+"${refs[@]}"} 2>"$W/$ime.err")" && rc=0 || rc=$?
     poruka="$(tail -1 "$W/$ime.err" 2>/dev/null || true)"; rm -f "$W/$ime.err"
 
+    if (( rc == 4 )); then
+        log "🔑 #$id $rijec: $poruka; novi token, posao natrag u red"
+        odgodi "$id" "$poruka"; TOKEN_T=-99999
+        (( JEDNOM )) && exit 3
+        (( ++TOKEN_401 > 3 )) && { log "token i dalje 401, stajem (gcloud auth login $VERTEX_ACCOUNT)"; exit 1; }
+        sleep 5; continue
+    fi
+    TOKEN_401=0
     if (( rc == 2 || rc == 3 )); then
         log "⏸  #$id $rijec: $poruka; natrag u red, spavam $((PAUZA / 60)) min"
         odgodi "$id" "$poruka"
