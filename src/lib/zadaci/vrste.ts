@@ -6,7 +6,7 @@
 
 import { rimujuSe } from "./rima.ts";
 
-export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez";
+export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena";
 export type Odnos = "rima";
 type Id = number | null;
 
@@ -15,7 +15,13 @@ export interface Odabir { odnos: Odnos; stavke: { zadana: Id; ponudeno: Id[]; to
 /** `desno_redoslijed[k]` = indeks para čija je desna slika na k-tom mjestu desnog stupca. */
 export interface Povezivanje { odnos: Odnos; parovi: { lijevo: Id; desno: Id }[]; desno_redoslijed: number[] }
 export interface Uljez { odnos: Odnos; stavke: { slike: Id[]; uljez: number }[] }
-export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez;
+/**
+ * Scena: pozadina situacije (uspravna i/ili vodoravna slika), pitanje je `uputa` zadatka, a
+ * gumbi su slike iz kataloga. Dijete bira sve s `tocno: true`; ostali su ometači.
+ * Redoslijed gumba je spremljen i isti na ekranu i papiru.
+ */
+export interface Scena { pozadina_id: Id; gumbi: { rijec_id: Id; tocno: boolean }[] }
+export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena;
 
 /** Riječ kakvu editor i prikaz trebaju. `slika` je URL ili null (prikazuje se riječ). */
 export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null }
@@ -37,11 +43,17 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     naziv: "Izbaci uljeza", opis: "Četiri slike u redu: tri se rimuju, jedna ne. Dijete pronalazi uljeza.",
     uputa: "Koja se slika ne rimuje s ostalima? Prekriži je.", ispis: "Prekriži", odnos: true,
   },
+  scena: {
+    naziv: "Scena", opis: "Ilustracija situacije, pitanje na vrhu i traka slika. Dijete bira sve slike koje pripadaju situaciji.",
+    uputa: "Što sve pripada ovoj slici?", ispis: "Zaokruži sve što pripada", odnos: false,
+  },
 };
 export const jeVrsta = (v: unknown): v is Vrsta => typeof v === "string" && v in VRSTE;
 
 export const PONUDENIH = 3;
 export const U_REDU = 4;
+/** Gumba na sceni: vodoravno stanu u jedan red, uspravno u dva. */
+export const MAX_GUMBA = 10;
 
 export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
   const n = Array.from({ length: stavki });
@@ -50,6 +62,7 @@ export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
     case "odabir": return { odnos: "rima", stavke: n.map(() => ({ zadana: null, ponudeno: [null, null, null], tocno: 0 })) };
     case "povezivanje": return { odnos: "rima", parovi: n.map(() => ({ lijevo: null, desno: null })), desno_redoslijed: n.map((_, i) => i) };
     case "uljez": return { odnos: "rima", stavke: n.map(() => ({ slike: [null, null, null, null], uljez: 0 })) };
+    case "scena": return { pozadina_id: null, gumbi: Array.from({ length: 7 }, (_, i) => ({ rijec_id: null, tocno: i < 5 })) };
   }
 }
 
@@ -89,6 +102,8 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
           return { slike: tocnoN(niz(x.slike, U_REDU, id), U_REDU, () => null), uljez: ind(x.uljez, U_REDU) };
         }),
       };
+    case "scena":
+      return { pozadina_id: id(o.pozadina_id), gumbi: niz(o.gumbi, MAX_GUMBA, (g) => ({ rijec_id: id(obj(g).rijec_id), tocno: obj(g).tocno === true })) };
   }
 }
 
@@ -99,6 +114,7 @@ export function rijeciU(v: Vrsta, s: Sadrzaj): number[] {
   if (v === "odabir") for (const x of (s as Odabir).stavke) out.push(x.zadana, ...x.ponudeno);
   if (v === "povezivanje") for (const p of (s as Povezivanje).parovi) out.push(p.lijevo, p.desno);
   if (v === "uljez") for (const x of (s as Uljez).stavke) out.push(...x.slike);
+  if (v === "scena") out.push(...(s as Scena).gumbi.map((g) => g.rijec_id));
   return [...new Set(out.filter((x): x is number => x !== null))];
 }
 
@@ -114,6 +130,17 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
   if (v === "listic") {
     const l = s as Listic;
     if (!l.kartice.some((k) => k.rijec_id)) u.push({ gdje: "listić", poruka: "Listić nema nijednu sliku." });
+    return u;
+  }
+  if (v === "scena") {
+    const sc = s as Scena;
+    if (sc.pozadina_id === null) u.push({ gdje: "scena", poruka: "Nije odabrana pozadina." });
+    const pune = sc.gumbi.filter((g) => g.rijec_id !== null);
+    if (pune.length < sc.gumbi.length) u.push({ gdje: "scena", poruka: `${sc.gumbi.length - pune.length} gumb(a) bez slike: u igri se ne prikazuju.` });
+    if (!pune.some((g) => g.tocno)) u.push({ gdje: "scena", poruka: "Nijedna slika nije označena kao točna." });
+    if (pune.length && pune.every((g) => g.tocno)) u.push({ gdje: "scena", poruka: "Nema ometača: sve slike su točne." });
+    const vidjeno = new Set<number>();
+    for (const g of pune) { if (vidjeno.has(g.rijec_id!)) u.push({ gdje: "scena", poruka: `${ime(g.rijec_id)} je dvaput.` }); vidjeno.add(g.rijec_id!); }
     return u;
   }
   if (v === "odabir") {
@@ -148,7 +175,10 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
 
 // ---- Ocjenjivanje: broji se prvi pokušaj po stavci ----
 
-export type Odgovor = { stavka: number; odabrano: number; ms?: number } | { lijevo: number; desno: number; ms?: number };
+export type Odgovor =
+  | { stavka: number; odabrano: number; ms?: number }
+  | { lijevo: number; desno: number; ms?: number }
+  | { gumb: number; ms?: number };                  // scena: svaki dodir gumba, i krivi
 
 export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: number; ukupno: number } {
   const prvi = new Map<number, number>();
@@ -162,6 +192,12 @@ export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: nu
     const p = s as Povezivanje;
     for (const o of odgovori) if ("lijevo" in o && !prvi.has(o.lijevo)) prvi.set(o.lijevo, o.desno);
     return { tocnih: p.parovi.filter((_, i) => p.desno_redoslijed[prvi.get(i) ?? -1] === i).length, ukupno: p.parovi.length };
+  }
+  if (v === "scena") {
+    // Svaki gumb je jedna odluka: točan treba dirnuti, ometač ne. Ometač dirnut i jednom je krivo.
+    const dirnuti = new Set(odgovori.flatMap((o) => ("gumb" in o ? [o.gumb] : [])));
+    const gumbi = (s as Scena).gumbi.map((g, i) => ({ ...g, i })).filter((g) => g.rijec_id !== null);
+    return { tocnih: gumbi.filter((g) => g.tocno === dirnuti.has(g.i)).length, ukupno: gumbi.length };
   }
   return { tocnih: 0, ukupno: 0 };
 }
@@ -184,6 +220,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   const izvan = (rima: string, n: number) => promijesaj(dobre.filter((r) => r.rima !== rima), rnd).slice(0, n);
   const n = Math.max(1, Math.min(p.stavki, 12));
 
+  if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
   if (v === "listic") {
     return { kartice: promijesaj(dobre, rnd).slice(0, 12).map((r) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") })) };
   }

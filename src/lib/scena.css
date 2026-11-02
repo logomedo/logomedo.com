@@ -1,0 +1,35 @@
+/* Scena (src/lib/scena-prikaz.ts): ispunjava svoj spremnik; spremnik određuje veličinu.
+   Admin pregled ima okvir tableta (4:3 ili 3:4), igra cijeli ekran. */
+.scena { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: inherit; background: #efe6d4;
+  container-type: size; font-family: "Nunito Variable", Nunito, system-ui, sans-serif; color: #2f2619; user-select: none; -webkit-user-select: none; }
+.scena-pozadina { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.scena.druga-orijentacija .scena-pozadina { object-fit: contain; background: #3a3226; }
+.scena-pozadina.prazna { display: grid; place-items: center; color: #8a7b62; font-weight: 700; font-size: 4cqmin; border: 3px dashed #c7b79a; box-sizing: border-box; }
+
+.scena-pitanje { position: absolute; top: 2.5cqmin; left: 50%; translate: -50% 0; max-width: 88%; display: flex; align-items: center; gap: 2cqmin;
+  padding: 1.6cqmin 2cqmin 1.6cqmin 3.4cqmin; border-radius: 1.6cqmin; background: #f6edd9f2; border: .4cqmin solid #b99566;
+  box-shadow: 0 .8cqmin 2.4cqmin #0004; font-weight: 800; font-size: clamp(14px, 3.6cqmin, 42px); line-height: 1.2; text-align: center; }
+.scena .zvucnik { flex: none; width: 1.9em; height: 1.9em; border-radius: 99px; border: 0; padding: .35em; background: #2d6fb7; color: #fff; cursor: pointer; display: grid; place-items: center; }
+.scena .zvucnik svg { width: 100%; height: 100%; }
+.scena .zvucnik.govori { animation: scena-puls .8s infinite; }
+
+.scena-traka { position: absolute; left: 2cqmin; right: 2cqmin; bottom: 2.5cqmin; display: grid; grid-template-columns: repeat(var(--stupaca), minmax(0, 1fr));
+  gap: 1.6cqmin; justify-items: center; }
+.scena.vodoravno .scena-traka { max-width: calc(var(--stupaca) * 17cqw); margin: 0 auto; }
+.scena-gumb { position: relative; width: 100%; max-width: 22cqmin; aspect-ratio: 5 / 6; padding: 1cqmin 1cqmin .6cqmin; border: .5cqmin solid #c9ad80; border-radius: 1.8cqmin;
+  background: #fbf5e8; box-shadow: 0 .7cqmin 1.6cqmin #0005; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: .4cqmin;
+  transition: transform .15s, border-color .15s, opacity .3s; font: inherit; color: inherit; }
+.scena.uspravno .scena-gumb { max-width: 18cqw; aspect-ratio: 1; }
+.scena-gumb:hover { transform: translateY(-.5cqmin); }
+.scena-slika { flex: 1; width: 100%; min-height: 0; display: grid; place-items: center; }
+.scena-slika img { width: 100%; height: 100%; object-fit: contain; }
+.scena-bez { font-weight: 800; font-size: clamp(9px, 2.6cqmin, 24px); color: #5c5345; letter-spacing: .03em; }
+.scena-rijec { font-weight: 800; font-size: clamp(9px, 2.3cqmin, 22px); letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.scena-gumb.pogodak { border-color: #e0a526; box-shadow: 0 0 0 .6cqmin #f4c75a88, 0 .7cqmin 1.6cqmin #0005; }
+.scena-gumb.pogodak::after { content: ""; position: absolute; top: -2.4cqmin; right: -1.6cqmin; width: 5.2cqmin; height: 5.2cqmin;
+  background: no-repeat center / contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m4 12.5 5 5L20 6' fill='none' stroke='%23d99a12' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.scena-gumb.krivo { animation: scena-trese .4s; border-color: #c4473a; }
+.scena-gumb.ugaseno { opacity: .45; filter: grayscale(.7); }
+@keyframes scena-trese { 0%, 100% { translate: 0 } 20%, 60% { translate: -1.4cqmin 0 } 40%, 80% { translate: 1.4cqmin 0 } }
+@keyframes scena-puls { 50% { box-shadow: 0 0 0 .8cqmin #2d6fb755 } }
+@media (prefers-reduced-motion: reduce) { .scena-gumb, .scena-gumb.krivo { animation: none; transition: none; } }

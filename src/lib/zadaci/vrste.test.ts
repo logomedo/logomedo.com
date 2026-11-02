@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normaliziraj, ocijeni, provjeri, slozi, type Odabir, type Povezivanje, type RijecZadatka, type Uljez } from "./vrste.ts";
+import { normaliziraj, ocijeni, provjeri, slozi, type Odabir, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
 import { brojSlogova, izvediRimu } from "./rima.ts";
 
 const popis = ["krava", "trava", "glava", "dabar", "ormar", "pehar", "lonac", "palac", "madrac", "sat", "brat", "vrat", "miš", "kiš", "riba", "lisica"];
@@ -46,4 +46,15 @@ test("normalizacija odbacuje smeće i dopunjava slotove", () => {
   assert.deepEqual(s, { odnos: "rima", stavke: [{ slike: [1, null, null, null], uljez: 0 }] });
   const p = normaliziraj("povezivanje", { parovi: [{ lijevo: 1, desno: 2 }, { lijevo: 3, desno: 4 }], desno_redoslijed: [0, 0] }) as Povezivanje;
   assert.deepEqual(p.desno_redoslijed, [0, 1]);
+});
+
+test("scena: normalizacija, provjera i ocjena po gumbu", () => {
+  const s = normaliziraj("scena", { pozadina_id: 3, gumbi: [{ rijec_id: 1, tocno: true }, { rijec_id: 2, tocno: "da" }, { rijec_id: 3, tocno: false }, { rijec_id: null, tocno: true }], x: 1 }) as Scena;
+  assert.deepEqual(s, { pozadina_id: 3, gumbi: [{ rijec_id: 1, tocno: true }, { rijec_id: 2, tocno: false }, { rijec_id: 3, tocno: false }, { rijec_id: null, tocno: true }] });
+  assert.deepEqual(provjeri("scena", s, M).map((u) => u.poruka), ["1 gumb(a) bez slike: u igri se ne prikazuju."]);
+  // točan dirnut, jedan ometač dirnut, drugi nije; prazan gumb se ne broji
+  assert.deepEqual(ocijeni("scena", s, [{ gumb: 0 }, { gumb: 2 }]), { tocnih: 2, ukupno: 3 });
+  assert.deepEqual(ocijeni("scena", s, [{ gumb: 0 }]), { tocnih: 3, ukupno: 3 });
+  const bez = normaliziraj("scena", { gumbi: [{ rijec_id: 1, tocno: true }, { rijec_id: 1, tocno: true }] }) as Scena;
+  assert.deepEqual(provjeri("scena", bez, M).map((u) => u.poruka), ["Nije odabrana pozadina.", "Nema ometača: sve slike su točne.", "KRAVA je dvaput."]);
 });

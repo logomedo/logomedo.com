@@ -71,7 +71,7 @@ export async function uzmi(): Promise<Posao | null> {
   return { id: p.id, prompt: p.prompt, pokusaji: p.pokusaji, ...r! };
 }
 
-const MIME: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+export const MIME: Record<string, string> = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
 export const MAX_BAJTOVA = 8 * 1024 * 1024;
 
 /** Slika od runnera: u R2, u `slike` kao kandidat, posao gotov. */
@@ -259,7 +259,7 @@ export async function uskladiJavno(slikaIds: number[], prepisi = false) {
   }
 }
 
-async function ocistiCache(url: string) {
+export async function ocistiCache(url: string) {
   const token = (env as { CF_PURGE_TOKEN?: string }).CF_PURGE_TOKEN;
   if (!token) return console.warn(`CF_PURGE_TOKEN nije postavljen; ${url} ostaje u edge cacheu do isteka`);
   const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${env.ZONE_ID}/purge_cache`, {

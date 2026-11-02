@@ -1,5 +1,6 @@
 # Zadaci: predlošci, instance, rješavanja
 
+Status (2026-11-02): vrsta `scena` i pozadine lokalno gotove (migracija 0010), nisu na produkciji.
 Status (2026-10-31): baza (`migrations/0004_zadaci.sql`) i admin za sve četiri vrste su na produkciji
 (`/admin/zadaci`): editor, pregled „Dijete rješava” i A4 ispis. Djeca i spremanje rješavanja još nemaju UI. Vrste zadataka se dopisuju
 u odjeljak „Vrste zadataka” kako ih Matija opisuje.
@@ -115,6 +116,7 @@ može služiti u više podpodručja.
 |---|---|---|
 | Korekcija artikulacije | glas × pozicija (postojeći katalog) | `listic` |
 | Predvještine čitanja i pisanja | Prepoznavanje rime | `odabir`, `povezivanje`, `uljez` |
+| Razumijevanje i rječnik | Situacije: što pripada | `scena` |
 
 ```sql
 podrucja  (id, roditelj_id, naziv, slug, redoslijed)   -- stablo, 2 razine zasad
@@ -163,6 +165,47 @@ Ispis: crte između stupaca. 3–5 parova. Nijedna slika iz `lijevo` ne smije se
 odgovori: [{ stavka, odabrano: 0..3, ms }]
 ```
 Ispis: prekriži uljeza.
+
+### `scena`: ilustracija situacije, dijete bira sve što pripada
+
+Prema primjeru Matije (2. 11. 2026., „Pečemo kolačiće! Što nam sve treba?”): preko cijelog ekrana je
+ilustracija situacije, na vrhu pitanje sa zvučnikom (čita se naglas), uz donji rub traka gumba sa
+slikama iz kataloga. Neke pripadaju situaciji, ostale su ometači (KIŠOBRAN, ČEKIĆ u kuhinji).
+
+```ts
+{ pozadina_id: Id, gumbi: [{ rijec_id: Id, tocno: boolean }] }   // do 10 gumba, redoslijed spremljen
+// pitanje = zadaci.uputa
+odgovori: [{ gumb: i, ms }]                                         // svaki dodir, i krivi
+ocjena: svaki gumb je jedna odluka: točan dirnut ili ometač nedirnut = točno
+```
+
+- **Rješavanje:** točan gumb dobije kvačicu i ostaje označen, krivi se zatrese; gotovo kad su dirnuti
+  svi točni, a ometači se tada ugase. U bilježnici je scena jedan ekran (jedna lampica), preko cijelog
+  ekrana; nakon rješenja izblijedi pa se vidi bor.
+- **Pozadina** je situacija s dvije slike, uspravnom i vodoravnom (`pozadine`, `pozadina_slike`,
+  migracija 0010). Igra uzima onu koja odgovara ekranu i prebacuje pri okretanju (pogođeni ostaju);
+  ako postoji samo jedna, prikazuje nju s obrubom (`object-fit: contain`). Ispis (A4) uzima uspravnu.
+- **Raspored gumba se računa**, logoped bira samo slike: vodoravno jedan red, uspravno dva reda
+  (više od 4 gumba). Mjere su u `cqmin`/`cqw` kontejnera scene, pa isto izgleda u adminu i na tabletu.
+- **Jedan prikaz za admin i igru:** `src/lib/scena-prikaz.ts` + `src/lib/scena.css`. Admin
+  „Dijete rješava” crta scenu u okviru tableta 4:3 ili 3:4 (prekidač), s brojem pogođenih i krivih.
+- **Pozadine** (`/admin/pozadine`, `src/lib/pozadine.ts`): admin ih učitava i odmah su javne (isti
+  ključ `pozadine/<id>/<hash16>.<ext>` u privatnom i javnom bucketu, bez pregleda kandidata).
+  Zamjena slike iste orijentacije briše staru iz oba bucketa i iz edge cachea. Brisanje je meko i
+  dopušteno samo dok je nijedan zadatak ne koristi. Admin slike čita kroz `/cdn/<ključ>` (radi i
+  lokalno), javne stranice s `cdn.logomedo.com`. Generiranje pozadina kroz runner još ne postoji.
+- **Validacija** (isto u pregledniku i na serveru): PNG/JPEG/WebP, najviše 8 MB, kraća strana barem
+  600 px, ne kvadrat, omjer najviše 2,2 : 1, najviše dvije slike i ne obje iste orijentacije;
+  orijentacija se čita iz zaglavlja datoteke (`src/lib/dimenzije.ts`), ne vjeruje se pregledniku.
+  Naziv barem 3 znaka. U editoru su upozorenja: nema pozadine, nema pitanja, manje od 2 slike,
+  nijedna točna, nema ometača, ista riječ dvaput, prazan gumb, pozadina bez jedne orijentacije.
+  Spremanje je dopušteno i s upozorenjima (nacrt), ali bilježnica preskače scenu bez pozadine ili
+  bez ijedne točne slike.
+
+Zamka migracije 0010: CHECK se u SQLite ne mijenja, pa se `zadaci` slaže ponovno. `DROP TABLE` uz
+uključene ključeve radi implicitni DELETE (kaskada bi obrisala verzije), a odgođene povrede od
+`biljeznica_zadaci` `RENAME` ne poništava pa COMMIT pada. Zato se djeca prvo spreme sa strane i
+obrišu, a nakon `RENAME` vrate. Provjereno na kopiji lokalne baze.
 
 ### Rima u katalogu
 

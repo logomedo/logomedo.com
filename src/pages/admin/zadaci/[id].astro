@@ -3,13 +3,16 @@ import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import { nazivPodrucja, podrucja as svaPodrucja, sveRijeci, zadatak as nadji } from "../../../lib/zadaci/baza";
 import { VRSTE } from "../../../lib/zadaci/vrste";
+import { popis as svePozadine } from "../../../lib/pozadine";
+import "../../../lib/scena.css";
 
 const z = await nadji(Number(Astro.params.id));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
-const [rijeci, podrucja] = await Promise.all([sveRijeci(), svaPodrucja()]);
+const [rijeci, podrucja, pozadine] = await Promise.all([sveRijeci(), svaPodrucja(), z.vrsta === "scena" ? svePozadine() : Promise.resolve([])]);
 const podaci = {
   zadatak: z,
   rijeci,
+  pozadine,
   podrucja: podrucja.filter((p) => p.roditelj_id !== null).map((p) => ({ id: p.id, naziv: nazivPodrucja(podrucja, p.id) })),
 };
 // JSON u <script type="application/json">: „</” se ne smije pojaviti doslovno.
@@ -98,6 +101,34 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-slozi .gumb { margin-top: 12px; }
   .z-slozi .z-kvacica { margin-top: 10px; }
 
+  /* Scena: urednik */
+  .z-scena-dio { width: 100%; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .z-dio-glava { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .z-pozadine { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .z-pozadina { display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 2px solid var(--rub); border-radius: 12px; background: var(--povrsina); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+  .z-pozadina img, .z-pozadina .z-bez { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: var(--povrsina-2); display: grid; place-items: center; }
+  .z-pozadina b { font-size: .84rem; } .z-pozadina small { font-size: .72rem; color: var(--blijedo); }
+  .z-pozadina:hover { border-color: var(--med); }
+  .z-pozadina.on { border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+  .z-gumbi-scene { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; }
+  .z-gumb-scene { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 14px; border: 1px solid var(--rub); }
+  .z-gumb-scene.tocno { background: var(--uspjeh-blago); border-color: var(--uspjeh); }
+  .z-gumb-scene .z-slot { width: 100%; }
+  .z-gumb-scene .z-red-gumbi { margin: 0; justify-content: center; }
+  .z-prekidac { display: flex; gap: 4px; } .z-prekidac .z-tocno { flex: 1; }
+  .z-tocno.ometac.on { background: var(--greska-blago); color: var(--greska); border-color: var(--greska); }
+  .z-greska-polja { margin: 0; color: var(--greska); font-weight: 600; }
+  input.neispravno { border-color: var(--greska) !important; box-shadow: 0 0 0 3px var(--greska-blago) !important; }
+
+  /* Scena: pregled u okviru tableta */
+  .z-scena-pregled { display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .z-scena-alati { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; align-self: stretch; }
+  .z-scena-rezultat { margin-left: auto; } .z-scena-rezultat .z-bravo { padding: 6px 12px; font-size: .9rem; }
+  .z-tablet { border: 14px solid #1d1914; border-radius: 30px; overflow: hidden; box-shadow: var(--sjena-3); background: #1d1914; }
+  .z-tablet.vodoravno { width: min(100%, 1024px, calc((100vh - 220px) * 4 / 3)); aspect-ratio: 4 / 3; }
+  .z-tablet.uspravno { width: min(100%, 600px, calc((100vh - 220px) * 3 / 4)); aspect-ratio: 3 / 4; }
+  .z-tablet .scena { border-radius: 16px; }
+
   /* Birač riječi */
   .z-birac { width: min(760px, 94vw); max-height: 86vh; border: 1px solid var(--rub); border-radius: 18px; padding: 18px; background: var(--povrsina); color: var(--tinta); box-shadow: var(--sjena-3); }
   .z-birac::backdrop { background: rgb(20 14 6 / .45); }
@@ -164,6 +195,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-stupac { display: flex; flex-direction: column; gap: 6mm; }
   .a4-par { display: flex; align-items: center; gap: 4mm; } .a4-par .z-slika { width: 36mm; }
   .a4-tocka { width: 4mm; height: 4mm; border-radius: 9px; background: #000; }
+  .a4-scena { display: flex; flex-direction: column; gap: 6mm; }
+  .a4-pozadina { width: 100%; max-height: 165mm; object-fit: contain; border-radius: 3mm; border: 1.5px solid #000; }
+  .a4-scena-gumbi { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4mm; }
   .a4 .z-listic { grid-template-columns: repeat(3, 1fr); gap: 7mm; } .a4 .z-listic figcaption { font-size: 12pt; }
 
   @media print {

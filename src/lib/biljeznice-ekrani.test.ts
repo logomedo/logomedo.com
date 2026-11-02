@@ -21,3 +21,12 @@ test("ekrani: nepotpune stavke se ne broje (inače lampica ostaje neupaljena)", 
 test("uputaZa: {zadana} velikim slovima", () => {
   assert.equal(uputaZa("Što se rimuje s riječi {zadana}?", "čaj"), "Što se rimuje s riječi ČAJ?");
 });
+
+test("ekrani: scena je jedan ekran ako ima pozadinu i barem jednu točnu sliku", () => {
+  const e = ekrani([
+    { vrsta: "scena", uputa: "Što nam treba?", sadrzaj: { pozadina_id: 1, gumbi: [{ rijec_id: 1, tocno: true }, { rijec_id: 2, tocno: false }] } },
+    { vrsta: "scena", uputa: null, sadrzaj: { pozadina_id: null, gumbi: [{ rijec_id: 1, tocno: true }] } },
+    { vrsta: "scena", uputa: null, sadrzaj: { pozadina_id: 2, gumbi: [{ rijec_id: null, tocno: true }, { rijec_id: 3, tocno: false }] } },
+  ]);
+  assert.deepEqual(e.map((x) => [x.vrsta, x.uputa]), [["scena", "Što nam treba?"]]);
+});

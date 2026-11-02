@@ -9,6 +9,7 @@ import { stil as nadjiStil } from "./katalog";
 import { korisnikId, stvori } from "./zadaci/baza";
 import { normaliziraj, rijeciU, type Sadrzaj, type Vrsta } from "./zadaci/vrste";
 import { brojSlogova, izvediRimu } from "./zadaci/rima";
+import { poIds as pozadinePoId, pozadineU, type Pozadina } from "./pozadine";
 
 const DB = () => env.DB;
 
@@ -17,7 +18,7 @@ export interface Biljeznica {
 }
 export interface ZadatakBiljeznice { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; sadrzaj: Sadrzaj }
 export interface RijecBiljeznice { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null }
-export interface PodaciBiljeznice { biljeznica: Biljeznica; zadaci: ZadatakBiljeznice[]; rijeci: RijecBiljeznice[] }
+export interface PodaciBiljeznice { biljeznica: Biljeznica; zadaci: ZadatakBiljeznice[]; rijeci: RijecBiljeznice[]; pozadine: Pozadina[] }
 
 const SQL_B = "SELECT id, slug, naslov, podnaslov, tema, stil, javna, updated_at FROM biljeznice";
 
@@ -56,6 +57,7 @@ export async function podaci(b: Biljeznica): Promise<PodaciBiljeznice> {
   ).bind(JSON.stringify(ids), b.stil).all<{ id: number; rijec: string; rima_rucno: string | null; kljuc: string | null }>();
   return {
     biljeznica: b, zadaci,
+    pozadine: await pozadinePoId(pozadineU(zadaci)),
     rijeci: results.map((r) => ({
       id: r.id, rijec: r.rijec, rima: r.rima_rucno ?? izvediRimu(r.rijec), slogova: brojSlogova(r.rijec),
       slika: r.kljuc ? javniUrl(r.kljuc) : null,

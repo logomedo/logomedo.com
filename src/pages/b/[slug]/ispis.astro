@@ -5,7 +5,7 @@ import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../../lib/biljeznice";
 import { borSvg } from "../../../lib/bor";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
-import { VRSTE, type Odabir, type Povezivanje, type Uljez } from "../../../lib/zadaci/vrste";
+import { VRSTE, type Odabir, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
 import { GRANCICA } from "../../../lib/ukrasi";
 import { dokumentBiljeznice } from "../../../lib/pdf/model";
 
@@ -20,17 +20,24 @@ const komadi = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.lengt
 type Stranica =
   | { vrsta: "odabir"; uputa: string; stavke: Odabir["stavke"] }
   | { vrsta: "uljez"; uputa: string; stavke: Uljez["stavke"] }
-  | { vrsta: "povezivanje"; uputa: string; s: Povezivanje };
+  | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
+  | { vrsta: "scena"; uputa: string; pozadina: string | null; gumbi: number[] };
 const stranice: Stranica[] = [];
 for (const z of p.zadaci) {
   if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: VRSTE.odabir.uputa, stavke: k });
   if (z.vrsta === "uljez") for (const k of komadi((z.sadrzaj as Uljez).stavke, 4)) stranice.push({ vrsta: "uljez", uputa: VRSTE.uljez.uputa, stavke: k });
+  if (z.vrsta === "scena") {
+    const sc = z.sadrzaj as Scena;
+    const poz = p.pozadine.find((x) => x.id === sc.pozadina_id);
+    stranice.push({ vrsta: "scena", uputa: `${z.uputa?.trim() || VRSTE.scena.uputa} ${VRSTE.scena.ispis}.`,
+      pozadina: (poz?.uspravno ?? poz?.vodoravno)?.url ?? null, gumbi: sc.gumbi.flatMap((g) => (g.rijec_id ? [g.rijec_id] : [])) });
+  }
   if (z.vrsta === "povezivanje") stranice.push({ vrsta: "povezivanje", uputa: VRSTE.povezivanje.uputa, s: z.sadrzaj as Povezivanje });
 }
 const n = brojEkrana(p.zadaci);
 
 // Isti model crta PDF u pregledniku (gumb „Preuzmi PDF"); slike ostaju na CDN-u.
-const dok = dokumentBiljeznice(b, p.zadaci, p.rijeci, n);
+const dok = dokumentBiljeznice(b, p.zadaci, p.rijeci, n, p.pozadine);
 const grancica = GRANCICA;
 ---
 <!doctype html>
@@ -115,6 +122,19 @@ const grancica = GRANCICA;
             </div>
           </div>
         )}
+        {s.vrsta === "scena" && (
+          <div class="scena-ispis">
+            {s.pozadina ? <img class="pozadina" src={s.pozadina} alt="" /> : <div class="pozadina prazna" />}
+            <div class="gumbi">
+              {s.gumbi.map((id) => (
+                <figure class="slika">
+                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                  <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        )}
         <footer>{b.naslov} · logomedo.com</footer>
       </article>
     ))}
@@ -183,6 +203,11 @@ const grancica = GRANCICA;
   .a4-uljez .red { flex: 1; justify-content: space-between; } .a4-uljez .slika { width: 37mm; }
   .povezi { flex: 1; display: flex; justify-content: space-between; padding: 0 8mm; }
   .stupac { display: flex; flex-direction: column; justify-content: space-around; }
+  .scena-ispis { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }
+  .scena-ispis .pozadina { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+  .scena-ispis .pozadina.prazna { border: 1.5px dashed #000; border-radius: 4mm; }
+  .scena-ispis .gumbi { display: flex; flex-wrap: wrap; justify-content: center; gap: 4mm; }
+  .scena-ispis .slika { width: 30mm; }
   .par { display: flex; align-items: center; gap: 4mm; } .par .slika { width: 40mm; }
   .tocka { width: 4mm; height: 4mm; border-radius: 9px; background: #000; }
 

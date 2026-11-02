@@ -5,6 +5,7 @@ import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../lib/biljeznice";
 import { borSvg } from "../../lib/bor";
 import { brojEkrana } from "../../lib/biljeznice-ekrani";
+import "../../lib/scena.css";
 
 const b = await poSlugu(String(Astro.params.slug));
 if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
@@ -14,6 +15,7 @@ const za = {
   naslov: b.naslov, podnaslov: b.podnaslov,
   zadaci: p.zadaci.map((z) => ({ vrsta: z.vrsta, uputa: z.uputa, sadrzaj: z.sadrzaj })),
   rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika })),
+  pozadine: p.pozadine,
 };
 // JSON u <script type="application/json">: „</” se ne smije pojaviti doslovno.
 const json = JSON.stringify(za).replace(/</g, "\\u003c");
@@ -187,7 +189,10 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .kartica.odabrana { transform: translateY(-.6vh) scale(1.04); box-shadow: inset 0 0 0 2px #5a3414, 0 0 0 6px #ffd447, 0 8px 18px rgb(0 0 30 / .35); }
   .kartica.spojena { cursor: default; }
   @keyframes trese { 0%, 100% { translate: 0 } 20%, 60% { translate: -1.4vh 0 } 40%, 80% { translate: 1.4vh 0 } }
-  .zakljucano .kartica { pointer-events: none; }
+  .zakljucano .kartica, .zakljucano .scena-gumb { pointer-events: none; }
+  /* Scena preko cijelog ekrana; nakon rješenja se makne da se vidi lampica */
+  .scena-cijeli { position: fixed; inset: 0; z-index: 5; background: #1b2a5c; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); transition: opacity .5s; }
+  .scena-cijeli.odlazi { opacity: 0; pointer-events: none; }
 
   /* Zadana slika: široka kartica, riječ lijevo, slika desno */
   .zadana { --s: min(34vh, 24vw); cursor: default; width: auto; }

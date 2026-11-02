@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PDFDocument } from "pdf-lib";
 import { napraviPdf, prelomi } from "./ispis-pdf.ts";
-import { dokumentBiljeznice, dokumentZadatka, slikeDokumenta, type RijecPdf } from "./model.ts";
+import { dokumentBiljeznice, dokumentZadatka, slikeDokumenta, velikeSlike, type RijecPdf } from "./model.ts";
 import { prazno } from "../zadaci/vrste.ts";
 
 const fontovi = {
@@ -51,4 +51,19 @@ test("prazan zadatak daje jednu stranicu", async () => {
 test("prelomi", () => {
   assert.deepEqual(prelomi("a bb ccc", (s) => s.length, 4), ["a bb", "ccc"]);
   assert.deepEqual(prelomi("", (s) => s.length, 4), [""]);
+});
+
+test("scena: pozadina (uspravna ima prednost) i slike ispod, uputa = pitanje", async () => {
+  const pozadine = [{ id: 7, uspravno: { url: "https://cdn.example/p-u.jpg" }, vodoravno: { url: "https://cdn.example/p-v.jpg" } }];
+  const sadrzaj = { pozadina_id: 7, gumbi: [1, 2, 3, null, 4, 1, 2].map((rijec_id, i) => ({ rijec_id, tocno: i < 3 })) };
+  const d = dokumentBiljeznice({ naslov: "Zima" }, [{ vrsta: "scena", uputa: "Što treba pticama?", sadrzaj }], rijeci, 1, pozadine);
+  assert.equal(d.stranice.length, 1);
+  assert.equal(d.stranice[0].uputa, "Što treba pticama? Zaokruži sve što pripada.");
+  const t = d.stranice[0].tijelo;
+  assert.ok(t.vrsta === "scena" && t.gumbi.length === 6 && t.pozadina === "https://cdn.example/p-u.jpg");
+  assert.deepEqual([...velikeSlike(d)], ["https://cdn.example/p-u.jpg"]);
+  // Stvarni JPEG (1×1) kao pozadina: crta se bez greške.
+  const jpg = Uint8Array.from(atob("/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="), (c) => c.charCodeAt(0));
+  const pdf = await PDFDocument.load(await napraviPdf(d, new Map([["https://cdn.example/p-u.jpg", jpg]]), fontovi));
+  assert.equal(pdf.getPageCount(), 2);
 });

@@ -2,11 +2,13 @@
 // boru, na kraju se bor vrti. Zvuk: glas preglednika (hr-HR) i zvonce iz WebAudija.
 // Ništa se ne sprema i ništa ne odlazi na server.
 import { ekrani, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
+import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts";
 
 interface Podaci {
   naslov: string; podnaslov: string | null;
   zadaci: ZadatakZaIgru[];
   rijeci: { id: number; rijec: string; slika: string | null }[];
+  pozadine?: PozadinaPrikaz[];
 }
 
 type Dijete = Node | string | null | undefined | false;
@@ -203,12 +205,41 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return { cvorovi: [q.el, platno], tekst, gumb: q.gumb };
   }
 
+  /** Scena preko cijelog ekrana; orijentacija prati uređaj, pogođeni gumbi ostaju pri okretanju. */
+  let makniScenu: (() => void) | null = null;
+  function ekranScena(e: Extract<Ekran, { vrsta: "scena" }>) {
+    const tekst = uputaZa(e.uputa, null);
+    const pozadina = p.pozadine?.find((x) => x.id === e.s.pozadina_id) ?? null;
+    const sloj = h("div", { class: "scena-cijeli" });
+    const pogodeni = new Set<number>();
+    const orijentacija = (): Orijentacija => (innerHeight > innerWidth ? "uspravno" : "vodoravno");
+    let sada = orijentacija();
+    const crtaj = () => zamijeni(sloj, scena({
+      sadrzaj: e.s, pitanje: tekst, pozadina, rijeci: rijeci as any, orijentacija: sada, pogodeni,
+      govori, zvuk: { pogodak: mekiPogodak, krivo },
+      naKraj: () => { zakljucano = true; sloj.classList.add("odlazi"); setTimeout(rijeseno, 500); },
+    }));
+    const naPromjenu = () => { if (orijentacija() !== sada) { sada = orijentacija(); crtaj(); } };
+    crtaj();
+    addEventListener("resize", naPromjenu);
+    dodaj(document.body, sloj);
+    makniScenu = () => { removeEventListener("resize", naPromjenu); sloj.remove(); makniScenu = null; };
+    return { cvorovi: [], tekst, gumb: sloj.querySelector<HTMLElement>(".zvucnik")! };
+  }
+
   function prikazi() {
     zakljucano = false;
     korijen.classList.remove("zakljucano");
+    makniScenu?.();
     if (trenutni >= sviEkrani.length) return kraj();
     const e = sviEkrani[trenutni];
-    const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : ekranPovezi(e);
+    if (e.vrsta === "scena") {
+      const x = ekranScena(e);
+      zamijeni(korijen);
+      setTimeout(() => govori(x.tekst, document.querySelector<HTMLElement>(".scena-cijeli .zvucnik") ?? undefined), 350);
+      return;
+    }
+    const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : ekranPovezi(e as Extract<Ekran, { vrsta: "povezivanje" }>);
     zamijeni(korijen, ...x.cvorovi);
     setTimeout(() => govori(x.tekst, x.gumb), 350);
   }

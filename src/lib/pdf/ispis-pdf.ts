@@ -227,6 +227,29 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
       for (const [i, sl] of t.desno.entries()) { await slikaUOkviru(p, sl, xd, ys[i], s); p.tocka(xd - 6, ys[i] + s / 2, 2); }
     }
 
+    if (t.vrsta === "scena") {
+      // Pozadina gore preko cijele širine, slike ispod u redovima po 5 (dijete zaokružuje).
+      const poRedu = Math.min(5, Math.max(1, t.gumbi.length));
+      const redova = Math.ceil(t.gumbi.length / poRedu);
+      const g = 5, s5 = Math.min(32, (W - (poRedu - 1) * g) / poRedu);
+      const nat = natpisa(t.gumbi);
+      const visinaGumba = redova * (s5 + nat) + Math.max(0, redova - 1) * g;
+      const hp = Math.max(60, H - visinaGumba - 8);
+      const img = await ugradi(t.pozadina);
+      if (img) {
+        const k = Math.min(W / img.width, hp / img.height);
+        const iw = img.width * k, ih = img.height * k;
+        p.okvir(L + (W - iw) / 2, vrh, iw, ih, 3, 1.5);   // okvir puni bijelo, pa slika preko
+        p.slika(img, L + (W - iw) / 2, vrh, iw, ih);
+      } else p.okvir(L, vrh, W, hp, 3, 1.5);
+      const y0 = vrh + (img ? Math.min(hp, (img.height * Math.min(W / img.width, hp / img.height))) : hp) + 8;
+      for (const [i, sl] of t.gumbi.entries()) {
+        const red = Math.floor(i / poRedu), u = Math.min(poRedu, t.gumbi.length - red * poRedu);
+        const x0 = L + (W - (u * s5 + (u - 1) * g)) / 2;
+        await slikaUOkviru(p, sl, x0 + (i % poRedu) * (s5 + g), y0 + red * (s5 + nat + g), s5);
+      }
+    }
+
     if (t.vrsta === "listic") {
       // 3 stupca × 4 retka; tekst ispod slike.
       const g = 7, sirinaStupca = (W - 2 * g) / 3;

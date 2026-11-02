@@ -6,9 +6,11 @@
 // JPEG (A4 okvir od ~40 mm je ~470 px na 300 dpi), pa PDF ima stotine KB, ne desetke MB.
 
 import { napraviPdf, type FontoviPdf } from "./ispis-pdf.ts";
-import { slikeDokumenta, type DokumentPdf } from "./model.ts";
+import { slikeDokumenta, velikeSlike, type DokumentPdf } from "./model.ts";
 
 const NAJVISE_PX = 800;
+/** Pozadina scene je ~180 mm široka: 1800 px je ~250 dpi. */
+const NAJVISE_PX_VELIKE = 1800;
 
 let fontovi: Promise<FontoviPdf> | null = null;
 function ucitajFontove(): Promise<FontoviPdf> {
@@ -30,12 +32,12 @@ export function istiOrigin(url: string): string {
   return `/cdn${u.pathname}`;
 }
 
-async function smanji(url: string): Promise<Uint8Array | null> {
+async function smanji(url: string, najvise = NAJVISE_PX): Promise<Uint8Array | null> {
   try {
     const r = await fetch(istiOrigin(url));
     if (!r.ok) return null;
     const bmp = await createImageBitmap(await r.blob());
-    const k = Math.min(1, NAJVISE_PX / Math.max(bmp.width, bmp.height));
+    const k = Math.min(1, najvise / Math.max(bmp.width, bmp.height));
     const c = document.createElement("canvas");
     c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
     const g = c.getContext("2d")!;
@@ -52,6 +54,7 @@ async function smanji(url: string): Promise<Uint8Array | null> {
 /** Složi PDF i ponudi ga za preuzimanje. `napredak(gotovo, ukupno)` za tekst gumba. */
 export async function preuzmiPdf(dok: DokumentPdf, imeDatoteke: string, napredak?: (gotovo: number, ukupno: number) => void) {
   const urls = slikeDokumenta(dok);
+  const velike = velikeSlike(dok);
   const f = ucitajFontove();
   const slike = new Map<string, Uint8Array>();
   let gotovo = 0;
@@ -60,7 +63,7 @@ export async function preuzmiPdf(dok: DokumentPdf, imeDatoteke: string, napredak
   const red = [...urls];
   await Promise.all(Array.from({ length: Math.min(6, red.length) }, async () => {
     for (let u = red.shift(); u; u = red.shift()) {
-      const b = await smanji(u);
+      const b = await smanji(u, velike.has(u) ? NAJVISE_PX_VELIKE : NAJVISE_PX);
       if (b) slike.set(u, b);
       napredak?.(++gotovo, urls.length);
     }

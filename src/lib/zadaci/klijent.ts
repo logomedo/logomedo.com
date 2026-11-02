@@ -6,14 +6,17 @@
 
 import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
 import {
-  ocijeni, provjeri, rijeciU, slozi, VRSTE, PONUDENIH, U_REDU,
-  type Listic, type Odabir, type Odgovor, type Povezivanje, type RijecZadatka, type Sadrzaj, type Uljez, type Vrsta,
+  ocijeni, provjeri, rijeciU, slozi, VRSTE, PONUDENIH, U_REDU, MAX_GUMBA,
+  type Listic, type Odabir, type Odgovor, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Uljez, type Vrsta,
 } from "./vrste.ts";
+import { scena as scenaPrikaz, slikaZa, vidljiviGumbi, type Orijentacija, type PozadinaPrikaz } from "../scena-prikaz.ts";
 
 export interface Podaci {
   zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; sadrzaj: Sadrzaj };
   rijeci: RijecZadatka[];
   podrucja: { id: number; naziv: string }[];
+  /** Samo za vrstu `scena`: sve pozadine za izbor. */
+  pozadine?: PozadinaPrikaz[];
 }
 
 type Dijete = Node | string | null | undefined | false;
@@ -142,7 +145,61 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   // ---------- Pogled: Uredi ----------
 
+  const pozadine = p.pozadine ?? [];
+  const pozadina = (id: number | null) => pozadine.find((x) => x.id === id) ?? null;
+
+  function urediScenu(): HTMLElement {
+    const s = sadrzaj as Scena;
+    const odabrana = pozadina(s.pozadina_id);
+    const sliciPozadine = (x: PozadinaPrikaz) => {
+      const sl = x.vodoravno ?? x.uspravno;
+      return h("button", { type: "button", class: `z-pozadina${x.id === s.pozadina_id ? " on" : ""}`, onclick: () => { s.pozadina_id = x.id; oznaci(); osvjezi(); } },
+        sl ? h("img", { src: sl.url, alt: "", loading: "lazy" }) : h("span", { class: "z-bez" }, "bez slike"),
+        h("b", {}, x.naziv),
+        h("small", {}, [x.uspravno ? "uspravna" : null, x.vodoravno ? "vodoravna" : null].filter(Boolean).join(" + ") || "nema slika"));
+    };
+    const pomakni = (i: number, d: number) => { const g = s.gumbi; [g[i], g[i + d]] = [g[i + d], g[i]]; oznaci(); osvjezi(); };
+    return h("div", { class: "z-uredi" },
+      h("div", { class: "ploha z-scena-dio" },
+        h("div", { class: "z-dio-glava" }, h("b", {}, "1. Pozadina"),
+          h("a", { class: "gumb mali tihi", href: "/admin/pozadine", target: "_blank" }, "Upravljaj pozadinama ↗")),
+        pozadine.length
+          ? h("div", { class: "z-pozadine" }, ...pozadine.map(sliciPozadine))
+          : h("p", { class: "blijedo" }, "Još nema pozadina. ", h("a", { href: "/admin/pozadine", target: "_blank" }, "Dodaj prvu"), " pa osvježi ovu stranicu."),
+        odabrana && (!odabrana.uspravno || !odabrana.vodoravno)
+          ? h("p", { class: "sitno z-greska-polja" }, `„${odabrana.naziv}” nema ${odabrana.uspravno ? "vodoravnu" : "uspravnu"} sliku: na takvom ekranu se prikazuje ona koja postoji, s obrubom.`) : null),
+      h("div", { class: "ploha z-scena-dio" },
+        h("div", { class: "z-dio-glava" }, h("b", {}, "2. Pitanje"), h("span", { class: "sitno blijedo" }, "piše se na vrhu scene i čita naglas")),
+        h("input", { type: "text", value: uputa, maxLength: 120, placeholder: "npr. Pečemo kolačiće! Što nam sve treba?", class: uputa.trim() ? "" : "neispravno",
+          oninput: (e: Event) => { uputa = (e.target as HTMLInputElement).value; oznaci(); const el = e.target as HTMLInputElement; el.classList.toggle("neispravno", !uputa.trim()); osvjeziPlocu(); } }),
+        !uputa.trim() ? h("p", { class: "sitno z-greska-polja" }, "Pitanje je obavezno.") : null),
+      h("div", { class: "ploha z-scena-dio" },
+        h("div", { class: "z-dio-glava" }, h("b", {}, `3. Slike (${s.gumbi.length}/${MAX_GUMBA})`),
+          h("span", { class: "sitno blijedo" }, "označi koje pripadaju situaciji; ostale su ometači")),
+        h("div", { class: "z-gumbi-scene" }, ...s.gumbi.map((g, i) => h("div", { class: `z-gumb-scene${g.tocno ? " tocno" : " ometac"}` },
+          slot(g.rijec_id, (n) => (g.rijec_id = n)),
+          h("div", { class: "z-prekidac" },
+            h("button", { type: "button", class: `z-tocno${g.tocno ? " on" : ""}`, onclick: () => { g.tocno = true; oznaci(); osvjezi(); } }, "✓ pripada"),
+            h("button", { type: "button", class: `z-tocno ometac${!g.tocno ? " on" : ""}`, onclick: () => { g.tocno = false; oznaci(); osvjezi(); } }, "✗ ometač")),
+          h("div", { class: "z-red-gumbi" },
+            h("button", { type: "button", class: "gumb mali tihi", title: "Lijevo", disabled: i === 0, onclick: () => pomakni(i, -1) }, "←"),
+            h("button", { type: "button", class: "gumb mali tihi", title: "Desno", disabled: i === s.gumbi.length - 1, onclick: () => pomakni(i, 1) }, "→"),
+            h("button", { type: "button", class: "gumb mali tihi opasno", title: "Makni", onclick: () => { s.gumbi.splice(i, 1); oznaci(); osvjezi(); } }, "×"))))),
+        h("div", { class: "z-gumbi" },
+          s.gumbi.length < MAX_GUMBA ? h("button", { type: "button", class: "gumb", onclick: () => { s.gumbi.push({ rijec_id: null, tocno: true }); oznaci(); osvjezi(); } }, "+ Slika koja pripada") : null,
+          s.gumbi.length < MAX_GUMBA ? h("button", { type: "button", class: "gumb tihi", onclick: () => { s.gumbi.push({ rijec_id: null, tocno: false }); oznaci(); osvjezi(); } }, "+ Ometač") : null,
+          h("button", { type: "button", class: "gumb tihi", onclick: () => { s.gumbi = promijesaj(s.gumbi); oznaci(); osvjezi(); } }, "Promiješaj redoslijed"))),
+      h("p", { class: "sitno blijedo" }, "Pregled u kartici „Dijete rješava”, uspravno i vodoravno."));
+  }
+
+  function promijesaj<T>(a: T[]): T[] {
+    const b = [...a];
+    for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+    return b;
+  }
+
   function uredi(): HTMLElement {
+    if (vrsta === "scena") return urediScenu();
     if (vrsta === "odabir") {
       const s = sadrzaj as Odabir;
       return h("div", { class: "z-uredi" },
@@ -214,9 +271,42 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   let odabranLijevi: number | null = null;
 
   let t0 = performance.now();               // vrijeme odgovora od početka rješavanja, ne od zadnjeg crtanja
-  function resetRjesavanja() { odgovori = []; rijeseno = new Set(); spojevi = []; odabranLijevi = null; t0 = performance.now(); }
+  function resetRjesavanja() { odgovori = []; rijeseno = new Set(); spojevi = []; odabranLijevi = null; pogodeni = new Set(); t0 = performance.now(); }
+
+  let orijentacijaPregleda: Orijentacija = "vodoravno";
+  let pogodeni = new Set<number>();
+
+  function dijeteScena(): HTMLElement {
+    const s = sadrzaj as Scena;
+    const ms = () => Math.round(performance.now() - t0);
+    const rezultat = h("div", { class: "z-scena-rezultat sitno" });
+    const opisi = () => {
+      const tocnih = vidljiviGumbi(s).filter((g) => g.tocno).length;
+      const o = ocijeni(vrsta, sadrzaj, odgovori);
+      const krivih = odgovori.filter((x) => "gumb" in x && !s.gumbi[x.gumb]?.tocno).length;
+      zamijeni(rezultat, pogodeni.size >= tocnih && tocnih
+        ? h("span", { class: "z-bravo" }, h("b", {}, "Bravo!"), ` Točno ${o.tocnih} od ${o.ukupno} odluka, ${krivih} krivih dodira.`)
+        : h("span", { class: "blijedo" }, `Pogođeno ${pogodeni.size} od ${tocnih}. Krivih dodira: ${krivih}.`));
+    };
+    const okvir = h("div", { class: `z-tablet ${orijentacijaPregleda}` }, scenaPrikaz({
+      sadrzaj: s, pitanje: uputa, pozadina: pozadina(s.pozadina_id), rijeci: rijeci as any, orijentacija: orijentacijaPregleda, pogodeni,
+      naDodir: (i) => { odgovori.push({ gumb: i, ms: ms() }); opisi(); },
+      naKraj: opisi,
+    }));
+    opisi();
+    const poz = slikaZa(pozadina(s.pozadina_id), orijentacijaPregleda);
+    return h("div", { class: "z-scena-pregled" },
+      h("div", { class: "z-scena-alati" },
+        ...(["vodoravno", "uspravno"] as const).map((o) => h("button", { type: "button", class: `z-cip${orijentacijaPregleda === o ? " on" : ""}`,
+          onclick: () => { orijentacijaPregleda = o; resetRjesavanja(); osvjezi(); } }, o === "vodoravno" ? "Tablet vodoravno" : "Tablet uspravno")),
+        h("button", { type: "button", class: "gumb mali tihi", onclick: () => { resetRjesavanja(); osvjezi(); } }, "Ponovi"),
+        rezultat),
+      poz && !poz.tocna ? h("p", { class: "sitno z-greska-polja" }, `Pozadina nema ${orijentacijaPregleda === "uspravno" ? "uspravnu" : "vodoravnu"} sliku: prikazana je druga, s obrubom.`) : null,
+      okvir);
+  }
 
   function dijete(): HTMLElement {
+    if (vrsta === "scena") return dijeteScena();
     const ms = () => Math.round(performance.now() - t0);
     const kraj = (ukupno: number) => {
       if (rijeseno.size < ukupno) return null;
@@ -316,6 +406,12 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       tijelo = h("div", { class: "a4-povezi" },
         h("div", { class: "a4-stupac" }, ...s.parovi.map((x) => h("div", { class: "a4-par" }, slika(x.lijevo), h("i", { class: "a4-tocka" })))),
         h("div", { class: "a4-stupac" }, ...s.desno_redoslijed.map((pi) => h("div", { class: "a4-par" }, h("i", { class: "a4-tocka" }), slika(s.parovi[pi].desno)))));
+    } else if (vrsta === "scena") {
+      const s = sadrzaj as Scena;
+      const poz = slikaZa(pozadina(s.pozadina_id), "uspravno");
+      tijelo = h("div", { class: "a4-scena" },
+        poz ? h("img", { class: "a4-pozadina", src: poz.slika.url, alt: "" }) : h("div", { class: "z-slika prazna a4-pozadina" }, h("span", {}, "pozadina")),
+        h("div", { class: "a4-scena-gumbi" }, ...vidljiviGumbi(s).map((g) => h("div", { class: "a4-izbor" }, slika(g.rijec_id, "", true)))));
     } else {
       tijelo = listicMreza(sadrzaj as Listic);
     }
@@ -332,7 +428,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     gumb.disabled = true; gumb.textContent = "Pripremam PDF…";
     try {
       const [{ dokumentZadatka }, pdf] = await Promise.all([import("../pdf/model.ts"), import("../pdf/preglednik.ts")]);
-      const dok = dokumentZadatka({ vrsta, naslov, uputa, sadrzaj }, p.rijeci, sRijecima);
+      const dok = dokumentZadatka({ vrsta, naslov, uputa: vrsta === "scena" ? `${uputa} ${VRSTE.scena.ispis}.` : uputa, sadrzaj }, p.rijeci, sRijecima, pozadine);
       await pdf.preuzmiPdf(dok, pdf.imePdfa(dok.naslov), (g, u) => { gumb.textContent = u ? `Slike ${g}/${u}…` : "Pripremam PDF…"; });
       gumb.textContent = tekst;
     } catch (err) {
@@ -360,15 +456,28 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   addEventListener("beforeunload", (e) => { if (promijenjeno) e.preventDefault(); });
   addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (promijenjeno) spremi(); } });
 
+  function upozorenjaSvih() {
+    const u = provjeri(vrsta, sadrzaj, rijeci);
+    if (vrsta === "scena" && !uputa.trim()) u.unshift({ gdje: "scena", poruka: "Nema pitanja." });
+    if (vrsta === "scena") {
+      const s = sadrzaj as Scena;
+      if (s.pozadina_id !== null && !pozadina(s.pozadina_id)) u.unshift({ gdje: "scena", poruka: "Odabrana pozadina je obrisana." });
+      if (vidljiviGumbi(s).length < 2) u.push({ gdje: "scena", poruka: "Scena treba barem 2 slike." });
+    }
+    return u;
+  }
+  let plocaEl: HTMLElement | null = null;
+  function osvjeziPlocu() { const stara = plocaEl; if (stara) (stara as any).replaceWith(ploca()); }
+
   function ploca(): HTMLElement {
-    const upozorenja = provjeri(vrsta, sadrzaj, rijeci);
+    const upozorenja = upozorenjaSvih();
     const brojStavki = h("input", { type: "number", min: 1, max: 12, value: postavke.stavki, oninput: (e: Event) => (postavke.stavki = Number((e.target as HTMLInputElement).value) || 4) });
-    return h("aside", { class: "z-ploca" },
+    return plocaEl = h("aside", { class: "z-ploca" },
       h("div", { class: "ploha z-polja" },
         h("label", {}, "Naslov"),
         h("input", { type: "text", value: naslov, maxLength: 200, placeholder: VRSTE[vrsta].naziv, oninput: (e: Event) => { naslov = (e.target as HTMLInputElement).value; oznaci(); } }),
-        h("label", {}, "Uputa djetetu"),
-        h("textarea", { rows: 2, maxLength: 400, value: uputa, oninput: (e: Event) => { uputa = (e.target as HTMLTextAreaElement).value; oznaci(); } }),
+        vrsta === "scena" ? null : h("label", {}, "Uputa djetetu"),
+        vrsta === "scena" ? null : h("textarea", { rows: 2, maxLength: 400, value: uputa, oninput: (e: Event) => { uputa = (e.target as HTMLTextAreaElement).value; oznaci(); } }),
         h("label", {}, "Područje"),
         h("select", { onchange: (e: Event) => { podrucje = Number((e.target as HTMLSelectElement).value) || null; oznaci(); } },
           h("option", { value: "" }, "—"),
