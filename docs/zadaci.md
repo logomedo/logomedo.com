@@ -248,6 +248,43 @@ ocjena: red je točan ako su pronađena sva točna polja bez ijednog krivog dodi
   Zamka pri takvom testu: `createImageBitmap` ne prima SVG blob, pa PDF iz SVG slike ostane prazan
   okvir; za PDF podmetati PNG. Nije provjereno: na produkciji s pravim slikama kataloga i na tabletu.
 
+### `percepcija`, razina 2: varijante slike s razlikom u detalju (plan, 2. 11. 2026.)
+
+Okretanje i boja su bazična razina. Matija želi pravi vidni zadatak: **svi snjegovići su
+isti, a jedan ima drugačiji šal**. Odluke (2. 11. 2026.):
+
+- **Razliku predlaže AI, a logoped bira ili upisuje svoju** („drugačiji šal”, „nema gumba”, „druga kapa”).
+- **Varijanta ne ide u Anitin pregled.** Logoped je prihvati ili zatraži novu u editoru zadatka,
+  jer nije slika kataloga.
+
+Plan izvedbe:
+
+1. **Model:** varijanta je slika izvedena iz odobrene slike riječi. Nova tablica `varijante`
+   (`id, slika_id` roditelj, `opis` razlike hr, `uputa` za model, `r2_kljuc`, `status`
+   `ceka|gotova|greska|odbacena`, `created_at`), ili stupci `varijanta_od`, `razlika` u `slike`
+   (tada pazi da varijante ne izlaze u katalogu ni u pregledu). `Polje` dobiva `varijanta_id`
+   (null = izvorna slika); `izmjena` ostaje i može se kombinirati.
+2. **Generiranje kroz postojeći runner** (`scripts/runner.sh` → `scripts/vertex-slika.py`, Nano
+   Banana 2.1 već prima slike kao `inlineData`). Novi način rada: jedna ulazna slika = slika koja se
+   uređuje, a uputa glasi: „Edit this illustration: change ONLY <razlika>. Keep everything else
+   pixel-identical: pose, framing, colours, line style, background.” Posao varijante ide u red s
+   visokim prioritetom (`0015_prioritet`), jer logoped čeka u editoru. Cijena ~0,04 $ i ~20 s po
+   varijanti. Za „nađi različitu” treba 1 varijanta po redu (ostale su ista datoteka, pa su
+   sigurno iste), a za „dvije iste” n−1.
+3. **Prijedlozi razlika:** jedan tekstni poziv s pogledom na sliku („predloži 5 malih, za dijete
+   vidljivih razlika na ovoj ilustraciji, hrvatski, kratko”). Ide kroz runner kao vrsta posla
+   (Worker nema Vertex vjerodajnice) ili kao statični popis po tipu (boja dijela, nedostaje dio,
+   dodan predmet, drugi uzorak) dok runner ne zna tekst. Rezultat se kešira po `slika_id`.
+4. **Editor reda:** „Slika reda” → gumb „Napravi varijantu”: prijedlozi kao čipovi + polje za
+   svoju razliku; varijanta se pojavi u redu kad je gotova (polling ili WebSocket kao `RunnerZvono`),
+   a uz nju idu „Prihvati”, „Nova” i „Odbaci”. Spremljene varijante slike dostupne su i drugim zadacima.
+5. **Prikaz:** svugdje gdje se crta polje (editor, igra, HTML ispis, PDF model) URL slike je
+   varijanta, ako je zadana. Javna kopija ide u `logomedo-javno` kao kod pozadina (odmah javna).
+6. **Rizik za provjeriti prvo, ručno, na 3–4 slike (snjegović, jelka, mačka):** mijenja li
+   Nano Banana samo traženi detalj ili „usput” pomakne stil i kadar. Ako pomakne, razlika je
+   prevelika (lako je naći). Ublažavanje: varijantu tražiti i za „iste” slike (sve prolaze isti
+   model), ili izrezati/poravnati. Mjerenje zapisati ovdje.
+
 ### Rima u katalogu
 
 Polje `rijeci.rima`: NULL znači ključ iz pravopisa (`src/lib/zadaci/rima.ts`), upisano znači ručni
