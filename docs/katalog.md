@@ -252,6 +252,15 @@ bez trošenja pokušaja; nakon 4 uzastopna 401 runner staje (`gcloud auth login`
 `UPDATE generiranja SET status='ceka', pokusaji=0, greska=NULL WHERE status='greska' AND greska LIKE '%HTTP 401%'`.
 Trošak iz loga: $0,039 po slici (ulaz ~3600 tokena, s promptom v4 ~4060; izlaz 1120).
 
+**Prioritet i backfill (2. 11. 2026., migracija 0015).** Red je FIFO po id-u, osim što posao za riječ
+koja u tom stilu ima odbijenu sliku dobiva `prioritet = 1` i ide prvi (`ORDER BY prioritet DESC, id`).
+Backfill cijelog kataloga (847 poslova: 378 ilustracija #203–580, pa 469 bojanki #581–1049; unutar
+stila nove riječi pa stare po `legacy_koristeno`) upisan je SQL-om koji ponavlja `sloziPrompt`
+(Python `upper()` umjesto `toLocaleUpperCase('hr')`; SQLite `upper()` ne zna č/ć/š/ž/đ), uz zapis u
+`aktivnost`. Zamka: izravan upis u D1 ne budi runner (zvono se zvoni samo iz Workera), pa runner
+čeka do 10 min ili ga treba ponovno pokrenuti (`scripts/launchd/instaliraj.sh`).
+Od 847 poslova 732 nema `opis_za_sliku`: model dobiva samo hrvatsku riječ (rizik homonima, v. „Ručni test”).
+
 ## Plan: stilovi, dodaci, referentne slike (dogovoreno 31. 10. 2026., nije napravljeno)
 
 - **Stil** (jedan): `bojanka` (SVG) i novi `ilustracija` (raster u boji); `stilovi.vektor`.
