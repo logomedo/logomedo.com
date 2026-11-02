@@ -3,7 +3,7 @@
 // Svaki točno riješen ekran pali jednu lampicu na boru; na kraju se bor vrti.
 import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../lib/biljeznice";
-import { borSvg } from "../../lib/bor";
+import { TEME } from "../../lib/teme";
 import { brojEkrana } from "../../lib/biljeznice-ekrani";
 import "../../lib/scena.css";
 
@@ -11,11 +11,13 @@ const b = await poSlugu(String(Astro.params.slug));
 if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
 const p = await podaci(b);
 const n = brojEkrana(p.zadaci);
+const tema = TEME[b.tema] ?? TEME.bozic;
 const za = {
   naslov: b.naslov, podnaslov: b.podnaslov,
   zadaci: p.zadaci.map((z) => ({ vrsta: z.vrsta, uputa: z.uputa, sadrzaj: z.sadrzaj })),
   rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika })),
   pozadine: p.pozadine,
+  kraj: tema.kraj,
 };
 // JSON u <script type="application/json">: „</” se ne smije pojaviti doslovno.
 const json = JSON.stringify(za).replace(/</g, "\\u003c");
@@ -26,11 +28,25 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="robots" content="noindex" />
-    <meta name="theme-color" content="#1b2a5c" />
+    <meta name="theme-color" content={tema.boja} />
     <title>{b.naslov} · LogoMedo</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
-  <body class="igra">
+  <body class={`igra tema-${b.tema}`}>
+    {b.tema === "proljece" ? (
+      <div class="nebo dan" aria-hidden="true">
+        <div class="sunce"></div>
+        <div class="oblak o1"></div><div class="oblak o2"></div>
+        <svg class="krajolik" viewBox="0 0 1200 360" preserveAspectRatio="xMidYMax slice">
+          <path d="M0 210 Q220 150 420 195 T820 175 T1200 185 V360 H0Z" class="livada-dalje" />
+          <path d="M0 260 Q280 205 600 250 T1200 235 V360 H0Z" class="livada" />
+          <path d="M0 315 Q320 280 720 308 T1200 298 V360 H0Z" class="livada-blize" />
+          {[[90, 300, "#ff8fab"], [210, 318, "#ffd166"], [380, 296, "#ffffff"], [560, 322, "#ff8fab"], [760, 305, "#cdb4ff"], [930, 320, "#ffd166"], [1110, 300, "#ffffff"]].map(([x, y, c]) => (
+            <g transform={`translate(${x} ${y})`}><path d="M0 0v22" class="stabljika" />{[0, 72, 144, 216, 288].map((k) => <circle r="6" cx={Math.cos((Number(k) * Math.PI) / 180) * 7} cy={Math.sin((Number(k) * Math.PI) / 180) * 7} fill={String(c)} />)}<circle r="4" class="sredina" /></g>
+          ))}
+        </svg>
+      </div>
+    ) : (
     <div class="nebo" aria-hidden="true">
       <div class="zvijezde"></div>
       <svg class="krajolik" viewBox="0 0 1200 360" preserveAspectRatio="xMidYMax slice">
@@ -59,6 +75,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
       <div class="pahulje s1"></div>
       <div class="pahulje s2"></div>
     </div>
+    )}
 
     <main class="pozornica">
       <section id="ekran" class="ekran" aria-live="polite">
@@ -69,7 +86,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
         </div>
       </section>
       <aside class="stablo">
-        <Fragment set:html={borSvg(n)} />
+        <Fragment set:html={tema.ukras(n)} />
         <p class="brojac" id="brojac"></p>
       </aside>
     </main>
@@ -233,6 +250,29 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     .gumb-kreni, .gumb-ponovi { font-size: 7vw; }
   }
   @media (orientation: landscape) and (max-height: 500px) { .pitanje { font-size: 5.4vh; } }
+
+  /* ---- Tema proljeće: dnevno nebo, sunce, livada, jabuka ---- */
+  .nebo.dan { background: linear-gradient(180deg, #8fd3ff 0%, #c4ecff 55%, #e9f8ff 100%); }
+  .sunce { position: absolute; top: 6vh; left: 7vw; width: 14vmin; height: 14vmin; border-radius: 50%; background: radial-gradient(circle, #fff6b0 0 45%, #ffd84d 46% 70%, #ffd84d00 71%);
+    box-shadow: 0 0 60px 20px #ffe48a88; animation: sija 6s ease-in-out infinite alternate; }
+  @keyframes sija { to { transform: scale(1.06); } }
+  .oblak { position: absolute; height: 7vmin; width: 22vmin; border-radius: 99px; background: #fff; opacity: .9; filter: drop-shadow(0 4px 6px #0001); animation: plovi 60s linear infinite; }
+  .oblak::before, .oblak::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
+  .oblak::before { width: 9vmin; height: 9vmin; left: 3vmin; top: -4.5vmin; } .oblak::after { width: 11vmin; height: 11vmin; left: 9vmin; top: -6vmin; }
+  .oblak.o1 { top: 12vh; left: 30vw; } .oblak.o2 { top: 22vh; left: 62vw; transform: scale(.7); animation-duration: 90s; }
+  @keyframes plovi { from { translate: 0 0; } to { translate: 40vw 0; } }
+  .livada-dalje { fill: #9fd88a; } .livada { fill: #7cc56b; } .livada-blize { fill: #62b257; }
+  .stabljika { stroke: #3e8a3a; stroke-width: 3; } .sredina { fill: #f4a23a; }
+  .tema-proljece { --nebo-1: #3f8f4e; }
+  .tema-proljece .brojac { color: #1f4d26; text-shadow: 0 1px 3px #fff9; }
+  .jabuka .krosnja { fill: #4fa548; stroke: #2f7a34; stroke-width: 3; }
+  .jabuka .deblo { fill: #8a5a32; } .jabuka .grana { fill: none; stroke: #8a5a32; stroke-width: 8; stroke-linecap: round; }
+  .jabuka .peteljka { fill: none; stroke: #5a3a1c; stroke-width: 2.5; stroke-linecap: round; }
+  .jabuka .lampica .kugla { fill: #c9e7a6; stroke: #8cbf63; stroke-width: 2; }
+  .jabuka .lampica.upaljena .kugla { fill: var(--boja); stroke: #fff8; }
+  .tema-proljece.kraj .stablo .bor { animation: njise 2.4s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+  @keyframes njise { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+  @media (prefers-reduced-motion: reduce) { .sunce, .oblak, .tema-proljece.kraj .stablo .bor { animation: none; } }
 
   /* ---- Kraj: bor u sredini se vrti, lampice trepere ---- */
   .kraj .pozornica { grid-template-columns: 1fr; }

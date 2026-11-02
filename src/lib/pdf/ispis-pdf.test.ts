@@ -67,3 +67,13 @@ test("scena: pozadina (uspravna ima prednost) i slike ispod, uputa = pitanje", a
   const pdf = await PDFDocument.load(await napraviPdf(d, new Map([["https://cdn.example/p-u.jpg", jpg]]), fontovi));
   assert.equal(pdf.getPageCount(), 2);
 });
+
+test("tema proljeće: naslovnica s jabukom, bez kutova", async () => {
+  const d = dokumentBiljeznice({ naslov: "Proljeće", tema: "proljece" }, [
+    { vrsta: "uljez", sadrzaj: { odnos: "rima", stavke: [{ slike: [1, 2, 3, 4], uljez: 1 }] } },
+  ], rijeci, 7);
+  assert.equal(d.ukrasi, false);
+  assert.equal(d.naslovnica?.uputa, "Za svaki točno riješen red oboji jednu jabuku na stablu.");
+  const pdf = await PDFDocument.load(await napraviPdf(d, new Map(), fontovi));
+  assert.equal(pdf.getPageCount(), 2);
+});

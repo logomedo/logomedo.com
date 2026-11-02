@@ -3,7 +3,7 @@
 // Odabir 3 stavke po stranici, uljez 4, povezivanje 1. Svaki riješen red = jedna lampica.
 import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../../lib/biljeznice";
-import { borSvg } from "../../../lib/bor";
+import { TEME } from "../../../lib/teme";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
 import { VRSTE, type Odabir, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
 import { GRANCICA } from "../../../lib/ukrasi";
@@ -38,7 +38,8 @@ const n = brojEkrana(p.zadaci);
 
 // Isti model crta PDF u pregledniku (gumb „Preuzmi PDF"); slike ostaju na CDN-u.
 const dok = dokumentBiljeznice(b, p.zadaci, p.rijeci, n, p.pozadine);
-const grancica = GRANCICA;
+const tema = TEME[b.tema] ?? TEME.bozic;
+const grancica = tema.kutovi ? GRANCICA : "";
 ---
 <!doctype html>
 <html lang="hr">
@@ -59,17 +60,17 @@ const grancica = GRANCICA;
     </div>
 
     <article class="a4 naslovnica">
-      {["gl", "gd", "dl", "dd"].map((k) => <div class={`kut ${k}`} set:html={grancica} />)}
+      {tema.kutovi && ["gl", "gd", "dl", "dd"].map((k) => <div class={`kut ${k}`} set:html={grancica} />)}
       <h1>{b.naslov}</h1>
-      <p class="uputa">Za svaki točno riješen red oboji jednu lampicu na boru.</p>
-      <div class="bor-ispis" set:html={borSvg(n, { zaIspis: true })} />
+      <p class="uputa">{tema.uputaIspisa}</p>
+      <div class="bor-ispis" set:html={tema.ukras(n, { zaIspis: true })} />
       <div class="ime">Ime: <span></span></div>
       <footer>logomedo.com</footer>
     </article>
 
     {stranice.map((s) => (
       <article class={`a4 a4-${s.vrsta}`}>
-        {["gl", "gd", "dl", "dd"].map((k) => <div class={`kut ${k}`} set:html={grancica} />)}
+        {tema.kutovi && ["gl", "gd", "dl", "dd"].map((k) => <div class={`kut ${k}`} set:html={grancica} />)}
         <h2>{s.uputa}</h2>
         {s.vrsta === "odabir" && s.stavke.map((x) => (
           <div class="red">
@@ -191,6 +192,7 @@ const grancica = GRANCICA;
   .bor-ispis .snijeg { fill: none; stroke: #000; stroke-width: 1.2; stroke-dasharray: 3 4; }
   .bor-ispis .deblo, .bor-ispis .zvijezda { fill: #fff; stroke: #000; stroke-width: 2.5; }
   .bor-ispis .girlanda { fill: none; stroke: #000; stroke-width: 1.5; stroke-dasharray: 2 4; }
+  .bor-ispis .grana { fill: none; stroke: #000; stroke-width: 2.5; }
   .ime { font-size: 13pt; display: flex; gap: 2mm; justify-content: center; } .ime span { flex: 0 0 80mm; border-bottom: 1px solid #000; }
 
   .slika { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 1.5mm; }

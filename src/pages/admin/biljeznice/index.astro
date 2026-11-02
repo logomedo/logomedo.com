@@ -1,10 +1,25 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import { kad } from "../../../lib/katalog";
-import { napraviBozicnu, popis } from "../../../lib/biljeznice";
+import Ikona from "../../../components/Ikona.astro";
+import { napraviBozicnu, nova, popis, provjeriPolja } from "../../../lib/biljeznice";
+import { jeTema, TEME, type Tema } from "../../../lib/teme";
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
+  if (f.get("akcija") === "nova") {
+    const x = {
+      naslov: String(f.get("naslov") ?? "").trim(), podnaslov: String(f.get("podnaslov") ?? ""),
+      slug: String(f.get("slug") ?? ""), tema: String(f.get("tema")),
+    };
+    const greska = !jeTema(x.tema) ? "Odaberi temu." : await provjeriPolja(x, null);
+    if (greska) {
+      const q = new URLSearchParams({ greska, naslov: x.naslov, podnaslov: x.podnaslov, slug: x.slug, tema: x.tema });
+      return Astro.redirect(`/admin/biljeznice?${q}#nova`, 303);
+    }
+    const id = await nova(Astro.locals.admin!.email, { ...x, tema: x.tema as Tema });
+    return Astro.redirect(`/admin/biljeznice/${id}?nova=1`, 303);
+  }
   if (f.get("akcija") === "bozicna") {
     const id = await napraviBozicnu(Astro.locals.admin!.email);
     return Astro.redirect(`/admin/biljeznice/${id}`, 303);
@@ -12,6 +27,8 @@ if (Astro.request.method === "POST") {
   return Astro.redirect("/admin/biljeznice", 303);
 }
 const biljeznice = await popis();
+const q = Astro.url.searchParams;
+const teme = Object.entries(TEME) as [Tema, (typeof TEME)[Tema]][];
 ---
 <AdminOkvir naslov="Bilježnice" aktivno="biljeznice">
   <div class="naslov">
@@ -19,10 +36,44 @@ const biljeznice = await popis();
       <h1>Bilježnice</h1>
       <p class="podnaslov">Tematski niz zadataka s javnom poveznicom: igra za dijete i verzija za ispis. Ništa se ne sprema o djetetu.</p>
     </div>
-    <form method="post">
-      <button class="gumb glavni" name="akcija" value="bozicna" type="submit">Napravi Božićnu rimu</button>
+    <form method="post" data-potvrda="Napraviti primjer: božićne riječi, tri zadatka rime i bilježnicu od 12 ekrana?">
+      <button class="gumb tihi" name="akcija" value="bozicna" type="submit">Primjer: Božićna rima</button>
     </form>
   </div>
+
+  {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
+
+  <form class="ploha nova" id="nova" method="post" novalidate>
+    <input type="hidden" name="akcija" value="nova" />
+    <h2>Nova bilježnica</h2>
+    <div class="polja2">
+      <div>
+        <label for="n-naslov">Naslov <span class="blijedo">(obavezno)</span></label>
+        <input id="n-naslov" type="text" name="naslov" value={q.get("naslov") ?? ""} required minlength="3" maxlength="120" placeholder="npr. Zima u šumi" />
+      </div>
+      <div>
+        <label for="n-podnaslov">Podnaslov</label>
+        <input id="n-podnaslov" type="text" name="podnaslov" value={q.get("podnaslov") ?? ""} maxlength="200" placeholder="npr. Za svaki točan odgovor jedna jabuka" />
+      </div>
+      <div>
+        <label for="n-slug">Poveznica <span class="blijedo">(prazno = iz naslova)</span></label>
+        <div class="slug"><span class="mono blijedo">/b/</span><input id="n-slug" type="text" name="slug" value={q.get("slug") ?? ""} maxlength="80" class="mono" placeholder="zima-u-sumi" /></div>
+      </div>
+    </div>
+    <fieldset class="teme">
+      <legend>Tema</legend>
+      {teme.map(([kod, t], i) => (
+        <label class="tema">
+          <input type="radio" name="tema" value={kod} checked={(q.get("tema") ?? "bozic") === kod || (!q.get("tema") && i === 0)} />
+          <span class="uzorak" style={`background:${t.boja}`} />
+          <span><b>{t.naziv}</b><small>{t.opis}</small></span>
+        </label>
+      ))}
+    </fieldset>
+    <p class="greska-forme" hidden></p>
+    <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi bilježnicu</button>
+    <p class="sitno blijedo">Nastaje prazna bilježnica; zadatke dodaješ na njezinoj stranici.</p>
+  </form>
 
   {biljeznice.length ? (
     <div class="ploha">
@@ -44,11 +95,46 @@ const biljeznice = await popis();
   ) : (
     <div class="ploha prazno">
       <h2>Još nema bilježnica</h2>
-      <p>„Napravi Božićnu rimu” doda božićne riječi u katalog, složi tri zadatka (odabir, uljez, povezivanje) i bilježnicu od 12 ekrana.</p>
+      <p>Napravi novu bilježnicu gore. „Primjer: Božićna rima” doda božićne riječi u katalog, složi tri zadatka (odabir, uljez, povezivanje) i bilježnicu od 12 ekrana.</p>
     </div>
   )}
 </AdminOkvir>
 
+<script>
+  import { slug } from "../../../lib/fonemi";
+  for (const f of document.querySelectorAll<HTMLFormElement>("form[data-potvrda]"))
+    f.addEventListener("submit", (e) => { if (!confirm(f.dataset.potvrda!)) e.preventDefault(); });
+  const forma = document.querySelector<HTMLFormElement>("form.nova")!;
+  const naslov = forma.querySelector<HTMLInputElement>("[name=naslov]")!;
+  const poveznica = forma.querySelector<HTMLInputElement>("[name=slug]")!;
+  const greska = forma.querySelector<HTMLElement>(".greska-forme")!;
+  naslov.addEventListener("input", () => { poveznica.placeholder = slug(naslov.value.trim().toLocaleLowerCase("hr")) || "zima-u-sumi"; });
+  forma.addEventListener("submit", (e) => {
+    const poruke: string[] = [];
+    if (naslov.value.trim().length < 3) poruke.push("Naslov mora imati barem 3 znaka.");
+    if (poveznica.value.trim() && slug(poveznica.value.trim().toLocaleLowerCase("hr")).length < 3) poruke.push("Poveznica mora imati barem 3 slova ili broja.");
+    naslov.classList.toggle("neispravno", naslov.value.trim().length < 3);
+    greska.hidden = !poruke.length; greska.textContent = poruke.join(" ");
+    if (poruke.length) { e.preventDefault(); naslov.focus(); }
+  });
+</script>
+
 <style>
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+  .nova { padding: 18px; margin-bottom: 22px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .nova h2 { margin: 0; font-size: 1.05rem; }
+  .polja2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; width: 100%; }
+  @media (max-width: 900px) { .polja2 { grid-template-columns: 1fr; } }
+  .polja2 label { font-weight: 600; font-size: .86rem; }
+  .slug { display: flex; align-items: center; gap: 4px; } .slug input { flex: 1; min-width: 0; }
+  .teme { border: 0; padding: 0; margin: 6px 0 0; display: flex; gap: 10px; flex-wrap: wrap; width: 100%; }
+  .teme legend { font-weight: 600; font-size: .86rem; margin-bottom: 6px; }
+  .tema { flex: 1 1 260px; display: flex; gap: 10px; align-items: center; padding: 10px 12px; border: 2px solid var(--rub); border-radius: 12px; cursor: pointer; }
+  .tema:has(input:checked) { border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+  .tema small { display: block; color: var(--blijedo); font-size: .78rem; }
+  .uzorak { flex: none; width: 34px; height: 34px; border-radius: 9px; }
+  .greska-forme { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-weight: 600; font-size: .88rem; }
+  :global(input.neispravno) { border-color: var(--greska) !important; }
+  .sitno { font-size: .82rem; margin: 0; }
   td a { text-decoration: none; } td a:hover { text-decoration: underline; }
 </style>

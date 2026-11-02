@@ -2,6 +2,8 @@
 // je ista kao u HTML ispisu bilježnice: odabir 3 reda, uljez 4 reda, povezivanje 1 stranica,
 // listić 12 kartica (3 × 4, kao stari LogoMedo).
 
+import type { Tema } from "../teme.ts";
+import { TEME } from "../teme.ts";
 import { VRSTE, type Listic, type Odabir, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
@@ -31,7 +33,7 @@ export interface DokumentPdf {
   /** Grančice jele u kutovima (bilježnica). */
   ukrasi?: boolean;
   /** Naslovnica bilježnice s borom za bojanje. */
-  naslovnica?: { naslov: string; uputa: string; lampica: number };
+  naslovnica?: { naslov: string; uputa: string; lampica: number; tema?: Tema };
   stranice: StranicaPdf[];
 }
 
@@ -84,7 +86,7 @@ export function dokumentZadatka(z: { vrsta: Vrsta; naslov: string; uputa: string
 
 /** Bilježnica: naslovnica s borom, pa zadaci; svaka stranica nosi uputu svoje vrste. */
 export function dokumentBiljeznice(
-  b: { naslov: string },
+  b: { naslov: string; tema?: Tema },
   zadaci: { vrsta: Vrsta; sadrzaj: Sadrzaj; uputa?: string | null }[],
   rijeci: RijecPdf[],
   lampica: number,
@@ -92,8 +94,8 @@ export function dokumentBiljeznice(
 ): DokumentPdf {
   const m = new Map(rijeci.map((r) => [r.id, r]));
   return {
-    naslov: b.naslov, podnozje: `${b.naslov} · logomedo.com`, ukrasi: true,
-    naslovnica: { naslov: b.naslov, uputa: "Za svaki točno riješen red oboji jednu lampicu na boru.", lampica },
+    naslov: b.naslov, podnozje: `${b.naslov} · logomedo.com`, ukrasi: TEME[b.tema ?? "bozic"].kutovi,
+    naslovnica: { naslov: b.naslov, uputa: TEME[b.tema ?? "bozic"].uputaIspisa, lampica, tema: b.tema ?? "bozic" },
     stranice: zadaci.filter((z) => z.vrsta !== "listic")
       .flatMap((z) => tijelaZadatka(z.vrsta, z.sadrzaj, m, true, pozadine).map((tijelo) => ({
         // Pitanje scene je sadržaj zadatka; ostale vrste imaju uputu za papir.

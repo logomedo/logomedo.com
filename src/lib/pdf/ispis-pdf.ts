@@ -7,8 +7,8 @@
 
 import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
-import { borSvg } from "../bor.ts";
-import { BOR_ISPIS_STIL, GRANCICA } from "../ukrasi.ts";
+import { TEME } from "../teme.ts";
+import { GRANCICA } from "../ukrasi.ts";
 import type { DokumentPdf, SlikaPdf, StranicaPdf } from "./model.ts";
 import { nacrtajSvg, omjer } from "./svg.ts";
 
@@ -151,10 +151,11 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     y += p.tekst(n.naslov, A4.w / 2, y, 34, { naslov: true, sirina: 150 }) + 6;
     y += p.tekst(n.uputa, A4.w / 2, y, 14, { sirina: 150 }) + 8;
     const ime = A4.h - 14 - 10;
-    const svg = borSvg(n.lampica, { zaIspis: true });
+    const t = TEME[n.tema ?? "bozic"];
+    const svg = t.ukras(n.lampica, { zaIspis: true });
     const visina = Math.min(175, ime - 8 - y);
     const sirina = visina / omjer(svg);
-    nacrtajSvg(p.page, svg, { x: p.X(A4.w / 2 - sirina / 2), y: p.Y(y + (ime - 8 - y - visina) / 2), sirina: sirina * MM, klase: BOR_ISPIS_STIL });
+    nacrtajSvg(p.page, svg, { x: p.X(A4.w / 2 - sirina / 2), y: p.Y(y + (ime - 8 - y - visina) / 2), sirina: sirina * MM, klase: t.ispisStil });
     imeCrta(p, A4.w / 2, ime, 80, 13, true);
     podnozje(p, "c");
   }

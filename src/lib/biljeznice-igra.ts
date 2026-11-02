@@ -9,6 +9,8 @@ interface Podaci {
   zadaci: ZadatakZaIgru[];
   rijeci: { id: number; rijec: string; slika: string | null }[];
   pozadine?: PozadinaPrikaz[];
+  /** Rečenica na kraju (iz teme). */
+  kraj?: string;
 }
 
 type Dijete = Node | string | null | undefined | false;
@@ -253,7 +255,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       trenutni = 0; osvjeziBrojac(); prikazi();
     } }, "Ponovi");
     zamijeni(korijen, h("div", { class: "bravo" }, h("h2", {}, "Bravo!"), ponovi));
-    setTimeout(() => govori("Bravo! Sve lampice svijetle."), 600);
+    setTimeout(() => govori(p.kraj ?? "Bravo! Sve lampice svijetle."), 600);
   }
 
   // Uvod: dodir je potreban da preglednik dopusti zvuk.
