@@ -1,7 +1,8 @@
 # Zadaci: predlošci, instance, rješavanja
 
-Status (2026-11-02, navečer): vrsta `percepcija` (vizualna percepcija: pronađi različitu / dvije iste) napravljena i
-provjerena lokalno (migracija 0016), još nije na produkciji.
+Status (2026-11-02, navečer): vrsta `percepcija` (vizualna percepcija: pronađi različitu / dvije iste) na produkciji
+(migracija 0016, deploy 6fbc6ea3; Time Travel bookmark prije migracije `0000008a-00000182-00005117-78b34e56455b0d3413ecebd7a5cb87ee`).
+Na produkciji još nema nijednog zadatka te vrste.
 Status (2026-11-02, kasnije): Flutter aplikacija igra scene i bilježnice (`/api/v1/admin/biljeznice`, `/zadaci`; ostale vrste u aplikaciji još nemaju renderer).
 Status (2026-11-02): vrsta `scena` i pozadine na produkciji (migracija 0010, deploy 2. 11.); na produkciji još nema nijedne pozadine.
 Status (2026-10-31): baza (`migrations/0004_zadaci.sql`) i admin za sve četiri vrste su na produkciji
@@ -241,6 +242,11 @@ ocjena: red je točan ako su pronađena sva točna polja bez ijednog krivog dodi
   Uputa za papir („Prekriži je.”) se na ekranu zamijeni ekranskom.
 - **Ispis:** 4 reda po stranici, bez natpisa ispod slika. Flutter aplikacija vrstu još nema
   (prikazuje zamjenski ekran).
+- **Provjereno (2. 11. 2026.)** lokalno u headless Chromiumu: editor, „Dijete rješava” (ocjena 3/4
+  uz jedan krivi dodir), A4 i PDF (sve izmjene, PDF se poklapa s HTML-om), igra 1180×820 i 390×844.
+  Lokalni katalog ima samo jednu (simetričnu) sliku, pa je slika podmetnuta kroz Playwright `route`.
+  Zamka pri takvom testu: `createImageBitmap` ne prima SVG blob, pa PDF iz SVG slike ostane prazan
+  okvir; za PDF podmetati PNG. Nije provjereno: na produkciji s pravim slikama kataloga i na tabletu.
 
 ### Rima u katalogu
 
