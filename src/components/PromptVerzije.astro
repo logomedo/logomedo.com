@@ -1,0 +1,50 @@
+---
+// Popis verzija jednog prompta (sistemski ili predložak stila) na /admin/prompt: koliko je slika
+// nastalih s verzijom odobreno ili odbijeno, i „Aktiviraj” za povratak na nju jednim klikom.
+// Gumbi su dio okolne forme (name="akcija" value="aktiviraj:<id>").
+import { kad } from "../lib/katalog";
+import type { Verzija } from "../lib/postavke";
+
+interface Props { verzije: Verzija[]; aktivna: number | null }
+const { verzije, aktivna } = Astro.props;
+const posto = (v: Verzija) => (v.odobreno + v.odbijeno ? Math.round((100 * v.odobreno) / (v.odobreno + v.odbijeno)) : null);
+---
+{verzije.length > 0 && (
+  <div class="verzije">
+    <h3>Verzije</h3>
+    <ul>
+      {verzije.map((v) => (
+        <li class:list={{ aktivna: v.id === aktivna }}>
+          <div class="red">
+            <b>v{v.broj}</b>
+            <span class="sitno blijedo">{kad(v.created_at)}</span>
+            <span class="sitno" title="slike nastale s ovom verzijom">
+              {v.poslova
+                ? <>{v.odobreno} ✓ · {v.odbijeno} ✗{v.kandidata ? ` · ${v.kandidata} čeka` : ""}{posto(v) !== null && <b> · {posto(v)} % odobreno</b>}</>
+                : "još nema slika"}
+            </span>
+            <span class="desno">
+              {v.id === aktivna
+                ? <span class="oznaka">aktivna</span>
+                : <button class="gumb tihi malen" name="akcija" value={`aktiviraj:${v.id}`} formnovalidate>Aktiviraj</button>}
+            </span>
+          </div>
+          {v.biljeska && <div class="sitno">{v.biljeska}</div>}
+          <details><summary class="sitno">tekst</summary><pre>{v.tekst}</pre></details>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+<style>
+  .verzije { margin-top: 14px; border-top: 1px solid var(--rub); padding-top: 10px; }
+  h3 { font-size: .9rem; margin: 0 0 6px; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--rub); }
+  li.aktivna { border-color: var(--med-tamno, var(--rub-jak)); background: var(--med-blago, var(--povrsina-2)); }
+  .red { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .desno { margin-left: auto; }
+  .oznaka { font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--povrsina-2); }
+  .malen { padding: 4px 10px; font-size: .8rem; }
+  pre { white-space: pre-wrap; font-size: .82rem; background: var(--povrsina-2); padding: 8px 10px; border-radius: 8px; margin: 6px 0 0; }
+</style>

@@ -5,7 +5,7 @@ import { env } from "cloudflare:workers";
 import { stil as stilPoKodu, type Stil } from "./katalog";
 import { zazvoni } from "./runner-zvono";
 import { novaGrupa, sZapisom, zapisNastalih, zapisSkupa } from "./aktivnost";
-import { postavka, redPauziran } from "./postavke";
+import { aktivnaSistemska, postavka, redPauziran } from "./postavke";
 import { spojiPrompt } from "./prompt";
 
 const ZASTARIO_MIN = 15;
@@ -41,7 +41,8 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
     if (!rijeci.length) continue;
     await db.batch([
       ...rijeci.map((r) =>
-        db.prepare("INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio) VALUES (?, ?, ?, ?)")
+        db.prepare(`INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija)
+                      VALUES (?1, ?2, ?3, ?4, (SELECT predlozak_verzija FROM stilovi WHERE id = ?2))`)
           .bind(r.id, stil.id, sloziPrompt(stil, r, JSON.parse(r.razlozi ?? "[]").slice(-3), napomena), email)),
       // Batch je transakcija, pa su zadnjih n poslova upravo ovi.
       zapisNastalih({ tko: email, radnja: "generiranje.zatrazeno", tablica: "generiranja", grupa },
@@ -77,11 +78,12 @@ export async function uzmi(): Promise<Posao | null> {
     [db.prepare(`DELETE FROM generiranja AS x WHERE x.status = 'ceka' AND ${IMA_NOVIJU}`)],
   ));
   const sistemski = await postavka("sistemski_prompt");
+  const verzija = await aktivnaSistemska();
   const p = await db.prepare(
-    `UPDATE generiranja SET status = 'radi', uzeto_at = datetime('now'), pokusaji = pokusaji + 1, sistemski = ?
+    `UPDATE generiranja SET status = 'radi', uzeto_at = datetime('now'), pokusaji = pokusaji + 1, sistemski = ?, sistemski_verzija = ?
      WHERE id = (SELECT id FROM generiranja WHERE status = 'ceka' ORDER BY id LIMIT 1) AND status = 'ceka'
      RETURNING id, rijec_id, stil_id, prompt, pokusaji`,
-  ).bind(sistemski).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; pokusaji: number }>();
+  ).bind(sistemski, verzija).first<{ id: number; rijec_id: number; stil_id: number; prompt: string; pokusaji: number }>();
   if (!p) return null;
   const r = await db.prepare(
     "SELECT r.rijec, r.slug, s.kod AS stil FROM rijeci r, stilovi s WHERE r.id = ? AND s.id = ?",

@@ -207,8 +207,9 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string): Promise
     const najvisi = (await db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM generiranja").first<{ n: number }>())!.n;
     naredbe.push(
       db.prepare(
-        `INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio)
-         SELECT json_extract(a.${stupac}, '$.rijec_id'), json_extract(a.${stupac}, '$.stil_id'), json_extract(a.${stupac}, '$.prompt'), ?1
+        `INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija)
+         SELECT json_extract(a.${stupac}, '$.rijec_id'), json_extract(a.${stupac}, '$.stil_id'), json_extract(a.${stupac}, '$.prompt'), ?1,
+           json_extract(a.${stupac}, '$.predlozak_verzija')
          FROM aktivnost a WHERE a.id IN (SELECT value FROM json_each(?2))
            AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = json_extract(a.${stupac}, '$.rijec_id')
              AND q.stil_id = json_extract(a.${stupac}, '$.stil_id') AND q.status IN ('ceka', 'radi'))`,

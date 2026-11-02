@@ -87,6 +87,11 @@ Zamke s deploya 2. 11.:
   migrations apply …` i provjeriti tablicu prije `wrangler deploy`.
 - Promjene u `runner.sh` ne vrijede dok se launchd agent ne restarta (`scripts/launchd/instaliraj.sh`).
 
+Od 2. 11. 2026. (migracija 0013) sistemski prompt i predlošci imaju **verzije** (`prompt_verzije`):
+svaka izmjena s novim tekstom je nova verzija s bilješkom, posao pamti s kojom je verzijom nastao,
+a `/admin/prompt` uz svaku verziju pokazuje odobreno/odbijeno i gumb „Aktiviraj” za povratak.
+Postupak od recenzija do sljedeće verzije: `docs/prompt-iteracije.md`.
+
 ### Ručni upload (1. 11. 2026.)
 
 Na stranici riječi, „Dodaj sliku iz vanjskog alata”: slika (PNG/JPEG/WebP, do 8 MB), stil,

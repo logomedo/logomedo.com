@@ -1,9 +1,10 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
+import Verzije from "../../components/PromptVerzije.astro";
 import { env } from "cloudflare:workers";
 import { kad, type Stil } from "../../lib/katalog";
-import { MAX_PROMPT, postavi, postaviPredlozak, postavka, povijest } from "../../lib/postavke";
+import { MAX_PROMPT, aktivirajVerziju, aktivnaSistemska, postavi, postaviPredlozak, postaviSistemski, postavka, povijest, verzijaZaTekst, verzije } from "../../lib/postavke";
 import { zazvoni } from "../../lib/runner-zvono";
 
 // Sistemski prompt (vrijedi za svaki posao kad ga runner uzme), predlošci stilova i pauza reda.
@@ -14,22 +15,32 @@ if (Astro.request.method === "POST") {
   const akcija = String(f.get("akcija") ?? "");
   if (akcija === "pauza") await postavi("red_pauza", "1", tko);
   if (akcija === "nastavi") { await postavi("red_pauza", "0", tko); await zazvoni(); }
+  const biljeska = String(f.get("biljeska") ?? "").trim().slice(0, 1000);
   if (akcija === "sistemski") {
     const v = String(f.get("vrijednost") ?? "").trim().slice(0, MAX_PROMPT);
-    if (v !== (await postavka("sistemski_prompt"))) await postavi("sistemski_prompt", v, tko);
+    if (v !== (await postavka("sistemski_prompt"))) await postaviSistemski(v, tko, biljeska);
   }
   if (akcija === "predlozak") {
     const kod = String(f.get("kod") ?? "");
     const v = String(f.get("vrijednost") ?? "").trim().slice(0, MAX_PROMPT);
     if (!v.includes("{rijec}")) poruka = "Predložak mora sadržavati {rijec}.";
-    else await postaviPredlozak(kod, v, tko);
+    else await postaviPredlozak(kod, v, tko, await verzijaZaTekst(`predlozak:${kod}`, v, tko, biljeska));
+  }
+  // Gumb „Aktiviraj” šalje akcija=aktiviraj:<id> (bez JS-a, CSP ne dopušta inline handlere).
+  if (akcija.startsWith("aktiviraj:")) {
+    if (!(await aktivirajVerziju(Number(akcija.slice("aktiviraj:".length)), tko))) poruka = "Nema te verzije.";
   }
   if (!poruka) return Astro.redirect("/admin/prompt?spremljeno=1", 303);
 }
 
 const sistemski = await postavka("sistemski_prompt");
+const sistemskaAktivna = await aktivnaSistemska();
+const sistemskeVerzije = await verzije("sistemski_prompt");
 const pauza = (await postavka("red_pauza")) === "1";
-const { results: stilovi } = await env.DB.prepare("SELECT id, kod, naziv, predlozak, model FROM stilovi ORDER BY id").all<Stil>();
+const { results: stilovi } = await env.DB.prepare("SELECT id, kod, naziv, predlozak, model, predlozak_verzija FROM stilovi ORDER BY id")
+  .all<Stil & { predlozak_verzija: number | null }>();
+const predlosci = await Promise.all(stilovi.map((s) => verzije(`predlozak:${s.kod}`)));
+
 const izmjene = await povijest(15);
 const uRedu = (await env.DB.prepare("SELECT COUNT(*) AS n FROM generiranja WHERE status = 'ceka'").first<{ n: number }>())?.n ?? 0;
 const OZNAKA_KLJUCA = (k: string) =>
@@ -67,11 +78,13 @@ const spremljeno = Astro.url.searchParams.has("spremljeno");
       Dodaje se na kraj prompta <b>svake</b> slike, u trenutku kad je runner uzme. Izmjena vrijedi odmah,
       i za poslove koji već čekaju. Model čita engleski najpouzdanije.
     </p>
-    <textarea name="vrijednost" rows="5" maxlength={MAX_PROMPT}>{sistemski}</textarea>
-    <div class="dno"><button class="gumb" name="akcija" value="sistemski">Spremi sistemski prompt</button></div>
+    <textarea name="vrijednost" rows="10" maxlength={MAX_PROMPT}>{sistemski}</textarea>
+    <input name="biljeska" class="biljeska" maxlength="1000" placeholder="Bilješka uz novu verziju: što mijenja i zašto (npr. „sova: satenska krila”)" />
+    <div class="dno"><button class="gumb" name="akcija" value="sistemski">Spremi kao novu verziju</button></div>
+    <Verzije verzije={sistemskeVerzije} aktivna={sistemskaAktivna} />
   </form>
 
-  {stilovi.map((s) => (
+  {stilovi.map((s, i) => (
     <form method="post" class="ploha blok">
       <h2>Predložak stila: {s.naziv} <span class="mono blijedo sitno">{s.model}</span></h2>
       <p class="blijedo sitno">
@@ -81,7 +94,9 @@ const spremljeno = Astro.url.searchParams.has("spremljeno");
       </p>
       <input type="hidden" name="kod" value={s.kod} />
       <textarea name="vrijednost" rows="7" maxlength={MAX_PROMPT}>{s.predlozak}</textarea>
-      <div class="dno"><button class="gumb tihi" name="akcija" value="predlozak">Spremi predložak</button></div>
+      <input name="biljeska" class="biljeska" maxlength="1000" placeholder="Bilješka uz novu verziju predloška" />
+      <div class="dno"><button class="gumb tihi" name="akcija" value="predlozak">Spremi kao novu verziju</button></div>
+      <Verzije verzije={predlosci[i]} aktivna={s.predlozak_verzija} />
     </form>
   ))}
 
@@ -111,6 +126,8 @@ const spremljeno = Astro.url.searchParams.has("spremljeno");
   .pauza { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; margin-bottom: 18px; }
   .pauza.aktivna { background: var(--greska-blago); }
   .pauza button { flex: none; }
+  .biljeska { width: 100%; box-sizing: border-box; font: inherit; font-size: .85rem; padding: 8px 12px; margin-top: 8px;
+    border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); }
   code { background: var(--povrsina-2); padding: 1px 6px; border-radius: 6px; }
   .povijest { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
   pre { white-space: pre-wrap; font-size: .82rem; background: var(--povrsina-2); padding: 8px 10px; border-radius: 8px; margin: 6px 0 0; }
