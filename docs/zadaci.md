@@ -1,5 +1,6 @@
 # Zadaci: predlošci, instance, rješavanja
 
+Status (2026-11-02, kasnije): Flutter aplikacija igra scene i bilježnice (`/api/v1/admin/biljeznice`, `/zadaci`; ostale vrste u aplikaciji još nemaju renderer).
 Status (2026-11-02): vrsta `scena` i pozadine na produkciji (migracija 0010, deploy 2. 11.); na produkciji još nema nijedne pozadine.
 Status (2026-10-31): baza (`migrations/0004_zadaci.sql`) i admin za sve četiri vrste su na produkciji
 (`/admin/zadaci`): editor, pregled „Dijete rješava” i A4 ispis. Djeca i spremanje rješavanja još nemaju UI. Vrste zadataka se dopisuju

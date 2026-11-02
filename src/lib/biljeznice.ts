@@ -48,6 +48,14 @@ export async function zadaciBiljeznice(id: number): Promise<ZadatakBiljeznice[]>
 /** Sve što treba javna stranica (igra i ispis). */
 export async function podaci(b: Biljeznica): Promise<PodaciBiljeznice> {
   const zadaci = await zadaciBiljeznice(b.id);
+  return { biljeznica: b, zadaci, ...(await rijeciIPozadine(zadaci, b.stil)) };
+}
+
+/**
+ * Riječi (s odobrenom slikom, prvo u stilu `stil`) i pozadine koje zadaci spominju.
+ * Dijele ga javna bilježnica i /api/v1 (aplikacija crta isti JSON).
+ */
+export async function rijeciIPozadine(zadaci: { vrsta: Vrsta; sadrzaj: Sadrzaj }[], stil: string): Promise<{ rijeci: RijecBiljeznice[]; pozadine: Pozadina[] }> {
   const ids = [...new Set(zadaci.flatMap((z) => rijeciU(z.vrsta, z.sadrzaj)))];
   const { results } = await DB().prepare(
     `SELECT r.id, r.rijec, r.rima AS rima_rucno,
@@ -55,9 +63,8 @@ export async function podaci(b: Biljeznica): Promise<PodaciBiljeznice> {
         WHERE s.rijec_id = r.id AND s.status = 'odobrena'
         ORDER BY CASE st.kod WHEN ?2 THEN 0 ELSE 1 END LIMIT 1) AS kljuc
      FROM rijeci r WHERE r.id IN (SELECT value FROM json_each(?1))`,
-  ).bind(JSON.stringify(ids), b.stil).all<{ id: number; rijec: string; rima_rucno: string | null; kljuc: string | null }>();
+  ).bind(JSON.stringify(ids), stil).all<{ id: number; rijec: string; rima_rucno: string | null; kljuc: string | null }>();
   return {
-    biljeznica: b, zadaci,
     pozadine: await pozadinePoId(pozadineU(zadaci)),
     rijeci: results.map((r) => ({
       id: r.id, rijec: r.rijec, rima: r.rima_rucno ?? izvediRimu(r.rijec), slogova: brojSlogova(r.rijec),

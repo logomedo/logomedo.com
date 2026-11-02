@@ -69,6 +69,19 @@ ključa za potpis s Playa (Play App Signing), pa ima smisla tek nakon prve objav
 | POST | `/api/v1/admin/rijeci/{id}/slike` | multipart `slika, stil, prompt, alat` → 201 `{slika_id}` (kandidat) |
 | GET | `/api/v1/admin/slike/{id}` | datoteka iz privatnog R2, `immutable` |
 | POST | `/api/v1/admin/slike/{id}/odluka` | `{akcija: odobri\|odbij\|vrati, razlog?, ponovi?}`; 409 + `vec` ako je netko bio brži |
+| GET | `/api/v1/admin/biljeznice` | `[{id, slug, naslov, podnaslov, tema, javna, zadataka, updated_at}]` (i nejavne) |
+| GET | `/api/v1/admin/biljeznice/{slug}` | `{biljeznica, tema {kod, naziv, kraj, boja}, zadaci[], ekrani[], rijeci[], pozadine[]}` |
+| GET | `/api/v1/admin/zadaci` | `[{id, vrsta, naslov, uputa, verzija, updated_at}]` |
+| GET | `/api/v1/admin/zadaci/{id}` | `{zadatak {…, sadrzaj}, ekrani[], rijeci[], pozadine[]}` (aktivna verzija) |
+
+**Vježbenice** (dodano 2. 11. 2026.): isti JSON kao javna igra `/b/<slug>`
+(`rijeciIPozadine()` u `src/lib/biljeznice.ts`), da aplikacija crta isto što i preglednik.
+`ekrani` server razloži kao igra (`src/lib/biljeznice-ekrani.ts`: stavka odabira/uljeza = ekran,
+scena bez pozadine ili točne slike se preskače), pa aplikacija ne ponavlja to pravilo.
+`rijeci[]` = `{id, rijec, slika}`: samo odobrena slika, prvo u stilu bilježnice (za zadatak
+`ilustracija`), s CDN-a bez tokena. Pozadine imaju `uspravno`/`vodoravno` `{url, sirina, visina}`.
+Lokalno (`wrangler dev`, zahtjev je `http:`) su URL-ovi slika relativni `/cdn/<ključ>`, jer CDN
+nema lokalno učitane datoteke; aplikacija relativne URL-ove dopuni svojim `API_URL`-om.
 
 Napomena: `rijeci/{slug}` (GET) i `rijeci/{id}/slike` (POST) dijele datoteku `[id]` u Astru;
 GET prima slug, upload brojčani id.

@@ -2,6 +2,8 @@
 import type { APIContext } from "astro";
 import { env } from "cloudflare:workers";
 import type { AppSesija } from "./sesija";
+import type { RijecBiljeznice } from "../biljeznice";
+import type { Pozadina } from "../pozadine";
 
 /** Verzija ugovora: aplikacija je šalje u `x-logomedo-api`, a server je vraća u /api/v1/ja. */
 export const API_VERZIJA = 1;
@@ -23,3 +25,25 @@ export function slikaUrl(s: { id: number; status: string; r2_kljuc: string }) {
     cdn: s.status === "odobrena" && env.CDN_URL ? `${env.CDN_URL}/${s.r2_kljuc}` : null,
   };
 }
+
+/**
+ * Javni URL-ovi (cdn.logomedo.com) za aplikaciju. Lokalno (wrangler dev) CDN nema lokalno
+ * učitane datoteke, pa se prepišu u relativni `/cdn/<ključ>` (aplikacija ga razriješi prema
+ * svom API_URL-u). wrangler dev zahtjevu postavi host rute (logomedo.com), ali ostavi http:,
+ * a produkcija je uvijek https.
+ */
+export function cdnZa(zahtjev: URL): (u: string) => string {
+  const cdn = (env.CDN_URL ?? "").replace(/\/+$/, "");
+  const lokalno = zahtjev.protocol === "http:";
+  return (u) => (lokalno && cdn && u.startsWith(`${cdn}/`) ? `/cdn/${u.slice(cdn.length + 1)}` : u);
+}
+
+/** Riječi i pozadine s URL-ovima prilagođenima klijentu (lokalno `/cdn/` umjesto CDN-a). */
+export function slikePrikaz(p: { rijeci: RijecBiljeznice[]; pozadine: Pozadina[] }, cdn: (u: string) => string) {
+  const sl = <T extends { url: string } | null>(s: T): T => (s ? { ...s, url: cdn(s.url) } : s);
+  return {
+    rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika ? cdn(r.slika) : null })),
+    pozadine: p.pozadine.map((x) => ({ ...x, uspravno: sl(x.uspravno), vodoravno: sl(x.vodoravno) })),
+  };
+}
+
