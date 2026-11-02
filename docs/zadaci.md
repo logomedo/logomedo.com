@@ -1,5 +1,7 @@
 # Zadaci: predlošci, instance, rješavanja
 
+Status (2026-11-02, navečer): vrsta `percepcija` (vizualna percepcija: pronađi različitu / dvije iste) napravljena i
+provjerena lokalno (migracija 0016), još nije na produkciji.
 Status (2026-11-02, kasnije): Flutter aplikacija igra scene i bilježnice (`/api/v1/admin/biljeznice`, `/zadaci`; ostale vrste u aplikaciji još nemaju renderer).
 Status (2026-11-02): vrsta `scena` i pozadine na produkciji (migracija 0010, deploy 2. 11.); na produkciji još nema nijedne pozadine.
 Status (2026-10-31): baza (`migrations/0004_zadaci.sql`) i admin za sve četiri vrste su na produkciji
@@ -117,6 +119,7 @@ može služiti u više podpodručja.
 |---|---|---|
 | Korekcija artikulacije | glas × pozicija (postojeći katalog) | `listic` |
 | Predvještine čitanja i pisanja | Prepoznavanje rime | `odabir`, `povezivanje`, `uljez` |
+| Predvještine čitanja i pisanja | Vizualna percepcija | `percepcija` |
 | Razumijevanje i rječnik | Situacije: što pripada | `scena` |
 
 ```sql
@@ -207,6 +210,37 @@ Zamka migracije 0010: CHECK se u SQLite ne mijenja, pa se `zadaci` slaže ponovn
 uključene ključeve radi implicitni DELETE (kaskada bi obrisala verzije), a odgođene povrede od
 `biljeznica_zadaci` `RENAME` ne poništava pa COMMIT pada. Zato se djeca prvo spreme sa strane i
 obrišu, a nakon `RENAME` vrate. Provjereno na kopiji lokalne baze.
+
+### `percepcija`: vizualna percepcija, nađi različitu ili dvije iste
+
+Prema Matiji (2. 11. 2026.): u nizu je nekoliko sličnih slika, dijete bira onu koja se razlikuje.
+Varijanta: u redu pronalazi dvije iste. Obje su jedna vrsta s parametrom `trazi`, jer dijele
+sadržaj, editor, ispis i igru; razlikuju se samo u broju točnih polja (1 ili 2).
+
+```ts
+{ trazi: 'razlicitu' | 'par', stavke: [{ polja: [{ rijec_id, izmjena }] /* 3–6 */, tocno: [i] | [i, j] }] }
+izmjena: '' | 'zrcalo' | 'naopako' | 'lijevo' | 'desno' | 'siva' | 'mala'
+odgovori: [{ stavka, odabrano, ms }]   // svaki dodir, i krivi
+ocjena: red je točan ako su pronađena sva točna polja bez ijednog krivog dodira
+```
+
+- **„Slične slike” su ista slika iz kataloga s izmjenom** (zrcaljena, okrenuta, naopako, bez
+  boje, manja), pa radi s postojećim katalogom bez generiranja. Polje može imati i drugu riječ
+  (kruška među jabukama). Izmjena se crta na jednom mjestu po mediju: `izmjenaCss` (editor, igra,
+  HTML ispis) i `smjestiSliku` u `pdf/ispis-pdf.ts` (matrica slike oko središta okvira; testirano
+  da ostaje u okviru). Siva u PDF-u je zaseban URL `…#siva`, preglednik je pretvori pri smanjivanju.
+- **Editor:** prekidač „Jednu koja je drukčija / Dvije iste” (preslaže redove i mijenja uputu ako
+  je bila zadana), po redu „Slika reda”, „Nasumično”, −/+ polje; izmjena po polju. Oznaka točnog
+  prati sadržaj sama kad je jednoznačan (`tocnaPolja`), inače je logoped pomiče rukom.
+- **Upozorenja:** nepopunjeno polje; `razlicitu`: neoznačene nisu sve iste, ili je označena ista
+  kao ostale; `par`: označene nisu iste, ili postoji još jedan par.
+- **Zamka: simetrične slike** (lopta, jabuka) zrcaljene izgledaju isto. Automatski se ne
+  provjerava; editor to piše, a „Dijete rješava” pokazuje stvarni izgled.
+- **Igra (bilježnica):** red je jedan ekran; kartice bez riječi i zvučnika (riječ bi odala
+  različitu riječ i nije vidni zadatak). 3–5 u jednom redu, 6 kao 3 + 3; na mobitelu po 3.
+  Uputa za papir („Prekriži je.”) se na ekranu zamijeni ekranskom.
+- **Ispis:** 4 reda po stranici, bez natpisa ispod slika. Flutter aplikacija vrstu još nema
+  (prikazuje zamjenski ekran).
 
 ### Rima u katalogu
 

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normaliziraj, ocijeni, provjeri, slozi, type Odabir, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
+import { normaliziraj, ocijeni, provjeri, slozi, slozRed, type Izmjena, type Odabir, type Percepcija, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
 import { brojSlogova, izvediRimu } from "./rima.ts";
 
 const popis = ["krava", "trava", "glava", "dabar", "ormar", "pehar", "lonac", "palac", "madrac", "sat", "brat", "vrat", "miš", "kiš", "riba", "lisica"];
@@ -57,4 +57,38 @@ test("scena: normalizacija, provjera i ocjena po gumbu", () => {
   assert.deepEqual(ocijeni("scena", s, [{ gumb: 0 }]), { tocnih: 3, ukupno: 3 });
   const bez = normaliziraj("scena", { gumbi: [{ rijec_id: 1, tocno: true }, { rijec_id: 1, tocno: true }] }) as Scena;
   assert.deepEqual(provjeri("scena", bez, M).map((u) => u.poruka), ["Nije odabrana pozadina.", "Nema ometača: sve slike su točne.", "KRAVA je dvaput."]);
+});
+
+test("percepcija: generirani redovi prolaze provjeru u obje varijante", () => {
+  for (const trazi of ["razlicitu", "par"] as const)
+    for (let n = 3; n <= 6; n++)
+      for (let k = 0; k < 20; k++) {
+        const s: Percepcija = { trazi, stavke: [slozRed(1, n, trazi, rnd)] };
+        assert.equal(s.stavke[0].polja.length, n);
+        assert.equal(s.stavke[0].tocno.length, trazi === "par" ? 2 : 1);
+        assert.deepEqual(provjeri("percepcija", s, M), [], `${trazi} ${n}: ${JSON.stringify(s)}`);
+      }
+});
+
+test("percepcija: provjera hvata krivu oznaku i dva para", () => {
+  const p = (izmjena: Izmjena) => ({ rijec_id: 1, izmjena });
+  const krivo: Percepcija = { trazi: "razlicitu", stavke: [{ polja: [p(""), p(""), p("zrcalo"), p("")], tocno: [0] }] };
+  assert.equal(provjeri("percepcija", krivo, M).length, 1);
+  const dvaPara: Percepcija = { trazi: "par", stavke: [{ polja: [p(""), p(""), p("siva"), p("siva")], tocno: [0, 1] }] };
+  assert.deepEqual(provjeri("percepcija", dvaPara, M).map((u) => u.poruka), ["Osim označenog para postoji još jedan par istih slika."]);
+  // Različita može biti i druga riječ (jabuka među kruškama).
+  const rijec: Percepcija = { trazi: "razlicitu", stavke: [{ polja: [p(""), { rijec_id: 2, izmjena: "" }, p("")], tocno: [1] }] };
+  assert.deepEqual(provjeri("percepcija", rijec, M), []);
+});
+
+test("percepcija: normalizacija i ocjena (par traži oba bez krivog dodira)", () => {
+  const s = normaliziraj("percepcija", { trazi: "par", stavke: [{ polja: [{ rijec_id: 1, izmjena: "zrcalo" }, { rijec_id: 1, izmjena: "rotiraj" }, { rijec_id: 1, izmjena: "zrcalo" }], tocno: [2, 2, 9] }] }) as Percepcija;
+  assert.deepEqual(s.stavke[0].polja.map((x) => x.izmjena), ["zrcalo", "", "zrcalo"]);
+  assert.deepEqual(s.stavke[0].tocno, [0, 2]);   // nepotpuna oznaka → iz sadržaja
+  assert.equal((normaliziraj("percepcija", { stavke: [{ polja: [] }] }) as Percepcija).stavke[0].polja.length, 3);
+  const sest = Array.from({ length: 8 }, () => ({ rijec_id: 1, izmjena: "" }));
+  assert.equal((normaliziraj("percepcija", { stavke: [{ polja: sest }] }) as Percepcija).stavke[0].polja.length, 6);
+  assert.deepEqual(ocijeni("percepcija", s, [{ stavka: 0, odabrano: 2 }, { stavka: 0, odabrano: 0 }]), { tocnih: 1, ukupno: 1 });
+  assert.deepEqual(ocijeni("percepcija", s, [{ stavka: 0, odabrano: 1 }, { stavka: 0, odabrano: 0 }, { stavka: 0, odabrano: 2 }]), { tocnih: 0, ukupno: 1 });
+  assert.deepEqual(ocijeni("percepcija", s, [{ stavka: 0, odabrano: 0 }]), { tocnih: 0, ukupno: 1 });
 });

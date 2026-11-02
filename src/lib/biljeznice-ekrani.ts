@@ -1,16 +1,17 @@
 // Ekrani bilježnice: svaka stavka odabira i uljeza je jedan ekran, povezivanje je jedan
 // ekran, listić se u igri preskače. Broj ekrana = broj lampica na boru. Čisti TS: server
 // (broj lampica, ispis), preglednik (igra) i testovi.
-import type { Odabir, Povezivanje, Sadrzaj, Scena, Uljez, Vrsta } from "./zadaci/vrste.ts";
+import { UPUTE_PERCEPCIJE, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
 
 export interface ZadatakZaIgru { vrsta: Vrsta; uputa: string | null; sadrzaj: Sadrzaj }
 export type Ekran =
   | { vrsta: "odabir"; uputa: string; stavka: Odabir["stavke"][0] }
   | { vrsta: "uljez"; uputa: string; stavka: Uljez["stavke"][0] }
   | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
-  | { vrsta: "scena"; uputa: string; s: Scena };
+  | { vrsta: "scena"; uputa: string; s: Scena }
+  | { vrsta: "percepcija"; uputa: string; trazi: Percepcija["trazi"]; stavka: Percepcija["stavke"][0] };
 
-const UPUTE: Record<Exclude<Vrsta, "listic">, string> = {
+const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija">, string> = {
   odabir: "Što se rimuje s riječi {zadana}?",
   uljez: "Koja se riječ ne rimuje s ostalima?",
   povezivanje: "Poveži riječi koje se rimuju.",
@@ -21,6 +22,13 @@ export function ekrani(zadaci: ZadatakZaIgru[]): Ekran[] {
   const out: Ekran[] = [];
   for (const z of zadaci) {
     if (z.vrsta === "listic") continue;
+    if (z.vrsta === "percepcija") {
+      // Uputa za papir („Prekriži je.") ne odgovara ekranu, pa igra ima svoju.
+      const s = z.sadrzaj as Percepcija;
+      const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_PERCEPCIJE[s.trazi].ispis ? UPUTE_PERCEPCIJE[s.trazi].ekran : z.uputa.trim();
+      for (const st of s.stavke) if (st.polja.every((p) => p.rijec_id !== null)) out.push({ vrsta: "percepcija", uputa, trazi: s.trazi, stavka: st });
+      continue;
+    }
     const uputa = z.uputa?.trim() || UPUTE[z.vrsta];
     if (z.vrsta === "odabir") {
       for (const s of (z.sadrzaj as Odabir).stavke) if (s.zadana !== null && s.ponudeno.every((x) => x !== null)) out.push({ vrsta: "odabir", uputa, stavka: s });

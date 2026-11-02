@@ -74,6 +74,11 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-odabir-zadana small { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--blijedo); font-weight: 650; }
   .z-ponudeno, .z-cetiri { display: flex; gap: 12px; flex: none; }
   .z-red-gumbi { margin-left: auto; display: flex; gap: 2px; }
+  .z-percepcija-red { flex-wrap: wrap; align-items: flex-start; }
+  .z-percepcija-polja { display: flex; gap: 10px; flex-wrap: wrap; }
+  .z-percepcija-polja .z-slot { width: 104px; }
+  .z-izmjena { font-size: .78rem; padding: 3px 4px; }
+  .z-percepcija-alati { flex-wrap: wrap; align-items: center; gap: 4px; }
   .z-slot { width: 118px; display: flex; flex-direction: column; gap: 5px; }
   .z-slot-slika { padding: 0; border: 0; background: none; cursor: pointer; border-radius: 14px; }
   .z-slot-slika:hover .z-slika { border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
@@ -163,6 +168,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-zadana { width: min(200px, 40vw); }
   .z-zadana .z-slika { border: 3px solid var(--med); }
   .z-izbori { display: grid; grid-template-columns: repeat(3, minmax(0, 170px)); gap: clamp(10px, 2vw, 24px); }
+  .z-red-n { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 150px)); gap: clamp(8px, 1.6vw, 20px); justify-content: center; width: 100%; }
   .z-red4 { display: grid; grid-template-columns: repeat(4, minmax(0, 170px)); gap: clamp(10px, 2vw, 24px); justify-content: center; }
   .z-povezi { position: relative; display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 170px); justify-content: space-between; max-width: 640px; width: 100%; margin: 0 auto; }
   .z-stupac { display: flex; flex-direction: column; gap: 18px; position: relative; z-index: 1; }
@@ -191,6 +197,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-crta { width: 8mm; border-top: 2px dashed #000; }
   .a4-odabir .a4-izbor { width: 34mm; }
   .a4-uljez .a4-red { justify-content: space-between; } .a4-uljez .a4-izbor { width: 38mm; }
+  .a4-percepcija .a4-red { justify-content: center; gap: 5mm; } .a4-percepcija .a4-izbor { width: min(38mm, calc((170mm - (var(--n) - 1) * 5mm) / var(--n))); }
   .a4-povezi { display: flex; justify-content: space-between; padding: 0 6mm; }
   .a4-stupac { display: flex; flex-direction: column; gap: 6mm; }
   .a4-par { display: flex; align-items: center; gap: 4mm; } .a4-par .z-slika { width: 36mm; }

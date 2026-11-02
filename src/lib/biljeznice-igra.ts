@@ -3,6 +3,7 @@
 // Ništa se ne sprema i ništa ne odlazi na server.
 import { ekrani, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
 import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts";
+import { izmjenaCss, type Polje } from "./zadaci/vrste.ts";
 
 interface Podaci {
   naslov: string; podnaslov: string | null;
@@ -164,6 +165,32 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return { cvorovi: [q.el, red], tekst, gumb: q.gumb };
   }
 
+  /** Percepcija: kartica bez riječi i zvučnika (zadatak je vidni), slika s izmjenom. */
+  function karticaPolja(p: Polje, naKlik: (k: HTMLElement) => void) {
+    const sl = slika(p.rijec_id);
+    const css = izmjenaCss(p.izmjena);
+    if (css) sl.firstElementChild?.setAttribute("style", css);
+    const k = h("div", { class: "kartica bez-glave", role: "button", tabindex: "0", "aria-label": "slika" }, h("div", { class: "unutra" }, sl));
+    k.addEventListener("click", () => { if (!zakljucano) naKlik(k); });
+    k.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && !zakljucano) { e.preventDefault(); naKlik(k); } });
+    return k;
+  }
+
+  function ekranPercepcija(e: Extract<Ekran, { vrsta: "percepcija" }>) {
+    const tekst = uputaZa(e.uputa, null);
+    const q = pitanje(tekst);
+    const nadjena = new Set<number>();
+    const red = h("div", { class: `red percepcija n${e.stavka.polja.length}` }, ...e.stavka.polja.map((p, j) =>
+      karticaPolja(p, (k) => {
+        if (nadjena.has(j)) return;
+        if (!e.stavka.tocno.includes(j)) { tresi(k); return; }
+        nadjena.add(j);
+        k.classList.add(e.trazi === "razlicitu" ? "uljez" : "tocno");
+        if (e.stavka.tocno.every((t) => nadjena.has(t))) rijeseno(); else mekiPogodak();
+      })));
+    return { cvorovi: [q.el, red], tekst, gumb: q.gumb };
+  }
+
   function ekranPovezi(e: Extract<Ekran, { vrsta: "povezivanje" }>) {
     const tekst = uputaZa(e.uputa, null);
     const q = pitanje(tekst);
@@ -241,7 +268,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       setTimeout(() => govori(x.tekst, document.querySelector<HTMLElement>(".scena-cijeli .zvucnik") ?? undefined), 350);
       return;
     }
-    const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : ekranPovezi(e as Extract<Ekran, { vrsta: "povezivanje" }>);
+    const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : e.vrsta === "percepcija" ? ekranPercepcija(e)
+      : ekranPovezi(e as Extract<Ekran, { vrsta: "povezivanje" }>);
     zamijeni(korijen, ...x.cvorovi);
     setTimeout(() => govori(x.tekst, x.gumb), 350);
   }

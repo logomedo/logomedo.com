@@ -1,12 +1,12 @@
 // Vrste zadataka (docs/zadaci.md). Vrsta je mehanika (odaberi, poveži, pronađi uljeza,
-// listić), a odnos (zasad samo rima) je parametar sadržaja. Točan odgovor je spremljen u
+// listić, vizualna percepcija), a odnos (zasad samo rima) je parametar sadržaja. Točan odgovor je spremljen u
 // sadržaju; odnos služi generatoru i upozorenjima u editoru, ne ocjenjivanju.
 //
 // Čisti TS: koriste ga API (provjera ulaza), editor i prikaz u pregledniku te testovi.
 
 import { rimujuSe } from "./rima.ts";
 
-export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena";
+export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena" | "percepcija";
 export type Odnos = "rima";
 type Id = number | null;
 
@@ -21,7 +21,45 @@ export interface Uljez { odnos: Odnos; stavke: { slike: Id[]; uljez: number }[] 
  * Redoslijed gumba je spremljen i isti na ekranu i papiru.
  */
 export interface Scena { pozadina_id: Id; gumbi: { rijec_id: Id; tocno: boolean }[] }
-export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena;
+/**
+ * Vizualna percepcija: u redu je nekoliko sličnih slika (ista slika, različito okrenuta,
+ * obojena ili velika). `razlicitu`: sve su iste osim jedne, dijete bira nju. `par`: sve su
+ * različite osim dvije, dijete bira obje. `tocno` su indeksi polja (jedan ili dva).
+ */
+export type Trazi = "razlicitu" | "par";
+export interface Polje { rijec_id: Id; izmjena: Izmjena }
+export interface Percepcija { trazi: Trazi; stavke: { polja: Polje[]; tocno: number[] }[] }
+export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija;
+
+/**
+ * Kako je slika u polju promijenjena. Crta se istim pravilima na ekranu (CSS), u HTML ispisu
+ * i u PDF-u (matrica slike, siva iz canvasa), vidi `izmjenaCss` i pdf/ispis-pdf.ts.
+ */
+export type Izmjena = "" | "zrcalo" | "naopako" | "lijevo" | "desno" | "siva" | "mala";
+export const IZMJENE: Record<Izmjena, string> = {
+  "": "izvorna", zrcalo: "zrcaljena", naopako: "naopako", lijevo: "okrenuta ulijevo",
+  desno: "okrenuta udesno", siva: "bez boje", mala: "manja",
+};
+export const jeIzmjena = (x: unknown): x is Izmjena => typeof x === "string" && x in IZMJENE;
+/** Stil za `<img>` (i riječ umjesto slike): transform i filter. */
+export function izmjenaCss(i: Izmjena): string {
+  switch (i) {
+    case "zrcalo": return "transform:scaleX(-1)";
+    case "naopako": return "transform:rotate(180deg)";
+    case "lijevo": return "transform:rotate(-90deg)";
+    case "desno": return "transform:rotate(90deg)";
+    case "siva": return "filter:grayscale(1)";
+    case "mala": return "transform:scale(.68)";
+    default: return "";
+  }
+}
+export const POLJA_MIN = 3, POLJA_MAX = 6;
+export const TOCNIH: Record<Trazi, number> = { razlicitu: 1, par: 2 };
+export const UPUTE_PERCEPCIJE: Record<Trazi, { ekran: string; ispis: string }> = {
+  razlicitu: { ekran: "Koja je slika drukčija od ostalih?", ispis: "Koja je slika drukčija od ostalih? Prekriži je." },
+  par: { ekran: "Pronađi dvije iste slike.", ispis: "Pronađi dvije iste slike i zaokruži ih." },
+};
+const istoPolje = (a: Polje, b: Polje) => a.rijec_id === b.rijec_id && a.izmjena === b.izmjena;
 
 /** Riječ kakvu editor i prikaz trebaju. `slika` je URL ili null (prikazuje se riječ). */
 export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null }
@@ -47,7 +85,16 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     naziv: "Scena", opis: "Ilustracija situacije, pitanje na vrhu i traka slika. Dijete bira sve slike koje pripadaju situaciji.",
     uputa: "Što sve pripada ovoj slici?", ispis: "Zaokruži sve što pripada", odnos: false,
   },
+  percepcija: {
+    naziv: "Vizualna percepcija", opis: "U redu je nekoliko sličnih slika. Dijete pronalazi onu koja se razlikuje ili dvije iste.",
+    uputa: UPUTE_PERCEPCIJE.razlicitu.ispis, ispis: "Prekriži / zaokruži", odnos: false,
+  },
 };
+
+/** Zadana uputa za papir; percepcija ovisi o tome traži li se različita ili par. */
+export function zadanaUputa(v: Vrsta, s?: Sadrzaj): string {
+  return v === "percepcija" && s ? UPUTE_PERCEPCIJE[(s as Percepcija).trazi].ispis : VRSTE[v].uputa;
+}
 export const jeVrsta = (v: unknown): v is Vrsta => typeof v === "string" && v in VRSTE;
 
 export const PONUDENIH = 3;
@@ -63,7 +110,35 @@ export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
     case "povezivanje": return { odnos: "rima", parovi: n.map(() => ({ lijevo: null, desno: null })), desno_redoslijed: n.map((_, i) => i) };
     case "uljez": return { odnos: "rima", stavke: n.map(() => ({ slike: [null, null, null, null], uljez: 0 })) };
     case "scena": return { pozadina_id: null, gumbi: Array.from({ length: 7 }, (_, i) => ({ rijec_id: null, tocno: i < 5 })) };
+    case "percepcija": return { trazi: "razlicitu", stavke: n.map(() => slozRed(null, 4, "razlicitu")) };
   }
+}
+
+/**
+ * Jedan red percepcije za zadanu sliku: `razlicitu` = n jednakih i jedna izmijenjena,
+ * `par` = n različitih izmjena od kojih se jedna ponavlja. Redoslijed nasumičan.
+ */
+export function slozRed(rijec_id: Id, n: number, trazi: Trazi, rnd: () => number = Math.random): Percepcija["stavke"][0] {
+  n = Math.max(POLJA_MIN, Math.min(POLJA_MAX, n));
+  const izmjene = promijesaj(Object.keys(IZMJENE).filter((x) => x) as Izmjena[], rnd);
+  let polja: Polje[];
+  if (trazi === "razlicitu") {
+    // Osnova je izvorna slika; različita je jedna od izmjena.
+    polja = [...Array.from({ length: n - 1 }, () => ({ rijec_id, izmjena: "" as Izmjena })), { rijec_id, izmjena: izmjene[0] }];
+  } else {
+    const razne = (["", ...izmjene] as Izmjena[]).slice(0, n - 1);
+    polja = [...razne, razne[Math.floor(rnd() * razne.length)]].map((izmjena) => ({ rijec_id, izmjena }));
+  }
+  polja = promijesaj(polja, rnd);
+  return { polja, tocno: tocnaPolja(polja, trazi) };
+}
+
+/** Koja polja su točna po samom sadržaju (za generator i editor kad se izmjena promijeni). */
+export function tocnaPolja(polja: Polje[], trazi: Trazi): number[] {
+  const koliko = (p: Polje) => polja.filter((q) => istoPolje(p, q)).length;
+  if (trazi === "razlicitu") { const i = polja.findIndex((p) => koliko(p) === 1); return [i < 0 ? 0 : i]; }
+  const par = polja.map((_, i) => i).filter((i) => koliko(polja[i]) === 2);
+  return par.length === 2 ? par : [0, 1];
 }
 
 // ---- Normalizacija ulaza (API prima JSON iz preglednika) ----
@@ -104,6 +179,20 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
       };
     case "scena":
       return { pozadina_id: id(o.pozadina_id), gumbi: niz(o.gumbi, MAX_GUMBA, (g) => ({ rijec_id: id(obj(g).rijec_id), tocno: obj(g).tocno === true })) };
+    case "percepcija": {
+      const trazi: Trazi = o.trazi === "par" ? "par" : "razlicitu";
+      return {
+        trazi,
+        stavke: niz(o.stavke, 12, (s) => {
+          const x = obj(s);
+          const procitana = niz(x.polja, POLJA_MAX, (p) => ({ rijec_id: id(obj(p).rijec_id), izmjena: jeIzmjena(obj(p).izmjena) ? obj(p).izmjena as Izmjena : "" as Izmjena }));
+          const polja = tocnoN(procitana, Math.max(POLJA_MIN, procitana.length), () => ({ rijec_id: null, izmjena: "" as Izmjena }));
+          let tocno = [...new Set(niz(x.tocno, POLJA_MAX, (t) => ind(t, polja.length)))].slice(0, TOCNIH[trazi]);
+          if (tocno.length < TOCNIH[trazi]) tocno = tocnaPolja(polja, trazi);
+          return { polja, tocno: tocno.sort((a, b) => a - b) };
+        }),
+      };
+    }
   }
 }
 
@@ -115,6 +204,7 @@ export function rijeciU(v: Vrsta, s: Sadrzaj): number[] {
   if (v === "povezivanje") for (const p of (s as Povezivanje).parovi) out.push(p.lijevo, p.desno);
   if (v === "uljez") for (const x of (s as Uljez).stavke) out.push(...x.slike);
   if (v === "scena") out.push(...(s as Scena).gumbi.map((g) => g.rijec_id));
+  if (v === "percepcija") for (const x of (s as Percepcija).stavke) out.push(...x.polja.map((p) => p.rijec_id));
   return [...new Set(out.filter((x): x is number => x !== null))];
 }
 
@@ -141,6 +231,26 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
     if (pune.length && pune.every((g) => g.tocno)) u.push({ gdje: "scena", poruka: "Nema ometača: sve slike su točne." });
     const vidjeno = new Set<number>();
     for (const g of pune) { if (vidjeno.has(g.rijec_id!)) u.push({ gdje: "scena", poruka: `${ime(g.rijec_id)} je dvaput.` }); vidjeno.add(g.rijec_id!); }
+    return u;
+  }
+  if (v === "percepcija") {
+    const pc = s as Percepcija;
+    const opis = (p: Polje) => `${ime(p.rijec_id)} (${IZMJENE[p.izmjena]})`;
+    pc.stavke.forEach((x, i) => {
+      const g = `Red ${i + 1}`;
+      if (x.polja.some((p) => p.rijec_id === null)) { u.push({ gdje: g, poruka: "Nisu popunjene sve slike." }); return; }
+      const ostala = x.polja.filter((_, j) => !x.tocno.includes(j));
+      const tocna = x.tocno.map((j) => x.polja[j]);
+      if (pc.trazi === "razlicitu") {
+        if (ostala.some((p) => !istoPolje(p, ostala[0]))) u.push({ gdje: g, poruka: "Slike koje nisu označene nisu sve iste: različitih je više." });
+        else if (istoPolje(tocna[0], ostala[0])) u.push({ gdje: g, poruka: `Označena slika je ista kao ostale: ${opis(tocna[0])}.` });
+      } else {
+        if (!istoPolje(tocna[0], tocna[1])) u.push({ gdje: g, poruka: "Dvije označene slike nisu iste." });
+        const sve = [tocna[0], ...ostala];
+        if (sve.some((p, a) => sve.some((q, b) => a < b && istoPolje(p, q)))) u.push({ gdje: g, poruka: "Osim označenog para postoji još jedan par istih slika." });
+      }
+    });
+    if (!pc.stavke.length) u.push({ gdje: "zadatak", poruka: "Nema nijednog reda." });
     return u;
   }
   if (v === "odabir") {
@@ -193,6 +303,16 @@ export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: nu
     for (const o of odgovori) if ("lijevo" in o && !prvi.has(o.lijevo)) prvi.set(o.lijevo, o.desno);
     return { tocnih: p.parovi.filter((_, i) => p.desno_redoslijed[prvi.get(i) ?? -1] === i).length, ukupno: p.parovi.length };
   }
+  if (v === "percepcija") {
+    // Red je točan ako su pronađena sva točna polja bez ijednog krivog dodira.
+    return {
+      tocnih: (s as Percepcija).stavke.filter((x, i) => {
+        const moji = odgovori.flatMap((o) => ("stavka" in o && o.stavka === i ? [o.odabrano] : []));
+        return x.tocno.every((t) => moji.includes(t)) && moji.every((m) => x.tocno.includes(m));
+      }).length,
+      ukupno: (s as Percepcija).stavke.length,
+    };
+  }
   if (v === "scena") {
     // Svaki gumb je jedna odluka: točan treba dirnuti, ometač ne. Ometač dirnut i jednom je krivo.
     const dirnuti = new Set(odgovori.flatMap((o) => ("gumb" in o ? [o.gumb] : [])));
@@ -221,6 +341,11 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   const n = Math.max(1, Math.min(p.stavki, 12));
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
+  if (v === "percepcija") {
+    // Riječi sa slikom (bez slike je red riječi, što nije vizualni zadatak), svaka jednom.
+    const izbor = promijesaj(rijeci.filter((r) => r.slika), rnd).slice(0, n);
+    return { trazi: "razlicitu", stavke: (izbor.length ? izbor : [null]).map((r) => slozRed(r?.id ?? null, 4, "razlicitu", rnd)) };
+  }
   if (v === "listic") {
     return { kartice: promijesaj(dobre, rnd).slice(0, 12).map((r) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") })) };
   }

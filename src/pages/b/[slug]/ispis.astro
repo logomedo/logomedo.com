@@ -5,7 +5,7 @@ import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../../lib/biljeznice";
 import { TEME } from "../../../lib/teme";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
-import { VRSTE, type Odabir, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
+import { izmjenaCss, VRSTE, zadanaUputa, type Odabir, type Percepcija, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
 import { GRANCICA } from "../../../lib/ukrasi";
 import { dokumentBiljeznice } from "../../../lib/pdf/model";
 
@@ -21,11 +21,13 @@ type Stranica =
   | { vrsta: "odabir"; uputa: string; stavke: Odabir["stavke"] }
   | { vrsta: "uljez"; uputa: string; stavke: Uljez["stavke"] }
   | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
-  | { vrsta: "scena"; uputa: string; pozadina: string | null; gumbi: number[] };
+  | { vrsta: "scena"; uputa: string; pozadina: string | null; gumbi: number[] }
+  | { vrsta: "percepcija"; uputa: string; stavke: Percepcija["stavke"] };
 const stranice: Stranica[] = [];
 for (const z of p.zadaci) {
   if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: VRSTE.odabir.uputa, stavke: k });
   if (z.vrsta === "uljez") for (const k of komadi((z.sadrzaj as Uljez).stavke, 4)) stranice.push({ vrsta: "uljez", uputa: VRSTE.uljez.uputa, stavke: k });
+  if (z.vrsta === "percepcija") for (const k of komadi((z.sadrzaj as Percepcija).stavke, 4)) stranice.push({ vrsta: "percepcija", uputa: zadanaUputa("percepcija", z.sadrzaj), stavke: k });
   if (z.vrsta === "scena") {
     const sc = z.sadrzaj as Scena;
     const poz = p.pozadine.find((x) => x.id === sc.pozadina_id);
@@ -93,6 +95,16 @@ const grancica = tema.kutovi ? GRANCICA : "";
               <figure class="slika">
                 {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
                 <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
+              </figure>
+            ))}
+          </div>
+        ))}
+        {s.vrsta === "percepcija" && s.stavke.map((x) => (
+          <div class="red" style={`--n:${x.polja.length}`}>
+            {x.polja.map((p) => (
+              <figure class="slika">
+                {R(p.rijec_id)?.slika ? <img src={R(p.rijec_id)!.slika!} alt="" style={izmjenaCss(p.izmjena) || undefined} />
+                  : <span class="bez" style={izmjenaCss(p.izmjena) || undefined}>{VEL(R(p.rijec_id)?.rijec ?? "")}</span>}
               </figure>
             ))}
           </div>
@@ -203,6 +215,10 @@ const grancica = tema.kutovi ? GRANCICA : "";
   .a4-odabir .red { flex: 1; } .a4-odabir .slika { width: 34mm; } .a4-odabir .zadana { width: 40mm; } .a4-odabir .zadana img, .a4-odabir .zadana .bez { border-width: 3px; }
   .crta { width: 8mm; border-top: 2px dashed #000; }
   .a4-uljez .red { flex: 1; justify-content: space-between; } .a4-uljez .slika { width: 37mm; }
+  .a4-percepcija .red { flex: 1; gap: 5mm; } .a4-percepcija .slika { width: min(37mm, calc((170mm - (var(--n) - 1) * 5mm) / var(--n))); }
+  /* Izmjena (okret, zrcalo) ide na sliku, a okvir ostaje: okvir se crta oko figure. */
+  .a4-percepcija .slika { border: 1.5px solid #000; border-radius: 4mm; padding: 2mm; background: #fff; overflow: hidden; }
+  .a4-percepcija .slika img, .a4-percepcija .slika .bez { border: 0; padding: 0; }
   .povezi { flex: 1; display: flex; justify-content: space-between; padding: 0 8mm; }
   .stupac { display: flex; flex-direction: column; justify-content: space-around; }
   .scena-ispis { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }

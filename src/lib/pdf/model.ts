@@ -1,17 +1,21 @@
 // Model dokumenta za ispis: iste stranice crta PDF (ispis-pdf.ts). Raspodjela po stranicama
-// je ista kao u HTML ispisu bilježnice: odabir 3 reda, uljez 4 reda, povezivanje 1 stranica,
+// je ista kao u HTML ispisu bilježnice: odabir 3 reda, uljez i percepcija 4 reda, povezivanje 1 stranica,
 // listić 12 kartica (3 × 4, kao stari LogoMedo).
 
 import type { Tema } from "../teme.ts";
 import { TEME } from "../teme.ts";
-import { VRSTE, type Listic, type Odabir, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
+import { VRSTE, zadanaUputa, type Izmjena, type Listic, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
-export interface SlikaPdf { url: string | null; rijec: string; natpis: string }
+export interface SlikaPdf { url: string | null; rijec: string; natpis: string; izmjena?: Izmjena }
+
+/** Siva slika je zasebna datoteka: preglednik je pri smanjivanju pretvori u sivu (preglednik.ts). */
+export const SIVA = "#siva";
 
 export type TijeloPdf =
   | { vrsta: "odabir"; redovi: { zadana: SlikaPdf; ponudeno: SlikaPdf[] }[] }
   | { vrsta: "uljez"; redovi: SlikaPdf[][] }
+  | { vrsta: "percepcija"; redovi: SlikaPdf[][] }
   | { vrsta: "povezivanje"; lijevo: SlikaPdf[]; desno: SlikaPdf[] }
   | { vrsta: "listic"; kartice: { slika: SlikaPdf | null; tekst: string }[] }
   | { vrsta: "scena"; pozadina: string | null; gumbi: SlikaPdf[] };
@@ -60,6 +64,15 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
     return komadi((s as Odabir).stavke, 3).map((k) => ({ vrsta: "odabir", redovi: k.map((x) => ({ zadana: sl(x.zadana), ponudeno: x.ponudeno.map(sl) })) }));
   if (vrsta === "uljez")
     return komadi((s as Uljez).stavke, 4).map((k) => ({ vrsta: "uljez", redovi: k.map((x) => x.slike.map(sl)) }));
+  if (vrsta === "percepcija")
+    return komadi((s as Percepcija).stavke, 4).map((k) => ({
+      vrsta: "percepcija",
+      redovi: k.map((x) => x.polja.map((p) => {
+        const o = sl(p.rijec_id);
+        // Natpis bi odao različitu riječ; siva slika ima svoj URL.
+        return { ...o, natpis: "", izmjena: p.izmjena, url: o.url && p.izmjena === "siva" ? o.url + SIVA : o.url };
+      })),
+    }));
   if (vrsta === "povezivanje") {
     const p = s as Povezivanje;
     return [{ vrsta: "povezivanje", lijevo: p.parovi.map((x) => sl(x.lijevo)), desno: p.desno_redoslijed.map((i) => sl(p.parovi[i].desno)) }];
@@ -99,7 +112,7 @@ export function dokumentBiljeznice(
     stranice: zadaci.filter((z) => z.vrsta !== "listic")
       .flatMap((z) => tijelaZadatka(z.vrsta, z.sadrzaj, m, true, pozadine).map((tijelo) => ({
         // Pitanje scene je sadržaj zadatka; ostale vrste imaju uputu za papir.
-        uputa: z.vrsta === "scena" ? `${z.uputa?.trim() || VRSTE.scena.uputa} ${VRSTE.scena.ispis}.` : VRSTE[z.vrsta].uputa, tijelo,
+        uputa: z.vrsta === "scena" ? `${z.uputa?.trim() || VRSTE.scena.uputa} ${VRSTE.scena.ispis}.` : zadanaUputa(z.vrsta, z.sadrzaj), tijelo,
       }))),
   };
 }
@@ -110,7 +123,7 @@ export function slikeDokumenta(d: DokumentPdf): string[] {
   const dodaj = (s: SlikaPdf | null) => { if (s?.url) out.add(s.url); };
   for (const { tijelo: t } of d.stranice) {
     if (t.vrsta === "odabir") t.redovi.forEach((r) => [r.zadana, ...r.ponudeno].forEach(dodaj));
-    if (t.vrsta === "uljez") t.redovi.flat().forEach(dodaj);
+    if (t.vrsta === "uljez" || t.vrsta === "percepcija") t.redovi.flat().forEach(dodaj);
     if (t.vrsta === "povezivanje") [...t.lijevo, ...t.desno].forEach(dodaj);
     if (t.vrsta === "listic") t.kartice.forEach((k) => dodaj(k.slika));
     if (t.vrsta === "scena") { if (t.pozadina) out.add(t.pozadina); t.gumbi.forEach(dodaj); }

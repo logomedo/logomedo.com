@@ -223,6 +223,14 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .red .kartica { display: flex; } .red .kartica .unutra { flex: 1; }
   .red.cetiri .kartica { --s: min(26vh, 15vw); }
   .red.cetiri { gap: 1.6vw; }
+  /* Percepcija: 3–6 kartica bez riječi i zvučnika */
+  .red.percepcija { gap: 1.4vw; }
+  /* Širina reda kao kod uljeza (4 × 15vw); šest u jedan red bude premalo, pa idu 3 + 3. */
+  .red.percepcija .kartica { --s: min(30vh, 19vw); }
+  .red.percepcija.n4 .kartica { --s: min(26vh, 15vw); }
+  .red.percepcija.n5 .kartica { --s: min(24vh, 11.6vw); }
+  .red.percepcija.n6 { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; gap: 1.6vh 1.4vw; }
+  .red.percepcija.n6 .kartica { --s: min(24vh, 15vw); }
   .povezi { position: relative; display: flex; justify-content: space-between; width: min(100%, 92vh); }
   .stupac { display: flex; flex-direction: column; gap: 1.4vh; position: relative; z-index: 1; }
   .povezi .kartica { --s: min(15.5vh, 11vw); width: auto; }
@@ -245,6 +253,9 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     .red { gap: 2.5vw; }
     .red.cetiri { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; }
     .red.cetiri .kartica { --s: 38vw; }
+    .red.percepcija, .red.percepcija.n6 { display: flex; flex-wrap: wrap; gap: 3vw; }
+    .red.percepcija .kartica, .red.percepcija.n5 .kartica, .red.percepcija.n6 .kartica { --s: 28vw; }
+    .red.percepcija.n4 .kartica { --s: 38vw; }
     .povezi { width: 100%; }
     .povezi .kartica { --s: 19vw; }
     .gumb-kreni, .gumb-ponovi { font-size: 7vw; }

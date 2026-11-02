@@ -6,7 +6,7 @@
 // JPEG (A4 okvir od ~40 mm je ~470 px na 300 dpi), pa PDF ima stotine KB, ne desetke MB.
 
 import { napraviPdf, type FontoviPdf } from "./ispis-pdf.ts";
-import { slikeDokumenta, velikeSlike, type DokumentPdf } from "./model.ts";
+import { SIVA, slikeDokumenta, velikeSlike, type DokumentPdf } from "./model.ts";
 
 const NAJVISE_PX = 800;
 /** Pozadina scene je ~180 mm široka: 1800 px je ~250 dpi. */
@@ -33,6 +33,8 @@ export function istiOrigin(url: string): string {
 }
 
 async function smanji(url: string, najvise = NAJVISE_PX): Promise<Uint8Array | null> {
+  const siva = url.endsWith(SIVA);
+  if (siva) url = url.slice(0, -SIVA.length);
   try {
     const r = await fetch(istiOrigin(url));
     if (!r.ok) return null;
@@ -44,6 +46,13 @@ async function smanji(url: string, najvise = NAJVISE_PX): Promise<Uint8Array | n
     g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); // PNG s prozirnošću → bijela podloga
     g.drawImage(bmp, 0, 0, c.width, c.height);
     bmp.close();
+    if (siva) {
+      // Ručno, ne ctx.filter: Safari ga na canvasu dugo nije podržavao.
+      const px = g.getImageData(0, 0, c.width, c.height);
+      const d = px.data;
+      for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+      g.putImageData(px, 0, 0);
+    }
     const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, "image/jpeg", 0.88));
     return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
   } catch {

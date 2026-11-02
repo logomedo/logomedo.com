@@ -5,7 +5,8 @@
 // Raspored prati HTML ispis (/b/<slug>/ispis i pogled „Ispis" u editoru): A4, mjere u mm.
 // Fontovi (Nunito 800/900, OFL) ugrađuju se kao podskup, pa hrvatska slova rade svugdje.
 
-import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { degrees, PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import type { Izmjena } from "../zadaci/vrste.ts";
 import fontkit from "@pdf-lib/fontkit";
 import { TEME } from "../teme.ts";
 import { GRANCICA } from "../ukrasi.ts";
@@ -66,12 +67,27 @@ class Platno {
     this.page.drawCircle({ x: this.X(cx), y: this.Y(cy), size: r * MM, color: CRNO });
   }
 
-  slika(img: PDFImage, x: number, y: number, w: number, h: number) {
-    // object-fit: contain
-    const s = Math.min(w / img.width, h / img.height);
-    const iw = img.width * s, ih = img.height * s;
-    this.page.drawImage(img, { x: this.X(x + (w - iw) / 2), y: this.Y(y + (h + ih) / 2), width: iw * MM, height: ih * MM });
+  slika(img: PDFImage, x: number, y: number, w: number, h: number, izmjena: Izmjena = "") {
+    const m = smjestiSliku(img.width, img.height, { x: this.X(x), y: this.Y(y + h), w: w * MM, h: h * MM }, izmjena);
+    this.page.drawImage(img, { ...m, rotate: degrees(m.kut) });
   }
+}
+
+/**
+ * Gdje pdf-lib crta sliku da bude kao `object-fit: contain` + CSS transform iz `izmjenaCss`:
+ * okrenuta/zrcaljena oko središta okvira. Okvir je u PDF točkama (x, y = donji lijevi kut).
+ * pdf-lib crta jedinični kvadrat kroz translate → rotate → scale, pa se početak računa iz
+ * središta. CSS rotate(90deg) ide u smjeru kazaljke, a PDF kut suprotno (os y gleda gore).
+ */
+export function smjestiSliku(sirina: number, visina: number, o: { x: number; y: number; w: number; h: number }, izmjena: Izmjena = "") {
+  const kut = izmjena === "naopako" ? 180 : izmjena === "lijevo" ? 90 : izmjena === "desno" ? -90 : 0;
+  const okomito = kut !== 0 && kut !== 180;
+  let k = okomito ? Math.min(o.w / visina, o.h / sirina) : Math.min(o.w / sirina, o.h / visina);
+  if (izmjena === "mala") k *= 0.68;
+  const sw = sirina * k * (izmjena === "zrcalo" ? -1 : 1), sh = visina * k;
+  const r = (kut * Math.PI) / 180, cos = Math.round(Math.cos(r)), sin = Math.round(Math.sin(r));
+  const cx = o.x + o.w / 2, cy = o.y + o.h / 2;
+  return { x: cx - (cos * sw - sin * sh) / 2, y: cy - (sin * sw + cos * sh) / 2, width: sw, height: sh, kut };
 }
 
 /** Prelamanje po riječima (naslovi i upute su kratki, pa jednostavno mjerenje dosta). */
@@ -128,7 +144,7 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
   const slikaUOkviru = async (p: Platno, sl: SlikaPdf, x: number, y: number, s: number, debljinaPt = 1.1) => {
     p.okvir(x, y, s, s, 4, debljinaPt);
     const img = await ugradi(sl.url);
-    if (img) p.slika(img, x + 2, y + 2, s - 4, s - 4);
+    if (img) p.slika(img, x + 2, y + 2, s - 4, s - 4, sl.izmjena);
     else {
       // Bez slike: riječ u okviru, smanjena da stane.
       let pt = 14;
@@ -216,6 +232,17 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
       const ys = raspodijeli(t.redovi.length, s4 + natpisa(t.redovi.flat()), 25);
       for (const [i, red] of t.redovi.entries())
         for (const [j, sl] of red.entries()) await slikaUOkviru(p, sl, L + j * (s4 + razmak), ys[i], s4);
+    }
+
+    if (t.vrsta === "percepcija") {
+      // Do 6 slika u redu: kvadrat se smanji da stane, red je centriran.
+      const g = 5;
+      const ys = raspodijeli(t.redovi.length, 37, 25);
+      for (const [i, red] of t.redovi.entries()) {
+        const s = Math.min(37, (W - (red.length - 1) * g) / red.length);
+        const x0 = L + (W - (red.length * s + (red.length - 1) * g)) / 2;
+        for (const [j, sl] of red.entries()) await slikaUOkviru(p, sl, x0 + j * (s + g), ys[i] + (37 - s) / 2, s);
+      }
     }
 
     if (t.vrsta === "povezivanje") {

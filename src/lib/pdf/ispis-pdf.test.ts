@@ -2,9 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PDFDocument } from "pdf-lib";
-import { napraviPdf, prelomi } from "./ispis-pdf.ts";
+import { napraviPdf, prelomi, smjestiSliku } from "./ispis-pdf.ts";
 import { dokumentBiljeznice, dokumentZadatka, slikeDokumenta, velikeSlike, type RijecPdf } from "./model.ts";
-import { prazno } from "../zadaci/vrste.ts";
+import { prazno, type Izmjena } from "../zadaci/vrste.ts";
 
 const fontovi = {
   tekst: new Uint8Array(readFileSync(new URL("../../../public/fonts/nunito-800.ttf", import.meta.url))),
@@ -76,4 +76,33 @@ test("tema proljeće: naslovnica s jabukom, bez kutova", async () => {
   assert.equal(d.naslovnica?.uputa, "Za svaki točno riješen red oboji jednu jabuku na stablu.");
   const pdf = await PDFDocument.load(await napraviPdf(d, new Map(), fontovi));
   assert.equal(pdf.getPageCount(), 2);
+});
+
+test("percepcija: izmjena okreće sliku oko središta i ostaje u okviru", () => {
+  const o = { x: 100, y: 200, w: 50, h: 50 };
+  for (const izmjena of ["", "zrcalo", "naopako", "lijevo", "desno", "mala", "siva"] as const) {
+    const m = smjestiSliku(400, 200, o, izmjena);   // vodoravna slika 2:1
+    const r = (m.kut * Math.PI) / 180, c = Math.round(Math.cos(r)), s = Math.round(Math.sin(r));
+    const kutovi = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([u, v]) => [m.x + c * u * m.width - s * v * m.height, m.y + s * u * m.width + c * v * m.height]);
+    const xs = kutovi.map((k) => k[0]), ys = kutovi.map((k) => k[1]);
+    const sred = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    assert.ok(Math.abs(sred[0] - 125) < 1e-9 && Math.abs(sred[1] - 225) < 1e-9, `${izmjena}: središte ${sred}`);
+    assert.ok(Math.min(...xs) >= 100 - 1e-9 && Math.max(...xs) <= 150 + 1e-9 && Math.min(...ys) >= 200 - 1e-9 && Math.max(...ys) <= 250 + 1e-9, izmjena);
+    // okrenuta za 90° je uspravna: šira strana slike ide okomito
+    if (izmjena === "lijevo" || izmjena === "desno") assert.ok(Math.max(...ys) - Math.min(...ys) > Math.max(...xs) - Math.min(...xs));
+  }
+  assert.ok(smjestiSliku(400, 200, o, "zrcalo").width < 0);
+});
+
+test("percepcija: 4 reda po stranici, bez natpisa, siva slika ima svoj URL", async () => {
+  const red = (izmjene: Izmjena[]) => ({ polja: izmjene.map((izmjena) => ({ rijec_id: 1, izmjena })), tocno: [0] });
+  const d = dokumentZadatka({ vrsta: "percepcija", naslov: "", uputa: "Prekriži", sadrzaj: { trazi: "razlicitu", stavke: [
+    red(["siva", "", "", ""]), red(["zrcalo", "", "", "", "", ""]), red(["lijevo", "", ""]), red(["mala", "", "", ""]), red(["naopako", "", "", "", ""]),
+  ] } }, rijeci, true);
+  assert.equal(d.stranice.length, 2);
+  assert.deepEqual(slikeDokumenta(d).sort(), ["https://cdn.example/1.jpg", "https://cdn.example/1.jpg#siva"]);
+  const t = d.stranice[0].tijelo;
+  assert.ok(t.vrsta === "percepcija" && t.redovi.flat().every((x) => x.natpis === ""));
+  const b = await napraviPdf(d, new Map(), fontovi);
+  assert.equal((await PDFDocument.load(b)).getPageCount(), 2);
 });

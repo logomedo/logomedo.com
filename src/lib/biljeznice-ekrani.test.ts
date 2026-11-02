@@ -30,3 +30,12 @@ test("ekrani: scena je jedan ekran ako ima pozadinu i barem jednu točnu sliku",
   ]);
   assert.deepEqual(e.map((x) => [x.vrsta, x.uputa]), [["scena", "Što nam treba?"]]);
 });
+
+test("ekrani: percepcija je ekran po redu, s uputom za ekran umjesto one za papir", () => {
+  const polja = [{ rijec_id: 1, izmjena: "" as const }, { rijec_id: 1, izmjena: "zrcalo" as const }, { rijec_id: 1, izmjena: "" as const }];
+  const e = ekrani([
+    { vrsta: "percepcija", uputa: "Koja je slika drukčija od ostalih? Prekriži je.", sadrzaj: { trazi: "razlicitu", stavke: [{ polja, tocno: [1] }, { polja: [...polja, { rijec_id: null, izmjena: "" }], tocno: [1] }] } },
+    { vrsta: "percepcija", uputa: "Nađi blizance!", sadrzaj: { trazi: "par", stavke: [{ polja, tocno: [0, 2] }] } },
+  ]);
+  assert.deepEqual(e.map((x) => x.uputa), ["Koja je slika drukčija od ostalih?", "Nađi blizance!"]);
+});
