@@ -23,10 +23,20 @@ if (Astro.request.method === "POST") {
   return Astro.redirect("/admin/red", 303);
 }
 const { results: poslovi } = await env.DB.prepare(
-  `SELECT q.id, q.status, q.pokusaji, q.greska, q.created_at, q.uzeto_at, q.zavrseno_at, q.slika_id, r.rijec, r.slug
-   FROM generiranja q JOIN rijeci r ON r.id = q.rijec_id
+  `SELECT q.id, q.status, q.pokusaji, q.greska, q.created_at, q.uzeto_at, q.zavrseno_at, q.slika_id, r.rijec, r.slug,
+     st.naziv AS stil, vs.broj AS sistemski_v, vp.broj AS predlozak_v
+   FROM generiranja q JOIN rijeci r ON r.id = q.rijec_id JOIN stilovi st ON st.id = q.stil_id
+   LEFT JOIN prompt_verzije vs ON vs.id = q.sistemski_verzija
+   LEFT JOIN prompt_verzije vp ON vp.id = q.predlozak_verzija
    ORDER BY CASE q.status WHEN 'radi' THEN 0 WHEN 'greska' THEN 1 WHEN 'ceka' THEN 2 ELSE 3 END, q.id DESC LIMIT 200`,
-).all<{ id: number; status: string; pokusaji: number; greska: string | null; created_at: string; uzeto_at: string | null; zavrseno_at: string | null; slika_id: number | null; rijec: string; slug: string }>();
+).all<{ id: number; status: string; pokusaji: number; greska: string | null; created_at: string; uzeto_at: string | null; zavrseno_at: string | null; slika_id: number | null; rijec: string; slug: string;
+  stil: string; sistemski_v: number | null; predlozak_v: number | null }>();
+// Posao koji čeka dobit će sistemski prompt tek kad ga runner uzme: pokaži aktivnu verziju.
+const aktivniSistemski = (await env.DB.prepare(
+  "SELECT v.broj FROM postavke p JOIN prompt_verzije v ON v.id = p.verzija_id WHERE p.kljuc = 'sistemski_prompt'",
+).first<{ broj: number }>())?.broj ?? null;
+const sistemskiV = (p: { status: string; sistemski_v: number | null }) =>
+  p.status === "ceka" || p.status === "greska" ? aktivniSistemski : p.sistemski_v;
 const broj = (s: string) => poslovi.filter((p) => p.status === s).length;
 const zadnjiRunner = poslovi.map((p) => p.uzeto_at).filter(Boolean).sort().at(-1) ?? null;
 const spojeno = await spojenoRunnera();
@@ -60,12 +70,16 @@ const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh"
   {poslovi.length ? (
     <div class="ploha tablica">
       <table>
-        <thead><tr><th>#</th><th>Riječ</th><th>Status</th><th>Pokušaji</th><th>Dodano</th><th>Završeno</th><th></th></tr></thead>
+        <thead><tr><th>#</th><th>Riječ</th><th>Stil</th><th title="verzija sistemskog prompta · verzija predloška stila (/admin/prompt)">Prompt <span class="blijedo">sist. · predl.</span></th><th>Status</th><th>Pokušaji</th><th>Dodano</th><th>Završeno</th><th></th></tr></thead>
         <tbody>
           {poslovi.map((p) => (
             <tr>
               <td class="mono blijedo">{p.id}</td>
               <td><a class="rijec-tekst" href={`/admin/rijec/${p.slug}?od=/admin/red`}>{p.rijec}</a></td>
+              <td class="sitno">{p.stil}</td>
+              <td class="mono sitno" title={p.status === "ceka" ? "sistemski prompt se dodaje kad runner uzme posao" : undefined}>
+                {sistemskiV(p) ? `v${sistemskiV(p)}` : "–"} · {p.predlozak_v ? `v${p.predlozak_v}` : "–"}
+              </td>
               <td><span class:list={["oznaka", KLASA[p.status]]}>{OZNAKA[p.status]}</span>{p.greska && <div class="greska sitno">{p.greska}</div>}</td>
               <td class="mono">{p.pokusaji}</td>
               <td class="blijedo">{kad(p.created_at)}</td>
