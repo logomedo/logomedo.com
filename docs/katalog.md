@@ -80,6 +80,13 @@ sequenceDiagram
   kandidat istog stila (zapis `generiranje.uklonjeno`, tko = `runner`). Povod: 110 poslova od 31. 10.
   čekalo je agyjev limit, a Anita je u međuvremenu ručno učitala dio slika (mašna je ipak dobila duplikat).
 
+Zamke s deploya 2. 11.:
+- `wrangler d1 migrations apply logomedo --remote` bez terminala ne primijeni migraciju (čeka
+  „continue?”) i izlaz to ne pokazuje jasno. Kod je deployan bez tablice `postavke`, `uzmi` je
+  vraćao 500 i runner je oko 1 min padao (launchd ga restarta). Uvijek `CI=1 npx wrangler d1
+  migrations apply …` i provjeriti tablicu prije `wrangler deploy`.
+- Promjene u `runner.sh` ne vrijede dok se launchd agent ne restarta (`scripts/launchd/instaliraj.sh`).
+
 ### Ručni upload (1. 11. 2026.)
 
 Na stranici riječi, „Dodaj sliku iz vanjskog alata”: slika (PNG/JPEG/WebP, do 8 MB), stil,
