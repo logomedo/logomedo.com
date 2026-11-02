@@ -172,6 +172,20 @@ Worker odbija SVG sa `<script>`, `javascript:` ili `on*=` atributima.
 Zamka (popravljeno 7c7fe18): agy je napisao reset sa sekundama (`00:41:30 UTC`), stari regex
 je „41” pročitao kao sat i Python se srušio; runner je pao, a launchd ga je ponovno pokrenuo.
 
+### Tjedna kvota: 1. 11. 2026. (procjena za 3. 11. ne vrijedi)
+
+Osim kliznog prozora od ~5 h postoji i **tjedna** kvota na alatu za slike. Dan 1. 11.:
+#62–#67 u 10:43–10:51, #68–#69 u 11:24, zatim #70 (dim) osam puta 429. U 15:13 agy je
+napisao „Model quota will reset after ~143 hours”, a runner je to pročitao i otišao spavati
+8582 min. Ukupno 69 poslova je gotovo, ~102 je ostalo u redu (#70–#171).
+
+Provjereno 2. 11. u 06:37 ručnim promptom (jabuka). `gemini-3.8-flash-low` daje
+`429 … gemini-3.1-flash-image … reset 2026-11-07T13:41:03Z`, a `gemini-4-argon-low` daje
+„reset after 128h”, dakle isti termin. **Promjena glavnog modela ne pomaže**: svaki od njih
+pokrene podagenta s istim modelom za slike, a kvota je po Google računu. Prije 14:41
+7. 11. (lokalno) pomaže samo drugi Google račun u agyju ili Gemini API s plaćenim ključem.
+Ovim tempom (~70 slika pa tjedan pauze) red ne završava u razumnom roku.
+
 ### Vertex AI na `bimbo-sync-prod`: blokiran (provjereno 1. 11. 2026.)
 
 Ideja je bila prenijeti `lib/vertex_auth.js` iz `~/git/domovinatv/fetch.domovina.tv`. Svaki
