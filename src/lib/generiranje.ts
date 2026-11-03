@@ -6,22 +6,20 @@ import { stil as stilPoKodu, type Stil } from "./katalog";
 import { zazvoni } from "./runner-zvono";
 import { novaGrupa, sZapisom, zapisNastalih, zapisSkupa } from "./aktivnost";
 import { aktivnaSistemska, postavka, redPauziran } from "./postavke";
-import { spojiPrompt } from "./prompt";
+import { blokIspravaka, spojiPrompt } from "./prompt";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
 
-/** Prompt iz predloška stila. Razlozi odbijenih slika te riječi ulaze kao napomena. */
+/** Prompt iz predloška stila. Razlozi odbijenih slika te riječi idu na kraj kao ispravci (`blokIspravaka`). */
 export function sloziPrompt(stil: Stil, r: { rijec: string; opis_za_sliku: string | null }, razlozi: string[], napomena?: string) {
-  const dodatak = [
-    napomena?.trim(),
-    ...razlozi.map((x) => `Avoid: ${x}`),
-  ].filter(Boolean).join(" ");
-  return stil.predlozak
+  const glavni = stil.predlozak
     .replaceAll("{rijec}", r.rijec.toLocaleUpperCase("hr"))
     .replaceAll("{opis}", r.opis_za_sliku?.trim() || "the most common everyday meaning")
-    .replaceAll("{napomena}", dodatak)
+    .replaceAll("{napomena}", napomena?.trim() ?? "")
     .trim();
+  const ispravci = blokIspravaka(razlozi);
+  return ispravci ? `${glavni}\n\n${ispravci}` : glavni;
 }
 
 /** Dodaje posao za svaku riječ koja ga već nema u redu. Vraća broj dodanih. `grupa`: dio veće radnje u dnevniku. */
