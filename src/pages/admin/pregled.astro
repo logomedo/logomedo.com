@@ -1,5 +1,6 @@
 ---
-// Pregled kandidata jedan po jedan, tipkovnicom: A odobri, X odbij (razlog, Enter),
+// Pregled kandidata jedan po jedan, tipkovnicom: A odobri, X odbij (što ne valja + kako treba, Enter),
+// P slika je za drugu riječ (premjesti, po potrebi nova riječ),
 // S preskoči, Z poništi zadnju odluku. Odbijena slika šalje novu u red samo ako riječ nema
 // odobrenu ni drugog kandidata. Više admina istovremeno: svake 3 s popis se usklađuje s bazom
 // (tuđe odluke nestaju, novi kandidati dolaze na kraj), a server pamti samo prvu odluku.
@@ -29,11 +30,29 @@ const results = await kandidati(glas);
         <div class="tipke">
           <button class="gumb glavni veliki" id="odobri"><kbd>A</kbd> Odobri</button>
           <button class="gumb veliki" id="odbij"><kbd>X</kbd> Odbij</button>
-          <div class="razlog" id="razlog-okvir" hidden>
-            <input type="text" id="razlog" maxlength="300" placeholder="Što ne valja? (ide u sljedeći prompt)" />
+          <form class="razlog" id="razlog-okvir" hidden>
+            <label>Što ne valja?
+              <input type="text" id="razlog" maxlength="300" placeholder="npr. Ovo je mačka, a ne mač" /></label>
+            <label>Kako treba biti?
+              <input type="text" id="dorada" maxlength="300" placeholder="npr. Strelica pokazuje na rep" /></label>
+            <label class="kvacica"><input type="checkbox" id="trajno" /> Zapamti „kako treba” kao opis riječi (za sve buduće slike)</label>
             <label class="kvacica"><input type="checkbox" id="ponovi" checked /> <span id="ponovi-tekst">Generiraj novu</span></label>
-            <span class="blijedo sitno"><kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span>
-          </div>
+            <div class="red-gumba"><button class="gumb glavni" type="submit">Odbij</button>
+              <span class="blijedo sitno"><kbd>Tab</kbd> sljedeće polje · <kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span></div>
+          </form>
+          <button class="gumb veliki" id="premjesti"><kbd>P</kbd> Slika je za drugu riječ</button>
+          <form class="razlog" id="premjesti-okvir" hidden>
+            <label>Koja je riječ na slici?
+              <input type="text" id="cilj" maxlength="40" list="sve-rijeci" autocomplete="off" placeholder="npr. mačić" /></label>
+            <datalist id="sve-rijeci"></datalist>
+            <p class="sitno" id="cilj-info" hidden></p>
+            <label><span id="dorada2-naslov">Kako treba biti za ovu riječ?</span>
+              <input type="text" id="dorada2" maxlength="300" placeholder="npr. Mač je oružje (sword), ne mačka" /></label>
+            <label class="kvacica"><input type="checkbox" id="trajno2" /> Zapamti kao opis riječi (za sve buduće slike)</label>
+            <label class="kvacica"><input type="checkbox" id="ponovi2" checked /> <span id="ponovi2-tekst">Generiraj novu</span></label>
+            <div class="red-gumba"><button class="gumb glavni" type="submit">Premjesti</button>
+              <span class="blijedo sitno"><kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span></div>
+          </form>
           <div class="sporedne">
             <button class="gumb tihi" id="preskoci"><kbd>S</kbd> Preskoči</button>
             <button class="gumb tihi" id="ponisti" disabled><kbd>Z</kbd> Poništi</button>
@@ -89,7 +108,11 @@ const results = await kandidati(glas);
     $("prompt").textContent = k.prompt ?? "";
     $<HTMLAnchorElement>("link").href = `/admin/rijec/${k.slug}?od=/admin/pregled`;
     brojac();
-    zatvoriRazlog();
+    zatvoriPanele();
+    const R = k.rijec.toLocaleUpperCase("hr");
+    $("dorada2-naslov").textContent = `Kako treba biti ${R}?`;
+    $("ponovi2-tekst").textContent = `Generiraj novu za ${R}`;
+    $<HTMLInputElement>("ponovi2").checked = !k.odobrena_id;
     // Riječ s odobrenom slikom: odbijanje suvišnog kandidata ne traži novu sliku.
     $<HTMLInputElement>("ponovi").checked = !k.odobrena_id && red.filter((x) => x.slug === k.slug).length < 2;
     $("ponovi-tekst").textContent = k.odobrena_id ? "Generiraj novu (riječ već ima odobrenu)" : "Generiraj novu";
@@ -118,20 +141,50 @@ const results = await kandidati(glas);
     return { vec: null, generira: !!j.generira };
   }
 
+  const v = (id: string) => $<HTMLInputElement>(id).value;
+  const kv = (id: string) => ($<HTMLInputElement>(id).checked ? "1" : "");
+
   async function odluci(akcija: "odobri" | "odbij") {
     const k = red[0];
     if (zauzeto || !k) return;
     zauzeto = true;
     try {
       const o = await posalji(k.id, akcija === "odbij"
-        ? { akcija, razlog: $<HTMLInputElement>("razlog").value, ponovi: $<HTMLInputElement>("ponovi").checked ? "1" : "" }
+        ? { akcija, razlog: v("razlog"), dorada: v("dorada"), trajno: kv("trajno"), ponovi: kv("ponovi") }
         : { akcija });
       if (o.vec) poruka(opisOdluke(o.vec), "info");
       else {
         if (akcija === "odobri") for (const x of red) if (x.slug === k.slug) x.odobrena_id = k.id;
+        if (akcija === "odbij" && kv("trajno") && v("dorada").trim()) for (const x of red) if (x.slug === k.slug) x.opis_za_sliku = v("dorada").trim();
         povijest.push(k);
       }
       dalje();
+    } catch (e) { poruka((e as Error).message); }
+    zauzeto = false;
+  }
+
+  // Premještanje se ne poništava sa Z (nastaje nova slika i možda riječ); vraća se iz Aktivnosti.
+  async function premjesti() {
+    const k = red[0];
+    const cilj = v("cilj").trim();
+    if (zauzeto || !k) return;
+    if (!cilj) { $("cilj").focus(); return; }
+    zauzeto = true;
+    try {
+      const r = await fetch(`/admin/api/slika/${k.id}/premjesti`, { method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ rijec: cilj, dorada: v("dorada2"), trajno: kv("trajno2"), ponovi: kv("ponovi2") }) });
+      if (r.status === 401) throw new Error("Sesija je istekla, prijavi se ponovno.");
+      const j: any = await r.json().catch(() => ({}));
+      if (j.vec) { poruka(opisOdluke(j.vec), "info"); dalje(); }
+      else if (!r.ok) throw new Error(j.greska ?? `HTTP ${r.status}`);
+      else {
+        const R = String(j.rijec).toLocaleUpperCase("hr");
+        poruka(`Slika je sada uz ${R}${j.nova ? " (nova riječ u katalogu)" : ""}, ${j.odobrena ? "odobrena" : "kao kandidat (riječ već ima odobrenu)"}.`
+          + (j.generira ? ` Za ${k.rijec.toLocaleUpperCase("hr")} se crta nova.` : ""), "info");
+        indeks = null;
+        dalje();
+      }
     } catch (e) { poruka((e as Error).message); }
     zauzeto = false;
   }
@@ -171,24 +224,60 @@ const results = await kandidati(glas);
   setInterval(uskladi, 3000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) uskladi(); });
 
-  const razlogOtvoren = () => !$("razlog-okvir").hidden;
-  function otvoriRazlog() { $("razlog-okvir").hidden = false; $<HTMLInputElement>("razlog").value = ""; $("razlog").focus(); }
-  function zatvoriRazlog() { $("razlog-okvir").hidden = true; ($("razlog") as HTMLInputElement).blur(); }
+  // Indeks riječi za „Slika je za drugu riječ” (isti kao tražilica u bočnoj traci), učitava se kad zatreba.
+  let indeks: Map<string, { o: number }> | null = null;
+  async function ucitajIndeks() {
+    if (indeks) return;
+    const r = await fetch("/admin/api/trazi", { credentials: "same-origin" });
+    const lista = (await r.json()) as { r: string; o: number }[];
+    indeks = new Map(lista.map((x) => [x.r, x]));
+    $("sve-rijeci").replaceChildren(...lista.map((x) => Object.assign(document.createElement("option"), { value: x.r })));
+  }
+  function infoCilja() {
+    const c = v("cilj").trim().toLocaleLowerCase("hr").replace(/\s+/g, " "), p = $("cilj-info");
+    p.hidden = !c || !indeks;
+    if (p.hidden) return;
+    const x = indeks!.get(c);
+    if (c === red[0]?.rijec) { p.textContent = "To je ista riječ."; p.dataset.vrsta = "greska"; }
+    else if (x) { p.textContent = x.o ? "Riječ postoji i već ima odobrenu sliku: ova će biti kandidat uz nju." : "Riječ postoji, slika će joj biti odobrena."; p.dataset.vrsta = "info"; }
+    else { p.textContent = `Nove riječi „${c}” nema u katalogu: bit će dodana, a glasove potvrdi poslije na stranici riječi.`; p.dataset.vrsta = "nova"; }
+  }
+
+  const otvoren = () => !$("razlog-okvir").hidden || !$("premjesti-okvir").hidden;
+  function zatvoriPanele() {
+    for (const id of ["razlog-okvir", "premjesti-okvir"]) $(id).hidden = true;
+    (document.activeElement as HTMLElement | null)?.blur();
+  }
+  function otvoriRazlog() {
+    zatvoriPanele();
+    for (const id of ["razlog", "dorada"]) $<HTMLInputElement>(id).value = "";
+    $<HTMLInputElement>("trajno").checked = false;
+    $("razlog-okvir").hidden = false; $("razlog").focus();
+  }
+  function otvoriPremjesti() {
+    zatvoriPanele();
+    for (const id of ["cilj", "dorada2"]) $<HTMLInputElement>(id).value = "";
+    $<HTMLInputElement>("trajno2").checked = false;
+    $("cilj-info").hidden = true;
+    $("premjesti-okvir").hidden = false; $("cilj").focus();
+    ucitajIndeks().then(infoCilja).catch(() => {});
+  }
 
   $("odobri").onclick = () => odluci("odobri");
-  $("odbij").onclick = () => (razlogOtvoren() ? odluci("odbij") : otvoriRazlog());
+  $("odbij").onclick = () => ($("razlog-okvir").hidden ? otvoriRazlog() : zatvoriPanele());
+  $("premjesti").onclick = () => ($("premjesti-okvir").hidden ? otvoriPremjesti() : zatvoriPanele());
+  $("razlog-okvir").addEventListener("submit", (e) => { e.preventDefault(); odluci("odbij"); });
+  $("premjesti-okvir").addEventListener("submit", (e) => { e.preventDefault(); premjesti(); });
+  $("cilj").addEventListener("input", infoCilja);
   $("preskoci").onclick = dalje;
   $("ponisti").onclick = ponisti;
   document.addEventListener("keydown", (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey || !red.length) return;
-    if (razlogOtvoren()) {
-      if (e.key === "Enter") { e.preventDefault(); odluci("odbij"); }
-      if (e.key === "Escape") zatvoriRazlog();
-      return;
-    }
+    if (otvoren()) { if (e.key === "Escape") zatvoriPanele(); return; }
     const k = e.key.toLowerCase();
     if (k === "a") odluci("odobri");
     else if (k === "x") { e.preventDefault(); otvoriRazlog(); }
+    else if (k === "p") { e.preventDefault(); otvoriPremjesti(); }
     else if (k === "s" || e.key === "ArrowRight") dalje();
     else if (k === "z") ponisti();
   });
@@ -215,7 +304,12 @@ const results = await kandidati(glas);
   .tipke { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
   .gumb.veliki { min-height: 52px; font-size: 1rem; justify-content: flex-start; }
   kbd { font: 600 .72rem var(--font); min-width: 22px; padding: 2px 6px; border-radius: 6px; border: 1px solid currentColor; opacity: .7; }
-  .razlog { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--povrsina-2); }
+  .razlog { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; background: var(--povrsina-2); }
+  .razlog > label:not(.kvacica) { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: .82rem; font-weight: 650; color: var(--tinta); }
+  .red-gumba { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #cilj-info { margin: 0; padding: 6px 10px; border-radius: 8px; background: var(--info-blago); color: var(--info); }
+  #cilj-info[data-vrsta="nova"] { background: var(--med-blago, var(--info-blago)); color: var(--tinta); }
+  #cilj-info[data-vrsta="greska"] { background: var(--greska-blago); color: var(--greska); }
   .kvacica { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .86rem; color: var(--tinta); font-weight: 550; }
   .sitno { font-size: .8rem; }
   .sporedne { display: flex; gap: 6px; }

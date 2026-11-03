@@ -16,6 +16,7 @@ export const RADNJE: Record<string, string> = {
   "slika.istisnuta": "Dosadašnja odobrena postala kandidat",
   "slika.nova": "Nova slika iz runnera",
   "slika.ucitana": "Učitana slika",
+  "slika.premjestena": "Slika premještena na drugu riječ",
   "generiranje.zatrazeno": "Zatraženo generiranje",
   "generiranje.uklonjeno": "Uklonjeno iz reda",
   "rijec.nova": "Nova riječ",
@@ -30,7 +31,7 @@ export const RADNJE: Record<string, string> = {
 export const oznakaRadnje = (r: string) => RADNJE[r] ?? r;
 
 const POLJA: Record<string, string> = {
-  status: "status", razlog: "razlog", pregledao: "pregledao", opis_za_sliku: "opis za sliku", recenica: "rečenica",
+  status: "status", razlog: "razlog", dorada: "kako treba biti", pregledao: "pregledao", opis_za_sliku: "opis za sliku", recenica: "rečenica",
   rima: "rima", aktivna: "aktivna", rijec: "riječ", slug: "adresa", glasovi: "glasovi", prompt: "prompt",
   naslov: "naslov", podnaslov: "podnaslov", javna: "javna", zadaci: "zadaci",
 };

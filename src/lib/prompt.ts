@@ -9,12 +9,26 @@ export const ISPRAVCI = "REVIEWER CORRECTIONS";
  * pravilo „NOTHING EXTRA” (koje ide iza i „override anything else”) brisalo je auto u garaži i pastira.
  * Zato blok ide na sam kraj, iza sistemskog prompta, i izričito ima prednost.
  */
-export function blokIspravaka(razlozi: string[]): string {
-  const r = razlozi.map((x) => x.trim().replace(/\s+/g, " ")).filter(Boolean);
+/** Jedna recenzija: `ne` = što ne valja (zabrana), `da` = kako treba biti (dorada). Stari zapis je samo tekst. */
+export type Ispravak = string | { ne?: string | null; da?: string | null };
+
+const cisto = (x: string | null | undefined) => (x ?? "").trim().replace(/\s+/g, " ");
+
+function redak(i: Ispravak): string {
+  if (typeof i === "string") return cisto(i);
+  const ne = cisto(i.ne), da = cisto(i.da);
+  if (ne && da) return `Wrong: ${ne} → Draw instead: ${da}`;
+  if (da) return `Draw instead: ${da}`;
+  return ne ? `Wrong: ${ne}` : "";
+}
+
+export function blokIspravaka(razlozi: Ispravak[]): string {
+  const r = razlozi.map(redak).filter(Boolean);
   if (!r.length) return "";
   return [
     `${ISPRAVCI}. A speech therapist rejected earlier pictures of this word and wrote what was wrong and what to draw instead`,
     `(in Croatian, oldest first; when they differ, the last one wins). Apply every correction exactly.`,
+    `"Wrong" describes the rejected picture: do not repeat it. "Draw instead" is what the new picture must show.`,
     `They override all rules and style instructions above, including NOTHING EXTRA, "no scene" and the plain background:`,
     `if a correction asks for more objects, people, animals, a setting or a whole scene, draw them.`,
     `If a correction asks for an arrow ("strelica", "arrow pointer"), draw one simple bold arrow that clearly points at the named part.`,

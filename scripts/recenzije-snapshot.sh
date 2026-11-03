@@ -18,7 +18,7 @@ TMP="$(mktemp)"; trap 'rm -f "$TMP"' EXIT
 
 cd "$KORIJEN"
 CI=1 npx wrangler d1 execute logomedo --remote --json --command "
-SELECT s.id, r.rijec, r.opis_za_sliku AS opis, st.kod AS stil, s.izvor, s.status, s.razlog, s.pregledano_at,
+SELECT s.id, r.rijec, r.opis_za_sliku AS opis, st.kod AS stil, s.izvor, s.status, s.razlog, s.dorada, s.pregledano_at,
   vs.broj AS sistemski_v, vp.broj AS predlozak_v
 FROM slike s
 JOIN rijeci r ON r.id = s.rijec_id JOIN stilovi st ON st.id = s.stil_id
@@ -50,7 +50,8 @@ o += ["", "„–” u stupcu sistemski: slika je nastala prije sistemskog promp
       "| # | riječ | stil | sistemski | predložak | pregledano | komentar |", "|---|---|---|---|---|---|---|"]
 for x in slike:
     if x["status"] == "odbijena":
-        kom = (x["razlog"] or "_(bez komentara)_").replace("|", "\\|").replace("\n", " ")
+        kom = " → kako treba: ".join(filter(None, [x["razlog"], x.get("dorada")])) or "_(bez komentara)_"
+        kom = kom.replace("|", "\\|").replace("\n", " ")
         o.append(f"| {x['id']} | {x['rijec']} | {x['stil']} | {v(x, 'sistemski_v')} | {v(x, 'predlozak_v')} | {x['pregledano_at'][:16]} | {kom} |")
 o += ["", "## Verzije promptova u trenutku snimka", ""]
 for z in verzije:

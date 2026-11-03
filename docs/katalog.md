@@ -317,3 +317,22 @@ je za 50 s stigao novi kandidat. Sada:
   ekrana, novi kandidati dolaze na kraj. Nije WebSocket; kašnjenje do 3 s, ispravnost jamči server.
 - Lokalni test s dvije sesije: odobri kod jednog → drugome nestane uz poruku; istovremeni
   „Odbij” obaju → jedna odluka, nijedan novi posao u redu.
+
+## Odbij: što ne valja + kako treba, i „Slika je za drugu riječ” (3. 11. 2026.)
+
+Do 3. 11. ujutro komentar iz pregleda išao je u prompt kao `Avoid: <komentar>` ispred sistemskih
+pravila, pa model nije radio ono što recenzentica traži (strelice, auto u garaži; `docs/prompt-iteracije.md`).
+Pregled sada razdvaja dvije stvari (migracija 0017):
+
+- **Odbij (X)**: „Što ne valja?” → `slike.razlog`, „Kako treba biti?” → `slike.dorada`. U sljedećem
+  poslu iste riječi i stila oboje ide u blok `REVIEWER CORRECTIONS` kao `Wrong: … → Draw instead: …`
+  (`blokIspravaka`, zadnja tri), iza sistemskog prompta i s prednošću pred njim. Kvačica
+  „Zapamti kao opis riječi” upisuje doradu i u `rijeci.opis_za_sliku`, za sve buduće slike u svim stilovima.
+- **Slika je za drugu riječ (P)**: slika je dobra, ali prikazuje drugu riječ (MAČ → nacrtan mačić;
+  MAČIĆ tada nije bio u katalogu). Upiše se riječ (prijedlozi iz kataloga); ako je nema, dodaje se
+  (`izvor = 'admin'`, glasovi izvedeni s `potvrdeno = 0`, potvrđuju se na stranici riječi).
+  Kopija slike (R2 pod ključem ciljne riječi, i SVG) postaje odobrena ako ciljna riječ u tom stilu
+  nema odobrenu, inače kandidat. Original se odbija s razlogom „Ovo je X, a ne Y.” i doradom za
+  izvornu riječ, `slike.premjestena_u` pokazuje na kopiju; uz kvačicu izvorna riječ dobiva novi posao.
+  `premjesti()` u `src/lib/generiranje.ts`, `POST /admin/api/slika/{id}/premjesti` i
+  `/api/v1/admin/slike/{id}/premjesti`. Z (Poništi) ga ne vraća; vraća se iz Aktivnosti.

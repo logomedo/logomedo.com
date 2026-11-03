@@ -6,13 +6,14 @@ import { stil as stilPoKodu, type Stil } from "./katalog";
 import { zazvoni } from "./runner-zvono";
 import { novaGrupa, sZapisom, zapisNastalih, zapisSkupa } from "./aktivnost";
 import { aktivnaSistemska, postavka, redPauziran } from "./postavke";
-import { blokIspravaka, spojiPrompt } from "./prompt";
+import { blokIspravaka, spojiPrompt, type Ispravak } from "./prompt";
+import { pojave, slug as uSlug } from "./fonemi";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
 
 /** Prompt iz predloška stila. Razlozi odbijenih slika te riječi idu na kraj kao ispravci (`blokIspravaka`). */
-export function sloziPrompt(stil: Stil, r: { rijec: string; opis_za_sliku: string | null }, razlozi: string[], napomena?: string) {
+export function sloziPrompt(stil: Stil, r: { rijec: string; opis_za_sliku: string | null }, razlozi: Ispravak[], napomena?: string) {
   const glavni = stil.predlozak
     .replaceAll("{rijec}", r.rijec.toLocaleUpperCase("hr"))
     .replaceAll("{opis}", r.opis_za_sliku?.trim() || "the most common everyday meaning")
@@ -29,14 +30,15 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
   let dodano = 0;
   for (let i = 0; i < rijecIds.length; i += 50) {
     const dio = rijecIds.slice(i, i + 50);
-    const mjesta = dio.map(() => "?").join(",");
     const { results: rijeci } = await db.prepare(
       `SELECT r.id, r.rijec, r.opis_za_sliku,
-         (SELECT json_group_array(s.razlog) FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ? AND s.status = 'odbijena' AND s.razlog IS NOT NULL) AS razlozi,
-         EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ? AND s.status = 'odbijena') AS odbijena
-       FROM rijeci r WHERE r.id IN (${mjesta})
-         AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = r.id AND q.stil_id = ? AND q.status IN ('ceka','radi'))`,
-    ).bind(stil.id, stil.id, ...dio, stil.id).all<{ id: number; rijec: string; opis_za_sliku: string | null; razlozi: string; odbijena: number }>();
+         (SELECT json_group_array(json_object('ne', x.razlog, 'da', x.dorada)) FROM (SELECT s.razlog, s.dorada FROM slike s
+           WHERE s.rijec_id = r.id AND s.stil_id = ?1 AND s.status = 'odbijena' AND (s.razlog IS NOT NULL OR s.dorada IS NOT NULL)
+           ORDER BY s.id) x) AS razlozi,
+         EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ?1 AND s.status = 'odbijena') AS odbijena
+       FROM rijeci r WHERE r.id IN (${dio.map((_, j) => `?${j + 2}`).join(",")})
+         AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = r.id AND q.stil_id = ?1 AND q.status IN ('ceka','radi'))`,
+    ).bind(stil.id, ...dio).all<{ id: number; rijec: string; opis_za_sliku: string | null; razlozi: string; odbijena: number }>();
     if (!rijeci.length) continue;
     await db.batch([
       ...rijeci.map((r) =>
@@ -183,7 +185,7 @@ export type Ishod = { ok: true } | { ok: false; nema?: true; vec?: { status: str
  * Odobri/odbij vrijede samo dok je slika još kandidat: kad dvoje pregledava istovremeno,
  * pamti se prva odluka, a druga dobiva `vec` (uvjetni UPDATE, ne provjera pa upis).
  */
-export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, grupa = novaGrupa()): Promise<Ishod> {
+export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, grupa = novaGrupa(), dorada?: string): Promise<Ishod> {
   const db = env.DB;
   const zapis = (radnja: string) => ({ tko: email, radnja, tablica: "slike" as const, grupa });
   const s = await db.prepare("SELECT id, rijec_id, stil_id, status, pregledao FROM slike WHERE id = ?").bind(slikaId)
@@ -210,15 +212,15 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
              AND EXISTS (SELECT 1 FROM slike k WHERE k.id = ? AND k.status = 'kandidat')`,
         ).bind(s.rijec_id, s.stil_id, s.id)]),
       ...sZapisom(zapis("slika.odobrena"), s.id, [
-        db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
+        db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, dorada = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
           .bind(email, s.id),
       ]),
     ]);
     if (!rez[rez.length - 3].meta.changes) return vec();
   } else if (akcija === "odbij") {
     const [, r] = await db.batch(sZapisom(zapis("slika.odbijena"), s.id, [
-      db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
-        .bind(razlog?.trim().slice(0, 300) || null, email, s.id),
+      db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, dorada = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
+        .bind(razlog?.trim().slice(0, 300) || null, dorada?.trim().slice(0, 300) || null, email, s.id),
     ]));
     if (!r.meta.changes) return vec();
   } else {
@@ -230,24 +232,113 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
   return { ok: true };
 }
 
+export interface Dorada {
+  /** Kako treba biti (ide u prompt kao „Draw instead”). */
+  dorada?: string;
+  /** Dorada postaje i trajni opis riječi (`rijeci.opis_za_sliku`), za sve buduće slike u svim stilovima. */
+  trajno?: boolean;
+}
+
 /**
- * Odluka s weba ili iz aplikacije. Odbijena s `ponovi`: nova u red (razlog ulazi u prompt), ali
+ * Odluka s weba ili iz aplikacije. Odbijena s `ponovi`: nova u red (razlog i dorada ulaze u prompt), ali
  * samo ako riječ još nema odobrenu sliku ni drugog kandidata. Inače „Odbij” na suvišnom kandidatu
  * stvara novog, i tako u krug (astronaut, 31. 10.).
  */
-export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, ponovi = false) {
+export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, ponovi = false, d: Dorada = {}) {
   const grupa = novaGrupa();
-  const ishod = await odluci(slikaId, akcija, email, razlog, grupa);
+  const ishod = await odluci(slikaId, akcija, email, razlog, grupa, akcija === "odbij" ? d.dorada : undefined);
   let generira = false;
-  if (ishod.ok && akcija === "odbij" && ponovi) {
-    const s = await env.DB.prepare(
-      `SELECT s.rijec_id, s.stil_id, st.kod,
-         EXISTS (SELECT 1 FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status IN ('odobrena', 'kandidat')) AS pokrivena
-       FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.id = ?`,
-    ).bind(slikaId).first<{ rijec_id: number; stil_id: number; kod: string; pokrivena: number }>();
-    if (s && !s.pokrivena) generira = (await dodajURed(await stilPoKodu(s.kod), [s.rijec_id], email, undefined, grupa)) > 0;
+  if (ishod.ok && akcija === "odbij") {
+    if (d.trajno && d.dorada?.trim()) await trajniOpis(slikaId, d.dorada, email, grupa);
+    if (ponovi) generira = await ponoviZa(slikaId, email, grupa);
   }
   return { ...ishod, generira };
+}
+
+async function ponoviZa(slikaId: number, email: string, grupa: ReturnType<typeof novaGrupa>) {
+  const s = await env.DB.prepare(
+    `SELECT s.rijec_id, s.stil_id, st.kod,
+       EXISTS (SELECT 1 FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status IN ('odobrena', 'kandidat')) AS pokrivena
+     FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.id = ?`,
+  ).bind(slikaId).first<{ rijec_id: number; stil_id: number; kod: string; pokrivena: number }>();
+  return !!s && !s.pokrivena && (await dodajURed(await stilPoKodu(s.kod), [s.rijec_id], email, undefined, grupa)) > 0;
+}
+
+async function trajniOpis(slikaId: number, opis: string, email: string, grupa: ReturnType<typeof novaGrupa>) {
+  await env.DB.batch(sZapisom({ tko: email, radnja: "rijec.uredena", tablica: "rijeci", grupa },
+    { sql: "SELECT rijec_id FROM slike WHERE id = ?", args: [slikaId] },
+    [env.DB.prepare("UPDATE rijeci SET opis_za_sliku = ? WHERE id = (SELECT rijec_id FROM slike WHERE id = ?)")
+      .bind(opis.trim().slice(0, 300), slikaId)]));
+}
+
+const DOPUSTENA_RIJEC = /^[a-zčćđšž]+(?:[ -][a-zčćđšž]+)*$/;
+
+/**
+ * Slika je dobra, ali za drugu riječ (MAČ → nacrtan mačić). Kopija (R2 + redak) ide ciljnoj riječi:
+ * odobrena ako ta riječ u tom stilu još nema odobrenu, inače kandidat za usporedbu. Ciljna riječ koja
+ * ne postoji dodaje se u katalog (glasovi izvedeni, nepotvrđeni). Original se odbija s razlogom
+ * „ovo je X, ne Y” i, uz `ponovi`, izvorna riječ dobiva novi posao.
+ */
+export async function premjesti(slikaId: number, cilj: string, email: string, o: { ponovi?: boolean } & Dorada = {}) {
+  const db = env.DB;
+  const rijec = cilj.trim().toLocaleLowerCase("hr").replace(/\s+/g, " ");
+  if (!rijec || rijec.length > 40 || !DOPUSTENA_RIJEC.test(rijec)) return { ok: false as const, greska: "Riječ smije imati samo hrvatska slova (do 40)." };
+  const s = await db.prepare(
+    `SELECT s.*, r.rijec AS izvorna, st.kod FROM slike s JOIN rijeci r ON r.id = s.rijec_id JOIN stilovi st ON st.id = s.stil_id WHERE s.id = ?`,
+  ).bind(slikaId).first<{ id: number; rijec_id: number; stil_id: number; r2_kljuc: string; svg_kljuc: string | null; sha256: string; mime: string;
+    bajtova: number; prompt: string | null; model: string | null; izvor: string; status: string; pregledao: string | null; izvorna: string; kod: string }>();
+  if (!s) return { ok: false as const, nema: true };
+  if (s.status !== "kandidat") return { ok: false as const, vec: { status: s.status, pregledao: s.pregledao } };
+  if (rijec === s.izvorna) return { ok: false as const, greska: "To je ista riječ." };
+
+  const grupa = novaGrupa();
+  let r = await db.prepare("SELECT id, slug, aktivna FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string; aktivna: number }>();
+  let nova = false;
+  if (!r || !r.aktivna) {
+    const { results: glasovi } = await db.prepare("SELECT id, oznaka, skupine FROM glasovi").all<{ id: number; oznaka: string; skupine: number }>();
+    const idGlasa = new Map(glasovi.map((g) => [g.oznaka, g.id]));
+    const izvedeno = pojave(rijec, glasovi.map((g) => g.oznaka), glasovi.filter((g) => g.skupine).map((g) => g.oznaka));
+    const idRijeci = "(SELECT id FROM rijeci WHERE rijec = ?)";
+    const ok = await db.batch(sZapisom({ tko: email, radnja: "rijec.nova", tablica: "rijeci", grupa }, { sql: idRijeci, args: [rijec] }, [
+      db.prepare(`INSERT INTO rijeci (rijec, slug, izvor) VALUES (?, ?, 'admin') ON CONFLICT(rijec) DO UPDATE SET aktivna = 1`).bind(rijec, uSlug(rijec)),
+      ...izvedeno.map((p) => db.prepare(`INSERT OR IGNORE INTO rijec_glas (rijec_id, glas_id, pozicija, potvrdeno) VALUES (${idRijeci}, ?, ?, 0)`)
+        .bind(rijec, idGlasa.get(p.glas)!, p.pozicija)),
+    ])).then(() => true, () => false);
+    if (!ok) return { ok: false as const, greska: `Adresa „${uSlug(rijec)}” je već zauzeta drugom riječju.` };
+    r = await db.prepare("SELECT id, slug, aktivna FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string; aktivna: number }>();
+    nova = true;
+  }
+  if (!r) return { ok: false as const, greska: "Riječ nije spremljena." };
+
+  // Kopija u R2 pod ključem ciljne riječi (ključ = stil/slug/hash, kao u `spremi`).
+  const kljuc = s.r2_kljuc.replace(/^([^/]+)\/[^/]+\//, `$1/${r.slug}/`);
+  const ista = await db.prepare("SELECT id FROM slike WHERE r2_kljuc = ?").bind(kljuc).first<{ id: number }>();
+  if (ista) return { ok: false as const, greska: `Ta riječ već ima ovu sliku (#${ista.id}).` };
+  const tijelo = await env.SLIKE.get(s.r2_kljuc);
+  if (!tijelo) return { ok: false as const, greska: "Slika nije u spremištu." };
+  await env.SLIKE.put(kljuc, await tijelo.arrayBuffer(), { httpMetadata: { contentType: s.mime } });
+  let svg: string | null = null;
+  if (s.svg_kljuc) {
+    const v = await env.SLIKE.get(s.svg_kljuc);
+    if (v) { svg = kljuc.replace(/\.[a-z]+$/, ".svg"); await env.SLIKE.put(svg, await v.arrayBuffer(), { httpMetadata: { contentType: "image/svg+xml" } }); }
+  }
+  const [, upis] = await db.batch(sZapisom({ tko: email, radnja: "slika.premjestena", tablica: "slike", grupa },
+    { sql: "SELECT id FROM slike WHERE r2_kljuc = ?", args: [kljuc] },
+    [db.prepare(`INSERT INTO slike (rijec_id, stil_id, r2_kljuc, svg_kljuc, sha256, mime, bajtova, prompt, model, izvor)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`)
+      .bind(r.id, s.stil_id, kljuc, svg, s.sha256, s.mime, s.bajtova, s.prompt, s.model, s.izvor)]));
+  const kopija = (upis.results[0] as { id: number }).id;
+
+  const razlog = `Ovo je ${rijec.toLocaleUpperCase("hr")}, a ne ${s.izvorna.toLocaleUpperCase("hr")}.`;
+  const odbijena = await odluci(s.id, "odbij", email, razlog, grupa, o.dorada);
+  if (!odbijena.ok) return { ok: false as const, ...("vec" in odbijena ? { vec: odbijena.vec } : { nema: true }) };
+  await db.prepare("UPDATE slike SET premjestena_u = ? WHERE id = ?").bind(kopija, s.id).run();
+  if (o.trajno && o.dorada?.trim()) await trajniOpis(s.id, o.dorada, email, grupa);
+
+  const imaOdobrenu = await db.prepare("SELECT 1 FROM slike WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'").bind(r.id, s.stil_id).first();
+  const odobrena = !imaOdobrenu && (await odluci(kopija, "odobri", email, undefined, grupa)).ok;
+  const generira = o.ponovi ? await ponoviZa(s.id, email, grupa) : false;
+  return { ok: true as const, kopija, rijec: rijec, slug: r.slug, nova, odobrena, generira };
 }
 
 /** Javni URL odobrene slike (bucket logomedo-javno na cdn.logomedo.com). */

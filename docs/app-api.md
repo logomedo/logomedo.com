@@ -68,7 +68,8 @@ ključa za potpis s Playa (Play App Signing), pa ima smisla tek nakon prve objav
 | GET | `/api/v1/admin/rijeci/{slug}` | detalj: pozicije, `slike[]` s `url` (API) i `cdn` (samo odobrene), `red[]` |
 | POST | `/api/v1/admin/rijeci/{id}/slike` | multipart `slika, stil, prompt, alat` → 201 `{slika_id}` (kandidat) |
 | GET | `/api/v1/admin/slike/{id}` | datoteka iz privatnog R2, `immutable` |
-| POST | `/api/v1/admin/slike/{id}/odluka` | `{akcija: odobri\|odbij\|vrati, razlog?, ponovi?}`; 409 + `vec` ako je netko bio brži |
+| POST | `/api/v1/admin/slike/{id}/odluka` | `{akcija: odobri\|odbij\|vrati, razlog?, dorada?, trajno?, ponovi?}`; `razlog` = što ne valja, `dorada` = kako treba, `trajno` = dorada u opis riječi; 409 + `vec` ako je netko bio brži |
+| POST | `/api/v1/admin/slike/{id}/premjesti` | `{rijec, dorada?, trajno?, ponovi?}`: slika ide drugoj (ili novoj) riječi, original se odbija; `{kopija, rijec, slug, nova, odobrena, generira}`; 400 + `greska` |
 | GET | `/api/v1/admin/biljeznice` | `[{id, slug, naslov, podnaslov, tema, javna, zadataka, updated_at}]` (i nejavne) |
 | GET | `/api/v1/admin/biljeznice/{slug}` | `{biljeznica, tema {kod, naziv, kraj, boja}, zadaci[], ekrani[], rijeci[], pozadine[]}` |
 | GET | `/api/v1/admin/zadaci` | `[{id, vrsta, naslov, uputa, verzija, updated_at}]` |
