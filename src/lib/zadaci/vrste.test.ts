@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normaliziraj, ocijeni, provjeri, slozi, slozRed, type Izmjena, type Odabir, type Percepcija, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
+import { normaliziraj, ocijeni, provjeri, slikaUStilu, slozi, slozRed, type Izmjena, type Odabir, type Percepcija, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
 import { brojSlogova, izvediRimu } from "./rima.ts";
 
 const popis = ["krava", "trava", "glava", "dabar", "ormar", "pehar", "lonac", "palac", "madrac", "sat", "brat", "vrat", "miš", "kiš", "riba", "lisica"];
@@ -91,4 +91,14 @@ test("percepcija: normalizacija i ocjena (par traži oba bez krivog dodira)", ()
   assert.deepEqual(ocijeni("percepcija", s, [{ stavka: 0, odabrano: 2 }, { stavka: 0, odabrano: 0 }]), { tocnih: 1, ukupno: 1 });
   assert.deepEqual(ocijeni("percepcija", s, [{ stavka: 0, odabrano: 1 }, { stavka: 0, odabrano: 0 }, { stavka: 0, odabrano: 2 }]), { tocnih: 0, ukupno: 1 });
   assert.deepEqual(ocijeni("percepcija", s, [{ stavka: 0, odabrano: 0 }]), { tocnih: 0, ukupno: 1 });
+});
+
+test("slikaUStilu: odobrena u stilu, pa odobrena u drugom, pa kandidat", () => {
+  const ilu = { src: "/i", ok: true }, boj = { src: "/b", ok: true }, kan = { src: "/k", ok: false };
+  assert.equal(slikaUStilu({ ilustracija: ilu, bojanka: boj }, "ilustracija"), "/i");
+  assert.equal(slikaUStilu({ ilustracija: ilu, bojanka: boj }, "bojanka"), "/b");
+  assert.equal(slikaUStilu({ bojanka: boj }, "ilustracija"), "/b");
+  assert.equal(slikaUStilu({ ilustracija: kan, bojanka: boj }, "ilustracija"), "/b");
+  assert.equal(slikaUStilu({ ilustracija: kan }, "bojanka"), "/k");
+  assert.equal(slikaUStilu({}, "bojanka"), null);
 });

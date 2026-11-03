@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ request, params }) => {
     if (!b) return json({ error: "Neispravan JSON" }, 400);
     const verzija = await spremi(id, {
       naslov: String(b.naslov ?? ""), uputa: String(b.uputa ?? ""),
-      podrucje_id: Number(b.podrucje_id) || null, sadrzaj: b.sadrzaj,
+      podrucje_id: Number(b.podrucje_id) || null, stil: String(b.stil ?? ""), sadrzaj: b.sadrzaj,
     });
     return verzija === null ? json({ error: "Nema zadatka" }, 404) : json({ verzija });
   }

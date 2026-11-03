@@ -6,15 +6,17 @@
 
 import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
 import {
-  ocijeni, provjeri, rijeciU, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
+  ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   type Izmjena, type Listic, type Odabir, type Odgovor, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta,
 } from "./vrste.ts";
 import { scena as scenaPrikaz, slikaZa, vidljiviGumbi, type Orijentacija, type PozadinaPrikaz } from "../scena-prikaz.ts";
 
 export interface Podaci {
-  zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; sadrzaj: Sadrzaj };
+  zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; stil: string; sadrzaj: Sadrzaj };
+
   rijeci: RijecZadatka[];
   podrucja: { id: number; naziv: string }[];
+  stilovi: { kod: string; naziv: string }[];
   /** Samo za vrstu `scena`: sve pozadine za izbor. */
   pozadine?: PozadinaPrikaz[];
 }
@@ -46,13 +48,18 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   const vrsta = z.vrsta;
   const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
   let sadrzaj: Sadrzaj = structuredClone(z.sadrzaj);
-  let naslov = z.naslov, uputa = z.uputa ?? VRSTE[vrsta].uputa, podrucje = z.podrucje_id;
+  let naslov = z.naslov, uputa = z.uputa ?? VRSTE[vrsta].uputa, podrucje = z.podrucje_id, stil = z.stil;
   let pogled: "uredi" | "dijete" | "ispis" = (location.hash.slice(1) as any) || "uredi";
   if (!["uredi", "dijete", "ispis"].includes(pogled)) pogled = "uredi";
   let promijenjeno = false;
   let sRijecima = false;
   const postavke = { stavki: vrsta === "povezivanje" ? 4 : 4, maxSlogova: 3, samoSaSlikom: false };
 
+  /** Slike svih riječi u stilu zadatka (riječ bez slike u njemu uzima drugi stil). */
+  function postaviStil(kod: string) {
+    stil = kod;
+    for (const r of p.rijeci) if (r.slike) r.slika = slikaUStilu(r.slike, stil);
+  }
   const R = (id: number | null) => (id === null ? null : rijeci.get(id) ?? null);
   const oznaci = () => { promijenjeno = true; spremiGumb.disabled = false; spremiGumb.textContent = "Spremi"; };
 
@@ -537,7 +544,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     spremiGumb.disabled = true; spremiGumb.textContent = "Spremam…";
     const o = await fetch(`/admin/api/zadatak/${z.id}`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ naslov, uputa, podrucje_id: podrucje, sadrzaj }),
+      body: JSON.stringify({ naslov, uputa, podrucje_id: podrucje, stil, sadrzaj }),
     });
     const j: any = await o.json().catch(() => ({}));
     if (!o.ok) { spremiGumb.disabled = false; spremiGumb.textContent = "Spremi (greška)"; alert(j.error ?? `Greška ${o.status}`); return; }
@@ -573,6 +580,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("select", { onchange: (e: Event) => { podrucje = Number((e.target as HTMLSelectElement).value) || null; oznaci(); } },
           h("option", { value: "" }, "—"),
           ...p.podrucja.map((x) => h("option", { value: x.id, selected: x.id === podrucje }, x.naziv))),
+        p.stilovi.length > 1 ? h("label", {}, "Slike") : null,
+        p.stilovi.length > 1 ? h("select", { title: "Riječ bez slike u ovom stilu uzima sliku drugog stila.", onchange: (e: Event) => { postaviStil((e.target as HTMLSelectElement).value); oznaci(); osvjezi(); } },
+          ...p.stilovi.map((x) => h("option", { value: x.kod, selected: x.kod === stil }, x.naziv))) : null,
         spremiGumb,
         z.rjesavanja > 0 ? h("p", { class: "sitno blijedo" }, `Verzija ${z.aktivna_verzija} je rješavana ${z.rjesavanja}×: spremanje otvara novu verziju.`) : null),
       upozorenja.length

@@ -89,6 +89,12 @@ U editoru se slika bira iz cijelog kataloga (pretraga po riječi ili `-rima`, fi
 se s …”); riječ koje nema može se odmah dodati u katalog (bez glasa), a slika joj se generira na
 stranici riječi. Dok riječ nema sliku, prikazuje se riječ.
 
+Stil slika je po zadatku (`zadaci.stil`, zadano `ilustracija`, migracija 0018), izbor „Slike” u
+ploči editora. Redoslijed: odobrena u stilu zadatka, odobrena u drugom stilu, kandidat u stilu,
+bilo koji kandidat (`slikaUStilu`). Vrijedi za editor, ispis i `/api/v1/admin/zadaci/{id}`; u
+bilježnici vrijedi stil bilježnice. Prije (do 3. 11. 2026.) editor je uzimao zadnju sliku bez obzira
+na stil, pa je npr. SNJEGOVIĆ bio bojanka iako ima odobrenu ilustraciju.
+
 ## Skica tablica (D1)
 
 ```sql

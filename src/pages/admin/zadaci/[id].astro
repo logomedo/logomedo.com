@@ -1,17 +1,18 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
-import { nazivPodrucja, podrucja as svaPodrucja, sveRijeci, zadatak as nadji } from "../../../lib/zadaci/baza";
+import { nazivPodrucja, podrucja as svaPodrucja, stilovi as sviStilovi, sveRijeci, zadatak as nadji } from "../../../lib/zadaci/baza";
 import { VRSTE } from "../../../lib/zadaci/vrste";
 import { popis as svePozadine } from "../../../lib/pozadine";
 import "../../../lib/scena.css";
 
 const z = await nadji(Number(Astro.params.id));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
-const [rijeci, podrucja, pozadine] = await Promise.all([sveRijeci(), svaPodrucja(), z.vrsta === "scena" ? svePozadine() : Promise.resolve([])]);
+const [rijeci, podrucja, stilovi, pozadine] = await Promise.all([sveRijeci(z.stil), svaPodrucja(), sviStilovi(), z.vrsta === "scena" ? svePozadine() : Promise.resolve([])]);
 const podaci = {
   zadatak: z,
   rijeci,
+  stilovi,
   pozadine,
   podrucja: podrucja.filter((p) => p.roditelj_id !== null).map((p) => ({ id: p.id, naziv: nazivPodrucja(podrucja, p.id) })),
 };

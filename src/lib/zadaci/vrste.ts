@@ -62,7 +62,15 @@ export const UPUTE_PERCEPCIJE: Record<Trazi, { ekran: string; ispis: string }> =
 const istoPolje = (a: Polje, b: Polje) => a.rijec_id === b.rijec_id && a.izmjena === b.izmjena;
 
 /** Riječ kakvu editor i prikaz trebaju. `slika` je URL ili null (prikazuje se riječ). */
-export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null }
+/** Najbolja slika riječi po kodu stila; `ok` = odobrena (inače kandidat). */
+export type SlikeRijeci = Record<string, { src: string; ok: boolean }>;
+export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null; slike?: SlikeRijeci }
+
+/** Slika za stil zadatka: odobrena u stilu, odobrena u drugom, kandidat u stilu, bilo koja. */
+export function slikaUStilu(m: SlikeRijeci, stil: string): string | null {
+  const sve = Object.values(m);
+  return (m[stil]?.ok ? m[stil] : sve.find((x) => x.ok) ?? m[stil] ?? sve[0])?.src ?? null;
+}
 
 export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; ispis: string; odnos: boolean }> = {
   listic: {

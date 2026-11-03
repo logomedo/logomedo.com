@@ -12,5 +12,5 @@ export const GET: APIRoute = async (ctx) => {
   const z = await zadatak(id);
   if (!z) return greska("not_found", 404);
   const zz = { id: z.id, vrsta: z.vrsta, naslov: z.naslov, uputa: z.uputa, verzija: z.aktivna_verzija, sadrzaj: z.sadrzaj };
-  return Response.json({ zadatak: zz, ekrani: ekrani([z]), ...slikePrikaz(await rijeciIPozadine([z], "ilustracija"), cdnZa(ctx.url)) });
+  return Response.json({ zadatak: zz, ekrani: ekrani([z]), ...slikePrikaz(await rijeciIPozadine([z], z.stil), cdnZa(ctx.url)) });
 };
