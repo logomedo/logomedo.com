@@ -12,7 +12,7 @@ export async function kandidati(glas: string | null): Promise<Kandidat[]> {
        (SELECT o.id FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena') AS odobrena_id,
        (SELECT group_concat(g.oznaka || ' ' || rg.pozicija, ' · ') FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id) AS pozicije
      FROM slike s JOIN rijeci r ON r.id = s.rijec_id
-     WHERE s.status = 'kandidat'
+     WHERE s.status = 'kandidat' AND r.aktivna = 1
        AND (?1 IS NULL OR EXISTS (SELECT 1 FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id AND g.slug = ?1))
      ORDER BY s.id LIMIT 200`,
   ).bind(glas).all<Kandidat>();

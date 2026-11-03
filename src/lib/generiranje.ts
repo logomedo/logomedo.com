@@ -381,3 +381,27 @@ export async function ocistiCache(url: string) {
   });
   if (!r.ok) console.error(`purge ${url}: HTTP ${r.status} ${await r.text()}`);
 }
+
+/**
+ * Riječ ne postoji (npr. TRAM): nestaje iz kataloga (`aktivna = 0`), sve njene slike postaju odbijene
+ * (odobrena prestaje biti javna), a poslovi koji čekaju u redu se brišu. Sve je jedna grupa u
+ * Aktivnosti, pa se jednim „Poništi” vraća. Redak riječi ostaje, jer na nju mogu pokazivati zadaci.
+ */
+export async function obrisiRijec(rijecId: number, email: string): Promise<{ ok: boolean; slika: number }> {
+  const db = env.DB;
+  const grupa = novaGrupa();
+  const zapis = (radnja: string, tablica: "rijeci" | "slike" | "generiranja") => ({ tko: email, radnja, tablica, grupa });
+  const { results: slike } = await db.prepare("SELECT id FROM slike WHERE rijec_id = ? AND status != 'odbijena'").bind(rijecId).all<{ id: number }>();
+  const rez = await db.batch([
+    ...sZapisom(zapis("rijec.obrisana", "rijeci"), rijecId, [db.prepare("UPDATE rijeci SET aktivna = 0 WHERE id = ? AND aktivna = 1").bind(rijecId)]),
+    ...zapisSkupa(zapis("slika.odbijena", "slike"), { sql: "x.rijec_id = ? AND x.status != 'odbijena'", args: [rijecId] }, [
+      db.prepare("UPDATE slike SET status = 'odbijena', razlog = 'riječ obrisana', pregledao = ?, pregledano_at = datetime('now') WHERE rijec_id = ? AND status != 'odbijena'")
+        .bind(email, rijecId),
+    ]),
+    ...zapisSkupa(zapis("generiranje.uklonjeno", "generiranja"), { sql: "x.rijec_id = ? AND x.status = 'ceka'", args: [rijecId] }, [
+      db.prepare("DELETE FROM generiranja WHERE rijec_id = ? AND status = 'ceka'").bind(rijecId),
+    ]),
+  ]);
+  await uskladiJavno(slike.map((s) => s.id));
+  return { ok: rez[1].meta.changes > 0, slika: slike.length };
+}

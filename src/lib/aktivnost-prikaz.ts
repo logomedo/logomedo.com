@@ -21,6 +21,7 @@ export const RADNJE: Record<string, string> = {
   "generiranje.uklonjeno": "Uklonjeno iz reda",
   "rijec.nova": "Nova riječ",
   "rijec.uredena": "Uređena riječ",
+  "rijec.obrisana": "Obrisana riječ",
   "rijec.glas_potvrden": "Potvrđena pozicija glasa",
   "rijec.glas_maknut": "Maknuta pozicija glasa",
   "biljeznica.spremljena": "Spremljena bilježnica",

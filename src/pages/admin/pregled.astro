@@ -1,7 +1,7 @@
 ---
 // Pregled kandidata jedan po jedan, tipkovnicom: A odobri, X odbij (što ne valja + kako treba, Enter),
 // P slika je za drugu riječ (premjesti, po potrebi nova riječ),
-// S preskoči, Z poništi zadnju odluku. Odbijena slika šalje novu u red samo ako riječ nema
+// D riječ ne postoji (obriši je sa svim slikama), S preskoči, Z poništi zadnju odluku. Odbijena slika šalje novu u red samo ako riječ nema
 // odobrenu ni drugog kandidata. Više admina istovremeno: svake 3 s popis se usklađuje s bazom
 // (tuđe odluke nestaju, novi kandidati dolaze na kraj), a server pamti samo prvu odluku.
 import AdminOkvir from "../../components/AdminOkvir.astro";
@@ -51,6 +51,12 @@ const results = await kandidati(glas);
             <label class="kvacica"><input type="checkbox" id="trajno2" /> Zapamti kao opis riječi (za sve buduće slike)</label>
             <label class="kvacica"><input type="checkbox" id="ponovi2" checked /> <span id="ponovi2-tekst">Generiraj novu</span></label>
             <div class="red-gumba"><button class="gumb glavni" type="submit">Premjesti</button>
+              <span class="blijedo sitno"><kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span></div>
+          </form>
+          <button class="gumb veliki opasno" id="obrisi"><kbd>D</kbd> Riječ ne postoji, obriši je</button>
+          <form class="razlog" id="obrisi-okvir" hidden>
+            <p class="sitno" id="obrisi-tekst"></p>
+            <div class="red-gumba"><button class="gumb glavni opasno" type="submit">Obriši riječ</button>
               <span class="blijedo sitno"><kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span></div>
           </form>
           <div class="sporedne">
@@ -189,6 +195,27 @@ const results = await kandidati(glas);
     zauzeto = false;
   }
 
+  // Brisanje riječi se ne poništava sa Z (dira sve njene slike i red); vraća se iz Aktivnosti.
+  async function obrisi() {
+    const k = red[0];
+    if (zauzeto || !k) return;
+    zauzeto = true;
+    try {
+      const r = await fetch("/admin/api/rijec/obrisi", { method: "POST", credentials: "same-origin",
+        headers: { "content-type": "application/json" }, body: JSON.stringify({ slug: k.slug }) });
+      if (r.status === 401) throw new Error("Sesija je istekla, prijavi se ponovno.");
+      const j: any = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.greska ?? `HTTP ${r.status}`);
+      for (const x of red) if (x.slug === k.slug) prosli.add(x.id);
+      red = red.filter((x) => x.slug !== k.slug);
+      prikazana = null;
+      poruka(`Riječ ${k.rijec.toLocaleUpperCase("hr")} je obrisana. Vratiti se može u Aktivnosti.`, "info");
+      indeks = null;
+      prikazi();
+    } catch (e) { poruka((e as Error).message); }
+    zauzeto = false;
+  }
+
   async function ponisti() {
     const k = povijest.pop();
     if (!k || zauzeto) return;
@@ -243,9 +270,10 @@ const results = await kandidati(glas);
     else { p.textContent = `Nove riječi „${c}” nema u katalogu: bit će dodana, a glasove potvrdi poslije na stranici riječi.`; p.dataset.vrsta = "nova"; }
   }
 
-  const otvoren = () => !$("razlog-okvir").hidden || !$("premjesti-okvir").hidden;
+  const PANELI = ["razlog-okvir", "premjesti-okvir", "obrisi-okvir"];
+  const otvoren = () => PANELI.some((id) => !$(id).hidden);
   function zatvoriPanele() {
-    for (const id of ["razlog-okvir", "premjesti-okvir"]) $(id).hidden = true;
+    for (const id of PANELI) $(id).hidden = true;
     (document.activeElement as HTMLElement | null)?.blur();
   }
   function otvoriRazlog() {
@@ -263,7 +291,19 @@ const results = await kandidati(glas);
     ucitajIndeks().then(infoCilja).catch(() => {});
   }
 
+  function otvoriObrisi() {
+    zatvoriPanele();
+    const k = red[0];
+    const n = red.filter((x) => x.slug === k.slug).length;
+    $("obrisi-tekst").textContent = `${k.rijec.toLocaleUpperCase("hr")} nestaje iz kataloga, sve njene slike (${n} za pregled`
+      + `${k.odobrena_id ? " i odobrena" : ""}) bit će odbijene, a nove se više neće crtati.`;
+    $("obrisi-okvir").hidden = false;
+    $<HTMLButtonElement>("obrisi-okvir").querySelector("button")!.focus();
+  }
+
   $("odobri").onclick = () => odluci("odobri");
+  $("obrisi").onclick = () => ($("obrisi-okvir").hidden ? otvoriObrisi() : zatvoriPanele());
+  $("obrisi-okvir").addEventListener("submit", (e) => { e.preventDefault(); zatvoriPanele(); obrisi(); });
   $("odbij").onclick = () => ($("razlog-okvir").hidden ? otvoriRazlog() : zatvoriPanele());
   $("premjesti").onclick = () => ($("premjesti-okvir").hidden ? otvoriPremjesti() : zatvoriPanele());
   $("razlog-okvir").addEventListener("submit", (e) => { e.preventDefault(); odluci("odbij"); });
@@ -278,6 +318,7 @@ const results = await kandidati(glas);
     if (k === "a") odluci("odobri");
     else if (k === "x") { e.preventDefault(); otvoriRazlog(); }
     else if (k === "p") { e.preventDefault(); otvoriPremjesti(); }
+    else if (k === "d") { e.preventDefault(); otvoriObrisi(); }
     else if (k === "s" || e.key === "ArrowRight") dalje();
     else if (k === "z") ponisti();
   });
@@ -313,6 +354,7 @@ const results = await kandidati(glas);
   .kvacica { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .86rem; color: var(--tinta); font-weight: 550; }
   .sitno { font-size: .8rem; }
   .sporedne { display: flex; gap: 6px; }
+  .gumb.glavni.opasno { background: var(--greska); border-color: var(--greska); color: #fff; }
   .prompt { margin-top: auto; font-size: .82rem; color: var(--blijedo); }
   .prompt summary { cursor: pointer; font-weight: 600; } .prompt p { white-space: pre-wrap; }
   .poruka { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-size: .86rem; }
