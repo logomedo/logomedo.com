@@ -23,8 +23,14 @@ flowchart LR
    Snimak se commita; repo je javan, pa u njemu nema e-maila ni imena recenzenta.
 2. **Analiza.** Komentar se ne prepisuje u prompt doslovno. Pitanje je: koje *opće* pravilo bi
    spriječilo ovu i slične greške na drugim riječima? Primjedba vezana samo uz jednu riječ
-   (dim: „krov se ne vidi”) ne ide u sistemski prompt: ona već ide u napomenu sljedećeg posla te
-   riječi (`Avoid: <komentar>` u `sloziPrompt`, zadnja tri razloga), a trajno u `rijeci.opis_za_sliku`.
+   (dim: „krov se ne vidi”) ne ide u sistemski prompt: ona već ide u sljedeći posao te riječi kao
+   blok `REVIEWER CORRECTIONS` (`blokIspravaka` u `src/lib/prompt.ts`, zadnja tri razloga), a trajno u
+   `rijeci.opis_za_sliku`. Blok stoji iza sistemskog prompta i ima prednost pred njegovim pravilima.
+
+   Zamka (do 3. 11. 2026.): razlozi su išli kao `Avoid: <komentar>` ispred sistemskih pravila. Recenzentica
+   piše upute („Stavi arrow pointer na rep”, „vrata otvorena, unutra auto”), pa je model izbjegavao baš
+   to, a pravilo NOTHING EXTRA („override anything else”) brisalo je dodatke. 22 kandidata nacrtana tako
+   vraćena su u red s novim promptom (`zatrazio = 'claude: ispravci kao upute (3.11.)'`).
 3. **Nova verzija.** Na `/admin/prompt` „Spremi kao novu verziju” s bilješkom, ili migracija kad je
    izmjena velika (primjer: `migrations/0014_prompt_v4.sql`). Bilješka navodi koje komentare
    pravilo pokriva, da se sljedeći snimak može čitati protiv nje.
