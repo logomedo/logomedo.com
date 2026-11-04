@@ -181,7 +181,8 @@ export async function neuspjeh(posaoId: number, greska: string) {
 export type Ishod = { ok: true } | { ok: false; nema?: true; vec?: { status: string; pregledao: string | null } };
 
 /**
- * Odluka o kandidatu. Odobrena istiskuje dosadašnju odobrenu (ona postaje kandidat).
+ * Odluka o kandidatu. Riječ može imati više odobrenih slika po stilu (npr. tri bojanke), pa
+ * odobravanje nove ne dira dosadašnje.
  * Odobri/odbij vrijede samo dok je slika još kandidat: kad dvoje pregledava istovremeno,
  * pamti se prva odluka, a druga dobiva `vec` (uvjetni UPDATE, ne provjera pa upis).
  */
@@ -197,26 +198,13 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
     return { ok: false as const, vec: t ?? { status: s.status, pregledao: s.pregledao } };
   };
   if (akcija !== "vrati" && s.status !== "kandidat") return vec();
-  // Slike kojima se mijenja javnost: ova i dosadašnja odobrena (istisnuta postaje kandidat).
-  const dirnute = [s.id];
   if (akcija === "odobri") {
-    const prije = await db.prepare("SELECT id FROM slike WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena' AND id != ?")
-      .bind(s.rijec_id, s.stil_id, s.id).all<{ id: number }>();
-    dirnute.push(...prije.results.map((x) => x.id));
-    // Batch je jedna transakcija; oba upita traže da je slika još kandidat, pa kasnija odluka ne mijenja ništa.
-    const rez = await db.batch([
-      ...zapisSkupa(zapis("slika.istisnuta"),
-        { sql: "x.rijec_id = ? AND x.stil_id = ? AND x.status = 'odobrena' AND x.id != ?", args: [s.rijec_id, s.stil_id, s.id] },
-        [db.prepare(
-          `UPDATE slike SET status = 'kandidat' WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'
-             AND EXISTS (SELECT 1 FROM slike k WHERE k.id = ? AND k.status = 'kandidat')`,
-        ).bind(s.rijec_id, s.stil_id, s.id)]),
-      ...sZapisom(zapis("slika.odobrena"), s.id, [
-        db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, dorada = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
-          .bind(email, s.id),
-      ]),
-    ]);
-    if (!rez[rez.length - 3].meta.changes) return vec();
+    // Riječ smije imati više odobrenih u istom stilu: dosadašnje ostaju odobrene.
+    const [, r] = await db.batch(sZapisom(zapis("slika.odobrena"), s.id, [
+      db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, dorada = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
+        .bind(email, s.id),
+    ]));
+    if (!r.meta.changes) return vec();
   } else if (akcija === "odbij") {
     const [, r] = await db.batch(sZapisom(zapis("slika.odbijena"), s.id, [
       db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, dorada = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
@@ -228,7 +216,7 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
       db.prepare("UPDATE slike SET status = 'kandidat', pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id),
     ]));
   }
-  await uskladiJavno(dirnute);
+  await uskladiJavno([s.id]);
   return { ok: true };
 }
 
@@ -275,7 +263,7 @@ const DOPUSTENA_RIJEC = /^[a-zčćđšž]+(?:[ -][a-zčćđšž]+)*$/;
 
 /**
  * Slika je dobra, ali za drugu riječ (MAČ → nacrtan mačić). Kopija (R2 + redak) ide ciljnoj riječi:
- * odobrena ako ta riječ u tom stilu još nema odobrenu, inače kandidat za usporedbu. Ciljna riječ koja
+ * odmah odobrena (uz eventualne dosadašnje odobrene). Ciljna riječ koja
  * ne postoji dodaje se u katalog (glasovi izvedeni, nepotvrđeni). Original se odbija s razlogom
  * „ovo je X, ne Y” i, uz `ponovi`, izvorna riječ dobiva novi posao.
  */
@@ -335,8 +323,7 @@ export async function premjesti(slikaId: number, cilj: string, email: string, o:
   await db.prepare("UPDATE slike SET premjestena_u = ? WHERE id = ?").bind(kopija, s.id).run();
   if (o.trajno && o.dorada?.trim()) await trajniOpis(s.id, o.dorada, email, grupa);
 
-  const imaOdobrenu = await db.prepare("SELECT 1 FROM slike WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena'").bind(r.id, s.stil_id).first();
-  const odobrena = !imaOdobrenu && (await odluci(kopija, "odobri", email, undefined, grupa)).ok;
+  const odobrena = (await odluci(kopija, "odobri", email, undefined, grupa)).ok;
   const generira = o.ponovi ? await ponoviZa(s.id, email, grupa) : false;
   return { ok: true as const, kopija, rijec: rijec, slug: r.slug, nova, odobrena, generira };
 }

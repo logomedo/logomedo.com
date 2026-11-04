@@ -32,8 +32,8 @@ zadaci (imaju svoje verzije u `zadatak_verzije`), sesije i ključevi.
 
 ## Poništi i Vrati na ovo
 
-Oba rade nad cijelom **grupom** (jedna radnja korisnika, npr. odobrena slika + istisnuta
-dosadašnja, ili nova riječ + poslovi u redu):
+Oba rade nad cijelom **grupom** (jedna radnja korisnika, npr. premještena slika + odbijeni
+original, ili nova riječ + poslovi u redu):
 
 - **Poništi**: primijeni snimke `prije`, od zadnjeg zapisa grupe prema prvom.
 - **Vrati na ovo**: primijeni snimke `poslije`, redom.
@@ -42,7 +42,7 @@ Ništa se ne briše: vraćanje je nova izmjena s novom grupom i `vraca_id` na iz
 se i ono može poništiti. Ako je redak poslije opet mijenjan, stavka ima oznaku „kasnije
 mijenjano” i vraćanje svejedno prepisuje trenutno stanje (namjerno, to je restore).
 
-Posebni slučajevi: slika koja postaje odobrena prvo istisne dosadašnju (zapisano); poništena
+Posebni slučajevi: poništena
 nova riječ se samo deaktivira (`aktivna = 0`); poništen zahtjev za generiranje briše posao samo
 ako još čeka; vraćeni posao ulazi u red kao novi, ako ta riječ i stil već nemaju posao. Nakon
 vraćanja slika usklađuje se javni bucket (`uskladiJavno`), a nakon vraćenih poslova budi se runner.

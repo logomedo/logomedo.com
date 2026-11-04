@@ -144,18 +144,6 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string): Promise
       slike.push(r.redak_id);
       const status = (s?.status as string | undefined) ?? "odbijena";
       const razlog = s ? ((s.razlog as string | null) ?? null) : "poništeno";
-      if (status === "odobrena") {
-        // Najviše jedna odobrena po riječi i stilu: dosadašnja postaje kandidat (i to se zapiše).
-        const { results: druge } = await db.prepare(
-          "SELECT id FROM slike WHERE rijec_id = ? AND stil_id = ? AND status = 'odobrena' AND id != ?",
-        ).bind(s!.rijec_id, s!.stil_id, r.redak_id).all<{ id: number }>();
-        for (const d of druge) {
-          slike.push(d.id);
-          naredbe.push(...sZapisom(z("slike", "slika.istisnuta"), d.id, [
-            db.prepare("UPDATE slike SET status = 'kandidat', pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'odobrena'").bind(tko, d.id),
-          ]));
-        }
-      }
       naredbe.push(...sZapisom(z("slike", radnja), r.redak_id, [
         db.prepare(
           `UPDATE slike SET status = ?1, razlog = ?2, pregledao = ?3, pregledano_at = datetime('now')

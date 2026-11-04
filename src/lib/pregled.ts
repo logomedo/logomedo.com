@@ -3,13 +3,14 @@ import { env } from "cloudflare:workers";
 
 export interface Kandidat {
   id: number; prompt: string | null; model: string | null; rijec: string; slug: string;
-  opis_za_sliku: string | null; odobrena_id: number | null; pozicije: string;
+  opis_za_sliku: string | null; odobrena_id: number | null; odobrenih: number; pozicije: string;
 }
 
 export async function kandidati(glas: string | null): Promise<Kandidat[]> {
   const { results } = await env.DB.prepare(
     `SELECT s.id, s.prompt, s.model, r.rijec, r.slug, r.opis_za_sliku,
-       (SELECT o.id FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena') AS odobrena_id,
+       (SELECT o.id FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena' ORDER BY o.id DESC LIMIT 1) AS odobrena_id,
+       (SELECT COUNT(*) FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena') AS odobrenih,
        (SELECT group_concat(g.oznaka || ' ' || rg.pozicija, ' · ') FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id) AS pozicije
      FROM slike s JOIN rijeci r ON r.id = s.rijec_id
      WHERE s.status = 'kandidat' AND r.aktivna = 1

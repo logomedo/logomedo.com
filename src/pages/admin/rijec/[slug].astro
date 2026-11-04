@@ -11,6 +11,7 @@ const r = await nadji(Astro.params.slug!);
 if (!r) return new Response("Nema te riječi", { status: 404 });
 const od = safeNext(Astro.url.searchParams.get("od"));
 const ovdje = `/admin/rijec/${r.slug}?od=${encodeURIComponent(od)}`;
+// Više odobrenih po stilu je dopušteno; velika je najnovija (slike su poredane odobrene, pa id silazno).
 const odobrena = r.slike.find((s) => s.status === "odobrena");
 const kandidati = r.slike.filter((s) => s.status === "kandidat");
 const odbijene = r.slike.filter((s) => s.status === "odbijena");
@@ -166,20 +167,18 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
     ) : <p class="blijedo">{uRedu.length ? "Slika se generira; pojavit će se ovdje." : "Nema kandidata."}</p>}
   </section>
 
-  {(odbijene.length > 0 || odobrena) && (
+  {(odbijene.length > 0 || odobrene.length > 0) && (
     <details class="povijest">
-      <summary>Povijest ({odbijene.length} odbijenih)</summary>
+      <summary>Odobrene i odbijene ({odobrene.length} odobrenih, {odbijene.length} odbijenih)</summary>
       <div class="kandidati mali">
-        {[...(odobrena ? [odobrena] : []), ...odbijene].map((s) => (
+        {[...odobrene, ...odbijene].map((s) => (
           <figure class="ploha kandidat">
             <div class="list"><img src={`/admin/slika/${s.id}`} alt="" loading="lazy" /></div>
             <figcaption>
               <span class:list={["oznaka", { uspjeh: s.status === "odobrena", greska: s.status === "odbijena" }]}>{s.status} · {s.stil_naziv}</span>
               {s.razlog && <span class="sitno blijedo">„{s.razlog}”</span>}
-              {s.status === "odbijena" && (
-                <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
-                  <button class="gumb mali tihi" name="akcija" value="vrati">Vrati u kandidate</button></form>
-              )}
+              <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
+                <button class="gumb mali tihi" name="akcija" value="vrati">{s.status === "odobrena" ? "Makni iz odobrenih" : "Vrati u kandidate"}</button></form>
               {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
             </figcaption>
           </figure>

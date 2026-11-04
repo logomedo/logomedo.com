@@ -55,7 +55,7 @@ export async function glas(slug: string): Promise<Glas | null> {
 export async function rijeciGlasa(glasId: number, stilId: number): Promise<RijecRed[]> {
   const { results } = await DB().prepare(
     `SELECT r.id, r.rijec, r.slug, rg.pozicija, rg.potvrdeno, r.legacy_koristeno,
-       (SELECT s.id FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ?2 AND s.status = 'odobrena') AS odobrena_id,
+       (SELECT s.id FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ?2 AND s.status = 'odobrena' ORDER BY s.id DESC LIMIT 1) AS odobrena_id,
        (SELECT COUNT(*) FROM slike s WHERE s.rijec_id = r.id AND s.stil_id = ?2 AND s.status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM generiranja q WHERE q.rijec_id = r.id AND q.stil_id = ?2 AND q.status IN ('ceka','radi')) AS u_redu
      FROM rijec_glas rg JOIN rijeci r ON r.id = rg.rijec_id
@@ -113,7 +113,7 @@ export async function ukupnoSvihStilova() {
 export async function ukupno(stilId: number) {
   return (await DB().prepare(
     `SELECT (SELECT COUNT(*) FROM rijeci WHERE aktivna = 1) AS rijeci,
-       (SELECT COUNT(*) FROM slike WHERE stil_id = ?1 AND status = 'odobrena') AS odobreno,
+       (SELECT COUNT(DISTINCT rijec_id) FROM slike WHERE stil_id = ?1 AND status = 'odobrena') AS odobreno,
        (SELECT COUNT(*) FROM slike WHERE stil_id = ?1 AND status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM generiranja WHERE stil_id = ?1 AND status IN ('ceka','radi')) AS uRedu,
        (SELECT COUNT(*) FROM generiranja WHERE stil_id = ?1 AND status = 'greska') AS gresaka`,

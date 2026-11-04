@@ -18,8 +18,9 @@ erDiagram
   (`src/lib/fonemi.ts`). Admin ih potvrđuje ili miče na stranici riječi.
 - **`stilovi`**: zasad samo `bojanka`. Prompt je predložak s `{rijec}`, `{opis}` i `{napomena}`.
   Novi stil (npr. u boji) je novi redak, a slike se drže po riječi i stilu.
-- **`slike.status`**: `kandidat` → `odobrena` | `odbijena`. Po riječi i stilu najviše je jedna
-  odobrena (djelomični unique indeks). Razlog odbijanja ulazi u prompt sljedećeg generiranja
+- **`slike.status`**: `kandidat` → `odobrena` | `odbijena`. Po riječi i stilu može biti **više
+  odobrenih** (od 4. 11. 2026., migracija 0019 skinula je unique indeks); odobravanje nove ne dira
+  dosadašnje. Gdje treba jedna (velika slika, katalog po glasu, bilježnica, pregled) uzima se najnovija. Razlog odbijanja ulazi u prompt sljedećeg generiranja
   („Avoid: …”).
 - **`rijeci.opis_za_sliku`**: rješava homonime (luk, kosa, pas) i ide u prompt.
 
@@ -131,7 +132,7 @@ Dva R2 bucketa, isti ključ (`<stil>/<slug>/<16 hex sha256>.<ext>`):
 
 - `odluci()` (`src/lib/generiranje.ts`) nakon svake odluke zove `uskladiJavno()`: odobrena se kopira
   u javni bucket (`cache-control: public, max-age=31536000, immutable`), a slika koja prestane biti
-  odobrena (odbijena, vraćena, istisnuta novom) briše se iz njega.
+  odobrena (odbijena ili vraćena u kandidate) briše se iz njega.
 - Javni URL: `https://cdn.logomedo.com/<r2_kljuc>`; u adminu je link „javni URL” na stranici riječi.
   Listanje bucketa preko domene ne postoji, a ključ ima 64-bitni hash, pa se ne da pogoditi.
 - Edge cache: zbog `immutable` povučena slika ostaje u cacheu dok se ne očisti. Purge radi samo ako
@@ -331,8 +332,7 @@ Pregled sada razdvaja dvije stvari (migracija 0017):
 - **Slika je za drugu riječ (P)**: slika je dobra, ali prikazuje drugu riječ (MAČ → nacrtan mačić;
   MAČIĆ tada nije bio u katalogu). Upiše se riječ (prijedlozi iz kataloga); ako je nema, dodaje se
   (`izvor = 'admin'`, glasovi izvedeni s `potvrdeno = 0`, potvrđuju se na stranici riječi).
-  Kopija slike (R2 pod ključem ciljne riječi, i SVG) postaje odobrena ako ciljna riječ u tom stilu
-  nema odobrenu, inače kandidat. Original se odbija s razlogom „Ovo je X, a ne Y.” i doradom za
+  Kopija slike (R2 pod ključem ciljne riječi, i SVG) postaje odobrena (uz eventualne dosadašnje odobrene). Original se odbija s razlogom „Ovo je X, a ne Y.” i doradom za
   izvornu riječ, `slike.premjestena_u` pokazuje na kopiju; uz kvačicu izvorna riječ dobiva novi posao.
   `premjesti()` u `src/lib/generiranje.ts`, `POST /admin/api/slika/{id}/premjesti` i
   `/api/v1/admin/slike/{id}/premjesti`. Z (Poništi) ga ne vraća; vraća se iz Aktivnosti.

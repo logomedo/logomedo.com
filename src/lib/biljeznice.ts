@@ -79,7 +79,7 @@ export async function stanjeSlika(b: Biljeznica) {
   const ids = [...new Set(zadaci.flatMap((z) => rijeciU(z.vrsta, z.sadrzaj)))];
   return (await DB().prepare(
     `SELECT r.id, r.rijec, r.slug,
-       (SELECT s.id FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.rijec_id = r.id AND st.kod = ?2 AND s.status = 'odobrena') AS odobrena,
+       (SELECT s.id FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.rijec_id = r.id AND st.kod = ?2 AND s.status = 'odobrena' ORDER BY s.id DESC LIMIT 1) AS odobrena,
        (SELECT COUNT(*) FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.rijec_id = r.id AND st.kod = ?2 AND s.status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM generiranja q JOIN stilovi st ON st.id = q.stil_id WHERE q.rijec_id = r.id AND st.kod = ?2 AND q.status IN ('ceka','radi')) AS u_redu
      FROM rijeci r WHERE r.id IN (SELECT value FROM json_each(?1)) ORDER BY r.rijec`,

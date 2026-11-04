@@ -13,7 +13,7 @@ export const RADNJE: Record<string, string> = {
   "slika.odobrena": "Odobrena slika",
   "slika.odbijena": "Odbijena slika",
   "slika.u_kandidate": "Slika vraćena među kandidate",
-  "slika.istisnuta": "Dosadašnja odobrena postala kandidat",
+  "slika.istisnuta": "Dosadašnja odobrena postala kandidat", // samo stari zapisi (do 4. 11. 2026.)
   "slika.nova": "Nova slika iz runnera",
   "slika.ucitana": "Učitana slika",
   "slika.premjestena": "Slika premještena na drugu riječ",
