@@ -1,0 +1,60 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import { nazivPodrucja, podrucja as svaPodrucja } from "../../lib/zadaci/baza";
+import { VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
+
+const podrucja = await svaPodrucja();
+const listovi = podrucja.filter((p) => p.roditelj_id !== null);
+const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija" };
+const vrste = Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][];
+
+// Mala shema rasporeda svake vrste (kvadratići = slike).
+const shema: Record<Vrsta, string> = {
+  odabir: `<rect x="34" y="4" width="20" height="20" rx="4" class="s-jaka"/><rect x="6" y="34" width="20" height="20" rx="4"/><rect x="34" y="34" width="20" height="20" rx="4" class="s-med"/><rect x="62" y="34" width="20" height="20" rx="4"/>`,
+  povezivanje: `<rect x="8" y="4" width="16" height="16" rx="3"/><rect x="8" y="23" width="16" height="16" rx="3"/><rect x="8" y="42" width="16" height="16" rx="3"/><rect x="64" y="4" width="16" height="16" rx="3"/><rect x="64" y="23" width="16" height="16" rx="3"/><rect x="64" y="42" width="16" height="16" rx="3"/><path d="M26 12 62 31M26 31 62 50M26 50 62 12" class="s-crta"/>`,
+  uljez: `<rect x="4" y="20" width="17" height="17" rx="3"/><rect x="25" y="20" width="17" height="17" rx="3"/><rect x="46" y="20" width="17" height="17" rx="3" class="s-med"/><rect x="67" y="20" width="17" height="17" rx="3"/><path d="M48 22l13 13M61 22 48 35" class="s-crta"/>`,
+  scena: `<rect x="4" y="2" width="80" height="54" rx="4"/><rect x="24" y="6" width="40" height="8" rx="2" class="s-jaka"/><rect x="8" y="40" width="12" height="12" rx="2" class="s-med"/><rect x="23" y="40" width="12" height="12" rx="2" class="s-med"/><rect x="38" y="40" width="12" height="12" rx="2"/><rect x="53" y="40" width="12" height="12" rx="2" class="s-med"/><rect x="68" y="40" width="12" height="12" rx="2"/>`,
+  percepcija: `<rect x="4" y="20" width="17" height="17" rx="3"/><rect x="25" y="20" width="17" height="17" rx="3"/><rect x="46" y="20" width="17" height="17" rx="3" class="s-med"/><rect x="67" y="20" width="17" height="17" rx="3"/><path d="M9 33l6-9 4 9zM30 33l6-9 4 9zM50 24h10l-5 9zM72 33l6-9 4 9z" class="s-crta"/>`,
+  listic: `<rect x="8" y="4" width="20" height="16" rx="3"/><rect x="34" y="4" width="20" height="16" rx="3"/><rect x="60" y="4" width="20" height="16" rx="3"/><rect x="8" y="26" width="20" height="16" rx="3"/><rect x="34" y="26" width="20" height="16" rx="3"/><rect x="60" y="26" width="20" height="16" rx="3"/><path d="M10 48h16M36 48h16M62 48h16" class="s-crta"/>`,
+};
+---
+<AdminOkvir naslov="Predlošci zadataka" aktivno="predlosci">
+  <div class="naslov">
+    <div>
+      <h1>Predlošci zadataka</h1>
+      <p class="podnaslov">Odaberi vrstu: zadatak se odmah složi iz kataloga, a onda ga urediš. Napravljeni su pod <a href="/admin/zadaci">Gotovi zadaci</a>.</p>
+    </div>
+  </div>
+
+  <div class="vrste">
+    {vrste.map(([kod, v]) => (
+      <form class="ploha vrsta" method="post" action="/admin/api/zadatak">
+        <input type="hidden" name="vrsta" value={kod} />
+        <svg class="shema" viewBox="0 0 88 58" aria-hidden="true" set:html={shema[kod]} />
+        <div>
+          <b>{v.naziv}</b>
+          <p>{v.opis}</p>
+        </div>
+        <div class="dno">
+          <select name="podrucje" aria-label="Podpodručje">
+            {listovi.map((p) => <option value={p.id} selected={p.slug === zadano[kod]}>{nazivPodrucja(podrucja, p.id)}</option>)}
+          </select>
+          <button class="gumb glavni mali" type="submit">Napravi</button>
+        </div>
+      </form>
+    ))}
+  </div>
+</AdminOkvir>
+
+<style>
+  .vrste { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 24px; }
+  .vrsta { margin: 0; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .vrsta p { margin: 4px 0 0; color: var(--blijedo); font-size: .86rem; }
+  .shema { width: 100%; height: 74px; padding: 8px; border-radius: 10px; background: var(--povrsina-2); }
+  .shema :global(rect) { fill: var(--povrsina); stroke: var(--rub-jak); stroke-width: 1.4; }
+  .shema :global(.s-jaka) { fill: var(--med-blago); stroke: var(--med); }
+  .shema :global(.s-med) { stroke: var(--med); stroke-width: 2.2; }
+  .shema :global(.s-crta) { fill: none; stroke: var(--med); stroke-width: 1.6; stroke-linecap: round; }
+  .dno { margin-top: auto; display: flex; gap: 8px; }
+  select { flex: 1; min-width: 0; font: inherit; font-size: .84rem; padding: 0 8px; border: 1px solid var(--rub-jak); border-radius: 8px; background: var(--povrsina); color: var(--tinta); }
+</style>

@@ -7,7 +7,7 @@ import Marka from "./Marka.astro";
 import Ikona from "./Ikona.astro";
 import { env } from "cloudflare:workers";
 
-interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "zadaci" | "pozadine" | "biljeznice" | "pregled" | "red" | "prompt" | "aktivnost" | "kljucevi"; puno?: boolean }
+interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "pozadine" | "biljeznice" | "pregled" | "red" | "prompt" | "aktivnost" | "kljucevi"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
@@ -22,7 +22,8 @@ if (admin) {
 }
 const stavke = [
   { kod: "katalog", href: "/admin", tekst: "Katalog", ikona: "katalog", broj: 0 },
-  { kod: "zadaci", href: "/admin/zadaci", tekst: "Zadaci", ikona: "zadaci", broj: 0 },
+  { kod: "predlosci", href: "/admin/predlosci", tekst: "Predlošci zadataka", ikona: "predlosci", broj: 0 },
+  { kod: "zadaci", href: "/admin/zadaci", tekst: "Gotovi zadaci", ikona: "zadaci", broj: 0 },
   { kod: "pozadine", href: "/admin/pozadine", tekst: "Pozadine", ikona: "slika", broj: 0 },
   { kod: "biljeznice", href: "/admin/biljeznice", tekst: "Bilježnice", ikona: "biljeznica", broj: 0 },
   { kod: "pregled", href: "/admin/pregled", tekst: "Pregled", ikona: "pregled", broj: brojevi.kandidata },

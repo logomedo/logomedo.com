@@ -129,5 +129,23 @@ export async function spremi(id: number, x: Izmjena): Promise<number | null> {
 }
 
 export async function obrisi(id: number) {
-  await DB().prepare("UPDATE zadaci SET obrisan_at = datetime('now') WHERE id = ?").bind(id).run();
+  await obrisiVise([id]);
+}
+
+/** Meko brisanje više zadataka odjednom (s popisa). */
+export async function obrisiVise(ids: number[]) {
+  if (!ids.length) return;
+  await DB().prepare("UPDATE zadaci SET obrisan_at = datetime('now') WHERE obrisan_at IS NULL AND id IN (SELECT value FROM json_each(?))")
+    .bind(JSON.stringify(ids)).run();
+}
+
+export async function vrati(id: number) {
+  await DB().prepare("UPDATE zadaci SET obrisan_at = NULL WHERE id = ?").bind(id).run();
+}
+
+export interface ObrisaniRed { id: number; vrsta: Vrsta; naslov: string; obrisan_at: string }
+
+export async function obrisani(): Promise<ObrisaniRed[]> {
+  return (await DB().prepare("SELECT id, vrsta, naslov, obrisan_at FROM zadaci WHERE obrisan_at IS NOT NULL ORDER BY obrisan_at DESC LIMIT 200")
+    .all<ObrisaniRed>()).results;
 }

@@ -22,7 +22,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
 <AdminOkvir naslov={z.naslov || VRSTE[z.vrsta].naziv} aktivno="zadaci">
   <div class="z-zaglavlje">
     <div>
-      <a class="mrvice" href="/admin/zadaci"><Ikona ime="natrag" velicina={16} /> Zadaci</a>
+      <a class="mrvice" href="/admin/zadaci"><Ikona ime="natrag" velicina={16} /> Gotovi zadaci</a>
       <h1>{z.naslov || VRSTE[z.vrsta].naziv}</h1>
       <p class="podnaslov"><span class="oznaka med">{VRSTE[z.vrsta].naziv}</span> {nazivPodrucja(podrucja, z.podrucje_id)} · verzija {z.aktivna_verzija}</p>
     </div>
