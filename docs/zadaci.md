@@ -212,6 +212,11 @@ ocjena: svaki gumb je jedna odluka: točan dirnut ili ometač nedirnut = točno
   nijedna točna, nema ometača, ista riječ dvaput, prazan gumb, pozadina bez jedne orijentacije.
   Spremanje je dopušteno i s upozorenjima (nacrt), ali bilježnica preskače scenu bez pozadine ili
   bez ijedne točne slike.
+- **Druga orijentacija situacije** (`src/lib/pozadine-generiranje.ts`, migracija 0020): kad situacija ima samo
+  uspravnu ili samo vodoravnu sliku, gumb „Izgeneriraj iz …” stavi posao u `pozadina_generiranja`. Lokalni runner
+  ga uzima prije poslova riječi, šalje postojeću sliku Vertexu kao predložak (`VERTEX_PREDLOZAK=1`) s omjerom
+  zamijenjenih stranica (3:4 → 4:3, zaokruženo na podržani) i uputom „ista slika, samo prošireni kadar”. Rezultat
+  odmah postaje slika te orijentacije (`izvor = 'agy'`, bez pregleda); ako ne valja, makne se i ponovi.
 
 Zamka migracije 0010: CHECK se u SQLite ne mijenja, pa se `zadaci` slaže ponovno. `DROP TABLE` uz
 uključene ključeve radi implicitni DELETE (kaskada bi obrisala verzije), a odgođene povrede od

@@ -58,16 +58,22 @@ vertex_token() {
     fi
 }
 
+# Posao situacije (vrsta "pozadina") ima svoje putanje: /api/runner/pozadina/:id za sve.
+VRSTA=""
+put_greska() { [[ "$VRSTA" == pozadina ]] && echo "$URL/api/runner/pozadina/$1" || echo "$URL/api/runner/greska/$1"; }
+put_odgodi() { [[ "$VRSTA" == pozadina ]] && echo "$URL/api/runner/pozadina/$1" || echo "$URL/api/runner/odgodi/$1"; }
+put_slika()  { [[ "$VRSTA" == pozadina ]] && echo "$URL/api/runner/pozadina/$1" || echo "$URL/api/runner/slika/$1"; }
+
 greska() {
     api -X POST -H "Content-Type: application/json" \
         -d "$(python3 -c 'import json,sys; print(json.dumps({"greska": sys.argv[1]}))' "$2")" \
-        "$URL/api/runner/greska/$1" >/dev/null || true
+        "$(put_greska "$1")" >/dev/null || true
 }
 
 odgodi() {
     api -X POST -H "Content-Type: application/json" \
         -d "$(python3 -c 'import json,sys; print(json.dumps({"razlog": sys.argv[1]}))' "$2")" \
-        "$URL/api/runner/odgodi/$1" >/dev/null || true
+        "$(put_odgodi "$1")" >/dev/null || true
 }
 
 vertex_token
@@ -88,19 +94,32 @@ while true; do
     rijec="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["rijec"])' <<<"$tijelo")"
     prompt="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["prompt"])' <<<"$tijelo")"
     stil="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("stil",""))' <<<"$tijelo")"
-    ime="posao-$id"
-    rm -f "$W/$ime".*
+    VRSTA="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("vrsta",""))' <<<"$tijelo")"
+    ime="posao-$id"; [[ "$VRSTA" == pozadina ]] && ime="situacija-$id"
+    rm -f "$W/$ime".* "$W/$ime"-izvor.*
     t0=$SECONDS
 
-    # Referentne slike stila idu modelu kao uzor (samo stil, ne sadržaj).
-    refs=()
-    for x in "$STIL_DIR/$stil"/*.jpg "$STIL_DIR/$stil"/*.jpeg "$STIL_DIR/$stil"/*.png; do
-        [[ -f "$x" ]] && refs+=("$x")
-    done
-    log "#$id $rijec → vertex (${#refs[@]} ref.)"
+    refs=(); aspekt="${VERTEX_ASPECT:-1:1}"; predlozak=0
+    if [[ "$VRSTA" == pozadina ]]; then
+        # Situacija u drugom omjeru: postojeća slika je predložak koji model ponavlja.
+        izvor="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["izvor"])' <<<"$tijelo")"
+        aspekt="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["aspekt"])' <<<"$tijelo")"
+        ref="$W/$ime-izvor.${izvor##*.}"
+        if ! curl -sSf -o "$ref" "$URL$izvor"; then
+            log "⚠️  #$id $rijec: ne mogu preuzeti $izvor"; greska "$id" "runner: ne mogu preuzeti predložak"
+            (( JEDNOM )) && exit 1; continue
+        fi
+        refs=("$ref"); predlozak=1
+    else
+        # Referentne slike stila idu modelu kao uzor (samo stil, ne sadržaj).
+        for x in "$STIL_DIR/$stil"/*.jpg "$STIL_DIR/$stil"/*.jpeg "$STIL_DIR/$stil"/*.png; do
+            [[ -f "$x" ]] && refs+=("$x")
+        done
+    fi
+    log "#$id $rijec → vertex (${#refs[@]} ref., $aspekt)"
 
     vertex_token
-    f="$(VERTEX_TOKEN="$VERTEX_TOKEN" python3 "$KORIJEN/scripts/vertex-slika.py" "$W/$ime" "$prompt" ${refs[@]+"${refs[@]}"} 2>"$W/$ime.err")" && rc=0 || rc=$?
+    f="$(VERTEX_TOKEN="$VERTEX_TOKEN" VERTEX_ASPECT="$aspekt" VERTEX_PREDLOZAK="$predlozak" python3 "$KORIJEN/scripts/vertex-slika.py" "$W/$ime" "$prompt" ${refs[@]+"${refs[@]}"} 2>"$W/$ime.err")" && rc=0 || rc=$?
     poruka="$(tail -1 "$W/$ime.err" 2>/dev/null || true)"; rm -f "$W/$ime.err"
 
     if (( rc == 4 )); then
@@ -127,10 +146,11 @@ while true; do
     if [[ "$mime" != image/* ]]; then
         greska "$id" "vertex: $f nije slika ($mime)"; log "⚠️  #$id: $mime"; (( JEDNOM )) && exit 1; continue
     fi
-    rez="$(api -X PUT -H "Content-Type: $mime" -H "X-Model: $VERTEX_MODEL" --data-binary "@$f" "$URL/api/runner/slika/$id")"
+    rez="$(api -X PUT -H "Content-Type: $mime" -H "X-Model: $VERTEX_MODEL" --data-binary "@$f" "$(put_slika "$id")")"
     log "#$id $rijec: $(basename "$f") $(stat -f %z "$f") B, $((SECONDS - t0)) s, $poruka → $rez"
     slika_id="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("slikaId",""))' <<<"$rez" 2>/dev/null || true)"
     # SVG (potrace) samo za crno-bijelu bojanku; ilustracija u boji ostaje raster.
+    [[ "$VRSTA" == pozadina ]] && rm -f "$W/$ime"-izvor.*
     if [[ -n "$slika_id" && "$stil" == "bojanka" ]]; then
         svg="$(LOGOMEDO_URL="$URL" RUNNER_TOKEN="$TOKEN" "$KORIJEN/scripts/svg.sh" "$slika_id" "$f" 2>&1)" \
             && log "#$id $rijec: svg → $svg" || log "⚠️  #$id: svg nije poslan: $svg"

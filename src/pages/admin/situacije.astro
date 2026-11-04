@@ -5,6 +5,7 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import KatalogKartice from "../../components/KatalogKartice.astro";
 import Ikona from "../../components/Ikona.astro";
 import { korisnikId } from "../../lib/zadaci/baza";
+import { zadnjiPoslovi, zatrazi } from "../../lib/pozadine-generiranje";
 import { koristi, makniSliku, obrisi, ORIJENTACIJE, popis, stvori, ucitajSliku, uredi, type Orijentacija } from "../../lib/pozadine";
 
 const NAZIV_O: Record<Orijentacija, string> = { uspravno: "Uspravna", vodoravno: "Vodoravna" };
@@ -49,6 +50,11 @@ if (Astro.request.method === "POST") {
     const greske = await ucitajSve(id);
     return greske.length ? natrag("greska", greske.join(" · ")) : natrag("ok", "Spremljeno.");
   }
+  if (akcija === "generiraj") {
+    const r = await zatrazi(id, email);
+    return "greska" in r ? natrag("greska", r.greska)
+      : natrag("ok", `${r.u === "vodoravno" ? "Vodoravna" : "Uspravna"} slika se generira; stranica se sama osvježi kad bude gotova.`);
+  }
   if (akcija === "makni") {
     const o = String(f.get("orijentacija")) as Orijentacija;
     if (ORIJENTACIJE.includes(o)) await makniSliku(id, o);
@@ -66,6 +72,8 @@ if (Astro.request.method === "POST") {
 const q = Astro.url.searchParams;
 const pozadine = await popis();
 const koriste = new Map(await Promise.all(pozadine.map(async (p) => [p.id, await koristi(p.id)] as const)));
+const poslovi = await zadnjiPoslovi();
+const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vodoravne" };
 ---
 <AdminOkvir naslov="Situacije" aktivno="katalog">
   <div class="naslov"><div>
@@ -110,7 +118,25 @@ const koriste = new Map(await Promise.all(pozadine.map(async (p) => [p.id, await
             return (
               <figure class:list={["sl", o, { prazna: !s }]}>
                 {s ? <a href={s.url} target="_blank" rel="noopener"><img src={s.url} alt={`${p.naziv}, ${o}`} loading="lazy" /></a>
-                  : <div class="nema">nema {o === "uspravno" ? "uspravne" : "vodoravne"}</div>}
+                  : (() => {
+                    const druga: Orijentacija = o === "uspravno" ? "vodoravno" : "uspravno";
+                    const posao = poslovi.get(p.id);
+                    const radi = posao && posao.u === o && (posao.status === "ceka" || posao.status === "radi");
+                    const pala = posao && posao.u === o && posao.status === "greska";
+                    return (
+                      <div class="nema">
+                        <span>nema {IZ[o]}</span>
+                        {radi ? <span class="generira" data-generira><span class="vrtuljak" aria-hidden="true" /> {posao!.status === "radi" ? "Generira se…" : "Čeka runner…"}</span>
+                          : p[druga] && (
+                            <form method="post">
+                              <input type="hidden" name="akcija" value="generiraj" /><input type="hidden" name="id" value={p.id} />
+                              <button class="gumb mali" type="submit"><Ikona ime="iskra" /> {pala ? "Pokušaj ponovo" : `Izgeneriraj iz ${IZ[druga]}`}</button>
+                            </form>
+                          )}
+                        {pala && <span class="sitno greska-generiranja">{posao!.greska}</span>}
+                      </div>
+                    );
+                  })()}
                 <figcaption>
                   {NAZIV_O[o]}{s && <span class="blijedo"> · {s.sirina}×{s.visina}</span>}
                   {s && (
@@ -156,6 +182,17 @@ const koriste = new Map(await Promise.all(pozadine.map(async (p) => [p.id, await
 </AdminOkvir>
 
 <script>
+  // Dok se slika generira, provjeravaj stranicu u pozadini i osvježi kad posao završi
+  // (puni reload samo tada, da se ne izgubi upisano u forme).
+  if (document.querySelector("[data-generira]")) {
+    const broj = (t: string) => (t.match(/data-generira/g) ?? []).length;
+    const prije = document.querySelectorAll("[data-generira]").length;
+    const t = setInterval(async () => {
+      const r = await fetch(location.pathname, { credentials: "same-origin" }).catch(() => null);
+      if (r?.ok && broj(await r.text()) < prije) { clearInterval(t); location.replace(location.pathname + location.hash); }
+    }, 8000);
+  }
+
   import { provjeriDatoteke } from "../../lib/pozadine-klijent";
 
   for (const f of document.querySelectorAll<HTMLFormElement>("form[data-potvrda]")) {
@@ -207,7 +244,7 @@ const koriste = new Map(await Promise.all(pozadine.map(async (p) => [p.id, await
   .akcije { margin-top: 12px; display: flex; gap: 8px; }
   .greska-forme { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-weight: 600; font-size: .88rem; }
   .pregled-datoteka { display: flex; gap: 12px; flex-wrap: wrap; }
-  .pregled-datoteka :global(.prev) { margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: .78rem; max-width: 260px; }
+  .pregled-datoteka :global(.prev) { margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: .78rem; font-size: .72rem; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
   .pregled-datoteka :global(.prev img) { height: 120px; width: auto; border-radius: 8px; border: 1px solid var(--rub); object-fit: contain; align-self: flex-start; }
 
   .popis { display: flex; flex-direction: column; gap: 16px; }
@@ -222,4 +259,10 @@ const koriste = new Map(await Promise.all(pozadine.map(async (p) => [p.id, await
   .sl figcaption { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .inline { display: inline; margin: 0; }
   .brisi { margin: 0; }
+  .sl .nema { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+  .sl .nema .gumb { white-space: normal; height: auto; min-height: 30px; padding: 5px 8px; line-height: 1.2; font-size: .78rem; }
+  .generira { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--med-tamno); }
+  .vrtuljak { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--med-blago); border-top-color: var(--med); animation: vrti 0.9s linear infinite; }
+  @keyframes vrti { to { transform: rotate(360deg); } }
+  .greska-generiranja { color: var(--greska, #b42318); font-size: .72rem; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 </style>

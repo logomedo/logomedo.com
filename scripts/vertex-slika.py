@@ -11,7 +11,8 @@ s drugim seedom (do 2 puta) prije nego postane 1.
 Poruka greške ide na stderr, jedan red.
 
 Okolina: VERTEX_PROJECT, VERTEX_LOCATION (global), VERTEX_MODEL
-(gemini-nano-banana-2.1), VERTEX_THINKING (LOW), VERTEX_ASPECT (1:1).
+(gemini-nano-banana-2.1), VERTEX_THINKING (LOW), VERTEX_ASPECT (1:1),
+VERTEX_PREDLOZAK=1: referenca je slika koju treba ponoviti (situacija u drugom omjeru), ne uzor stila.
 """
 import base64, json, mimetypes, os, random, sys, urllib.error, urllib.request
 
@@ -35,7 +36,9 @@ def main() -> int:
         mime = mimetypes.guess_type(r)[0] or "image/jpeg"
         with open(r, "rb") as f:
             dijelovi.append({"inlineData": {"mimeType": mime, "data": base64.b64encode(f.read()).decode()}})
-    if refs:
+    if refs and os.environ.get("VERTEX_PREDLOZAK") == "1":
+        dijelovi.append({"text": "The image above is the original illustration. Recreate exactly this picture."})
+    elif refs:
         dijelovi.append({"text": "The images above are style references only. Copy their art style "
                          "(line work, colored pencil and watercolor texture, warm palette, light cream background), "
                          "never their subjects, objects or composition."})

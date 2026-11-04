@@ -15,7 +15,7 @@ export class RunnerZvono extends DurableObject<Env> {
     const { 0: klijent, 1: posluzitelj } = new WebSocketPair();
     this.ctx.acceptWebSocket(posluzitelj);
     // Posao dodan između runnerovog „red je prazan” i spajanja ne smije se izgubiti.
-    const ceka = await this.env.DB.prepare("SELECT 1 FROM generiranja WHERE status = 'ceka' LIMIT 1").first();
+    const ceka = await this.env.DB.prepare("SELECT 1 FROM generiranja WHERE status = 'ceka' UNION ALL SELECT 1 FROM pozadina_generiranja WHERE status = 'ceka' LIMIT 1").first();
     if (ceka) posluzitelj.send("posao");
     return new Response(null, { status: 101, webSocket: klijent });
   }

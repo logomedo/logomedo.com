@@ -58,8 +58,8 @@ export async function uredi(id: number, naziv: string, opis: string) {
  * Učitaj sliku pozadine. Orijentacija se čita iz dimenzija; ako već postoji slika te
  * orijentacije, zamjenjuje se (stara se briše iz oba bucketa i iz edge cachea).
  */
-export async function ucitajSliku(pozadinaId: number, mime: string, tijelo: ArrayBuffer, prompt: string | null, email: string):
-  Promise<{ orijentacija: Orijentacija } | { greska: string }> {
+export async function ucitajSliku(pozadinaId: number, mime: string, tijelo: ArrayBuffer, prompt: string | null, email: string,
+  o2: { ocekivana?: Orijentacija; izvor?: "upload" | "agy" } = {}): Promise<{ orijentacija: Orijentacija } | { greska: string }> {
   const ext = MIME[mime];
   if (!ext) return { greska: `nepodržan tip ${mime || "(nepoznat)"}; samo PNG, JPEG ili WebP` };
   if (!tijelo.byteLength || tijelo.byteLength > MAX_BAJTOVA) return { greska: "prazna ili prevelika slika (najviše 8 MB)" };
@@ -69,6 +69,7 @@ export async function ucitajSliku(pozadinaId: number, mime: string, tijelo: Arra
   if (d.sirina === d.visina) return { greska: "kvadratna slika nema orijentaciju; izreži je na 4:3 ili 3:4" };
   if (Math.max(d.sirina, d.visina) / Math.min(d.sirina, d.visina) > 2.2) return { greska: "preuska slika; scena treba omjer ekrana (npr. 4:3 ili 3:4)" };
   const o = orijentacija(d);
+  if (o2.ocekivana && o !== o2.ocekivana) return { greska: `model je vratio ${o} sliku (${d.sirina}×${d.visina}), a traži se ${o2.ocekivana}` };
   const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", tijelo))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const kljuc = `pozadine/${pozadinaId}/${hash.slice(0, 16)}.${ext}`;
   const stara = await DB().prepare("SELECT r2_kljuc FROM pozadina_slike WHERE pozadina_id = ? AND orijentacija = ?")
@@ -80,9 +81,9 @@ export async function ucitajSliku(pozadinaId: number, mime: string, tijelo: Arra
   await DB().batch([
     DB().prepare("DELETE FROM pozadina_slike WHERE pozadina_id = ? AND orijentacija = ?").bind(pozadinaId, o),
     DB().prepare(
-      `INSERT INTO pozadina_slike (pozadina_id, orijentacija, r2_kljuc, sha256, mime, bajtova, sirina, visina, prompt, ucitao)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).bind(pozadinaId, o, kljuc, hash, mime, tijelo.byteLength, d.sirina, d.visina, prompt, email),
+      `INSERT INTO pozadina_slike (pozadina_id, orijentacija, r2_kljuc, sha256, mime, bajtova, sirina, visina, prompt, ucitao, izvor)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(pozadinaId, o, kljuc, hash, mime, tijelo.byteLength, d.sirina, d.visina, prompt, email, o2.izvor ?? "upload"),
     DB().prepare("UPDATE pozadine SET updated_at = datetime('now') WHERE id = ?").bind(pozadinaId),
   ]);
   if (stara) await makniDatoteku(stara.r2_kljuc);
