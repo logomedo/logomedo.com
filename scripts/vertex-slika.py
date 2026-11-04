@@ -6,13 +6,14 @@
 Na stdout ispiše putanju spremljene slike (ekstenzija prema MIME-u).
 Izlazni kodovi: 0 slika, 2 kvota/rate limit (429, posao natrag u red),
 3 privremena greška (5xx, mreža), 4 istekao/neispravan token (401, posao natrag u red),
-1 sve ostalo (blokada, nema slike, 4xx).
+1 sve ostalo (blokada, nema slike, 4xx). IMAGE_RECITATION se prvo ponovi
+s drugim seedom (do 2 puta) prije nego postane 1.
 Poruka greške ide na stderr, jedan red.
 
 Okolina: VERTEX_PROJECT, VERTEX_LOCATION (global), VERTEX_MODEL
 (gemini-nano-banana-2.1), VERTEX_THINKING (LOW), VERTEX_ASPECT (1:1).
 """
-import base64, json, mimetypes, os, sys, urllib.error, urllib.request
+import base64, json, mimetypes, os, random, sys, urllib.error, urllib.request
 
 EXT = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 
@@ -40,14 +41,34 @@ def main() -> int:
                          "never their subjects, objects or composition."})
     dijelovi.append({"text": prompt})
 
-    tijelo = {
-        "contents": [{"role": "user", "parts": dijelovi}],
-        "generationConfig": {
-            "responseModalities": ["IMAGE"],
-            "imageConfig": {"aspectRatio": os.environ.get("VERTEX_ASPECT", "1:1")},
-            "thinkingConfig": {"thinkingLevel": os.environ.get("VERTEX_THINKING", "LOW")},
-        },
+    # IMAGE_RECITATION: slika bi bila preblizu nekoj postojećoj (običan trokut, krug…). Isti prompt
+    # pada svaki put (TROKUT 4. 11.: 6/6), pa se odmah ponavlja s drugim seedom i uputom za originalnost.
+    for pokusaj in range(1 + RECITACIJA_PONOVI):
+        dio = dijelovi if not pokusaj else dijelovi + [{"text": ORIGINALNO}]
+        rc, razlog = jedan(url, token, dio, izlaz, seed=random.randrange(1, 2**31) if pokusaj else None)
+        if rc != RECITACIJA:
+            return rc
+        print(f"vertex: {razlog}, ponavljam s drugim seedom ({pokusaj + 1}/{RECITACIJA_PONOVI})", file=sys.stderr)
+    print(f"vertex: nema slike u odgovoru ({razlog}; preblizu postojećoj slici, učitaj ručno)", file=sys.stderr)
+    return 1
+
+
+RECITACIJA = -1
+RECITACIJA_PONOVI = 2
+ORIGINALNO = ("Make this an original drawing, not a copy of a common stock or clip-art image: "
+              "a hand-drawn feel, slightly uneven lines and your own proportions, while keeping every rule above.")
+
+
+def jedan(url: str, token: str, dijelovi: list, izlaz: str, seed: int | None) -> tuple[int, str]:
+    """Jedan poziv. Vraća (izlazni kod, razlog); RECITACIJA kad treba ponoviti s drugim seedom."""
+    config = {
+        "responseModalities": ["IMAGE"],
+        "imageConfig": {"aspectRatio": os.environ.get("VERTEX_ASPECT", "1:1")},
+        "thinkingConfig": {"thinkingLevel": os.environ.get("VERTEX_THINKING", "LOW")},
     }
+    if seed is not None:
+        config["seed"] = seed
+    tijelo = {"contents": [{"role": "user", "parts": dijelovi}], "generationConfig": config}
     zahtjev = urllib.request.Request(url, json.dumps(tijelo).encode(), method="POST", headers={
         "Authorization": f"Bearer {token}", "Content-Type": "application/json"})
     try:
@@ -60,10 +81,10 @@ def main() -> int:
         except Exception:
             pass
         print(f"vertex HTTP {e.code}: {poruka[:300]}", file=sys.stderr)
-        return 2 if e.code == 429 else 4 if e.code == 401 else 3 if e.code >= 500 else 1
+        return (2 if e.code == 429 else 4 if e.code == 401 else 3 if e.code >= 500 else 1), ""
     except (urllib.error.URLError, TimeoutError) as e:
         print(f"vertex mreža: {e}", file=sys.stderr)
-        return 3
+        return 3, ""
 
     kandidati = r.get("candidates") or []
     for p in (kandidati[0].get("content", {}).get("parts", []) if kandidati else []):
@@ -76,10 +97,12 @@ def main() -> int:
             print(f"tokeni ulaz={u.get('promptTokenCount', 0)} slika={u.get('candidatesTokenCount', 0)} "
                   f"razmisljanje={u.get('thoughtsTokenCount', 0)}", file=sys.stderr)
             print(put)
-            return 0
+            return 0, ""
     razlog = (kandidati[0].get("finishReason") if kandidati else None) or r.get("promptFeedback", {}).get("blockReason") or "nepoznato"
+    if "RECITATION" in razlog:
+        return RECITACIJA, razlog
     print(f"vertex: nema slike u odgovoru ({razlog})", file=sys.stderr)
-    return 1
+    return 1, razlog
 
 
 if __name__ == "__main__":
