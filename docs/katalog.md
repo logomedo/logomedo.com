@@ -262,6 +262,18 @@ stila nove riječi pa stare po `legacy_koristeno`) upisan je SQL-om koji ponavlj
 čeka do 10 min ili ga treba ponovno pokrenuti (`scripts/launchd/instaliraj.sh`).
 Od 847 poslova 732 nema `opis_za_sliku`: model dobiva samo hrvatsku riječ (rizik homonima, v. „Ručni test”).
 
+### `IMAGE_RECITATION`: jednostavni likovi (4. 11. 2026.)
+
+Vertex vrati odgovor bez slike s `finishReason = IMAGE_RECITATION` kad bi slika bila preblizu
+nekoj iz njegovih podataka. Pogađa čiste geometrijske likove: TROKUT (bojanka, dorada „Trokut je lik,
+makni ovo iza”) pao je 6/6 puta s istim promptom, dva posla po 3 pokušaja. Od `191ff48`
+`vertex-slika.py` na RECITATION odmah ponovi do 2 puta s nasumičnim `seed` i uputom „original
+drawing, hand-drawn feel”; tek onda vraća grešku „preblizu postojećoj slici, učitaj ručno”.
+Ručni poziv bez sistemskog prompta prošao je iz drugog pokušaja (trokut sa smiješkom), ali u runneru
+(sa sistemskim promptom) sva tri su opet pala. Za takve riječi je najbrži ručni upload. Ako se
+ponavlja na više riječi: jača varijacija u `ORIGINALNO` ili više ponavljanja (svaki poziv se plaća).
+Zamka pri provjeri: runner u isto vrijeme dobiva 429, a pauza se udvostručuje (1 → 2 → 4 min).
+
 ## Plan: stilovi, dodaci, referentne slike (dogovoreno 31. 10. 2026., nije napravljeno)
 
 - **Stil** (jedan): `bojanka` (SVG) i novi `ilustracija` (raster u boji); `stilovi.vektor`.
