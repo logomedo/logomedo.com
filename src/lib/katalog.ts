@@ -17,6 +17,8 @@ export interface RijecRed {
 export interface Slika {
   id: number; rijec_id: number; status: "kandidat" | "odobrena" | "odbijena"; razlog: string | null;
   prompt: string | null; model: string | null; izvor: string; created_at: string; pregledao: string | null; r2_kljuc: string;
+  /** Samo iz `rijec()`: kod i naziv stila slike. */
+  stil?: string; stil_naziv?: string;
 }
 
 export const DB = () => env.DB;
@@ -79,18 +81,22 @@ export async function rijec(slug: string) {
        WHERE rg.rijec_id = ? ORDER BY g.redoslijed`,
     ).bind(r.id),
     DB().prepare(
-      `SELECT id, rijec_id, status, razlog, prompt, model, izvor, created_at, pregledao, r2_kljuc FROM slike
-       WHERE rijec_id = ? ORDER BY CASE status WHEN 'odobrena' THEN 0 WHEN 'kandidat' THEN 1 ELSE 2 END, id DESC`,
+      `SELECT x.id, x.rijec_id, x.status, x.razlog, x.prompt, x.model, x.izvor, x.created_at, x.pregledao, x.r2_kljuc,
+         st.kod AS stil, st.naziv AS stil_naziv
+       FROM slike x JOIN stilovi st ON st.id = x.stil_id
+       WHERE x.rijec_id = ? ORDER BY CASE x.status WHEN 'odobrena' THEN 0 WHEN 'kandidat' THEN 1 ELSE 2 END, x.id DESC`,
     ).bind(r.id),
     DB().prepare(
-      "SELECT id, status, pokusaji, greska, created_at FROM generiranja WHERE rijec_id = ? AND status IN ('ceka','radi','greska') ORDER BY id DESC",
+      `SELECT q.id, q.status, q.pokusaji, q.greska, q.created_at, st.kod AS stil, st.naziv AS stil_naziv
+       FROM generiranja q JOIN stilovi st ON st.id = q.stil_id
+       WHERE q.rijec_id = ? AND q.status IN ('ceka','radi','greska') ORDER BY q.id DESC`,
     ).bind(r.id),
   ]);
   return {
     ...r,
     pozicije: pozicije.results as { oznaka: string; slug: string; pozicija: Pozicija; potvrdeno: number }[],
     slike: slike.results as unknown as Slika[],
-    red: red.results as { id: number; status: string; pokusaji: number; greska: string | null; created_at: string }[],
+    red: red.results as { id: number; status: string; pokusaji: number; greska: string | null; created_at: string; stil: string; stil_naziv: string }[],
   };
 }
 

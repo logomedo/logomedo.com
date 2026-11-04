@@ -20,6 +20,10 @@ const dodano = Astro.url.searchParams.get("dodano");
 const ucitano = Astro.url.searchParams.get("ucitano");
 const greskaUploada = Astro.url.searchParams.get("greska");
 const stilovi = await stiloviAktivni();
+// Za generiranje ponudi prvo stil koji još nema ni odobrenu ni kandidata ni posao u redu (npr. bojanka uz gotovu ilustraciju).
+const zauzet = (kod: string) => r.slike.some((s) => s.stil === kod && s.status !== "odbijena") || uRedu.some((q) => q.stil === kod);
+const zadaniStil = stilovi.find((x) => !zauzet(x.kod))?.kod ?? stilovi[0]?.kod;
+const odobrene = r.slike.filter((s) => s.status === "odobrena");
 ---
 <AdminOkvir naslov={r.rijec.toLocaleUpperCase("hr")} aktivno="katalog">
   <a class="mrvice" href={od}><Ikona ime="natrag" velicina={16} /> Natrag</a>
@@ -37,7 +41,7 @@ const stilovi = await stiloviAktivni();
       </div>
       <div class="potpis">
         <span class="rijec-tekst">{r.rijec}</span>
-        {odobrena ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> odobrena</span> : <span class="oznaka">nema odobrene</span>}
+        {odobrena ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> {odobrena.stil_naziv}</span> : <span class="oznaka">nema odobrene</span>}
         {odobrena && <a href={javniUrl(odobrena.r2_kljuc)} target="_blank" rel="noopener">javni URL</a>}
       </div>
     </div>
@@ -84,13 +88,25 @@ const stilovi = await stiloviAktivni();
         <button class="gumb mali" type="submit">Spremi</button>
       </form>
 
+      {odobrene.length > 1 && (
+        <div class="odobrene">
+          {odobrene.map((s) => (
+            <figure><div class="list"><img src={`/admin/slika/${s.id}`} alt={`${r.rijec}, ${s.stil_naziv}`} loading="lazy" /></div><figcaption class="sitno blijedo">{s.stil_naziv}</figcaption></figure>
+          ))}
+        </div>
+      )}
+
       <form class="generiraj" method="post" action="/admin/api/generiraj">
         <input type="hidden" name="rijec" value={r.id} /><input type="hidden" name="next" value={ovdje} />
+        <select name="stil" aria-label="Stil" class="g-stil">
+          {stilovi.map((x) => <option value={x.kod} selected={x.kod === zadaniStil}>{x.naziv}{uRedu.some((q) => q.stil === x.kod) ? " (u redu)" : ""}</option>)}
+        </select>
         <input type="text" name="napomena" placeholder="Dodatna uputa za ovu sliku (neobavezno)" maxlength="300" />
-        <button class="gumb glavni" type="submit" disabled={uRedu.length > 0}>
-          <Ikona ime="iskra" /> {uRedu.length ? "Već u redu" : "Generiraj novu"}
+        <button class="gumb glavni" type="submit">
+          <Ikona ime="iskra" /> Generiraj novu
         </button>
       </form>
+      {uRedu.length > 0 && <p class="sitno blijedo"><Ikona ime="red" velicina={14} /> U redu: {[...new Set(uRedu.map((q) => q.stil_naziv))].join(", ")}</p>}
       <details class="ploha upload" open={!!greskaUploada}>
         <summary><Ikona ime="slika" velicina={16} /> Dodaj sliku iz vanjskog alata</summary>
         <form method="post" action="/admin/api/upload" enctype="multipart/form-data">
@@ -106,7 +122,7 @@ const stilovi = await stiloviAktivni();
               <div class="dva">
                 <div>
                   <label for="u-stil">Stil</label>
-                  <select id="u-stil" name="stil">{stilovi.map((x) => <option value={x.kod}>{x.naziv}</option>)}</select>
+                  <select id="u-stil" name="stil">{stilovi.map((x) => <option value={x.kod} selected={x.kod === zadaniStil}>{x.naziv}</option>)}</select>
                 </div>
                 <div>
                   <label for="u-alat">Alat / model</label>
@@ -123,7 +139,7 @@ const stilovi = await stiloviAktivni();
           </div>
         </form>
       </details>
-      {greske.length > 0 && <p class="sitno" style="color:var(--greska)"><Ikona ime="upozorenje" velicina={14} /> Zadnje generiranje nije uspjelo: {greske[0].greska}</p>}
+      {greske.length > 0 && <p class="sitno" style="color:var(--greska)"><Ikona ime="upozorenje" velicina={14} /> Zadnje generiranje ({greske[0].stil_naziv}) nije uspjelo: {greske[0].greska}</p>}
     </div>
   </div>
 
@@ -135,7 +151,7 @@ const stilovi = await stiloviAktivni();
           <figure class="ploha kandidat">
             <div class="list"><img src={`/admin/slika/${s.id}`} alt={`Kandidat ${s.id}`} loading="lazy" /></div>
             <figcaption>
-              <span class="blijedo sitno">{kad(s.created_at)} · {s.izvor === "upload" ? `upload${s.model ? `: ${s.model}` : ""}` : s.model ?? s.izvor}</span>
+              <span class="blijedo sitno"><b>{s.stil_naziv}</b> · {kad(s.created_at)} · {s.izvor === "upload" ? `upload${s.model ? `: ${s.model}` : ""}` : s.model ?? s.izvor}</span>
               {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
               <form method="post" action={`/admin/api/slika/${s.id}`} class="odluka">
                 <input type="hidden" name="next" value={ovdje} />
@@ -158,7 +174,7 @@ const stilovi = await stiloviAktivni();
           <figure class="ploha kandidat">
             <div class="list"><img src={`/admin/slika/${s.id}`} alt="" loading="lazy" /></div>
             <figcaption>
-              <span class:list={["oznaka", { uspjeh: s.status === "odobrena", greska: s.status === "odbijena" }]}>{s.status}</span>
+              <span class:list={["oznaka", { uspjeh: s.status === "odobrena", greska: s.status === "odbijena" }]}>{s.status} · {s.stil_naziv}</span>
               {s.razlog && <span class="sitno blijedo">„{s.razlog}”</span>}
               {s.status === "odbijena" && (
                 <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
@@ -226,7 +242,11 @@ const stilovi = await stiloviAktivni();
   .uredi { display: grid; gap: 14px; padding: 18px; margin-top: 26px; }
   .uredi .gumb { justify-self: start; }
   .generiraj { display: flex; gap: 10px; margin-top: 16px; }
-  .generiraj input { flex: 1; }
+  .generiraj { flex-wrap: wrap; }
+  .generiraj input { flex: 1 1 200px; }
+  .generiraj .g-stil { width: auto; flex: 0 0 auto; }
+  .odobrene { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 16px; }
+  .odobrene figure { margin: 0; text-align: center; }
   .kandidati { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
   .kandidati.mali { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-top: 14px; }
   .kandidat { margin: 0; padding: 10px; }
