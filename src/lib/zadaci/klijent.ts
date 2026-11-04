@@ -61,7 +61,14 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     for (const r of p.rijeci) if (r.slike) r.slika = slikaUStilu(r.slike, stil);
   }
   const R = (id: number | null) => (id === null ? null : rijeci.get(id) ?? null);
-  const oznaci = () => { promijenjeno = true; spremiGumb.disabled = false; spremiGumb.textContent = "Spremi"; };
+  const naslovStranice = document.title;
+  /** Stanje spremanja vidljivo u svim pogledima (i na Ispisu, gdje se preuzima PDF). */
+  function stanjeSpremanja() {
+    spremiGumb.classList.toggle("z-nespremljeno", promijenjeno);
+    stanjeEl.hidden = !promijenjeno;
+    document.title = promijenjeno ? `• ${naslovStranice}` : naslovStranice;
+  }
+  const oznaci = () => { promijenjeno = true; spremiGumb.disabled = false; spremiGumb.textContent = "Spremi"; stanjeSpremanja(); };
 
   // ---------- Slike ----------
 
@@ -539,7 +546,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   // ---------- Okvir: kartice pogleda, bočna ploča, spremanje ----------
 
-  const spremiGumb = h("button", { type: "button", class: "gumb glavni", disabled: true, onclick: spremi }, "Spremljeno");
+  const spremiGumb = h("button", { type: "button", class: "gumb glavni mali", disabled: true, onclick: spremi, title: "Spremi (⌘S / Ctrl+S)" }, "Spremljeno");
+  const stanjeEl = h("span", { class: "z-stanje", hidden: true, role: "status" }, "● Promjene nisu spremljene");
   async function spremi() {
     spremiGumb.disabled = true; spremiGumb.textContent = "Spremam…";
     const o = await fetch(`/admin/api/zadatak/${z.id}`, {
@@ -550,8 +558,10 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     if (!o.ok) { spremiGumb.disabled = false; spremiGumb.textContent = "Spremi (greška)"; alert(j.error ?? `Greška ${o.status}`); return; }
     promijenjeno = false; spremiGumb.textContent = j.verzija !== z.aktivna_verzija ? `Spremljeno kao verzija ${j.verzija}` : "Spremljeno";
     z.aktivna_verzija = j.verzija;
+    stanjeSpremanja();
   }
-  addEventListener("beforeunload", (e) => { if (promijenjeno) e.preventDefault(); });
+  // returnValue uz preventDefault: stariji Safari i neki Chromiumi bez njega ne pitaju.
+  addEventListener("beforeunload", (e) => { if (promijenjeno) { e.preventDefault(); e.returnValue = ""; } });
   addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (promijenjeno) spremi(); } });
 
   function upozorenjaSvih() {
@@ -583,7 +593,6 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         p.stilovi.length > 1 ? h("label", {}, "Slike") : null,
         p.stilovi.length > 1 ? h("select", { title: "Riječ bez slike u ovom stilu uzima sliku drugog stila.", onchange: (e: Event) => { postaviStil((e.target as HTMLSelectElement).value); oznaci(); osvjezi(); } },
           ...p.stilovi.map((x) => h("option", { value: x.kod, selected: x.kod === stil }, x.naziv))) : null,
-        spremiGumb,
         z.rjesavanja > 0 ? h("p", { class: "sitno blijedo" }, `Verzija ${z.aktivna_verzija} je rješavana ${z.rjesavanja}×: spremanje otvara novu verziju.`) : null),
       upozorenja.length
         ? h("div", { class: "ploha z-upozorenja" }, h("b", {}, `Upozorenja (${upozorenja.length})`),
@@ -621,6 +630,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       pogled === "ispis" ? h("button", { type: "button", class: "gumb mali", title: "Dijalog za ispis preglednika", onclick: () => print() }, "Ispiši") : null,
       pogled === "ispis" ? h("button", { type: "button", class: "gumb glavni mali", onclick: preuzmiPdf }, "Preuzmi PDF") : null,
       pogled !== "uredi" ? h("button", { type: "button", class: "gumb mali", onclick: () => document.documentElement.requestFullscreen?.() }, "Cijeli zaslon") : null,
+      stanjeEl, spremiGumb,
     );
     if (pogled === "uredi") zamijeni(tijelo, h("div", { class: "z-raspored" }, uredi(), ploca()));
     else if (pogled === "dijete") zamijeni(tijelo, h("p", { class: "sitno blijedo z-napomena" }, "Pregled kako dijete rješava. U adminu se rješavanje ne sprema."), dijete());

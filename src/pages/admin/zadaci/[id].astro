@@ -50,6 +50,10 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-kartica:hover { color: var(--tinta); }
   .z-kartica.on { color: var(--tinta); border-color: var(--med); }
   .z-razmak { flex: 1; }
+  .z-stanje { color: var(--greska); font-size: .82rem; font-weight: 600; margin: 0 6px; }
+  .z-stanje[hidden] { display: none; }
+  .z-kartice .gumb.glavni:disabled { opacity: .55; }
+  .z-nespremljeno { box-shadow: 0 0 0 3px var(--greska-blago); }
   .z-kvacica { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 550; color: var(--blijedo); margin: 0 8px 0 0; cursor: pointer; }
   .z-napomena { margin: -8px 0 14px; }
 
