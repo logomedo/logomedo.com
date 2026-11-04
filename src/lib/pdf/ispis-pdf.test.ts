@@ -106,3 +106,11 @@ test("percepcija: 4 reda po stranici, bez natpisa, siva slika ima svoj URL", asy
   const b = await napraviPdf(d, new Map(), fontovi);
   assert.equal((await PDFDocument.load(b)).getPageCount(), 2);
 });
+
+test("samostalan zadatak: prva stranica 3 reda odabira, ostale 4 (bez zaglavlja)", async () => {
+  const stavke = Array.from({ length: 11 }, () => ({ zadana: 1, ponudeno: [2, 3, 4], tocno: 0 }));
+  const d = dokumentZadatka({ vrsta: "odabir", naslov: "Uparivanje", uputa: "Zaokruži", sadrzaj: { odnos: "rima", stavke } }, rijeci, true);
+  assert.deepEqual(d.stranice.map((s) => (s.tijelo as { redovi: unknown[] }).redovi.length), [3, 4, 4]);
+  const u = dokumentZadatka({ vrsta: "uljez", naslov: "", uputa: "", sadrzaj: { odnos: "rima", stavke: Array.from({ length: 9 }, () => ({ slike: [1, 2, 3, 4], uljez: 0 })) } }, rijeci, true);
+  assert.deepEqual(u.stranice.map((s) => (s.tijelo as { redovi: unknown[] }).redovi.length), [4, 5]);
+});

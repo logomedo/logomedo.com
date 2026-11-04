@@ -50,10 +50,17 @@ const urlPozadine = (pozadine: PozadinaPdf[], id: number | null) => {
 };
 
 const komadi = <T>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
+/** Prvi komad `prvi`, ostali `ostali` (prva stranica ima zaglavlje, ostale ne). */
+export const komadiSPrvim = <T>(a: T[], prvi: number, ostali: number): T[][] =>
+  a.length <= prvi ? (a.length ? [a] : []) : [a.slice(0, prvi), ...komadi(a.slice(prvi), ostali)];
 export const VELIKO = (s: string) => s.toLocaleUpperCase("hr");
 
-/** Stranice (bez zaglavlja) jednog zadatka. */
-export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecPdf>, sRijecima = true, pozadine: PozadinaPdf[] = []): TijeloPdf[] {
+/**
+ * Stranice (bez zaglavlja) jednog zadatka. `nastavakBezZaglavlja`: samo prva stranica ima naslov, uputu
+ * i ime (samostalan zadatak), pa od druge stane red više (odabir 3 → 4, uljez i percepcija 4 → 5).
+ */
+export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecPdf>, sRijecima = true, pozadine: PozadinaPdf[] = [], nastavakBezZaglavlja = false): TijeloPdf[] {
+  const dijeli = <T>(a: T[], n: number) => (nastavakBezZaglavlja ? komadiSPrvim(a, n, n + 1) : komadi(a, n));
   const sl = (id: number | null): SlikaPdf => {
     const r = id === null ? undefined : rijeci.get(id);
     if (!r) return { url: null, rijec: "?", natpis: "" };
@@ -61,11 +68,11 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
     return { url: r.slika, rijec: VELIKO(r.rijec), natpis: sRijecima && r.slika ? VELIKO(r.rijec) : "" };
   };
   if (vrsta === "odabir")
-    return komadi((s as Odabir).stavke, 3).map((k) => ({ vrsta: "odabir", redovi: k.map((x) => ({ zadana: sl(x.zadana), ponudeno: x.ponudeno.map(sl) })) }));
+    return dijeli((s as Odabir).stavke, 3).map((k) => ({ vrsta: "odabir", redovi: k.map((x) => ({ zadana: sl(x.zadana), ponudeno: x.ponudeno.map(sl) })) }));
   if (vrsta === "uljez")
-    return komadi((s as Uljez).stavke, 4).map((k) => ({ vrsta: "uljez", redovi: k.map((x) => x.slike.map(sl)) }));
+    return dijeli((s as Uljez).stavke, 4).map((k) => ({ vrsta: "uljez", redovi: k.map((x) => x.slike.map(sl)) }));
   if (vrsta === "percepcija")
-    return komadi((s as Percepcija).stavke, 4).map((k) => ({
+    return dijeli((s as Percepcija).stavke, 4).map((k) => ({
       vrsta: "percepcija",
       redovi: k.map((x) => x.polja.map((p) => {
         const o = sl(p.rijec_id);
@@ -88,7 +95,7 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
 
 /** Samostalan zadatak (admin): naslov, uputa i ime na prvoj stranici. */
 export function dokumentZadatka(z: { vrsta: Vrsta; naslov: string; uputa: string; sadrzaj: Sadrzaj }, rijeci: RijecPdf[], sRijecima: boolean, pozadine: PozadinaPdf[] = []): DokumentPdf {
-  const tijela = tijelaZadatka(z.vrsta, z.sadrzaj, new Map(rijeci.map((r) => [r.id, r])), sRijecima, pozadine);
+  const tijela = tijelaZadatka(z.vrsta, z.sadrzaj, new Map(rijeci.map((r) => [r.id, r])), sRijecima, pozadine, true);
   const naslov = z.naslov || VRSTE[z.vrsta].naziv;
   return {
     naslov, podnozje: "logomedo.com",
