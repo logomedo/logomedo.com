@@ -76,7 +76,7 @@ export function scena(o: OpcijeScene): HTMLElement {
     img.src = poz.slika.url; img.alt = o.pozadina!.naziv; img.draggable = false;
     dodaj(korijen, img);
   } else {
-    dodaj(korijen, el("div", "scena-pozadina prazna", "Pozadina nije odabrana"));
+    dodaj(korijen, el("div", "scena-pozadina prazna", "Situacija nije odabrana"));
   }
 
   const zv = el("button", "zvucnik");

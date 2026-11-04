@@ -92,7 +92,7 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
             <a href={`/admin/zadaci/${z.id}`}><b>{z.naslov || VRSTE[z.vrsta].naziv}</b></a>
             <span class="oznaka">{VRSTE[z.vrsta].naziv}</span>
             {z.vrsta === "listic" ? <span class="oznaka" title="Listić je samo za ispis">samo ispis</span>
-              : brojEkrana([z]) === 0 ? <a class="oznaka greska" href={`/admin/zadaci/${z.id}`} title="Otvori zadatak: nedostaje pozadina, slika ili točan odgovor">nije spreman za igru</a>
+              : brojEkrana([z]) === 0 ? <a class="oznaka greska" href={`/admin/zadaci/${z.id}`} title="Otvori zadatak: nedostaje situacija, slika ili točan odgovor">nije spreman za igru</a>
               : <span class="oznaka uspjeh">{brojEkrana([z])} ekr.</span>}
           </li>
         ))}

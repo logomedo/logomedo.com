@@ -200,7 +200,7 @@ ocjena: svaki gumb je jedna odluka: točan dirnut ili ometač nedirnut = točno
   (više od 4 gumba). Mjere su u `cqmin`/`cqw` kontejnera scene, pa isto izgleda u adminu i na tabletu.
 - **Jedan prikaz za admin i igru:** `src/lib/scena-prikaz.ts` + `src/lib/scena.css`. Admin
   „Dijete rješava” crta scenu u okviru tableta 4:3 ili 3:4 (prekidač), s brojem pogođenih i krivih.
-- **Pozadine** (`/admin/pozadine`, `src/lib/pozadine.ts`): admin ih učitava i odmah su javne (isti
+- **Pozadine**, u sučelju **Situacije** (`/admin/situacije`, kartica u Katalogu; `/admin/pozadine` preusmjerava; `src/lib/pozadine.ts`): admin ih učitava i odmah su javne (isti
   ključ `pozadine/<id>/<hash16>.<ext>` u privatnom i javnom bucketu, bez pregleda kandidata).
   Zamjena slike iste orijentacije briše staru iz oba bucketa i iz edge cachea. Brisanje je meko i
   dopušteno samo dok je nijedan zadatak ne koristi. Admin slike čita kroz `/cdn/<ključ>` (radi i

@@ -1,6 +1,7 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
+import KatalogKartice from "../../components/KatalogKartice.astro";
 import { glasovi, stilIzUrla, stiloviAktivni, ukupno, ukupnoSvihStilova } from "../../lib/katalog";
 
 const s = await stilIzUrla(Astro.url);
@@ -15,6 +16,7 @@ const O = 2 * Math.PI * 26;
 <AdminOkvir naslov="Katalog" aktivno="katalog">
   <div class="naslov">
     <div>
+      <KatalogKartice aktivno="rijeci" />
       <h1>Katalog slika</h1>
       <p class="podnaslov">{u.rijeci} riječi · model <span class="mono">{s.model}</span></p>
       <nav class="stilovi-prekidac" aria-label="Stil">

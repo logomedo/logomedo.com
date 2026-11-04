@@ -182,11 +182,11 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const pomakni = (i: number, d: number) => { const g = s.gumbi; [g[i], g[i + d]] = [g[i + d], g[i]]; oznaci(); osvjezi(); };
     return h("div", { class: "z-uredi" },
       h("div", { class: "ploha z-scena-dio" },
-        h("div", { class: "z-dio-glava" }, h("b", {}, "1. Pozadina"),
-          h("a", { class: "gumb mali tihi", href: "/admin/pozadine", target: "_blank" }, "Upravljaj pozadinama ↗")),
+        h("div", { class: "z-dio-glava" }, h("b", {}, "1. Situacija"),
+          h("a", { class: "gumb mali tihi", href: "/admin/situacije", target: "_blank" }, "Upravljaj situacijama ↗")),
         pozadine.length
           ? h("div", { class: "z-pozadine" }, ...pozadine.map(sliciPozadine))
-          : h("p", { class: "blijedo" }, "Još nema pozadina. ", h("a", { href: "/admin/pozadine", target: "_blank" }, "Dodaj prvu"), " pa osvježi ovu stranicu."),
+          : h("p", { class: "blijedo" }, "Još nema situacija. ", h("a", { href: "/admin/situacije", target: "_blank" }, "Dodaj prvu"), " pa osvježi ovu stranicu."),
         odabrana && (!odabrana.uspravno || !odabrana.vodoravno)
           ? h("p", { class: "sitno z-greska-polja" }, `„${odabrana.naziv}” nema ${odabrana.uspravno ? "vodoravnu" : "uspravnu"} sliku: na takvom ekranu se prikazuje ona koja postoji, s obrubom.`) : null),
       h("div", { class: "ploha z-scena-dio" },
@@ -386,7 +386,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
           onclick: () => { orijentacijaPregleda = o; resetRjesavanja(); osvjezi(); } }, o === "vodoravno" ? "Tablet vodoravno" : "Tablet uspravno")),
         h("button", { type: "button", class: "gumb mali tihi", onclick: () => { resetRjesavanja(); osvjezi(); } }, "Ponovi"),
         rezultat),
-      poz && !poz.tocna ? h("p", { class: "sitno z-greska-polja" }, `Pozadina nema ${orijentacijaPregleda === "uspravno" ? "uspravnu" : "vodoravnu"} sliku: prikazana je druga, s obrubom.`) : null,
+      poz && !poz.tocna ? h("p", { class: "sitno z-greska-polja" }, `Situacija nema ${orijentacijaPregleda === "uspravno" ? "uspravnu" : "vodoravnu"} sliku: prikazana je druga, s obrubom.`) : null,
       okvir);
   }
 

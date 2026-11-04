@@ -1,0 +1,19 @@
+---
+// Kartice kataloga: slike riječi i situacije (pozadine scena; u kodu i bazi i dalje `pozadine`).
+interface Props { aktivno: "rijeci" | "situacije" }
+const { aktivno } = Astro.props;
+const kartice = [
+  { kod: "rijeci", href: "/admin", tekst: "Slike riječi" },
+  { kod: "situacije", href: "/admin/situacije", tekst: "Situacije" },
+] as const;
+---
+<nav class="kartice" aria-label="Katalog">
+  {kartice.map((k) => <a href={k.href} class:list={{ aktivno: k.kod === aktivno }} aria-current={k.kod === aktivno ? "page" : undefined}>{k.tekst}</a>)}
+</nav>
+
+<style>
+  .kartice { display: flex; gap: 20px; margin-bottom: 14px; border-bottom: 1px solid var(--rub); }
+  .kartice a { padding: 6px 2px 9px; margin-bottom: -1px; border-bottom: 2px solid transparent; text-decoration: none; color: var(--blijedo); font-weight: 600; font-size: .9rem; }
+  .kartice a:hover { color: var(--tinta); }
+  .kartice a.aktivno { color: var(--tinta); border-bottom-color: var(--med); }
+</style>

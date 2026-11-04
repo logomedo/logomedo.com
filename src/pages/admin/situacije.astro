@@ -1,0 +1,225 @@
+---
+// Pozadine scena: situacija (naziv, opis) s uspravnom i vodoravnom slikom. Stranica sama
+// obrađuje POST (kao /admin/red). Provjere su i ovdje (server) i u pregledniku prije slanja.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import KatalogKartice from "../../components/KatalogKartice.astro";
+import Ikona from "../../components/Ikona.astro";
+import { korisnikId } from "../../lib/zadaci/baza";
+import { koristi, makniSliku, obrisi, ORIJENTACIJE, popis, stvori, ucitajSliku, uredi, type Orijentacija } from "../../lib/pozadine";
+
+const NAZIV_O: Record<Orijentacija, string> = { uspravno: "Uspravna", vodoravno: "Vodoravna" };
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const email = Astro.locals.admin!.email;
+  const akcija = String(f.get("akcija"));
+  const id = Number(f.get("id")) || 0;
+  const natrag = (k: "greska" | "ok", poruka: string, sidro = id) =>
+    Astro.redirect(`/admin/situacije?${k}=${encodeURIComponent(poruka)}${sidro ? `#p${sidro}` : ""}`, 303);
+  const naziv = String(f.get("naziv") ?? "").trim();
+  const opis = String(f.get("opis") ?? "");
+  const prompt = String(f.get("prompt") ?? "").trim().slice(0, 4000) || null;
+  const datoteke = f.getAll("slika").filter((x): x is File => x instanceof File && x.size > 0);
+
+  async function ucitajSve(pid: number) {
+    const greske: string[] = [];
+    const vidjeno = new Set<string>();
+    for (const d of datoteke.slice(0, 2)) {
+      const r = await ucitajSliku(pid, d.type, await d.arrayBuffer(), prompt, email);
+      if ("greska" in r) greske.push(`${d.name}: ${r.greska}`);
+      else if (vidjeno.has(r.orijentacija)) greske.push(`${d.name}: obje slike su ${r.orijentacija}; druga je zamijenila prvu`);
+      else vidjeno.add(r.orijentacija);
+    }
+    return greske;
+  }
+
+  if (akcija === "nova") {
+    if (naziv.length < 3) return natrag("greska", "Naziv mora imati barem 3 znaka.", 0);
+    if (!datoteke.length) return natrag("greska", "Odaberi barem jednu sliku (uspravnu ili vodoravnu).", 0);
+    if (datoteke.length > 2) return natrag("greska", "Najviše dvije slike: jedna uspravna i jedna vodoravna.", 0);
+    const pid = await stvori(naziv, opis, await korisnikId(email));
+    const greske = await ucitajSve(pid);
+    return greske.length ? natrag("greska", greske.join(" · "), pid) : natrag("ok", `Situacija „${naziv}” je dodana.`, pid);
+  }
+  if (!id) return natrag("greska", "Nepoznata situacija.", 0);
+  if (akcija === "uredi") {
+    if (naziv.length < 3) return natrag("greska", "Naziv mora imati barem 3 znaka.");
+    await uredi(id, naziv, opis);
+    if (datoteke.length > 2) return natrag("greska", "Najviše dvije slike.");
+    const greske = await ucitajSve(id);
+    return greske.length ? natrag("greska", greske.join(" · ")) : natrag("ok", "Spremljeno.");
+  }
+  if (akcija === "makni") {
+    const o = String(f.get("orijentacija")) as Orijentacija;
+    if (ORIJENTACIJE.includes(o)) await makniSliku(id, o);
+    return natrag("ok", "Slika je maknuta.");
+  }
+  if (akcija === "obrisi") {
+    const n = await koristi(id);
+    if (n) return natrag("greska", `Situaciju koristi ${n} zadatak(a); prvo im promijeni situaciju.`);
+    await obrisi(id);
+    return natrag("ok", "Situacija je obrisana.", 0);
+  }
+  return natrag("greska", "Nepoznata radnja.");
+}
+
+const q = Astro.url.searchParams;
+const pozadine = await popis();
+const koriste = new Map(await Promise.all(pozadine.map(async (p) => [p.id, await koristi(p.id)] as const)));
+---
+<AdminOkvir naslov="Situacije" aktivno="katalog">
+  <div class="naslov"><div>
+    <KatalogKartice aktivno="situacije" />
+    <h1>Situacije</h1>
+    <p class="podnaslov">Slike situacija za vrstu zadatka Scena. Svaka ima uspravnu i vodoravnu sliku; igra prikazuje onu koja odgovara ekranu.</p>
+  </div></div>
+
+  {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
+  {q.get("ok") && <div class="obavijest uspjeh"><Ikona ime="kvacica" /> {q.get("ok")}</div>}
+
+  <details class="ploha nova" open={!pozadine.length}>
+    <summary><Ikona ime="plus" /> Nova situacija</summary>
+    <form method="post" enctype="multipart/form-data" class="forma-pozadine" novalidate>
+      <input type="hidden" name="akcija" value="nova" />
+      <div class="dva">
+        <div>
+          <label>Naziv situacije</label>
+          <input type="text" name="naziv" required minlength="3" maxlength="120" placeholder="npr. Pečemo kolačiće" />
+        </div>
+        <div>
+          <label>Opis <span class="blijedo">(što je na slici)</span></label>
+          <input type="text" name="opis" maxlength="1000" placeholder="kuhinja, obitelj mijesi tijesto, kalupi, valjak…" />
+        </div>
+      </div>
+      <label>Slike <span class="blijedo">(jedna ili dvije; orijentacija se prepozna sama)</span></label>
+      <input type="file" name="slika" accept="image/png,image/jpeg,image/webp" multiple required />
+      <div class="pregled-datoteka"></div>
+      <label>Kako su nastale <span class="blijedo">(prompt ili alat, nije obavezno)</span></label>
+      <textarea name="prompt" rows="2" maxlength="4000"></textarea>
+      <p class="greska-forme" hidden></p>
+      <div class="akcije"><button class="gumb glavni" type="submit"><Ikona ime="kvacica" /> Dodaj situaciju</button></div>
+    </form>
+  </details>
+
+  <div class="popis">
+    {pozadine.map((p) => (
+      <section class="ploha pozadina" id={`p${p.id}`}>
+        <div class="slike">
+          {ORIJENTACIJE.map((o) => {
+            const s = p[o];
+            return (
+              <figure class:list={["sl", o, { prazna: !s }]}>
+                {s ? <a href={s.url} target="_blank" rel="noopener"><img src={s.url} alt={`${p.naziv}, ${o}`} loading="lazy" /></a>
+                  : <div class="nema">nema {o === "uspravno" ? "uspravne" : "vodoravne"}</div>}
+                <figcaption>
+                  {NAZIV_O[o]}{s && <span class="blijedo"> · {s.sirina}×{s.visina}</span>}
+                  {s && (
+                    <form method="post" class="inline" data-potvrda={`Maknuti ${o === "uspravno" ? "uspravnu" : "vodoravnu"} sliku?`}>
+                      <input type="hidden" name="akcija" value="makni" /><input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="orijentacija" value={o} />
+                      <button class="gumb mali tihi opasno" type="submit">Makni</button>
+                    </form>
+                  )}
+                </figcaption>
+              </figure>
+            );
+          })}
+        </div>
+        <form method="post" enctype="multipart/form-data" class="forma-pozadine podaci" novalidate>
+          <input type="hidden" name="akcija" value="uredi" /><input type="hidden" name="id" value={p.id} />
+          <label>Naziv</label>
+          <input type="text" name="naziv" value={p.naziv} required minlength="3" maxlength="120" />
+          <label>Opis</label>
+          <input type="text" name="opis" value={p.opis ?? ""} maxlength="1000" />
+          <label>Dodaj ili zamijeni sliku</label>
+          <input type="file" name="slika" accept="image/png,image/jpeg,image/webp" multiple />
+          <div class="pregled-datoteka"></div>
+          <input type="hidden" name="prompt" value="" />
+          <p class="greska-forme" hidden></p>
+          <p class="sitno blijedo">
+            {koriste.get(p.id) ? `Koristi ${koriste.get(p.id)} zadatak(a).` : "Nijedan zadatak je ne koristi."}
+            {!p.uspravno || !p.vodoravno ? " Bez obje orijentacije igra pokazuje onu koja postoji (obrubljenu)." : ""}
+          </p>
+          <div class="akcije">
+            <button class="gumb glavni mali" type="submit">Spremi</button>
+          </div>
+        </form>
+        <form method="post" class="brisi" data-potvrda={`Obrisati situaciju „${p.naziv}”?`}>
+          <input type="hidden" name="akcija" value="obrisi" /><input type="hidden" name="id" value={p.id} />
+          <button class="gumb mali tihi opasno" type="submit" disabled={!!koriste.get(p.id)}
+            title={koriste.get(p.id) ? "Situaciju koriste zadaci" : undefined}>Obriši</button>
+        </form>
+      </section>
+    ))}
+    {!pozadine.length && <p class="blijedo">Još nema situacija.</p>}
+  </div>
+</AdminOkvir>
+
+<script>
+  import { provjeriDatoteke } from "../../lib/pozadine-klijent";
+
+  for (const f of document.querySelectorAll<HTMLFormElement>("form[data-potvrda]")) {
+    f.addEventListener("submit", (e) => { if (!confirm(f.dataset.potvrda!)) e.preventDefault(); });
+  }
+
+  for (const forma of document.querySelectorAll<HTMLFormElement>(".forma-pozadine")) {
+    const ulaz = forma.querySelector<HTMLInputElement>("input[type=file]")!;
+    const kutija = forma.querySelector<HTMLElement>(".pregled-datoteka")!;
+    const greska = forma.querySelector<HTMLElement>(".greska-forme")!;
+    const gumb = forma.querySelector<HTMLButtonElement>("button[type=submit]")!;
+    let ishod: Awaited<ReturnType<typeof provjeriDatoteke>> = { greske: [], stavke: [] };
+
+    const pokazi = (poruke: string[]) => { greska.hidden = !poruke.length; greska.textContent = poruke.join(" "); };
+    ulaz.addEventListener("change", async () => {
+      ishod = await provjeriDatoteke([...(ulaz.files ?? [])]);
+      kutija.replaceChildren(...ishod.stavke.map((s) => {
+        const el = document.createElement("figure");
+        el.className = `prev ${s.orijentacija ?? ""}`;
+        if (s.url) { const i = document.createElement("img"); i.src = s.url; (el as any).append(i); }
+        const c = document.createElement("figcaption");
+        c.textContent = s.opis;
+        (el as any).append(c);
+        return el;
+      }));
+      pokazi(ishod.greske);
+    });
+    forma.addEventListener("submit", (e) => {
+      const poruke = [...ishod.greske];
+      const naziv = forma.querySelector<HTMLInputElement>("input[name=naziv]")!;
+      if (naziv.value.trim().length < 3) poruke.unshift("Naziv mora imati barem 3 znaka.");
+      if (ulaz.required && !ulaz.files?.length) poruke.push("Odaberi barem jednu sliku.");
+      if (poruke.length) { e.preventDefault(); pokazi(poruke); (poruke[0].startsWith("Naziv") ? naziv : ulaz).focus(); return; }
+      gumb.disabled = true; gumb.textContent = "Učitavam…";
+    });
+  }
+</script>
+
+<style>
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+  .obavijest.uspjeh { background: var(--uspjeh-blago); color: var(--uspjeh); }
+  .nova { padding: 16px 18px; margin-bottom: 22px; }
+  .nova summary { cursor: pointer; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+  .nova form { margin-top: 14px; }
+  .forma-pozadine { display: flex; flex-direction: column; gap: 6px; }
+  .forma-pozadine label { margin-top: 8px; font-weight: 600; font-size: .88rem; }
+  .dva { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .dva { grid-template-columns: 1fr; } }
+  .akcije { margin-top: 12px; display: flex; gap: 8px; }
+  .greska-forme { margin: 8px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-weight: 600; font-size: .88rem; }
+  .pregled-datoteka { display: flex; gap: 12px; flex-wrap: wrap; }
+  .pregled-datoteka :global(.prev) { margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: .78rem; max-width: 260px; }
+  .pregled-datoteka :global(.prev img) { height: 120px; width: auto; border-radius: 8px; border: 1px solid var(--rub); object-fit: contain; align-self: flex-start; }
+
+  .popis { display: flex; flex-direction: column; gap: 16px; }
+  .pozadina { padding: 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .pozadina { grid-template-columns: 1fr; } }
+  .slike { display: flex; gap: 12px; align-items: flex-end; }
+  .sl { margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: .8rem; font-weight: 600; }
+  .sl img, .sl .nema { display: block; border-radius: 10px; border: 1px solid var(--rub); object-fit: cover; background: var(--povrsina-2); }
+  .sl.uspravno img, .sl.uspravno .nema { width: 120px; height: 160px; }
+  .sl.vodoravno img, .sl.vodoravno .nema { width: 214px; height: 160px; }
+  .sl .nema { display: grid; place-items: center; border-style: dashed; color: var(--vrlo-blijedo); font-weight: 500; text-align: center; padding: 8px; }
+  .sl figcaption { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .inline { display: inline; margin: 0; }
+  .brisi { margin: 0; }
+</style>

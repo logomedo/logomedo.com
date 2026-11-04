@@ -56,7 +56,7 @@ test("scena: normalizacija, provjera i ocjena po gumbu", () => {
   assert.deepEqual(ocijeni("scena", s, [{ gumb: 0 }, { gumb: 2 }]), { tocnih: 2, ukupno: 3 });
   assert.deepEqual(ocijeni("scena", s, [{ gumb: 0 }]), { tocnih: 3, ukupno: 3 });
   const bez = normaliziraj("scena", { gumbi: [{ rijec_id: 1, tocno: true }, { rijec_id: 1, tocno: true }] }) as Scena;
-  assert.deepEqual(provjeri("scena", bez, M).map((u) => u.poruka), ["Nije odabrana pozadina.", "Nema ometača: sve slike su točne.", "KRAVA je dvaput."]);
+  assert.deepEqual(provjeri("scena", bez, M).map((u) => u.poruka), ["Nije odabrana situacija.", "Nema ometača: sve slike su točne.", "KRAVA je dvaput."]);
 });
 
 test("percepcija: generirani redovi prolaze provjeru u obje varijante", () => {

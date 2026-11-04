@@ -234,7 +234,7 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
   }
   if (v === "scena") {
     const sc = s as Scena;
-    if (sc.pozadina_id === null) u.push({ gdje: "scena", poruka: "Nije odabrana pozadina." });
+    if (sc.pozadina_id === null) u.push({ gdje: "scena", poruka: "Nije odabrana situacija." });
     const pune = sc.gumbi.filter((g) => g.rijec_id !== null);
     if (pune.length < sc.gumbi.length) u.push({ gdje: "scena", poruka: `${sc.gumbi.length - pune.length} gumb(a) bez slike: u igri se ne prikazuju.` });
     if (!pune.some((g) => g.tocno)) u.push({ gdje: "scena", poruka: "Nijedna slika nije označena kao točna." });
