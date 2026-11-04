@@ -63,6 +63,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
         {odobrena ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> {odobrena.stil_naziv}</span> : <span class="oznaka">nema odobrene</span>}
         {odobrena && <a href={javniUrl(odobrena.r2_kljuc)} target="_blank" rel="noopener">javni URL</a>}
       </div>
+      {odobrena && <PremjestiStil slika={odobrena} stilovi={stilovi} next={ovdje} />}
     </div>
 
     <div class="detalji">
@@ -119,7 +120,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
       {odobrene.length > 1 && (
         <div class="odobrene">
           {odobrene.map((s) => (
-            <figure><div class="list"><img src={`/admin/slika/${s.id}`} alt={`${r.rijec}, ${s.stil_naziv}`} loading="lazy" /></div><figcaption class="sitno blijedo">{s.stil_naziv}</figcaption></figure>
+            <figure><div class="list"><img src={`/admin/slika/${s.id}`} alt={`${r.rijec}, ${s.stil_naziv}`} loading="lazy" /></div><figcaption class="sitno blijedo">{s.stil_naziv}<PremjestiStil slika={s} stilovi={stilovi} next={ovdje} /></figcaption></figure>
           ))}
         </div>
       )}
