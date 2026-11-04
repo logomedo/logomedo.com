@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fonemi, pojave, slug } from "./fonemi.ts";
+import { fonemi, oznakaGlasa, pojave, slug } from "./fonemi.ts";
 
 const G = ["C", "Č", "L", "R", "S", "Š", "Z", "Ž"];
 const p = (r: string) => pojave(r, G).map((x) => `${x.glas}:${x.pozicija}`).sort();
@@ -23,4 +23,13 @@ test("slug razlikuje kvačice", () => {
   assert.notEqual(slug("koš"), slug("kos"));
   assert.equal(slug("Morski pas"), "morski-pas");
   assert.equal(slug("đak"), "djak");
+});
+
+test("oznaka glasa: jedno slovo ili dvoslov, velikim slovima", () => {
+  assert.equal(oznakaGlasa(" k "), "K");
+  assert.equal(oznakaGlasa("dž"), "DŽ");
+  assert.equal(oznakaGlasa("Lj"), "LJ");
+  assert.equal(oznakaGlasa("ks"), null);
+  assert.equal(oznakaGlasa("x"), null);
+  assert.equal(oznakaGlasa(""), null);
 });

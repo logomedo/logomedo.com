@@ -68,3 +68,9 @@ export function slug(s: string): string {
     .normalize("NFKD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
+
+/** Oznaka glasa iz unosa („k”, „ Dž ”) ili null ako to nije jedan hrvatski glas. */
+export function oznakaGlasa(unos: string): string | null {
+  const s = unos.trim().toLocaleUpperCase("hr");
+  return /^(DŽ|LJ|NJ|[A-ZČĆĐŠŽ])$/.test(s) && !["Q", "W", "X", "Y"].includes(s) ? s : null;
+}

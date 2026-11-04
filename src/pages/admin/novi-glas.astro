@@ -1,0 +1,54 @@
+---
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { DB } from "../../lib/katalog";
+
+const q = Astro.url.searchParams;
+const { results: glasovi } = await DB().prepare("SELECT oznaka, skupina FROM glasovi ORDER BY redoslijed").all<{ oznaka: string; skupina: string | null }>();
+const kategorije = [...new Set(glasovi.map((g) => g.skupina).filter(Boolean))] as string[];
+---
+<AdminOkvir naslov="Novi glas" aktivno="katalog">
+  <a class="mrvice" href="/admin"><Ikona ime="natrag" velicina={16} /> Katalog</a>
+  <div class="naslov"><div>
+    <h1>Novi glas</h1>
+    <p class="podnaslov">Već u katalogu: {glasovi.map((g) => g.oznaka).join(", ")}. Riječi koje imaju novi glas odmah se pojave pod njim, označene kao „izvedeno”.</p>
+  </div></div>
+
+  {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
+
+  <form class="ploha forma" method="post" action="/admin/api/novi-glas">
+    <div class="dva">
+      <div>
+        <label for="g-oznaka">Glas</label>
+        <input id="g-oznaka" class="slovo" type="text" name="oznaka" value={q.get("oznaka") ?? ""} required maxlength="2" autocomplete="off"
+          spellcheck="false" autofocus pattern="[a-zA-ZčćđšžČĆĐŠŽ]{1,2}" title="Jedno slovo ili dvoslov (DŽ, LJ, NJ)" placeholder="K" />
+        <p class="pomoc">Jedno slovo ili DŽ, LJ, NJ.</p>
+      </div>
+      <div>
+        <label for="g-skupina">Kategorija</label>
+        <input id="g-skupina" type="text" name="skupina" value={q.get("skupina") ?? ""} maxlength="30" list="kategorije" autocomplete="off" placeholder="npr. velari" />
+        <datalist id="kategorije">{[...kategorije, "velari", "plozivi", "nazali", "frikativi", "afrikate"].filter((k, i, a) => a.indexOf(k) === i).map((k) => <option value={k} />)}</datalist>
+        <p class="pomoc">Postojeća ({kategorije.join(", ")}) ili nova. Glasovi iste kategorije stoje zajedno na katalogu.</p>
+      </div>
+    </div>
+
+    <label class="kvacica"><input type="checkbox" name="skupine" value="1" /> Ima poziciju „konsonantske skupine” (kao R: KRUH, KLUPA)</label>
+
+    <div class="akcije">
+      <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Dodaj glas</button>
+      <a class="gumb tihi" href="/admin">Odustani</a>
+    </div>
+  </form>
+</AdminOkvir>
+
+<style>
+  .forma { display: grid; gap: 22px; padding: 26px; max-width: 760px; }
+  .slovo { font-family: var(--font-slova); font-size: 1.6rem; font-weight: 600; text-transform: uppercase; padding: 10px 14px; max-width: 120px; }
+  .pomoc { margin: 6px 0 0; font-size: .78rem; color: var(--blijedo); }
+  .dva { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+  @media (max-width: 640px) { .dva { grid-template-columns: 1fr; } .forma { padding: 18px; } }
+  .kvacica { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-size: .92rem; font-weight: 550; color: var(--tinta); cursor: pointer; }
+  .kvacica input { accent-color: var(--med); width: 16px; height: 16px; margin: 0; }
+  .akcije { display: flex; gap: 10px; }
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+</style>

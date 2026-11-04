@@ -25,8 +25,9 @@ const bezSlike = sve.filter((r) => (!p || r.pozicija === p) && !r.odobrena_id &&
 const odobreno = new Set(sve.filter((r) => r.odobrena_id).map((r) => r.id)).size;
 const ukupnoRijeci = new Set(sve.map((r) => r.id)).size;
 const dodano = Astro.url.searchParams.get("dodano");
+const novi = Astro.url.searchParams.get("novi");
 const url = (izmjena: Record<string, string | null>) => {
-  const u = new URL(Astro.url); u.searchParams.delete("dodano");
+  const u = new URL(Astro.url); u.searchParams.delete("dodano"); u.searchParams.delete("novi");
   for (const [k, v] of Object.entries(izmjena)) v ? u.searchParams.set(k, v) : u.searchParams.delete(k);
   return u.pathname + u.search;
 };
@@ -34,12 +35,13 @@ const ovdje = url({});
 ---
 <AdminOkvir naslov={`Glas ${g.oznaka}`} aktivno="katalog">
   <a class="mrvice" href={s.kod === "bojanka" ? "/admin" : `/admin?stil=${s.kod}`}><Ikona ime="natrag" velicina={16} /> Katalog</a>
+  {novi !== null && <div class="obavijest"><Ikona ime="kvacica" /> Glas {g.oznaka} je dodan. {Number(novi) ? `Iz pravopisa je izvedeno ${novi} pojava u postojećim riječima; potvrdi ih ili dodaj nove riječi.` : "Nijedna postojeća riječ ga nema; dodaj riječi preko „Nova riječ”."}</div>}
   <div class="naslov">
     <div class="glava">
       <span class="veliko-slovo">{g.oznaka}</span>
       <div>
         <h1>Glas {g.oznaka}</h1>
-        <p class="podnaslov">{g.skupina} · {ukupnoRijeci} riječi · {odobreno} s odobrenom slikom ({s.naziv.toLowerCase()})</p>
+        <p class="podnaslov">{g.skupina ?? "bez kategorije"} · {ukupnoRijeci} riječi · {odobreno} s odobrenom slikom ({s.naziv.toLowerCase()})</p>
       </div>
     </div>
     <form method="post" action="/admin/api/generiraj">
