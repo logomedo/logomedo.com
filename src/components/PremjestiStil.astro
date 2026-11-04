@@ -1,5 +1,6 @@
 ---
 // Slika spremljena u krivom stilu prelazi u drugi (bojanka ↔ ilustracija); status ostaje isti.
+// Stoji i u uskim ćelijama (galerija odobrenih, 110 px), pa se tekst lomi i gumb ne izlazi iz roditelja.
 interface Props { slika: { id: number; stil?: string }; stilovi: { kod: string; naziv: string }[]; next: string }
 const { slika, stilovi, next } = Astro.props;
 const drugi = stilovi.filter((x) => x.kod !== slika.stil);
@@ -7,9 +8,17 @@ const drugi = stilovi.filter((x) => x.kod !== slika.stil);
 {drugi.length > 0 && (
   <form method="post" action={`/admin/api/slika/${slika.id}`} class="premjesti-stil">
     <input type="hidden" name="next" value={next} /><input type="hidden" name="akcija" value="stil" />
-    {drugi.map((x) => <button class="gumb mali tihi" name="stil" value={x.kod} title="Slika je u krivom stilu">Premjesti u: {x.naziv.toLowerCase()}</button>)}
+    {drugi.map((x) => (
+      <button class="premjesti" name="stil" value={x.kod} title={`Slika je u krivom stilu: premjesti je u ${x.naziv.toLowerCase()}`}>
+        → {x.naziv.toLowerCase()}
+      </button>
+    ))}
   </form>
 )}
 <style>
-  .premjesti-stil { display: flex; gap: 6px; flex-wrap: wrap; margin: 0; }
+  .premjesti-stil { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0; min-width: 0; max-width: 100%; }
+  .premjesti { min-width: 0; max-width: 100%; padding: 3px 9px; border: 1px dashed var(--rub-jak); border-radius: 999px; background: none;
+    color: var(--blijedo); font: inherit; font-size: .76rem; font-weight: 550; line-height: 1.3; cursor: pointer;
+    white-space: normal; overflow-wrap: anywhere; text-align: center; }
+  .premjesti:hover { border-style: solid; color: var(--tinta); background: var(--povrsina-2); }
 </style>
