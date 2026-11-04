@@ -68,6 +68,42 @@ loše („Šal” → „Shaw”, „Trubač” → „True Butch”, „Snijeg�
 izvorni hrvatski glas iz Voice Libraryja ili kloniran (Instant: 1–2 min čiste snimke;
 Professional: 30+ min). Za glas logopedice treba njezina izričita suglasnost.
 
+### Proba hrvatskih glasova (4. 11. 2026.)
+
+Glasovi iz Voice Libraryja (`/v1/shared-voices?language=hr`, filtar `language === "hr"`, jer API
+na kraj popisa dodaje i druge jezike) rade u TTS-u izravno preko `voice_id`, bez dodavanja na
+račun. Tekst: „Što se rimuje s riječi šal? Trubač, snijeg, sanjke, brijeg, zmaj, ježić, čaša,
+džep, ćup, ljuljačka, njuška. Bravo!”, eleven_v3, prebrojene riječi koje je Scribe prepisao točno:
+
+| Glas | voice_id | Točno |
+|---|---|---|
+| Ana (informativna) ž | `NfdaqpoTPn7nF7WBBRTv` | 12/12 |
+| Nina ž | `FXlzTee7Zx2caYKIAwBF` | 12/12 |
+| Mila ž | `eqAqnItEUARzEkoDCTJ1` | 12/12 |
+| Ana (topla) ž | `rmUck1qkzTjuEjdC6Cav` | 12/12 |
+| Zlata ž | `V5O4WAcdw7w3Ccfvma8Z` | 12/12 |
+| Luka m | `ZLYZToA7aDsMbHwM9AOr` | 12/12 |
+| Fran m | `TRnNlYQWHAJwo9K75wNE` | 12/12 |
+| Karlo m | `pTD8166KADi6ZFJ5FEXi` | 12/12 |
+| Maja ž | `0jvpZ98RZwx5FBOSZAc3` | 11/12 („sanke”) |
+| Lara ž | `L1kQ6rz0P1bI4L5Av3Ow` | 11/12 („juljačka”) |
+| Ivana (polako) ž | `JDYfAX20MbYfJGIjPTZz` | 11/12 („šab”) |
+| Tomislav m | `O9XgmQnaZveORWl6mTHm` | 11/12 („juljačka”) |
+| Branimir m | `WxQSzlR1UORgKEiMk1n4` | 11/12 („jet”) |
+
+STT mjeri razgovijetnost, ne toplinu glasa za dijete: glas bira čovjek (Matija, Anita) po sluhu
+na `/admin/zvukovi` → Hrvatski glasovi. Probe se spremaju u R2 (`proba/<hash>.mp3`, prijepis u
+`customMetadata`), pa ponovno slušanje ne troši kvotu.
+
+### Zamke
+
+- Ključ je ograničen po dozvolama: bez `voices_read` i `/v1/voices` i `/v1/shared-voices` vraćaju
+  401 `missing_permissions`. `user_read` (kvota) i `voices_write` (kloniranje preko API-ja) nema.
+- CSP admina nema `blob:`, pa proba ne smije svirati `URL.createObjectURL`: audio svira isti GET
+  URL (iz R2 cachea), a prijepis dolazi u zaglavlju `x-prijepis`.
+- Port 8787 lokalno drži drugi projekt; `wrangler dev --port 8791`. `ADMIN_EMAILS` u `.dev.vars`
+  je pod navodnicima, pa ih pri ručnom upisu sesije (docs/admin.md) treba skinuti.
+
 ## Produkcija
 
 ```bash
@@ -75,6 +111,9 @@ npx wrangler queues create logomedo-zvukovi
 npx wrangler secret put ELEVENLABS_API_KEY        # ključ s text_to_speech, speech_to_text (+ voices_read)
 npm run db:migrate && npm run deploy
 ```
+
+Napravljeno 4. 11. 2026. (commit f40f17b). Glas na produkciji još nije odabran: poslovi tada
+završe u grešci „Nije odabran glas”, a „Vrati greške u red” ih ponovno pokreće.
 
 Trošak: jedan posao je 1–3 TTS poziva (znakovi teksta) i isto toliko STT poziva. Bilježnica
 od 33 teksta je ~600 znakova po krugu.
