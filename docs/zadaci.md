@@ -329,3 +329,18 @@ poslao na produkciju. Deploy iz čistog worktreeja zadnjeg commita:
 W=$(mktemp -d)/wt; git worktree add --detach "$W" HEAD && ln -s "$PWD/node_modules" "$W/node_modules"
 (cd "$W" && CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 npm run deploy); git worktree remove --force "$W"
 ```
+
+### Granice sadržaja i stanje spremanja (4. 11. 2026.)
+
+`normaliziraj` (`src/lib/zadaci/vrste.ts`) se primjenjuje **i pri spremanju i pri čitanju**, pa svaka
+granica u njemu tiho reže podatke. Do 4. 11. odabir, uljez i percepcija imali su granicu od 12 redova, a
+editor je puštao dodati koliko god: zadatak 27 („Koja se slika rimuje s prvom?”) preuzet je kao PDF sa
+17 redova, a spremljen s 12. Sad je `MAX_REDOVA = 30`, a gumb „+ Dodaj red” se gasi na granici.
+Pravilo: svaku granicu iz `normaliziraj` mora poštovati i editor, inače je izmjena tihi gubitak.
+
+Zadnjih 5 redova zadatka 27 vraćeno je ručno iz PDF-a (vrtuljak, pšenica, žir, vlak, orašar) izravnim
+`UPDATE zadatak_verzije` (zadatak nije bio rješavan, pa verzija 1).
+
+„Spremi” i oznaka „● Promjene nisu spremljene” stoje u ljepljivoj traci s karticama (Uredi / Dijete
+rješava / Ispis), a ne više samo u bočnoj ploči pogleda Uredi, gdje se s Ispisa nisu vidjeli. Naslov taba
+dobiva `•`, a `beforeunload` postavlja i `returnValue`.
