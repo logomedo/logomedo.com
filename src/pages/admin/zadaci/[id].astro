@@ -148,6 +148,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-cip { border: 1px solid var(--rub-jak); border-radius: 999px; background: var(--povrsina); color: var(--blijedo); font: inherit; font-size: .8rem; font-weight: 600; padding: 4px 11px; cursor: pointer; }
   .z-cip.on { background: var(--med); border-color: var(--med); color: var(--med-tekst); }
   .z-lista { overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; align-content: start; min-height: 200px; }
+  .z-jos { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 0 4px; }
   .z-izbor { display: flex; align-items: center; gap: 10px; padding: 6px; border: 1px solid transparent; border-radius: 12px; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
   .z-izbor:hover { background: var(--povrsina-2); }
   .z-izbor.on { border-color: var(--med); background: var(--med-blago); }

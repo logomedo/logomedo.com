@@ -91,6 +91,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   function biraj(trenutna: number | null, uzor: number | null, nacin: "rima" | "ne-rima" | null, gotovo: (id: number | null) => void) {
     let filtar: "sve" | "rima" | "ne-rima" = nacin ?? "sve";
     let samoSlika = false;
+    const KORAK = 120;
+    let koliko = KORAK; // „Učitaj još” povećava; nova pretraga ili filtar vraća na prvih KORAK
     const u = R(uzor);
     const trazi = h("input", { type: "text", placeholder: "Traži riječ ili rimu (npr. -ava)…", autofocus: true });
     const lista = h("div", { class: "z-lista" });
@@ -100,21 +102,25 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const rima = q.startsWith("-") ? VELIKO(q.slice(1)) : null;
       zamijeni(filtri, 
         ...(u ? ([["sve", "Sve"], ["rima", `Rimuje se s ${VELIKO(u.rijec)}`], ["ne-rima", `Ne rimuje se s ${VELIKO(u.rijec)}`]] as const).map(([k, t]) =>
-          h("button", { type: "button", class: `z-cip${filtar === k ? " on" : ""}`, onclick: () => { filtar = k; crtaj(); } }, t)) : []),
-        h("button", { type: "button", class: `z-cip${samoSlika ? " on" : ""}`, onclick: () => { samoSlika = !samoSlika; crtaj(); } }, "Samo sa slikom"),
+          h("button", { type: "button", class: `z-cip${filtar === k ? " on" : ""}`, onclick: () => { filtar = k; koliko = KORAK; crtaj(); } }, t)) : []),
+        h("button", { type: "button", class: `z-cip${samoSlika ? " on" : ""}`, onclick: () => { samoSlika = !samoSlika; koliko = KORAK; crtaj(); } }, "Samo sa slikom"),
       );
       const svi = p.rijeci.filter((r) =>
         (!q || (rima ? r.rima?.endsWith(rima) : r.rijec.toLocaleLowerCase("hr").includes(q))) &&
         (!samoSlika || r.slika) &&
         (!u || filtar === "sve" || (filtar === "rima" ? rimujuSe(u, r) : !rimujuSe(u, r) && r.id !== u.id)));
+      const pozicija = lista.scrollTop;
       zamijeni(lista, 
-        ...svi.slice(0, 120).map((r) => h("button", {
+        ...svi.slice(0, koliko).map((r) => h("button", {
           type: "button", class: `z-izbor${r.id === trenutna ? " on" : ""}`,
           onclick: () => { dlg.close(); gotovo(r.id); },
         }, slika(r.id, "mala", false), h("b", {}, VELIKO(r.rijec)), h("small", {}, r.rima ? `-${r.rima.toLocaleLowerCase("hr")}` : "bez rime"))),
-        svi.length > 120 ? h("p", { class: "blijedo" }, `…i još ${svi.length - 120}. Suzi pretragu.`) : null,
+        svi.length > koliko ? h("div", { class: "z-jos" },
+          h("button", { type: "button", class: "gumb", onclick: () => { koliko += KORAK; crtaj(); } }, `Učitaj još (${Math.min(KORAK, svi.length - koliko)})`),
+          h("span", { class: "blijedo" }, `još ${svi.length - koliko} riječi`)) : null,
         !svi.length ? h("p", { class: "blijedo" }, "Nema takvih riječi.") : null,
       );
+      lista.scrollTop = pozicija;
       const nova = trazi.value.trim();
       if (nova && !rima && !p.rijeci.some((r) => r.rijec.toLocaleLowerCase("hr") === nova.toLocaleLowerCase("hr"))) {
         dodaj(lista, h("button", { type: "button", class: "gumb mali", onclick: () => dodajRijec(nova) }, `+ Dodaj riječ „${VELIKO(nova)}” u katalog`));
@@ -127,7 +133,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       p.rijeci.push(j); p.rijeci.sort((a, b) => a.rijec.localeCompare(b.rijec, "hr")); rijeci.set(j.id, j);
       dlg.close(); gotovo(j.id);
     }
-    trazi.oninput = crtaj;
+    trazi.oninput = () => { koliko = KORAK; lista.scrollTop = 0; crtaj(); };
     zamijeni(dlg, 
       h("div", { class: "z-birac-vrh" },
         h("b", {}, u ? `Uz ${VELIKO(u.rijec)} (-${(u.rima ?? "?").toLocaleLowerCase("hr")})` : "Odaberi sliku"),
