@@ -259,6 +259,19 @@ async function trajniOpis(slikaId: number, opis: string, email: string, grupa: R
       .bind(opis.trim().slice(0, 300), slikaId)]));
 }
 
+/**
+ * Slika je u krivom stilu (ilustracija spremljena kao bojanka): mijenja se samo `stil_id`, status ostaje.
+ * R2 ključ zadržava stari prefiks; ključ je samo adresa i nitko iz njega ne čita stil.
+ */
+export async function promijeniStil(slikaId: number, kod: string, email: string) {
+  const db = env.DB;
+  const st = await db.prepare("SELECT id FROM stilovi WHERE kod = ?").bind(kod).first<{ id: number }>();
+  if (!st) return { ok: false as const, greska: "Nepoznat stil." };
+  await db.batch(sZapisom({ tko: email, radnja: "slika.stil", tablica: "slike", grupa: novaGrupa() }, slikaId,
+    [db.prepare("UPDATE slike SET stil_id = ? WHERE id = ?").bind(st.id, slikaId)]));
+  return { ok: true as const };
+}
+
 const DOPUSTENA_RIJEC = /^[a-zčćđšž]+(?:[ -][a-zčćđšž]+)*$/;
 
 /**

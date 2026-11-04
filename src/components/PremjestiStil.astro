@@ -1,0 +1,15 @@
+---
+// Slika spremljena u krivom stilu prelazi u drugi (bojanka ↔ ilustracija); status ostaje isti.
+interface Props { slika: { id: number; stil?: string }; stilovi: { kod: string; naziv: string }[]; next: string }
+const { slika, stilovi, next } = Astro.props;
+const drugi = stilovi.filter((x) => x.kod !== slika.stil);
+---
+{drugi.length > 0 && (
+  <form method="post" action={`/admin/api/slika/${slika.id}`} class="premjesti-stil">
+    <input type="hidden" name="next" value={next} /><input type="hidden" name="akcija" value="stil" />
+    {drugi.map((x) => <button class="gumb mali tihi" name="stil" value={x.kod} title="Slika je u krivom stilu">Premjesti u: {x.naziv.toLowerCase()}</button>)}
+  </form>
+)}
+<style>
+  .premjesti-stil { display: flex; gap: 6px; flex-wrap: wrap; margin: 0; }
+</style>

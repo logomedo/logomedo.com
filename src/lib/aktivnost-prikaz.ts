@@ -17,6 +17,7 @@ export const RADNJE: Record<string, string> = {
   "slika.nova": "Nova slika iz runnera",
   "slika.ucitana": "Učitana slika",
   "slika.premjestena": "Slika premještena na drugu riječ",
+  "slika.stil": "Slika premještena u drugi stil",
   "generiranje.zatrazeno": "Zatraženo generiranje",
   "generiranje.uklonjeno": "Uklonjeno iz reda",
   "rijec.nova": "Nova riječ",

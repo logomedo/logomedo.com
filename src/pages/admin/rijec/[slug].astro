@@ -2,6 +2,7 @@
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import Aktivnost from "../../../components/Aktivnost.astro";
+import PremjestiStil from "../../../components/PremjestiStil.astro";
 import { kad, rijec as nadji, NAZIV_POZICIJE, stiloviAktivni } from "../../../lib/katalog";
 import { safeNext } from "../../../lib/admin/sesija";
 import { javniUrl } from "../../../lib/generiranje";
@@ -186,6 +187,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
                 <button class="gumb mali" name="akcija" value="odbij"><Ikona ime="x" velicina={14} /> Odbij</button>
                 <button class="gumb mali glavni" name="akcija" value="odobri"><Ikona ime="kvacica" velicina={14} /> Odobri</button>
               </form>
+              <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />
             </figcaption>
           </figure>
         ))}
@@ -205,6 +207,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
               {s.razlog && <span class="sitno blijedo">„{s.razlog}”</span>}
               <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
                 <button class="gumb mali tihi" name="akcija" value="vrati">{s.status === "odobrena" ? "Makni iz odobrenih" : "Vrati u kandidate"}</button></form>
+              <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />
               {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
             </figcaption>
           </figure>

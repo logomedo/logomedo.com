@@ -146,9 +146,9 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string): Promise
       const razlog = s ? ((s.razlog as string | null) ?? null) : "poništeno";
       naredbe.push(...sZapisom(z("slike", radnja), r.redak_id, [
         db.prepare(
-          `UPDATE slike SET status = ?1, razlog = ?2, pregledao = ?3, pregledano_at = datetime('now'), rijec_id = COALESCE(?5, rijec_id)
-           WHERE id = ?4 AND (status IS NOT ?1 OR razlog IS NOT ?2 OR rijec_id IS NOT COALESCE(?5, rijec_id))`,
-        ).bind(status, razlog, tko, r.redak_id, (s?.rijec_id as number | undefined) ?? null),
+          `UPDATE slike SET status = ?1, razlog = ?2, pregledao = ?3, pregledano_at = datetime('now'), rijec_id = COALESCE(?5, rijec_id), stil_id = COALESCE(?6, stil_id)
+           WHERE id = ?4 AND (status IS NOT ?1 OR razlog IS NOT ?2 OR rijec_id IS NOT COALESCE(?5, rijec_id) OR stil_id IS NOT COALESCE(?6, stil_id))`,
+        ).bind(status, razlog, tko, r.redak_id, (s?.rijec_id as number | undefined) ?? null, (s?.stil_id as number | undefined) ?? null),
       ]));
     } else if (r.tablica === "rijeci") {
       naredbe.push(...sZapisom(z("rijeci", radnja), r.redak_id, s
