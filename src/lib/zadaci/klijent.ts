@@ -6,7 +6,7 @@
 
 import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
 import {
-  ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
+  ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   type Izmjena, type Listic, type Odabir, type Odgovor, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta,
 } from "./vrste.ts";
 import { scena as scenaPrikaz, slikaZa, vidljiviGumbi, type Orijentacija, type PozadinaPrikaz } from "../scena-prikaz.ts";
@@ -273,7 +273,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
             h("button", { type: "button", class: "gumb mali tihi", title: "Polje više", disabled: x.polja.length >= POLJA_MAX, onclick: () => { s.stavke[i] = slozRed(prva, x.polja.length + 1, s.trazi); oznaci(); osvjezi(); } }, "+"),
             redGumbi(s.stavke, i)));
       }),
-      h("button", { type: "button", class: "gumb", onclick: () => { s.stavke.push(slozRed(null, s.stavke.at(-1)?.polja.length ?? 4, s.trazi)); oznaci(); osvjezi(); } }, "+ Dodaj red"));
+      h("button", { type: "button", class: "gumb", disabled: s.stavke.length >= MAX_REDOVA, title: s.stavke.length >= MAX_REDOVA ? `Najviše ${MAX_REDOVA} redova` : undefined, onclick: () => { s.stavke.push(slozRed(null, s.stavke.at(-1)?.polja.length ?? 4, s.trazi)); oznaci(); osvjezi(); } }, "+ Dodaj red"));
   }
 
   function uredi(): HTMLElement {
@@ -290,7 +290,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
             uzor: x.zadana, nacin: j === x.tocno ? "rima" : "ne-rima", tocno: j === x.tocno, naTocno: () => (x.tocno = j), oznakaTocno: "rimuje se",
           }))),
           redGumbi(s.stavke, i))),
-        h("button", { type: "button", class: "gumb", onclick: () => { s.stavke.push({ zadana: null, ponudeno: Array(PONUDENIH).fill(null), tocno: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
+        h("button", { type: "button", class: "gumb", disabled: s.stavke.length >= MAX_REDOVA, title: s.stavke.length >= MAX_REDOVA ? `Najviše ${MAX_REDOVA} redova` : undefined, onclick: () => { s.stavke.push({ zadana: null, ponudeno: Array(PONUDENIH).fill(null), tocno: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
     }
     if (vrsta === "uljez") {
       const s = sadrzaj as Uljez;
@@ -305,7 +305,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
             }))),
             redGumbi(s.stavke, i));
         }),
-        h("button", { type: "button", class: "gumb", onclick: () => { s.stavke.push({ slike: Array(U_REDU).fill(null), uljez: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
+        h("button", { type: "button", class: "gumb", disabled: s.stavke.length >= MAX_REDOVA, title: s.stavke.length >= MAX_REDOVA ? `Najviše ${MAX_REDOVA} redova` : undefined, onclick: () => { s.stavke.push({ slike: Array(U_REDU).fill(null), uljez: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
     }
     if (vrsta === "povezivanje") {
       const s = sadrzaj as Povezivanje;

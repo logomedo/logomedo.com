@@ -109,6 +109,8 @@ export const PONUDENIH = 3;
 export const U_REDU = 4;
 /** Gumba na sceni: vodoravno stanu u jedan red, uspravno u dva. */
 export const MAX_GUMBA = 10;
+/** Najviše redova u odabiru, uljezu i percepciji (PDF ih lomi po 3 na A4). Server reže višak, pa ga ni editor ne nudi. */
+export const MAX_REDOVA = 30;
 
 export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
   const n = Array.from({ length: stavki });
@@ -166,7 +168,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
     case "odabir":
       return {
         odnos: "rima",
-        stavke: niz(o.stavke, 12, (s) => {
+        stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
           return { zadana: id(x.zadana), ponudeno: tocnoN(niz(x.ponudeno, PONUDENIH, id), PONUDENIH, () => null), tocno: ind(x.tocno, PONUDENIH) };
         }),
@@ -180,7 +182,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
     case "uljez":
       return {
         odnos: "rima",
-        stavke: niz(o.stavke, 12, (s) => {
+        stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
           return { slike: tocnoN(niz(x.slike, U_REDU, id), U_REDU, () => null), uljez: ind(x.uljez, U_REDU) };
         }),
@@ -191,7 +193,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
       const trazi: Trazi = o.trazi === "par" ? "par" : "razlicitu";
       return {
         trazi,
-        stavke: niz(o.stavke, 12, (s) => {
+        stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
           const procitana = niz(x.polja, POLJA_MAX, (p) => ({ rijec_id: id(obj(p).rijec_id), izmjena: jeIzmjena(obj(p).izmjena) ? obj(p).izmjena as Izmjena : "" as Izmjena }));
           const polja = tocnoN(procitana, Math.max(POLJA_MIN, procitana.length), () => ({ rijec_id: null, izmjena: "" as Izmjena }));

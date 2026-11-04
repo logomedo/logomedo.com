@@ -102,3 +102,8 @@ test("slikaUStilu: odobrena u stilu, pa odobrena u drugom, pa kandidat", () => {
   assert.equal(slikaUStilu({ ilustracija: kan }, "bojanka"), "/k");
   assert.equal(slikaUStilu({}, "bojanka"), null);
 });
+
+test("normaliziraj ne reže 17 redova odabira (zadatak 27 je izgubio 5)", () => {
+  const stavke = Array.from({ length: 17 }, (_, i) => ({ zadana: i + 1, ponudeno: [1, 2, 3], tocno: 0 }));
+  assert.equal((normaliziraj("odabir", { odnos: "rima", stavke }) as Odabir).stavke.length, 17);
+});
