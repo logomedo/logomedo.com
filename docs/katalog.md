@@ -110,6 +110,28 @@ primjer rečenice, rima. Glasovi i pozicije (`rijec_glas`) izvode se iz pravopis
 ponovno (ne vjeruje formi). Neobavezno odmah u red za generiranje po stilu. Postojeća aktivna
 riječ preusmjerava na svoju stranicu; neaktivna se vraća s novim podacima. `izvor = 'admin'`.
 
+### Novi glas (4. 11. 2026.)
+
+Stari LogoMedo je imao točno 8 glasova (C, S, Z, Č, Š, Ž, L, R): ni stablo kataloga ni `kb/`
+nemaju drugih. „Glas P” i „Glas T” postoje samo kao naslovi dva listića koje su logopedi
+složili od slika ovih glasova.
+
+`/admin/novi-glas` (gumb na katalogu): oznaka (slovo ili DŽ/LJ/NJ, `oznakaGlasa` u `fonemi.ts`),
+kategorija (`glasovi.skupina`, slobodan tekst; ponuđeni i „velari”) i kvačica za „konsonantske
+skupine”. Glas ide na kraj (`redoslijed` = max + 1); kategorije se na katalogu redaju po prvom
+glasu. Sve postojeće riječi s tim glasom odmah dobivaju veze s `potvrdeno = 0` (izvedeno), kao
+u seedu: za K je to bilo 156 od 518 riječi. Matija je K dodao sam 4. 11. Brisanja i preimenovanja
+glasa nema, a dodavanje glasa ne ide u dnevnik aktivnosti (`glasovi` nije `Tablica`).
+
+### Premjesti u drugi stil (4. 11. 2026.)
+
+Slika spremljena u krivom stilu (ilustracija kao bojanka) prelazi u drugi gumbom „→ ilustracija”
+/ „→ bojanka” (`PremjestiStil.astro`): ispod glavne slike, u galeriji odobrenih, na kandidatima i
+u „Odobrene i odbijene”. Mijenja se samo `slike.stil_id`; status ostaje. R2 ključ zadržava stari
+prefiks (`bojanka/…`), jer nitko iz ključa ne čita stil. Radnja `slika.stil` je u dnevniku, a
+poništavanje u `aktivnost.ts` od sada vraća i `stil_id`. Gumb mora prelamati tekst: `.gumb` ima
+`white-space: nowrap` i u galeriji (ćelije ~110 px) prvi je pokušaj prelazio preko susjeda.
+
 ### Brojke po stilu
 
 Katalog i stranice glasova pokazuju jedan stil (prekidač, `?stil=ilustracija`; bez parametra
