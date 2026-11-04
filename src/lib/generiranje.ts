@@ -392,3 +392,77 @@ export async function obrisiRijec(rijecId: number, email: string): Promise<{ ok:
   await uskladiJavno(slike.map((s) => s.id));
   return { ok: rez[1].meta.changes > 0, slika: slike.length };
 }
+
+/** Ishod preimenovanja. `postoji` = riječ s tim nazivom već postoji, a spajanje nije potvrđeno. */
+export type IshodPreimenovanja =
+  | { ok: true; slug: string; spojeno: boolean; slika: number; zadataka: number }
+  | { ok: false; greska?: string; postoji?: { rijec: string; slug: string; slika: number } };
+
+/**
+ * Novi naziv riječi (LISSICA → LISICA). Slobodan naziv: mijenjaju se riječ i adresa, a glasovi se
+ * ponovno izvode iz pravopisa (pozicije koje ostaju zadržavaju potvrdu, nove su nepotvrđene).
+ * Naziv koji već postoji: uz `spoji` sve slike i poslovi koji čekaju prelaze na tu riječ, ona se
+ * po potrebi vraća u katalog, a ova nestaje (`aktivna = 0`). Zadaci koji pokazuju na staru riječ
+ * se ne prepisuju, pa se njihov broj vraća. R2 ključevi ostaju sa starim slugom (samo su ključevi).
+ */
+export async function preimenuj(rijecId: number, novo: string, email: string, spoji = false): Promise<IshodPreimenovanja> {
+  const db = env.DB;
+  const rijec = novo.trim().toLocaleLowerCase("hr").replace(/\s+/g, " ");
+  if (!rijec || rijec.length > 40 || !DOPUSTENA_RIJEC.test(rijec)) return { ok: false, greska: "Riječ smije imati samo hrvatska slova (do 40)." };
+  const r = await db.prepare("SELECT id, rijec, slug FROM rijeci WHERE id = ?").bind(rijecId).first<{ id: number; rijec: string; slug: string }>();
+  if (!r) return { ok: false, greska: "Nema te riječi." };
+  if (rijec === r.rijec) return { ok: false, greska: "To je isti naziv." };
+  const grupa = novaGrupa();
+  const z = (radnja: string, tablica: "rijeci" | "slike" | "generiranja") => ({ tko: email, radnja, tablica, grupa });
+  const cilj = await db.prepare(
+    "SELECT r.id, r.rijec, r.slug, (SELECT COUNT(*) FROM slike s WHERE s.rijec_id = r.id AND s.status != 'odbijena') AS slika FROM rijeci r WHERE r.rijec = ?",
+  ).bind(rijec).first<{ id: number; rijec: string; slug: string; slika: number }>();
+
+  if (!cilj) {
+    const novi = uSlug(rijec);
+    const zauzet = await db.prepare("SELECT 1 FROM rijeci WHERE slug = ? AND id != ?").bind(novi, r.id).first();
+    if (zauzet) return { ok: false, greska: `Adresa „${novi}” je već zauzeta drugom riječju.` };
+    const { results: glasovi } = await db.prepare("SELECT id, oznaka, skupine FROM glasovi").all<{ id: number; oznaka: string; skupine: number }>();
+    const idGlasa = new Map(glasovi.map((g) => [g.oznaka, g.id]));
+    const izvedeno = pojave(rijec, glasovi.map((g) => g.oznaka), glasovi.filter((g) => g.skupine).map((g) => g.oznaka))
+      .map((p) => ({ g: idGlasa.get(p.glas)!, p: p.pozicija }));
+    await db.batch(sZapisom(z("rijec.preimenovana", "rijeci"), r.id, [
+      db.prepare("UPDATE rijeci SET rijec = ?, slug = ? WHERE id = ?").bind(rijec, novi, r.id),
+      db.prepare(
+        `DELETE FROM rijec_glas WHERE rijec_id = ?1 AND NOT EXISTS (SELECT 1 FROM json_each(?2) j
+           WHERE json_extract(j.value, '$.g') = rijec_glas.glas_id AND json_extract(j.value, '$.p') = rijec_glas.pozicija)`,
+      ).bind(r.id, JSON.stringify(izvedeno)),
+      ...izvedeno.map((x) => db.prepare("INSERT OR IGNORE INTO rijec_glas (rijec_id, glas_id, pozicija, potvrdeno) VALUES (?, ?, ?, 0)").bind(r.id, x.g, x.p)),
+    ]));
+    return { ok: true, slug: novi, spojeno: false, slika: 0, zadataka: 0 };
+  }
+
+  if (cilj.id === r.id) return { ok: false, greska: "To je isti naziv." };
+  if (!spoji) return { ok: false, postoji: { rijec: cilj.rijec, slug: cilj.slug, slika: cilj.slika } };
+  const { results: slike } = await db.prepare("SELECT id FROM slike WHERE rijec_id = ?").bind(r.id).all<{ id: number }>();
+  await db.batch([
+    ...sZapisom(z("rijec.vracena", "rijeci"), cilj.id, [db.prepare("UPDATE rijeci SET aktivna = 1 WHERE id = ?").bind(cilj.id)]),
+    ...zapisSkupa(z("slika.premjestena", "slike"), { sql: "x.rijec_id = ?", args: [r.id] }, [
+      db.prepare("UPDATE slike SET rijec_id = ? WHERE rijec_id = ?").bind(cilj.id, r.id),
+    ]),
+    ...zapisSkupa(z("generiranje.premjesteno", "generiranja"), { sql: "x.rijec_id = ? AND x.status = 'ceka'", args: [r.id] }, [
+      db.prepare(
+        `UPDATE generiranja SET rijec_id = ?1 WHERE rijec_id = ?2 AND status = 'ceka'
+           AND NOT EXISTS (SELECT 1 FROM generiranja c WHERE c.rijec_id = ?1 AND c.stil_id = generiranja.stil_id AND c.status IN ('ceka', 'radi'))`,
+      ).bind(cilj.id, r.id),
+    ]),
+    ...sZapisom(z("rijec.obrisana", "rijeci"), r.id, [db.prepare("UPDATE rijeci SET aktivna = 0 WHERE id = ?").bind(r.id)]),
+  ]);
+  const zadataka = await brojZadatakaS(r.id);
+  return { ok: true, slug: cilj.slug, spojeno: true, slika: slike.length, zadataka };
+}
+
+/** Koliko zadataka spominje riječ (sadržaj je JSON s id-jevima riječi po vrsti zadatka). */
+async function brojZadatakaS(rijecId: number): Promise<number> {
+  const { rijeciU } = await import("./zadaci/vrste");
+  const { results } = await env.DB.prepare(
+    `SELECT z.vrsta, v.sadrzaj FROM zadaci z JOIN zadatak_verzije v ON v.zadatak_id = z.id AND v.verzija = z.aktivna_verzija
+     WHERE z.obrisan_at IS NULL`,
+  ).all<{ vrsta: string; sadrzaj: string }>();
+  return results.filter((z) => { try { return rijeciU(z.vrsta as never, JSON.parse(z.sadrzaj)).includes(rijecId); } catch { return false; } }).length;
+}

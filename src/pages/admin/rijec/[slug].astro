@@ -18,6 +18,8 @@ const odbijene = r.slike.filter((s) => s.status === "odbijena");
 const uRedu = r.red.filter((q) => q.status !== "greska");
 const greske = r.red.filter((q) => q.status === "greska");
 const dodano = Astro.url.searchParams.get("dodano");
+const q = (k: string) => Astro.url.searchParams.get(k);
+const spoji = q("spoji"); // naziv koji već postoji: traži potvrdu spajanja
 const ucitano = Astro.url.searchParams.get("ucitano");
 const greskaUploada = Astro.url.searchParams.get("greska");
 const stilovi = await stiloviAktivni();
@@ -33,6 +35,21 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   {Astro.url.searchParams.get("postoji") && <div class="obavijest"><Ikona ime="upozorenje" /> Ta riječ je već u katalogu.</div>}
   {ucitano && <div class="obavijest"><Ikona ime="kvacica" /> Slika je učitana kao kandidat.</div>}
   {greskaUploada && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Upload nije uspio: {greskaUploada}</div>}
+  {q("preimenovano") && <div class="obavijest"><Ikona ime="kvacica" /> Naziv je promijenjen.</div>}
+  {q("spojeno") !== null && (
+    <div class="obavijest"><Ikona ime="kvacica" /> Slike su prebačene ovdje ({q("spojeno")}), a stara riječ je maknuta iz kataloga.
+      {Number(q("zadataka")) > 0 && <> Pazi: {q("zadataka")} zadataka još koristi staru riječ, zamijeni je u njima.</>}</div>
+  )}
+  {q("greska_naziva") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q("greska_naziva")}</div>}
+  {spoji && (
+    <form class="obavijest upozorenje spajanje" method="post" action={`/admin/api/rijec/${r.id}`}>
+      <input type="hidden" name="akcija" value="preimenuj" /><input type="hidden" name="naziv" value={spoji} />
+      <input type="hidden" name="spoji" value="1" /><input type="hidden" name="slug" value={r.slug} /><input type="hidden" name="od" value={od} />
+      <span><Ikona ime="upozorenje" /> Riječ {spoji.toLocaleUpperCase("hr")} već postoji{Number(q("spoji_slika")) ? ` (ima ${q("spoji_slika")} slika)` : " (bez slika)"}.
+        Prebaciti sve slike riječi {r.rijec.toLocaleUpperCase("hr")} na {spoji.toLocaleUpperCase("hr")} i maknuti {r.rijec.toLocaleUpperCase("hr")} iz kataloga?</span>
+      <span class="red-gumba"><button class="gumb mali glavni" type="submit">Da, prebaci</button><a class="gumb mali tihi" href={ovdje}>Odustani</a></span>
+    </form>
+  )}
   {dodano !== null && <div class="obavijest"><Ikona ime="red" /> {Number(dodano) ? "Dodano u red za generiranje." : "Već je u redu."}</div>}
 
   <div class="raspored">
@@ -49,6 +66,15 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
 
     <div class="detalji">
       <h1 class="naslov-rijeci">{r.rijec.toLocaleUpperCase("hr")}</h1>
+      <details class="preimenuj">
+        <summary class="sitno">Promijeni naziv</summary>
+        <form method="post" action={`/admin/api/rijec/${r.id}`}>
+          <input type="hidden" name="akcija" value="preimenuj" /><input type="hidden" name="slug" value={r.slug} /><input type="hidden" name="od" value={od} />
+          <input type="text" name="naziv" value={r.rijec} maxlength="40" required aria-label="Novi naziv" />
+          <button class="gumb mali" type="submit">Spremi naziv</button>
+        </form>
+        <p class="sitno blijedo">Ako riječ s tim nazivom već postoji, slike se mogu prebaciti na nju.</p>
+      </details>
       <p class="podnaslov">
         {r.izvor === "legacy" ? `Iz starog kataloga, na listićima ${r.legacy_koristeno}×` : "Dodana u adminu"}
       </p>
@@ -244,6 +270,12 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   .generiraj { flex-wrap: wrap; }
   .generiraj input { flex: 1 1 200px; }
   .generiraj .g-stil { width: auto; flex: 0 0 auto; }
+  .preimenuj { margin: -4px 0 12px; }
+  .preimenuj summary { cursor: pointer; color: var(--blijedo, inherit); }
+  .preimenuj form { display: flex; gap: 8px; margin-top: 8px; }
+  .preimenuj input { flex: 1; min-width: 0; }
+  .spajanje { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .spajanje .red-gumba { display: flex; gap: 8px; }
   .odobrene { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 16px; }
   .odobrene figure { margin: 0; text-align: center; }
   .kandidati { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }

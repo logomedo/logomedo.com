@@ -329,6 +329,12 @@ Pregled sada razdvaja dvije stvari (migracija 0017):
   poslu iste riječi i stila oboje ide u blok `REVIEWER CORRECTIONS` kao `Wrong: … → Draw instead: …`
   (`blokIspravaka`, zadnja tri), iza sistemskog prompta i s prednošću pred njim. Kvačica
   „Zapamti kao opis riječi” upisuje doradu i u `rijeci.opis_za_sliku`, za sve buduće slike u svim stilovima.
+- **Promijeni naziv** (stranica riječi, ispod naslova): slobodan naziv mijenja riječ i adresu, a glasovi
+  se ponovno izvode iz pravopisa (pozicije koje ostaju zadržavaju potvrdu). Naziv koji već postoji
+  (LISSICA → LISICA) traži potvrdu, pa sve slike i poslovi koji čekaju prelaze na tu riječ, a stara
+  postaje `aktivna = 0`. Zadaci se ne prepisuju: poruka kaže koliko ih još koristi staru riječ.
+  R2 ključevi ostaju sa starim slugom. „Poništi” u Aktivnosti vraća i `slike.rijec_id`.
+  `preimenuj()` u `src/lib/generiranje.ts`, `POST /admin/api/rijec/{id}` s `akcija=preimenuj`.
 - **Slika je za drugu riječ (P)**: slika je dobra, ali prikazuje drugu riječ (MAČ → nacrtan mačić;
   MAČIĆ tada nije bio u katalogu). Upiše se riječ (prijedlozi iz kataloga); ako je nema, dodaje se
   (`izvor = 'admin'`, glasovi izvedeni s `potvrdeno = 0`, potvrđuju se na stranici riječi).
