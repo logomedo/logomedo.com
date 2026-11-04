@@ -5,6 +5,8 @@ declare namespace Cloudflare {
     RUNNER_TOKEN: string;
     /** E-mailovi admina, zarezom odvojeni (secret: repo je javan). */
     ADMIN_EMAILS: string;
+    /** ElevenLabs (TTS + STT) za izgovor, docs/zvukovi.md. */
+    ELEVENLABS_API_KEY: string;
   }
 }
 

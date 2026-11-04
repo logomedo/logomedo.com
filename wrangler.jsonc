@@ -29,6 +29,12 @@
   ],
 
   // Push za runner na Macu: WebSocket /api/runner/zvono (src/lib/runner-zvono.ts).
+  // Red izgovora (docs/zvukovi.md): Worker sam zove ElevenLabs. Jedan posao = do 3 TTS + STT poziva.
+  "queues": {
+    "producers": [{ "binding": "ZVUKOVI_RED", "queue": "logomedo-zvukovi" }],
+    "consumers": [{ "queue": "logomedo-zvukovi", "max_batch_size": 4, "max_batch_timeout": 2, "max_concurrency": 2, "max_retries": 6, "retry_delay": 60 }]
+  },
+
   "durable_objects": { "bindings": [{ "name": "RUNNER_ZVONO", "class_name": "RunnerZvono" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RunnerZvono"] }],
 

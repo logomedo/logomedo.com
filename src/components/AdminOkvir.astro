@@ -7,17 +7,18 @@ import Marka from "./Marka.astro";
 import Ikona from "./Ikona.astro";
 import { env } from "cloudflare:workers";
 
-interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "prompt" | "aktivnost" | "kljucevi"; puno?: boolean }
+interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
 
-let brojevi = { kandidata: 0, uRedu: 0, gresaka: 0 };
+let brojevi = { kandidata: 0, uRedu: 0, gresaka: 0, zvukova: 0 };
 if (admin) {
   brojevi = (await env.DB.prepare(
     `SELECT (SELECT COUNT(*) FROM slike WHERE status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM generiranja WHERE status IN ('ceka','radi')) AS uRedu,
-       (SELECT COUNT(*) FROM generiranja WHERE status = 'greska') AS gresaka`,
+       (SELECT COUNT(*) FROM generiranja WHERE status = 'greska') AS gresaka,
+       (SELECT COUNT(*) FROM zvukovi WHERE status = 'kandidat') AS zvukova`,
   ).first<typeof brojevi>()) ?? brojevi;
 }
 const stavke = [
@@ -27,6 +28,7 @@ const stavke = [
   { kod: "biljeznice", href: "/admin/biljeznice", tekst: "Bilježnice", ikona: "biljeznica", broj: 0 },
   { kod: "pregled", href: "/admin/pregled", tekst: "Pregled", ikona: "pregled", broj: brojevi.kandidata },
   { kod: "red", href: "/admin/red", tekst: "Red", ikona: "red", broj: brojevi.uRedu + brojevi.gresaka },
+  { kod: "zvukovi", href: "/admin/zvukovi", tekst: "Zvukovi", ikona: "zvuk", broj: brojevi.zvukova },
   { kod: "prompt", href: "/admin/prompt", tekst: "Prompt", ikona: "iskra", broj: 0 },
   { kod: "aktivnost", href: "/admin/aktivnost", tekst: "Aktivnost", ikona: "sat", broj: 0 },
   { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },

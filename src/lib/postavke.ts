@@ -1,7 +1,7 @@
 // Postavke iz /admin/prompt (migracija 0012). Svaka izmjena ide i u postavke_povijest.
 import { env } from "cloudflare:workers";
 
-export type KljucPostavke = "sistemski_prompt" | "red_pauza";
+export type KljucPostavke = "sistemski_prompt" | "red_pauza" | "zvuk_glas" | "zvuk_model";
 export const MAX_PROMPT = 4000;
 
 export async function postavka(kljuc: KljucPostavke): Promise<string> {

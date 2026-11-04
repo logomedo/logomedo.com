@@ -1,9 +1,11 @@
 // Igra javne bilježnice (/b/<slug>): ekran po ekran, svaki točno riješen pali lampicu na
-// boru, na kraju se bor vrti. Zvuk: glas preglednika (hr-HR) i zvonce iz WebAudija.
+// boru, na kraju se bor vrti. Zvuk: odobrena snimka izgovora (ElevenLabs, docs/zvukovi.md), inače
+// glas preglednika (hr-HR), i zvonce iz WebAudija.
 // Ništa se ne sprema i ništa ne odlazi na server.
 import { ekrani, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
 import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts";
 import { izmjenaCss, type Polje } from "./zadaci/vrste.ts";
+import { kljucZvuka } from "./zvukovi-tekst.ts";
 
 interface Podaci {
   naslov: string; podnaslov: string | null;
@@ -12,6 +14,8 @@ interface Podaci {
   pozadine?: PozadinaPrikaz[];
   /** Rečenica na kraju (iz teme). */
   kraj?: string;
+  /** Odobrene snimke: { kljucZvuka(tekst): URL }. */
+  zvukovi?: Record<string, string>;
 }
 
 type Dijete = Node | string | null | undefined | false;
@@ -41,10 +45,39 @@ function nadjiGlas() {
   glas = svi.find((v) => /lana/i.test(v.name)) ?? svi[0] ?? null;
 }
 let govornik: HTMLElement | null = null;
+let snimke: Record<string, string> = {};
+// Jedan element za sve snimke: iOS ga otključa jednom, u dodiru „Kreni” (otkljucajSnimke).
+const svirac = typeof Audio === "undefined" ? null : new Audio();
+function otkljucajSnimke() {
+  const prva = Object.values(snimke)[0];
+  if (!svirac || !prva) return;
+  svirac.muted = true; svirac.src = prva;
+  svirac.play().then(() => { svirac.pause(); svirac.muted = false; }, () => { svirac.muted = false; });
+}
 function govori(tekst: string, gumb?: HTMLElement) {
-  if (!("speechSynthesis" in window)) return;
-  speechSynthesis.cancel();
   govornik?.classList.remove("govori");
+  govornik = gumb ?? null;
+  const url = snimke[kljucZvuka(tekst)];
+  if (url && svirac) {
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    svirac.pause(); svirac.muted = false; svirac.src = url; svirac.currentTime = 0;
+    gumb?.classList.add("govori");
+    const gotovo = () => gumb?.classList.remove("govori");
+    // Snimka ne radi (mreža, format, iOS zaključan): jednom glas preglednika. AbortError znači
+    // da je sljedeći govori() prekinuo ovaj, pa tada ništa.
+    let palo = false;
+    const zamjena = () => { gotovo(); if (palo || svirac.src !== url) return; palo = true; govoriPreglednikom(tekst, gumb); };
+    svirac.onended = gotovo;
+    svirac.onerror = zamjena;
+    svirac.play().catch((e: DOMException) => { if (e?.name !== "AbortError") zamjena(); });
+    return;
+  }
+  govoriPreglednikom(tekst, gumb);
+}
+function govoriPreglednikom(tekst: string, gumb?: HTMLElement) {
+  if (!("speechSynthesis" in window)) return;
+  svirac?.pause();
+  speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(tekst);
   u.lang = "hr-HR"; u.rate = 0.85; u.pitch = 1.05;
   if (glas) u.voice = glas;
@@ -74,6 +107,7 @@ const fanfara = () => [784, 988, 1175, 1568, 1976, 2349].forEach((f, i) => { ton
 
 export function pokreni(korijen: HTMLElement, p: Podaci) {
   const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
+  snimke = p.zvukovi ?? {};
   const sviEkrani = ekrani(p.zadaci);
   const lampice = Array.from(document.querySelectorAll<SVGGElement>(".lampica"));
   const brojac = document.getElementById("brojac");
@@ -290,6 +324,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   const kreni = h("button", { type: "button", class: "gumb-kreni", onclick: () => {
     try { ac = new AudioContext(); } catch { ac = null; }
     if ("speechSynthesis" in window) speechSynthesis.speak(new SpeechSynthesisUtterance(""));   // iOS: otključa govor u dodiru
+    otkljucajSnimke();
     prikazi();
   } }, "Kreni");
   const uvod = korijen.querySelector(".uvod");

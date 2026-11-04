@@ -1,0 +1,298 @@
+---
+// Izgovor (docs/zvukovi.md): glas, red i pregled snimki. Stranica sama obrađuje POST (kao /admin/red).
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { env } from "cloudflare:workers";
+import { kad } from "../../lib/katalog";
+import { postavi, postavka } from "../../lib/postavke";
+import { glasovi, hrvatskiGlasovi } from "../../lib/elevenlabs";
+import { greskeURed, odluciZvuk, ponoviZvuk, posaljiZaglavljene, zvukoviZaPregled } from "../../lib/zvukovi";
+
+const email = Astro.locals.admin!.email;
+const STATUSI = ["kandidat", "odobren", "odbijen"] as const;
+type Status = (typeof STATUSI)[number];
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const a = String(f.get("akcija") ?? "");
+  const id = Number(f.get("id"));
+  const natrag = String(f.get("natrag") ?? "/admin/zvukovi");
+  let poruka = "";
+  if (a === "glas") {
+    const glas = String(f.get("glas") ?? "").trim();
+    const model = String(f.get("model") ?? "").trim();
+    if (/^[A-Za-z0-9]{10,40}$/.test(glas)) await postavi("zvuk_glas", glas, email);
+    if (/^[a-z0-9_]{3,40}$/.test(model)) await postavi("zvuk_model", model, email);
+    poruka = "spremljeno";
+  }
+  if (a === "odobri" || a === "odbij") {
+    const ok = await odluciZvuk(id, a, email, { razlog: String(f.get("razlog") ?? ""), izgovor: String(f.get("izgovor") ?? "") });
+    if (!ok) poruka = "vec";
+  }
+  if (a === "ponovi") {
+    if (!(await ponoviZvuk(String(f.get("kljuc") ?? ""), email, String(f.get("izgovor") ?? "")))) poruka = "u-redu";
+  }
+  if (a === "zaglavljeni") poruka = `poslano-${await posaljiZaglavljene()}`;
+  if (a === "greske") poruka = `poslano-${await greskeURed()}`;
+  const u = new URL(natrag.startsWith("/admin") ? natrag : "/admin/zvukovi", Astro.url);
+  if (poruka) u.searchParams.set("p", poruka);
+  return Astro.redirect(u.pathname + u.search, 303);
+}
+
+const status: Status = (STATUSI as readonly string[]).includes(Astro.url.searchParams.get("s") ?? "") ? Astro.url.searchParams.get("s") as Status : "kandidat";
+const [glas, model, glasoviRacuna, knjiznica, zvukovi, red] = await Promise.all([
+  postavka("zvuk_glas"), postavka("zvuk_model"), glasovi(), hrvatskiGlasovi(), zvukoviZaPregled(status),
+  env.DB.prepare(
+    `SELECT id, kljuc, izgovor, status, pokusaji, greska, created_at, zavrseno_at FROM zvuk_generiranja
+     ORDER BY CASE status WHEN 'radi' THEN 0 WHEN 'greska' THEN 1 WHEN 'ceka' THEN 2 ELSE 3 END, id DESC LIMIT 60`,
+  ).all<{ id: number; kljuc: string; izgovor: string; status: string; pokusaji: number; greska: string | null; created_at: string; zavrseno_at: string | null }>().then((r) => r.results),
+]);
+// Hrvatski iz knjižnice prvi, pa glasovi računa (klonirani, premade).
+const popisGlasova = [
+  ...knjiznica.map((g) => ({ voice_id: g.voice_id, name: g.name, oznaka: "hr" })),
+  ...glasoviRacuna.filter((g) => !knjiznica.some((k) => k.voice_id === g.voice_id))
+    .map((g) => ({ voice_id: g.voice_id, name: g.name, oznaka: g.category === "cloned" ? "kloniran" : g.labels?.language ?? "" })),
+];
+// Ženski glasovi prvi (djeca, logopedinje), pa po uporabi.
+const hrGlasovi = [...knjiznica].sort((a, b) => Number(a.gender !== "female") - Number(b.gender !== "female") || (b.usage_character_count_1y ?? 0) - (a.usage_character_count_1y ?? 0));
+const SPOL: Record<string, string> = { female: "žena", male: "muškarac" };
+const DOB: Record<string, string> = { young: "mlađa dob", middle_aged: "srednja dob", old: "starija dob" };
+const PROBA = "Što se rimuje s riječi šal? Trubač, snijeg, sanjke, brijeg, zmaj, ježić, čaša, džep, ćup, ljuljačka, njuška. Bravo!";
+const broj = (s: string) => red.filter((p) => p.status === s).length;
+const imeGlasa = popisGlasova.find((g) => g.voice_id === glas)?.name;
+const p = Astro.url.searchParams.get("p") ?? "";
+const poruka = p === "spremljeno" ? "Glas je spremljen. Vrijedi za nove poslove."
+  : p === "vec" ? "Snimka više nije kandidat (netko je bio brži)."
+  : p === "u-redu" ? "Taj tekst već ima kandidata ili posao u redu."
+  : p.startsWith("poslano-") ? `Ponovno poslano u red: ${p.slice(8)}.` : "";
+const OZNAKA: Record<string, string> = { ceka: "čeka", radi: "radi", gotovo: "gotovo", greska: "greška" };
+const KLASA: Record<string, string> = { ceka: "", radi: "info", gotovo: "uspjeh", greska: "greska" };
+const natrag = Astro.url.pathname + Astro.url.search.replace(/[?&]p=[^&]*/, "");
+---
+<AdminOkvir naslov="Zvukovi" aktivno="zvukovi">
+  <div class="naslov">
+    <div>
+      <h1>Zvukovi</h1>
+      <p class="podnaslov">Izgovor riječi i uputa (ElevenLabs). Javno ide samo odobrena snimka; bez nje igra koristi glas preglednika.</p>
+    </div>
+    <form method="post" class="akcije">
+      <input type="hidden" name="natrag" value={natrag} />
+      {broj("greska") > 0 && <button class="gumb" name="akcija" value="greske">Vrati greške u red ({broj("greska")})</button>}
+      <button class="gumb tihi" name="akcija" value="zaglavljeni" title="Poslovi koji čekaju ili su zapeli: ponovno u Cloudflare Queue">Pogurni red</button>
+    </form>
+  </div>
+  {poruka && <p class="ploha obavijest">{poruka}</p>}
+
+  <section class="ploha glas">
+    <Ikona ime="zvuk" />
+    <div class="glas-tijelo">
+      <form method="post" class="glas-forma">
+        <input type="hidden" name="akcija" value="glas" />
+        <input type="hidden" name="natrag" value={natrag} />
+        <label>Glas
+          {popisGlasova.length ? (
+            <select name="glas" id="glas">
+              {!glas && <option value="">— odaberi —</option>}
+              {popisGlasova.map((g) => <option value={g.voice_id} selected={g.voice_id === glas}>{g.name}{g.oznaka ? ` (${g.oznaka})` : ""}</option>)}
+            </select>
+          ) : <input name="glas" id="glas" value={glas} placeholder="voice_id" class="mono" required />}
+        </label>
+        <label>Model <input name="model" id="model" value={model || "eleven_v3"} class="mono" /></label>
+        <button class="gumb glavni" type="submit">Spremi</button>
+      </form>
+      <div class="proba">
+        <input id="proba-tekst" value={PROBA} aria-label="Tekst probe" />
+        <button class="gumb" type="button" id="proba">Poslušaj probu</button>
+        <audio id="proba-zvuk"></audio>
+        <span class="sitno" id="proba-rez"></span>
+      </div>
+      <p class="sitno blijedo">
+        {glas ? <>Aktivni glas: <b>{imeGlasa ?? glas}</b> · <span class="mono">{model || "eleven_v3"}</span>.</> : <b class="greska">Glas nije odabran: poslovi čekaju u grešci.</b>}
+        {!popisGlasova.length && " Ključ nema dozvolu voices_read, pa se glas upisuje kao ID."}
+        {" "}Svaku snimku Scribe (STT) prepiše: riječ mora biti točna, rečenica ≥ 90 %. Inače novi pokušaj, do 3, a najbolji dolazi ovdje s oznakom „razlika”.
+      </p>
+    </div>
+  </section>
+
+  {hrGlasovi.length > 0 && (
+    <details class="ploha knjiznica" open={!glas}>
+      <summary><h2 class="odjeljak">Hrvatski glasovi <span class="blijedo sitno">{hrGlasovi.length} iz ElevenLabs knjižnice</span></h2></summary>
+      <p class="sitno blijedo">Proba izgovara tekst iz polja iznad. STT (Scribe) ga prepiše: postotak je koliko se prijepis poklapa, a crvene riječi STT nije čuo točno. Proba se sprema, pa ponovno slušanje ne košta.
+        <button type="button" class="gumb mali" id="sve-probe">Isprobaj sve</button></p>
+      <table>
+        <tbody>
+          {hrGlasovi.map((g) => (
+            <tr data-glas={g.voice_id}>
+              <td><b>{g.name}</b>{g.voice_id === glas && <span class="oznaka uspjeh">odabran</span>}
+                <div class="sitno blijedo">{[SPOL[g.gender ?? ""] ?? g.gender, DOB[g.age ?? ""] ?? g.age, g.accent && g.accent !== "standard" ? g.accent : null].filter(Boolean).join(" · ")}</div>
+                {g.description && <div class="sitno blijedo opis">{g.description}</div>}</td>
+              <td><button type="button" class="gumb mali probaj">Poslušaj</button></td>
+              <td class="rez sitno"></td>
+              <td>
+                <form method="post">
+                  <input type="hidden" name="akcija" value="glas" />
+                  <input type="hidden" name="natrag" value={natrag} />
+                  <input type="hidden" name="glas" value={g.voice_id} />
+                  <button class="gumb mali tihi" disabled={g.voice_id === glas}>Odaberi</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  )}
+
+  <nav class="tabovi">
+    {STATUSI.map((s) => <a href={`/admin/zvukovi?s=${s}`} class:list={["tab", { aktivno: s === status }]}>{s === "kandidat" ? "Za pregled" : s === "odobren" ? "Odobreni" : "Odbijeni"}</a>)}
+  </nav>
+
+  {zvukovi.length ? (
+    <div class="ploha popis">
+      {zvukovi.map((z) => (
+        <article class="zvuk" data-id={z.id}>
+          <div class="tekst">
+            <b>{z.izgovor}</b>
+            <div class="sitno blijedo">
+              {z.provjera === "ok" ? <span class="oznaka uspjeh">STT točno</span>
+                : z.provjera === "razlika" ? <span class="oznaka greska" title="što je STT čuo">čuje se „{z.prijepis}” ({Math.round((z.slicnost ?? 0) * 100)} %)</span>
+                : <span class="oznaka">bez provjere</span>}
+              {" "}#{z.id} · {kad(z.created_at)}{z.pregledao && <> · {z.pregledao}</>}
+              {z.razlog && <div class="razlog">{z.razlog}</div>}
+            </div>
+          </div>
+          <audio controls preload="none" src={`/admin/zvuk/${z.id}`}></audio>
+          <form method="post" class="odluka">
+            <input type="hidden" name="id" value={z.id} />
+            <input type="hidden" name="kljuc" value={z.kljuc} />
+            <input type="hidden" name="natrag" value={natrag} />
+            {status === "kandidat" ? (
+              <>
+                <button class="gumb glavni" name="akcija" value="odobri"><Ikona ime="kvacica" velicina={16} /> Odobri</button>
+                <details>
+                  <summary class="gumb">Odbij…</summary>
+                  <div class="odbij">
+                    <input name="razlog" placeholder="Što ne valja (npr. krivi naglasak, ne čuje se Č)" />
+                    <input name="izgovor" placeholder={`Kako napisati za izgovor (neobavezno): ${z.izgovor}`} />
+                    <button class="gumb opasno" name="akcija" value="odbij">Odbij i generiraj ponovno</button>
+                  </div>
+                </details>
+              </>
+            ) : (
+              <details>
+                <summary class="gumb tihi">Generiraj ponovno…</summary>
+                <div class="odbij">
+                  <input name="izgovor" placeholder={`Kako napisati za izgovor (neobavezno): ${z.izgovor}`} />
+                  <button class="gumb" name="akcija" value="ponovi">U red</button>
+                </div>
+              </details>
+            )}
+          </form>
+        </article>
+      ))}
+    </div>
+  ) : <div class="ploha prazno"><h2>{status === "kandidat" ? "Nema snimki za pregled" : "Prazno"}</h2><p>Snimke za bilježnicu: gumb „Generiraj zvukove” na stranici bilježnice.</p></div>}
+
+  {red.length > 0 && (
+    <section class="ploha tablica">
+      <h2 class="odjeljak">Red <span class="blijedo sitno">{broj("ceka")} čeka · {broj("radi")} radi · {broj("greska")} grešaka</span></h2>
+      <table>
+        <thead><tr><th>#</th><th>Tekst</th><th>Status</th><th>TTS poziva</th><th>Dodano</th><th>Završeno</th></tr></thead>
+        <tbody>
+          {red.map((q) => (
+            <tr>
+              <td class="mono blijedo">{q.id}</td>
+              <td>{q.izgovor}</td>
+              <td><span class:list={["oznaka", KLASA[q.status]]}>{OZNAKA[q.status]}</span>{q.greska && q.status !== "gotovo" && <div class="greska sitno">{q.greska}</div>}</td>
+              <td class="mono">{q.pokusaji}</td>
+              <td class="blijedo">{kad(q.created_at)}</td>
+              <td class="blijedo">{kad(q.zavrseno_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  )}
+</AdminOkvir>
+<script>
+  const zvuk = document.getElementById("proba-zvuk") as HTMLAudioElement;
+  const polje = (id: string) => document.getElementById(id) as HTMLInputElement;
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const rijeci = (t: string) => t.toLocaleLowerCase("hr").replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
+
+  /** Proba: GET vraća mp3 i prijepis u zaglavlju; audio onda svira isti URL (spremljen u R2 i u cacheu). */
+  async function proba(glas: string, rez: HTMLElement | null, sviraj: boolean) {
+    const tekst = polje("proba-tekst").value;
+    const url = `/admin/api/zvuk-proba?${new URLSearchParams({ glas, model: polje("model").value, tekst })}`;
+    if (rez) rez.textContent = "generiram…";
+    const r = await fetch(url);
+    if (!r.ok) { if (rez) rez.innerHTML = `<span class="greska">${esc(await r.text())}</span>`; return; }
+    const prijepis = decodeURIComponent(r.headers.get("x-prijepis") ?? "");
+    const sl = Number(r.headers.get("x-slicnost") || 0);
+    const cuje = new Set(rijeci(prijepis));
+    const krive = [...new Set(rijeci(tekst))].filter((w) => !cuje.has(w));
+    if (rez) rez.innerHTML = prijepis
+      ? `<b class="${krive.length ? "greska" : "dobro"}">${Math.round(sl * 100)} %</b> ${krive.length ? `nije čuo: <span class="greska">${krive.map(esc).join(", ")}</span>` : "sve riječi točno"}`
+      : "bez prijepisa";
+    if (sviraj) { zvuk.src = url; await zvuk.play().catch(() => {}); }
+  }
+
+  const gumb = document.getElementById("proba") as HTMLButtonElement;
+  gumb.addEventListener("click", async () => {
+    gumb.disabled = true;
+    try { await proba((document.getElementById("glas") as HTMLInputElement | HTMLSelectElement).value, document.getElementById("proba-rez"), true); }
+    finally { gumb.disabled = false; }
+  });
+  document.querySelectorAll<HTMLButtonElement>("button.probaj").forEach((b) => b.addEventListener("click", async () => {
+    const tr = b.closest("tr")!;
+    b.disabled = true;
+    try { await proba(tr.dataset.glas!, tr.querySelector(".rez"), true); } finally { b.disabled = false; }
+  }));
+  // Sve probe, dvije istodobno (ElevenLabs ograničava istodobne zahtjeve).
+  document.getElementById("sve-probe")?.addEventListener("click", async (e) => {
+    const b = e.currentTarget as HTMLButtonElement;
+    b.disabled = true;
+    const redovi = [...document.querySelectorAll<HTMLElement>(".knjiznica tr[data-glas]")];
+    const radnik = async () => { for (let tr; (tr = redovi.shift()); ) await proba(tr.dataset.glas!, tr.querySelector(".rez"), false); };
+    await Promise.all([radnik(), radnik()]);
+    b.disabled = false;
+  });
+  // Jedna snimka svira u isto vrijeme.
+  document.addEventListener("play", (e) => document.querySelectorAll("audio").forEach((a) => a !== e.target && a.pause()), true);
+</script>
+<style>
+  .akcije { display: flex; gap: 8px; margin: 0; }
+  .obavijest { padding: 10px 16px; margin-bottom: 16px; }
+  .glas { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; margin-bottom: 22px; }
+  .glas > :global(svg) { color: var(--med); flex: none; margin-top: 6px; }
+  .glas-tijelo { flex: 1; display: grid; gap: 10px; min-width: 0; }
+  .glas-forma, .proba { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin: 0; }
+  .glas-forma label { display: grid; gap: 4px; font-size: .82rem; color: var(--blijedo); }
+  .proba input { flex: 1; min-width: 220px; }
+  .greska { color: var(--greska); }
+  .knjiznica { padding: 14px 18px; margin-bottom: 22px; }
+  .knjiznica summary { cursor: pointer; }
+  .knjiznica summary h2 { display: inline; }
+  .knjiznica table { width: 100%; }
+  .knjiznica td { padding: 8px 6px; border-bottom: 1px solid var(--rub); vertical-align: top; }
+  .knjiznica .opis { max-width: 420px; }
+  .knjiznica .rez { min-width: 200px; }
+  :global(.dobro) { color: var(--uspjeh, #1a7f37); }
+  :global(.greska) { color: var(--greska); }
+  .tabovi { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tab { padding: 6px 14px; border-radius: 999px; text-decoration: none; color: var(--blijedo); border: 1px solid var(--rub); }
+  .tab.aktivno { background: var(--med-blago); color: var(--med-tamno); border-color: transparent; }
+  .popis { padding: 0; }
+  .zvuk { display: grid; grid-template-columns: minmax(0, 1fr) 260px auto; gap: 14px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--rub); }
+  .zvuk:last-child { border-bottom: 0; }
+  .zvuk audio { width: 100%; height: 36px; }
+  .razlog { margin-top: 4px; }
+  .odluka { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
+  .odluka details { position: relative; }
+  .odluka summary { list-style: none; cursor: pointer; }
+  .odluka summary::-webkit-details-marker { display: none; }
+  .odbij { position: absolute; right: 0; top: calc(100% + 6px); z-index: 2; display: grid; gap: 8px; width: 340px; padding: 12px;
+    background: var(--povrsina, #fff); border: 1px solid var(--rub); border-radius: 12px; box-shadow: 0 8px 24px rgb(0 0 0 / .12); }
+  .tablica { overflow-x: auto; margin-top: 22px; }
+  @media (max-width: 760px) { .zvuk { grid-template-columns: 1fr; } .odbij { position: static; width: auto; } }
+</style>

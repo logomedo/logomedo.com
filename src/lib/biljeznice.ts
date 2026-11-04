@@ -10,7 +10,8 @@ import { korisnikId, stvori } from "./zadaci/baza";
 import { normaliziraj, rijeciU, type Sadrzaj, type Vrsta } from "./zadaci/vrste";
 import { brojSlogova, izvediRimu } from "./zadaci/rima";
 import { poIds as pozadinePoId, pozadineU, type Pozadina } from "./pozadine";
-import type { Tema } from "./teme";
+import { TEME, type Tema } from "./teme";
+import { tekstoviIgre } from "./zvukovi";
 
 const DB = () => env.DB;
 
@@ -71,6 +72,12 @@ export async function rijeciIPozadine(zadaci: { vrsta: Vrsta; sadrzaj: Sadrzaj }
       slika: r.kljuc ? javniUrl(r.kljuc) : null,
     })),
   };
+}
+
+/** Ključevi svih tekstova koje igra bilježnice izgovara (za red izgovora i javnu igru). */
+export async function tekstoviBiljeznice(b: Biljeznica): Promise<string[]> {
+  const p = await podaci(b);
+  return tekstoviIgre(p.zadaci, p.rijeci, (TEME[b.tema] ?? TEME.bozic).kraj);
 }
 
 /** Stanje slika riječi bilježnice u stilu bilježnice: za admin i gumb „Generiraj ilustracije”. */

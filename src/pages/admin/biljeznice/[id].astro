@@ -1,7 +1,9 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
-import { generirajSlike, poId, provjeriPolja, spremi, stanjeSlika, zadaciBiljeznice } from "../../../lib/biljeznice";
+import { generirajSlike, poId, provjeriPolja, spremi, stanjeSlika, tekstoviBiljeznice, zadaciBiljeznice } from "../../../lib/biljeznice";
+import { dodajZvukove, stanjeZvukova } from "../../../lib/zvukovi";
+import { izgovorZa } from "../../../lib/zvukovi-tekst";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
 import { jeTema, TEME, type Tema } from "../../../lib/teme";
 import { popis as sviZadaci } from "../../../lib/zadaci/baza";
@@ -18,6 +20,10 @@ if (Astro.request.method === "POST") {
   if (f.get("akcija") === "generiraj") {
     const n = await generirajSlike(b, Astro.locals.admin!.email);
     return Astro.redirect(`/admin/biljeznice/${id}?dodano=${n}`, 303);
+  }
+  if (f.get("akcija") === "zvukovi") {
+    const n = await dodajZvukove(await tekstoviBiljeznice(b), Astro.locals.admin!.email);
+    return Astro.redirect(`/admin/biljeznice/${id}?zvukova=${n}#zvukovi`, 303);
   }
   if (f.get("akcija") === "spremi") {
     // Redoslijed: polje red_<zadatak> (broj); prazno ili 0 = makni iz bilježnice. `dodaj` ide na kraj.
@@ -40,10 +46,14 @@ if (Astro.request.method === "POST") {
 }
 const dodano = Astro.url.searchParams.get("dodano");
 if (dodano !== null) poruka = Number(dodano) ? `U red za generiranje dodano ${dodano} slika. Runner ih radi na Macu (kvota agyja).` : "Nema riječi kojima treba nova slika.";
+const zvukova = Astro.url.searchParams.get("zvukova");
+if (zvukova !== null) poruka = Number(zvukova) ? `U red izgovora dodano ${zvukova} tekstova. Snimke stižu u Zvukovi za minutu-dvije.` : "Svi tekstovi već imaju snimku ili posao u redu.";
 if (Astro.url.searchParams.has("spremljeno")) poruka = "Spremljeno.";
 if (Astro.url.searchParams.has("nova")) poruka = "Bilježnica je napravljena. Dodaj joj zadatke ispod i spremi.";
 
-const [zadaci, stanje, svi] = await Promise.all([zadaciBiljeznice(id), stanjeSlika(b), sviZadaci()]);
+const [zadaci, stanje, svi, zvuci] = await Promise.all([zadaciBiljeznice(id), stanjeSlika(b), sviZadaci(), tekstoviBiljeznice(b).then(stanjeZvukova)]);
+const zvukaOdobreno = zvuci.filter((z) => z.odobren).length;
+const zvukaBez = zvuci.filter((z) => !z.odobren && !z.kandidata && !z.u_redu).length;
 const ukljuceni = new Set(zadaci.map((z) => z.id));
 const ostali = svi.filter((z) => !ukljuceni.has(z.id));
 const ekrana = brojEkrana(zadaci);
@@ -108,6 +118,33 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
       )}
       <button class="gumb glavni" type="submit">Spremi</button>
     </form>
+
+    <section class="ploha slike" id="zvukovi">
+      <div class="slike-vrh">
+        <h2 class="odjeljak">Izgovor <span class="blijedo sitno">{zvukaOdobreno} od {zvuci.length} odobreno</span></h2>
+        <form method="post">
+          <input type="hidden" name="akcija" value="zvukovi" />
+          <button class="gumb mali" type="submit" disabled={!zvukaBez}>Generiraj zvukove ({zvukaBez})</button>
+        </form>
+      </div>
+      <p class="sitno blijedo">ElevenLabs izgovori svaku riječ i uputu, STT provjeri snimku, a odobrava se u <a href="/admin/zvukovi">Zvukovi</a>. Bez odobrene snimke igra koristi glas preglednika.</p>
+      <table>
+        <tbody>
+          {zvuci.map((z) => (
+            <tr>
+              <td>{izgovorZa(z.kljuc)}</td>
+              <td>
+                {z.odobren ? <span class="oznaka uspjeh">odobren</span>
+                  : z.kandidata ? <a class="oznaka med" href="/admin/zvukovi">{z.kandidata} za pregled</a>
+                  : z.u_redu ? <span class="oznaka info">u redu</span>
+                  : z.greska ? <span class="oznaka greska" title={z.greska}>greška</span>
+                  : <span class="oznaka">nema</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
 
     <section class="ploha slike">
       <div class="slike-vrh">

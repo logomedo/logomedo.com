@@ -5,6 +5,7 @@ import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../lib/biljeznice";
 import { TEME } from "../../lib/teme";
 import { brojEkrana } from "../../lib/biljeznice-ekrani";
+import { odobreniZvukovi, tekstoviIgre } from "../../lib/zvukovi";
 import "../../lib/scena.css";
 
 const b = await poSlugu(String(Astro.params.slug));
@@ -18,6 +19,8 @@ const za = {
   rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika })),
   pozadine: p.pozadine,
   kraj: tema.kraj,
+  // Odobrene snimke izgovora (ElevenLabs) po ključu teksta; bez snimke igra koristi glas preglednika.
+  zvukovi: await odobreniZvukovi(tekstoviIgre(p.zadaci, p.rijeci, tema.kraj)),
 };
 // JSON u <script type="application/json">: „</” se ne smije pojaviti doslovno.
 const json = JSON.stringify(za).replace(/</g, "\\u003c");

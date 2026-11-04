@@ -95,7 +95,7 @@ async function zastiti(odgovor: Response, admin: boolean): Promise<Response> {
   h.set(
     "content-security-policy",
     `default-src 'none'; script-src 'self' 'nonce-${nonce}'; style-src 'self' 'unsafe-inline'; ` +
-      `img-src 'self' data:${cdn ? ` ${cdn}` : ""}; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
+      `img-src 'self' data:${cdn ? ` ${cdn}` : ""}; media-src 'self'${cdn ? ` ${cdn}` : ""}; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
   );
   h.set("x-content-type-options", "nosniff");
   // Admin: ne "no-referrer", jer uz nju preglednik na <form> POST šalje `Origin: null`.

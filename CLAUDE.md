@@ -9,4 +9,5 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
 - Imena u kodu i UI-ju su hrvatska (kao u omm/e-satnici).
 - Slike generira `scripts/runner.sh` (Vertex AI, `gemini-nano-banana-2.1`). Ne pokretati ga u petlji iz Claude
   sesije s notifikacijama po slici: katalog ima 428 riječi, a Vertex se plaća.
+- Izgovor (ElevenLabs) radi sam Worker kroz Cloudflare Queue, bez runnera: `docs/zvukovi.md`.
 - Prije commita: `npm test && npm run check && npm run build`.

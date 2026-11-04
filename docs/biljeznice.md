@@ -52,7 +52,7 @@ Izostavljen je GRINČ (zaštićeni lik); dvosmislene riječi BAL, DJED i GRAD im
 1. Generiranje ~22 ilustracije ide kroz kvotu agyja (~12 pa 3–5 h čekanja): gumb u adminu
    bilježnice. Nakon toga ih odobriti u Pregledu (tek odobrene idu na CDN i u igru).
 2. Popis riječi i parova neka pregleda Anita (logopedica).
-3. Kasnije: snimke logopedice po riječi (R2) umjesto glasa preglednika.
+3. Izgovor: ElevenLabs snimke s pregledom (`docs/zvukovi.md`, 4. 11. 2026.); glas preglednika je zamjena.
 
 ## Nova bilježnica i teme (2. 11. 2026., na produkciji)
 
