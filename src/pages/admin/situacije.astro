@@ -5,7 +5,7 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import KatalogKartice from "../../components/KatalogKartice.astro";
 import Ikona from "../../components/Ikona.astro";
 import { korisnikId } from "../../lib/zadaci/baza";
-import { zadnjiPoslovi, zatrazi } from "../../lib/pozadine-generiranje";
+import { dupliciraj, ponovi, zadnjiPoslovi, zatrazi } from "../../lib/pozadine-generiranje";
 import { koristi, makniSliku, obrisi, ORIJENTACIJE, popis, stvori, ucitajSliku, uredi, type Orijentacija } from "../../lib/pozadine";
 
 const NAZIV_O: Record<Orijentacija, string> = { uspravno: "Uspravna", vodoravno: "Vodoravna" };
@@ -54,6 +54,16 @@ if (Astro.request.method === "POST") {
     const r = await zatrazi(id, email);
     return "greska" in r ? natrag("greska", r.greska)
       : natrag("ok", `${r.u === "vodoravno" ? "Vodoravna" : "Uspravna"} slika se generira; stranica se sama osvježi kad bude gotova.`);
+  }
+  if (akcija === "ponovi") {
+    return (await ponovi(id, email)) ? natrag("ok", "Generiranje je ponovo u redu.") : natrag("greska", "Nema neuspjelog generiranja za ponoviti.");
+  }
+  if (akcija === "dupliciraj") {
+    const o = String(f.get("orijentacija")) as Orijentacija;
+    if (!ORIJENTACIJE.includes(o)) return natrag("greska", "Odaberi sliku.");
+    const r = await dupliciraj(id, o, String(f.get("uputa") ?? ""), email, await korisnikId(email));
+    if ("greska" in r) return natrag("greska", r.greska);
+    return natrag("ok", r.generira ? "Kopija je napravljena; izmijenjena slika se generira, stranica se sama osvježi." : "Kopija je napravljena.", r.id);
   }
   if (akcija === "makni") {
     const o = String(f.get("orijentacija")) as Orijentacija;
@@ -127,10 +137,16 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
                       <div class="nema">
                         <span>nema {IZ[o]}</span>
                         {radi ? <span class="generira" data-generira><span class="vrtuljak" aria-hidden="true" /> {posao!.status === "radi" ? "Generira se…" : "Čeka runner…"}</span>
+                          : pala ? (
+                            <form method="post">
+                              <input type="hidden" name="akcija" value="ponovi" /><input type="hidden" name="id" value={p.id} />
+                              <button class="gumb mali" type="submit"><Ikona ime="iskra" /> Pokušaj ponovo</button>
+                            </form>
+                          )
                           : p[druga] && (
                             <form method="post">
                               <input type="hidden" name="akcija" value="generiraj" /><input type="hidden" name="id" value={p.id} />
-                              <button class="gumb mali" type="submit"><Ikona ime="iskra" /> {pala ? "Pokušaj ponovo" : `Izgeneriraj iz ${IZ[druga]}`}</button>
+                              <button class="gumb mali" type="submit"><Ikona ime="iskra" /> Izgeneriraj iz {IZ[druga]}</button>
                             </form>
                           )}
                         {pala && <span class="sitno greska-generiranja">{posao!.greska}</span>}
@@ -175,6 +191,24 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
           <button class="gumb mali tihi opasno" type="submit" disabled={!!koriste.get(p.id)}
             title={koriste.get(p.id) ? "Situaciju koriste zadaci" : undefined}>Obriši</button>
         </form>
+        {(p.uspravno || p.vodoravno) && (
+          <details class="dupliciraj">
+            <summary>Dupliciraj situaciju</summary>
+            <form method="post" class="forma-dupliciraj">
+              <input type="hidden" name="akcija" value="dupliciraj" /><input type="hidden" name="id" value={p.id} />
+              <div class="izbor">
+                <span>Polazna slika:</span>
+                {ORIJENTACIJE.filter((o) => p[o]).map((o, i) => (
+                  <label><input type="radio" name="orijentacija" value={o} checked={i === 0} /> {NAZIV_O[o]}</label>
+                ))}
+              </div>
+              <textarea name="uputa" rows="2" maxlength="1000"
+                placeholder="Što promijeniti, npr. „Pomakni djecu malo prema gore, a dolje dodaj snijega, jer tamo dolaze gumbi.” Prazno = obična kopija s obje slike."></textarea>
+              <div class="akcije"><button class="gumb mali" type="submit"><Ikona ime="iskra" /> Dupliciraj</button></div>
+              <p class="sitno blijedo">Nastaje nova situacija „{p.naziv} (kopija)”, a ova ostaje kakva je. S uputom se odabrana slika generira izmijenjena; drugu orijentaciju zatim napraviš gumbom „Izgeneriraj iz …”.</p>
+            </form>
+          </details>
+        )}
       </section>
     ))}
     {!pozadine.length && <p class="blijedo">Još nema situacija.</p>}
@@ -259,6 +293,12 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
   .sl figcaption { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .inline { display: inline; margin: 0; }
   .brisi { margin: 0; }
+  .dupliciraj { grid-column: 1 / -1; border-top: 1px solid var(--rub); padding-top: 10px; }
+  .dupliciraj summary { cursor: pointer; font-weight: 600; font-size: .88rem; color: var(--blijedo); }
+  .forma-dupliciraj { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-width: 720px; }
+  .forma-dupliciraj .izbor { display: flex; gap: 14px; align-items: center; font-size: .88rem; }
+  .forma-dupliciraj textarea { font: inherit; font-size: .9rem; padding: 8px 10px; border: 1px solid var(--rub-jak); border-radius: 8px; background: var(--povrsina); color: var(--tinta); resize: vertical; }
+  .forma-dupliciraj .akcije { display: flex; }
   .sl .nema { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
   .sl .nema .gumb { white-space: normal; height: auto; min-height: 30px; padding: 5px 8px; line-height: 1.2; font-size: .78rem; }
   .generira { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--med-tamno); }

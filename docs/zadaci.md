@@ -217,6 +217,9 @@ ocjena: svaki gumb je jedna odluka: točan dirnut ili ometač nedirnut = točno
   ga uzima prije poslova riječi, šalje postojeću sliku Vertexu kao predložak (`VERTEX_PREDLOZAK=1`) s omjerom
   zamijenjenih stranica (3:4 → 4:3, zaokruženo na podržani) i uputom „ista slika, samo prošireni kadar”. Rezultat
   odmah postaje slika te orijentacije (`izvor = 'agy'`, bez pregleda); ako ne valja, makne se i ponovi.
+- **Dupliciraj situaciju**: bez upute kopija s obje slike (datoteke se kopiraju pod novi ključ). S uputom
+  („pomakni djecu gore, dolje dodaj snijega”) kopija ostaje bez slika, a posao u istom redu (`iz = u`, isti omjer)
+  iz odabrane slike izvorne situacije napravi izmijenjenu (`promptIzmjene`). Neuspjeli posao: „Pokušaj ponovo”.
 
 Zamka migracije 0010: CHECK se u SQLite ne mijenja, pa se `zadaci` slaže ponovno. `DROP TABLE` uz
 uključene ključeve radi implicitni DELETE (kaskada bi obrisala verzije), a odgođene povrede od
