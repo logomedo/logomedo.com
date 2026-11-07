@@ -19,18 +19,26 @@ const tocka = (r: number, kut: number) => [r * Math.sin((kut * Math.PI) / 180), 
 
 export interface Kolo { el: HTMLElement; zavrti: () => void }
 
+export const ZLATNO = -1;
+/**
+ * Polja kola i indeks boje svakog polja (u paleti od `m` boja; ZLATNO = zlatno polje).
+ * Susjedna polja nikad nemaju istu boju, ni zadnje i prvo (kolo je zatvoreno). Dvije boje
+ * (crveno-bijelo) i neparan broj slova: do 15 slova slova se ponove dvaput (kao na pravom kolu
+ * sreće), inače zadnje polje bude zlatno. Više boja: zadnje polje uzme srednju boju.
+ */
+export function rasporedKola(slova: string[], m: number): { polja: string[]; boje: number[] } {
+  const polja = m === 2 && slova.length % 2 === 1 && slova.length <= 15 ? [...slova, ...slova] : slova;
+  const n = polja.length;
+  const boje = polja.map((_, i) => (i === n - 1 && n > 1 && (n - 1) % m === 0 ? (m > 2 ? 1 : ZLATNO) : i % m));
+  return { polja, boje };
+}
+
 export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => void; naTik?: () => void; naKraj: (slovo: string) => void; trajanje?: number; boje?: BojeKola }): Kolo {
   const tema = BOJE_KOLA[o.boje ?? "sareno"] ?? BOJE_KOLA.sareno;
-  const m = tema.polja.length;
-  // Dvije boje (crveno-bijelo) i neparan broj polja: prvo i zadnje bi bili iste boje. Do 15 slova
-  // slova se ponove dvaput (kao na pravom kolu sreće), inače jedno polje dobije zlatnu boju.
-  const neparno = m === 2 && o.slova.length % 2 === 1;
-  const polja = neparno && o.slova.length <= 15 ? [...o.slova, ...o.slova] : o.slova;
+  const { polja, boje } = rasporedKola(o.slova, tema.polja.length);
   const n = Math.max(2, polja.length);
   const seg = 360 / n;
-  const ZLATNO = -1;
-  // Zadnje polje ne smije imati boju prvog (kolo je zatvoreno): tada uzme srednju (ili zlatnu) boju.
-  const boja = (i: number) => (i === n - 1 && (n - 1) % m === 0 ? (m > 2 ? 1 : ZLATNO) : i % m);
+  const boja = (i: number) => boje[i];
   const bojaPolja = (i: number) => (boja(i) === ZLATNO ? "#f4c542" : tema.polja[boja(i)]);
   const bojaSlova = (i: number) => (boja(i) === ZLATNO ? "#8a1414" : tema.slova[boja(i) % tema.slova.length]);
   const svg = s("svg", { viewBox: "-104 -104 208 208", class: "kolo-svg", "aria-hidden": "true" });
