@@ -155,3 +155,8 @@ test("prvi glas: generator, normalizacija, ocjena, ekrani", () => {
   assert.equal(e.length, 1);
   assert.ok(e[0].vrsta === "prvi_glas" && e[0].uputa.includes("{slovo}"));
 });
+
+test("prvi glas: boje kola, nepoznate su šarene", () => {
+  assert.equal((normaliziraj("prvi_glas", { boje: "crveno-bijelo-plavo", krugovi: [] }) as PrviGlas).boje, "crveno-bijelo-plavo");
+  assert.equal((normaliziraj("prvi_glas", { boje: "zeleno", krugovi: [] }) as PrviGlas).boje, "sareno");
+});

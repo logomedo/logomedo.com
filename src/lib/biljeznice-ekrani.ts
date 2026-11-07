@@ -10,7 +10,7 @@ export type Ekran =
   | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
   | { vrsta: "scena"; uputa: string; s: Scena }
   | { vrsta: "percepcija"; uputa: string; trazi: Percepcija["trazi"]; stavka: Percepcija["stavke"][0] }
-  | { vrsta: "prvi_glas"; uputa: string; kolo: string[]; krug: Krug };
+  | { vrsta: "prvi_glas"; uputa: string; kolo: string[]; boje: PrviGlas["boje"]; krug: Krug };
 
 const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija" | "prvi_glas">, string> = {
   odabir: "Što se rimuje s riječi {zadana}?",
@@ -34,7 +34,7 @@ export function ekrani(zadaci: ZadatakZaIgru[]): Ekran[] {
       // Svaki krug je ekran: kolo, pa traženje. Uputa za papir („iz kruga”) se na ekranu zamijeni.
       const s = z.sadrzaj as PrviGlas;
       const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_PRVOG_GLASA.ispis ? UPUTE_PRVOG_GLASA.ekran : z.uputa.trim();
-      for (const k of s.krugovi) if (k.slovo && k.tocno.length && k.slike.some((x) => x !== null)) out.push({ vrsta: "prvi_glas", uputa, kolo: s.kolo, krug: k });
+      for (const k of s.krugovi) if (k.slovo && k.tocno.length && k.slike.some((x) => x !== null)) out.push({ vrsta: "prvi_glas", uputa, kolo: s.kolo, boje: s.boje, krug: k });
       continue;
     }
     const uputa = z.uputa?.trim() || UPUTE[z.vrsta];

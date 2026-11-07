@@ -238,7 +238,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const q = pitanje(UPUTE_PRVOG_GLASA.kolo);
     const okvir = h("div", { class: "kolo-okvir" });
     const kolo = koloSlova({
-      slova: e.kolo, cilj: slovo, naTik: tik,
+      slova: e.kolo, boje: e.boje, cilj: slovo, naTik: tik,
       naPocetak: () => q.el.classList.add("skriveno"),
       naKraj: () => {
         zakljucano = true;

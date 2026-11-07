@@ -37,7 +37,15 @@ export interface Percepcija { trazi: Trazi; stavke: { polja: Polje[]; tocno: num
  * `tocno` su indeksi slika koje počinju glasom; editor ih računa iz riječi (`prviGlas`).
  */
 export interface Krug { slovo: string | null; slike: Id[]; tocno: number[] }
-export interface PrviGlas { kolo: string[]; krugovi: Krug[] }
+export interface PrviGlas { kolo: string[]; boje?: BojeKola; krugovi: Krug[] }
+/** Boje polja kola (ciklički) i boja slova na svakoj. */
+export type BojeKola = "sareno" | "crveno-bijelo" | "crveno-bijelo-plavo";
+export const BOJE_KOLA: Record<BojeKola, { naziv: string; polja: string[]; slova: string[] }> = {
+  sareno: { naziv: "Šareno", polja: ["#ffd166", "#ef8a7a", "#8fd3a8", "#86c5f0", "#c9a7e8", "#f7b267"], slova: ["#2b2118"] },
+  "crveno-bijelo": { naziv: "Crveno-bijelo", polja: ["#d62828", "#ffffff"], slova: ["#ffffff", "#c01f1f"] },
+  "crveno-bijelo-plavo": { naziv: "Crveno-bijelo-plavo", polja: ["#d62828", "#ffffff", "#1f4e9c"], slova: ["#ffffff", "#c01f1f", "#ffffff"] },
+};
+export const jeBojeKola = (x: unknown): x is BojeKola => typeof x === "string" && x in BOJE_KOLA;
 export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija | PrviGlas;
 
 /** Hrvatska abeceda (30 slova, dvoslovi su jedno slovo). Redoslijed kola. */
@@ -149,7 +157,7 @@ export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
     case "uljez": return { odnos: "rima", stavke: n.map(() => ({ slike: [null, null, null, null], uljez: 0 })) };
     case "scena": return { pozadina_id: null, gumbi: Array.from({ length: 7 }, (_, i) => ({ rijec_id: null, tocno: i < 5 })) };
     case "percepcija": return { trazi: "razlicitu", stavke: n.map(() => slozRed(null, 4, "razlicitu")) };
-    case "prvi_glas": return { kolo: [...ABECEDA], krugovi: [{ slovo: null, slike: Array(SLIKA_MIN).fill(null), tocno: [] }] };
+    case "prvi_glas": return { kolo: [...ABECEDA], boje: "sareno", krugovi: [{ slovo: null, slike: Array(SLIKA_MIN).fill(null), tocno: [] }] };
   }
 }
 
@@ -236,6 +244,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
       const kolo = ABECEDA.filter((x) => Array.isArray(o.kolo) && (o.kolo as unknown[]).includes(x));
       return {
         kolo: kolo.length >= 2 ? kolo : [...ABECEDA],
+        boje: jeBojeKola(o.boje) ? o.boje : "sareno",
         krugovi: niz(o.krugovi, MAX_REDOVA, (k) => {
           const x = obj(k);
           const slike = tocnoN(niz(x.slike, SLIKA_MAX, id), Math.max(SLIKA_MIN, Array.isArray(x.slike) ? Math.min(x.slike.length, SLIKA_MAX) : 0), () => null);

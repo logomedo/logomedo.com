@@ -6,8 +6,7 @@
 const SVG = "http://www.w3.org/2000/svg";
 // DOM tipovi u ovom projektu sudaraju se s tipovima Workera (append), pa kroz any kao u klijent.ts.
 const app = (e: unknown, ...d: unknown[]) => (e as any).append(...d);
-/** Boje polja kola, ciklički (pastelne, slovo je tamno). */
-const BOJE = ["#ffd166", "#ef8a7a", "#8fd3a8", "#86c5f0", "#c9a7e8", "#f7b267"];
+import { BOJE_KOLA, type BojeKola } from "./zadaci/vrste.ts";
 
 function s<K extends keyof SVGElementTagNameMap>(tag: K, a: Record<string, string | number> = {}): SVGElementTagNameMap[K] {
   const e = document.createElementNS(SVG, tag);
@@ -20,9 +19,13 @@ const tocka = (r: number, kut: number) => [r * Math.sin((kut * Math.PI) / 180), 
 
 export interface Kolo { el: HTMLElement; zavrti: () => void }
 
-export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => void; naTik?: () => void; naKraj: (slovo: string) => void; trajanje?: number }): Kolo {
+export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => void; naTik?: () => void; naKraj: (slovo: string) => void; trajanje?: number; boje?: BojeKola }): Kolo {
   const n = Math.max(2, o.slova.length);
   const seg = 360 / n;
+  const tema = BOJE_KOLA[o.boje ?? "sareno"] ?? BOJE_KOLA.sareno;
+  const m = tema.polja.length;
+  // Zadnje polje ne smije imati boju prvog (kolo je zatvoreno): tada uzme srednju boju.
+  const boja = (i: number) => (i === n - 1 && m > 2 && (n - 1) % m === 0 ? 1 : i % m);
   const svg = s("svg", { viewBox: "-104 -104 208 208", class: "kolo-svg", "aria-hidden": "true" });
   const krug = s("g", { class: "kolo-krug" });
   const R = 98;
@@ -32,8 +35,8 @@ export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => 
     const a0 = i * seg, a1 = (i + 1) * seg;
     const [x0, y0] = tocka(R, a0), [x1, y1] = tocka(R, a1);
     const g = s("g", { class: "kolo-polje", "data-i": i });
-    app(g, s("path", { d: `M0 0 L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`, fill: BOJE[i % BOJE.length] }));
-    const t = s("text", { x: 0, y: -(R - velicina * 0.95), "text-anchor": "middle", "dominant-baseline": "central", "font-size": slovo.length > 1 ? velicina * 0.78 : velicina,
+    app(g, s("path", { d: `M0 0 L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`, fill: tema.polja[boja(i)] }));
+    const t = s("text", { x: 0, y: -(R - velicina * 0.95), "text-anchor": "middle", "dominant-baseline": "central", "font-size": slovo.length > 1 ? velicina * 0.78 : velicina, fill: tema.slova[boja(i) % tema.slova.length],
       transform: `rotate(${a0 + seg / 2})` });
     t.textContent = slovo;
     app(g, t);
@@ -49,7 +52,7 @@ export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => 
   const gumb = document.createElement("button");
   gumb.type = "button"; gumb.className = "kolo-gumb"; gumb.textContent = "Zavrti";
   const el = document.createElement("div");
-  el.className = "kolo";
+  el.className = `kolo kolo-${o.boje ?? "sareno"}`;
   app(el, svg, gumb);
 
   let kut = 0, vrti = false, gotovo = false;

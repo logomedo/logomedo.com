@@ -236,7 +236,7 @@ zavrti i stane na slovo, slovo iskoči, a dijete među 12–15 slika pronalazi o
 glasom.
 
 ```ts
-{ kolo: string[] /* slova na kolu, zadano svih 30 */, krugovi: [{ slovo, slike: [rijec_id] /* 12–15 */, tocno: [i] }] }
+{ kolo: string[] /* slova na kolu, zadano svih 30 */, boje: "sareno" | "crveno-bijelo" | "crveno-bijelo-plavo", krugovi: [{ slovo, slike: [rijec_id] /* 12–15 */, tocno: [i] }] }
 odgovori: [{ stavka: krug, odabrano: slika, ms }]   // svaki dodir, i krivi
 ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog dodira
 ```
@@ -252,6 +252,8 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
   prvim glasom, svaka riječ jednom; riječi sa slikom ako ih ima barem 12.
 - **Upozorenja:** krug bez slova, slovo kojeg nema na kolu, prazne slike, nijedna ili sve slike s
   glasom, ista riječ dvaput.
+- **Boje kola** (`boje` u sadržaju, `BOJE_KOLA`): šareno (zadano), crveno-bijelo, crveno-bijelo-plavo; bira se u editoru
+  uz slova. Na crveno-bijelim kolima pobjedničko polje zasvijetli žuto (bijelo se ne bi istaknulo).
 - **Kolo** (`src/lib/kolo-slova.ts` + `.css`): SVG, okretanje kroz rAF s easeOutQuart (~4,6 s, uz
   `prefers-reduced-motion` 0,9 s); `naTik` na svakoj pregradi (u igri tihi klik iz WebAudija).
   Isti DOM u adminu i bilježnici.

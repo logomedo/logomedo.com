@@ -7,7 +7,7 @@
 import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
 import {
   ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
-  ABECEDA, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, type Krug, type PrviGlas,
+  ABECEDA, BOJE_KOLA, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, type Krug, type PrviGlas,
   type Izmjena, type Listic, type Odabir, type Odgovor, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta,
 } from "./vrste.ts";
 import { iskocenoSlovo, koloSlova, znackaSlova } from "../kolo-slova.ts";
@@ -310,6 +310,10 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("div", { class: "z-dio-glava" }, h("b", {}, `Slova na kolu (${s.kolo.length}/${ABECEDA.length})`),
           s.kolo.length < ABECEDA.length ? h("button", { type: "button", class: "gumb mali tihi", onclick: () => { s.kolo = [...ABECEDA]; oznaci(); osvjezi(); } }, "Sva slova") : null),
         h("div", { class: "z-kolo-slova" }, ...ABECEDA.map((sl) => h("button", { type: "button", class: `z-cip${naKolu(sl) ? " on" : ""}`, title: `${brojSlova(sl)} riječi u katalogu`, onclick: () => prebaci(sl) }, sl))),
+        h("div", { class: "z-dio-glava" }, h("b", {}, "Boje kola")),
+        h("div", { class: "z-kolo-boje" }, ...(Object.entries(BOJE_KOLA) as [keyof typeof BOJE_KOLA, (typeof BOJE_KOLA)[keyof typeof BOJE_KOLA]][]).map(([kod, b]) =>
+          h("button", { type: "button", class: `z-cip${(s.boje ?? "sareno") === kod ? " on" : ""}`, onclick: () => { s.boje = kod; oznaci(); resetRjesavanja(); osvjezi(); } },
+            h("span", { class: "z-kolo-uzorak", style: `background:conic-gradient(${b.polja.flatMap((c, i, a) => [`${c} ${(i / a.length) * 100}%`, `${c} ${((i + 1) / a.length) * 100}%`]).join(",")})` }), b.naziv))),
         h("p", { class: "sitno blijedo" }, "Kolo izgleda nasumično, a stane na slovo kruga. Slike koje počinju tim glasom označe se same (LJ, NJ i DŽ su jedan glas: LJULJAČKA ne počinje glasom L).")),
       ...s.krugovi.map((k, i) => {
         const tocnih = k.tocno.length;
@@ -481,7 +485,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const { k, i } = krugovi[pgKrug];
     const oznaka = krugovi.length > 1 ? h("span", { class: "sitno blijedo" }, ` (krug ${pgKrug + 1} od ${krugovi.length})`) : null;
     if (pgFaza === "kolo") {
-      const kolo = koloSlova({ slova: s.kolo, cilj: k.slovo!, naKraj: (sl) => {
+      const kolo = koloSlova({ slova: s.kolo, boje: s.boje, cilj: k.slovo!, naKraj: (sl) => {
         dodaj(kolo.el, iskocenoSlovo(sl));
         setTimeout(() => { pgFaza = "trazi"; osvjezi(); }, 1500);
       } });
@@ -719,7 +723,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
           // Prvi glas zadržava odabir slova na kolu; slova krugova biraju se samo s kola.
           if (vrsta === "prvi_glas") {
             const kolo = (prije as PrviGlas).kolo, s = sadrzaj as PrviGlas;
-            s.kolo = [...kolo];
+            s.kolo = [...kolo]; s.boje = (prije as PrviGlas).boje;
             s.krugovi = s.krugovi.map((k) => { if (k.slovo && kolo.includes(k.slovo)) return k; const iz = kolo.filter((sl) => brojSlova(sl) >= 3); return slozKrug(iz[Math.floor(Math.random() * iz.length)] ?? kolo[0], zaKrug()); });
           }
           // Percepcija zadržava izbor „različita / dvije iste".
