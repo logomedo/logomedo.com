@@ -1,7 +1,7 @@
 // Ekrani bilježnice: svaka stavka odabira i uljeza je jedan ekran, povezivanje je jedan
 // ekran, listić se u igri preskače. Broj ekrana = broj lampica na boru. Čisti TS: server
 // (broj lampica, ispis), preglednik (igra) i testovi.
-import { UPUTE_PERCEPCIJE, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
+import { UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
 
 export interface ZadatakZaIgru { vrsta: Vrsta; uputa: string | null; sadrzaj: Sadrzaj }
 export type Ekran =
@@ -9,9 +9,10 @@ export type Ekran =
   | { vrsta: "uljez"; uputa: string; stavka: Uljez["stavke"][0] }
   | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
   | { vrsta: "scena"; uputa: string; s: Scena }
-  | { vrsta: "percepcija"; uputa: string; trazi: Percepcija["trazi"]; stavka: Percepcija["stavke"][0] };
+  | { vrsta: "percepcija"; uputa: string; trazi: Percepcija["trazi"]; stavka: Percepcija["stavke"][0] }
+  | { vrsta: "prvi_glas"; uputa: string; kolo: string[]; krug: Krug };
 
-const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija">, string> = {
+const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija" | "prvi_glas">, string> = {
   odabir: "Što se rimuje s riječi {zadana}?",
   uljez: "Koja se riječ ne rimuje s ostalima?",
   povezivanje: "Poveži riječi koje se rimuju.",
@@ -27,6 +28,13 @@ export function ekrani(zadaci: ZadatakZaIgru[]): Ekran[] {
       const s = z.sadrzaj as Percepcija;
       const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_PERCEPCIJE[s.trazi].ispis ? UPUTE_PERCEPCIJE[s.trazi].ekran : z.uputa.trim();
       for (const st of s.stavke) if (st.polja.every((p) => p.rijec_id !== null)) out.push({ vrsta: "percepcija", uputa, trazi: s.trazi, stavka: st });
+      continue;
+    }
+    if (z.vrsta === "prvi_glas") {
+      // Svaki krug je ekran: kolo, pa traženje. Uputa za papir („iz kruga”) se na ekranu zamijeni.
+      const s = z.sadrzaj as PrviGlas;
+      const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_PRVOG_GLASA.ispis ? UPUTE_PRVOG_GLASA.ekran : z.uputa.trim();
+      for (const k of s.krugovi) if (k.slovo && k.tocno.length && k.slike.some((x) => x !== null)) out.push({ vrsta: "prvi_glas", uputa, kolo: s.kolo, krug: k });
       continue;
     }
     const uputa = z.uputa?.trim() || UPUTE[z.vrsta];

@@ -4,7 +4,8 @@
 // Ništa se ne sprema i ništa ne odlazi na server.
 import { ekrani, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
 import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts";
-import { izmjenaCss, type Polje } from "./zadaci/vrste.ts";
+import { izmjenaCss, UPUTE_PRVOG_GLASA, type Polje } from "./zadaci/vrste.ts";
+import { iskocenoSlovo, koloSlova, znackaSlova } from "./kolo-slova.ts";
 import { kljucZvuka } from "./zvukovi-tekst.ts";
 
 interface Podaci {
@@ -101,6 +102,8 @@ function ton(f: number, kad: number, trajanje: number, jacina = 0.18, oblik: Osc
 const zvonce = () => [1318.5, 1568, 2093].forEach((f, i) => { ton(f, i * 0.09, 1.1); ton(f * 2.76, i * 0.09, 0.4, 0.04); });
 const mekiPogodak = () => { ton(1046.5, 0, 0.5, 0.12); ton(1568, 0.07, 0.6, 0.1); };
 const krivo = () => { ton(220, 0, 0.22, 0.12, "triangle"); ton(185, 0.12, 0.3, 0.1, "triangle"); };
+/** Tik pregrade kola: kratak, tih klik. */
+const tik = () => ton(1900, 0, 0.03, 0.05, "square");
 const fanfara = () => [784, 988, 1175, 1568, 1976, 2349].forEach((f, i) => { ton(f, i * 0.12, 1.4, 0.13); ton(f * 2, i * 0.12, 0.5, 0.03); });
 
 // ---------- Igra ----------
@@ -225,6 +228,55 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return { cvorovi: [q.el, red], tekst, gumb: q.gumb };
   }
 
+  /**
+   * Prvi glas: kolo se zavrti na dodir i stane na slovo kruga, slovo iskoči i izgovori se,
+   * pa ispod pitanja dolazi mreža slika. Kartice nemaju riječ (odala bi glas), ali imaju zvučnik.
+   */
+  function ekranPrviGlas(e: Extract<Ekran, { vrsta: "prvi_glas" }>) {
+    const slovo = e.krug.slovo!;
+    const trazi = e.uputa.replaceAll("{slovo}", slovo);
+    const q = pitanje(UPUTE_PRVOG_GLASA.kolo);
+    const okvir = h("div", { class: "kolo-okvir" });
+    const kolo = koloSlova({
+      slova: e.kolo, cilj: slovo, naTik: tik,
+      naPocetak: () => q.el.classList.add("skriveno"),
+      naKraj: () => {
+        zakljucano = true;
+        dodaj(kolo.el, iskocenoSlovo(slovo));
+        mekiPogodak();
+        govori(`Glas ${slovo}!`);
+        setTimeout(trazenje, 1900);
+      },
+    });
+    kolo.el.setAttribute("role", "button"); kolo.el.tabIndex = 0; kolo.el.setAttribute("aria-label", "Zavrti kolo");
+    dodaj(okvir, kolo.el);
+
+    function trazenje() {
+      zakljucano = false;
+      const tekstPitanja = trazi.replace(new RegExp(`\\s*${slovo}\\.?$`), "");
+      const p2 = h("div", { class: "pitanje" }, h("span", {}, tekstPitanja, " ", znackaSlova(slovo)), zvucnik(() => trazi));
+      const nadjene = new Set<number>();
+      const slike = e.krug.slike.flatMap((id, j) => (id === null ? [] : [{ id, j }]));
+      const mreza = h("div", { class: `red prvi-glas n${slike.length > 12 ? 5 : 4}` }, ...slike.map(({ id, j }) => {
+        const k = h("div", { class: "kartica bez-rijeci", role: "button", tabindex: "0", "aria-label": "slika" },
+          h("div", { class: "unutra" }, h("div", { class: "glava" }, zvucnik(() => ime(id))), slika(id)));
+        const klik = () => {
+          if (zakljucano || nadjene.has(j)) return;
+          if (!e.krug.tocno.includes(j)) { tresi(k); return; }
+          nadjene.add(j);
+          k.classList.add("tocno");
+          if (e.krug.tocno.every((t) => nadjene.has(t))) rijeseno(); else mekiPogodak();
+        };
+        k.addEventListener("click", klik);
+        k.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); klik(); } });
+        return k;
+      }));
+      zamijeni(korijen, p2, mreza);
+      govori(trazi, p2.querySelector<HTMLElement>(".zvucnik") ?? undefined);
+    }
+    return { cvorovi: [q.el, okvir], tekst: UPUTE_PRVOG_GLASA.kolo, gumb: q.gumb };
+  }
+
   function ekranPovezi(e: Extract<Ekran, { vrsta: "povezivanje" }>) {
     const tekst = uputaZa(e.uputa, null);
     const q = pitanje(tekst);
@@ -303,6 +355,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return;
     }
     const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : e.vrsta === "percepcija" ? ekranPercepcija(e)
+      : e.vrsta === "prvi_glas" ? ekranPrviGlas(e)
       : ekranPovezi(e as Extract<Ekran, { vrsta: "povezivanje" }>);
     zamijeni(korijen, ...x.cvorovi);
     setTimeout(() => govori(x.tekst, x.gumb), 350);

@@ -1,5 +1,7 @@
 # Zadaci: predlošci, instance, rješavanja
 
+Status (2026-11-07): vrsta `prvi_glas` (kolo slova, izdvajanje prvog glasa) napravljena i provjerena lokalno
+(migracija 0022, editor, „Dijete rješava”, igra bilježnice vodoravno i uspravno, HTML ispis, PDF); nije na produkciji.
 Status (2026-11-02, navečer): vrsta `percepcija` (vizualna percepcija: pronađi različitu / dvije iste) na produkciji
 (migracija 0016, deploy 6fbc6ea3; Time Travel bookmark prije migracije `0000008a-00000182-00005117-78b34e56455b0d3413ecebd7a5cb87ee`).
 Na produkciji još nema nijednog zadatka te vrste.
@@ -127,6 +129,7 @@ može služiti u više podpodručja.
 | Korekcija artikulacije | glas × pozicija (postojeći katalog) | `listic` |
 | Predvještine čitanja i pisanja | Prepoznavanje rime | `odabir`, `povezivanje`, `uljez` |
 | Predvještine čitanja i pisanja | Vizualna percepcija | `percepcija` |
+| Predvještine čitanja i pisanja | Prvi glas u riječi | `prvi_glas` |
 | Razumijevanje i rječnik | Situacije: što pripada | `scena` |
 
 ```sql
@@ -225,6 +228,38 @@ Zamka migracije 0010: CHECK se u SQLite ne mijenja, pa se `zadaci` slaže ponovn
 uključene ključeve radi implicitni DELETE (kaskada bi obrisala verzije), a odgođene povrede od
 `biljeznica_zadaci` `RENAME` ne poništava pa COMMIT pada. Zato se djeca prvo spreme sa strane i
 obrišu, a nakon `RENAME` vrate. Provjereno na kopiji lokalne baze.
+
+### `prvi_glas`: kolo slova, pronađi slike koje počinju glasom
+
+Prema Matiji (7. 11. 2026.): kolo sa svim slovima hrvatske abecede, dijete ga stisne, kolo se
+zavrti i stane na slovo, slovo iskoči, a dijete među 12–15 slika pronalazi one koje počinju tim
+glasom.
+
+```ts
+{ kolo: string[] /* slova na kolu, zadano svih 30 */, krugovi: [{ slovo, slike: [rijec_id] /* 12–15 */, tocno: [i] }] }
+odgovori: [{ stavka: krug, odabrano: slika, ms }]   // svaki dodir, i krivi
+ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog dodira
+```
+
+- **Kolo nije stvarno nasumično**: staje na `slovo` kruga (uz mali pomak unutar polja), jer slike
+  kruga moraju odgovarati slovu, a isti krug ide i na papir. Logoped bira slovo ili „Nasumično
+  slovo” (samo slova za koja katalog ima barem 3 riječi). Za više slova u jednom zadatku dodaje se
+  više krugova; svaki krug je jedan ekran (lampica) u bilježnici.
+- **Prvi glas iz pravopisa** (`prviGlas` = prvi element `fonemi()`): LJ, NJ i DŽ su jedan glas, pa
+  LJULJAČKA ne počinje glasom L, a KONJ ne smeta. `tocno` je spremljen (za ocjenu bez riječi), ali
+  ga editor uvijek preračuna iz riječi; ručno se ne označava.
+- **Generator** (`slozKrug`): 3–5 riječi s glasom (koliko katalog ima), ostalo ometači s drugim
+  prvim glasom, svaka riječ jednom; riječi sa slikom ako ih ima barem 12.
+- **Upozorenja:** krug bez slova, slovo kojeg nema na kolu, prazne slike, nijedna ili sve slike s
+  glasom, ista riječ dvaput.
+- **Kolo** (`src/lib/kolo-slova.ts` + `.css`): SVG, okretanje kroz rAF s easeOutQuart (~4,6 s, uz
+  `prefers-reduced-motion` 0,9 s); `naTik` na svakoj pregradi (u igri tihi klik iz WebAudija).
+  Isti DOM u adminu i bilježnici.
+- **Igra:** „Zavrti kolo!”, nakon zaustavljanja slovo iskoči i izgovori se („Glas B!”), pa pitanje
+  sa slovom u kružiću i mreža 4 × 3 / 5 × 3 (uspravno 3 × 4 / 4 × 4). Kartice nemaju napisanu riječ
+  (odala bi glas), ali imaju zvučnik. Tekstovi idu u `tekstoviIgre` za ElevenLabs.
+- **Ispis:** krug po stranici: slovo u krugu, ispod mreža slika bez natpisa; uputa „Zaokruži sve
+  slike koje počinju glasom iz kruga.” Flutter aplikacija vrstu još nema.
 
 ### `percepcija`: vizualna percepcija, nađi različitu ili dvije iste
 

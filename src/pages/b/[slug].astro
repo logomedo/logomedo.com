@@ -7,6 +7,7 @@ import { TEME } from "../../lib/teme";
 import { brojEkrana } from "../../lib/biljeznice-ekrani";
 import { odobreniZvukovi, tekstoviIgre } from "../../lib/zvukovi";
 import "../../lib/scena.css";
+import "../../lib/kolo-slova.css";
 
 const b = await poSlugu(String(Astro.params.slug));
 if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
@@ -234,6 +235,18 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .red.percepcija.n5 .kartica { --s: min(24vh, 11.6vw); }
   .red.percepcija.n6 { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; gap: 1.6vh 1.4vw; }
   .red.percepcija.n6 .kartica { --s: min(24vh, 15vw); }
+  /* Prvi glas: kolo, pa mreža 4 × 3 ili 5 × 3 kartica bez riječi (zvučnik u kutu) */
+  .kolo-okvir { display: grid; place-items: center; }
+  .kolo-okvir .kolo { --kolo: min(68vh, 56vw); }
+  .pitanje.skriveno { visibility: hidden; }
+  .red.prvi-glas { display: grid; grid-template-columns: repeat(4, auto); justify-content: center; gap: 1.4vh 1.4vw; }
+  .red.prvi-glas.n5 { grid-template-columns: repeat(5, auto); }
+  .red.prvi-glas .kartica { --s: min(18vh, 12vw); }
+  .red.prvi-glas.n5 .kartica { --s: min(18vh, 10.5vw); }
+  .kartica.bez-rijeci .unutra { position: relative; }
+  .kartica.bez-rijeci .glava { position: absolute; top: .4vh; right: .4vh; width: auto; min-height: 0; z-index: 1; }
+  .kartica.bez-rijeci .zvucnik { --z: calc(var(--s) * .22); }
+  .pitanje .kolo-znacka { font-size: 1.15em; margin-left: .15em; vertical-align: middle; }
   .povezi { position: relative; display: flex; justify-content: space-between; width: min(100%, 92vh); }
   .stupac { display: flex; flex-direction: column; gap: 1.4vh; position: relative; z-index: 1; }
   .povezi .kartica { --s: min(15.5vh, 11vw); width: auto; }
@@ -261,6 +274,12 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     .red.percepcija.n4 .kartica { --s: 38vw; }
     .povezi { width: 100%; }
     .povezi .kartica { --s: 19vw; }
+    .kolo-okvir .kolo { --kolo: 88vw; }
+    /* 12 slika kao 3 × 4 (veće kartice), 13–15 kao 4 × 4 da stane u visinu */
+    .red.prvi-glas { grid-template-columns: repeat(3, auto); gap: 3vw; }
+    .red.prvi-glas .kartica { --s: 27vw; }
+    .red.prvi-glas.n5 { grid-template-columns: repeat(4, auto); gap: 2.4vw; }
+    .red.prvi-glas.n5 .kartica { --s: 20vw; }
     .gumb-kreni, .gumb-ponovi { font-size: 7vw; }
   }
   @media (orientation: landscape) and (max-height: 500px) { .pitanje { font-size: 5.4vh; } }

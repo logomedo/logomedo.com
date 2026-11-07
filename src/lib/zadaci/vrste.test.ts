@@ -107,3 +107,51 @@ test("normaliziraj ne reže 17 redova odabira (zadatak 27 je izgubio 5)", () => 
   const stavke = Array.from({ length: 17 }, (_, i) => ({ zadana: i + 1, ponudeno: [1, 2, 3], tocno: 0 }));
   assert.equal((normaliziraj("odabir", { odnos: "rima", stavke }) as Odabir).stavke.length, 17);
 });
+
+// ---- Prvi glas (kolo slova) ----
+import { ABECEDA, prviGlas, slozKrug, tocneSlike, type PrviGlas } from "./vrste.ts";
+import { ekrani } from "../biljeznice-ekrani.ts";
+
+const PG = ["lav", "lopta", "luk", "list", "ljuljačka", "ljiljan", "nos", "njuška", "konj", "džep", "dupin", "dinja", "čaša", "ćup", "šal", "žaba", "riba", "miš", "sat", "kapa"]
+  .map((r, i) => ({ id: 100 + i, rijec: r, rima: null, slogova: brojSlogova(r), slika: `/s/${i}.jpg` }) as RijecZadatka);
+const PM = new Map(PG.map((r) => [r.id, r]));
+
+test("prvi glas: dvoslovi su jedan glas", () => {
+  assert.equal(ABECEDA.length, 30);
+  assert.equal(prviGlas("LJULJAČKA"), "LJ");
+  assert.equal(prviGlas("lav"), "L");
+  assert.equal(prviGlas("njuška"), "NJ");
+  assert.equal(prviGlas("Džep"), "DŽ");
+  assert.equal(prviGlas("dupin"), "D");
+  assert.equal(prviGlas(""), null);
+});
+
+test("prvi glas: krug za L ne broji LJ i prolazi provjeru", () => {
+  const k = slozKrug("L", PG, 12, rnd);
+  assert.equal(k.slike.length, 12);
+  assert.ok(k.tocno.length >= 3 && k.tocno.length <= 4, `L ima 4 riječi: ${k.tocno.length}`);
+  for (const j of k.tocno) assert.equal(prviGlas(PM.get(k.slike[j]!)!.rijec), "L");
+  assert.equal(new Set(k.slike).size, 12);
+  const s: PrviGlas = { kolo: [...ABECEDA], krugovi: [k] };
+  assert.deepEqual(provjeri("prvi_glas", s, PM), []);
+});
+
+test("prvi glas: generator, normalizacija, ocjena, ekrani", () => {
+  const s = slozi("prvi_glas", PG, { stavki: 3 }, rnd) as PrviGlas;
+  assert.ok(s.krugovi.length >= 1 && s.krugovi.every((k) => k.slovo && k.tocno.length >= 3));
+  const n = normaliziraj("prvi_glas", { kolo: ["A", "X"], krugovi: [{ slovo: "Q", slike: [1, 2, "x"], tocno: [0, 7, -1, 1.5] }] }) as PrviGlas;
+  assert.deepEqual(n.kolo, [...ABECEDA]);   // manje od 2 valjana slova: cijela abeceda
+  assert.equal(n.krugovi[0].slovo, null);
+  assert.equal(n.krugovi[0].slike.length, 12);
+  assert.deepEqual(n.krugovi[0].tocno, [0]);
+  assert.equal(provjeri("prvi_glas", n, PM)[0].poruka, "Nije odabrano slovo na kojem kolo stane.");
+  const k = { slovo: "L", slike: [100, 106, 101, 116], tocno: [] as number[] };
+  k.tocno = tocneSlike(k, (id) => PM.get(id)?.rijec);
+  assert.deepEqual(k.tocno, [0, 2]);
+  const z: PrviGlas = { kolo: ["L", "N"], krugovi: [k] };
+  assert.deepEqual(ocijeni("prvi_glas", z, [{ stavka: 0, odabrano: 0 }, { stavka: 0, odabrano: 2 }]), { tocnih: 1, ukupno: 1 });
+  assert.deepEqual(ocijeni("prvi_glas", z, [{ stavka: 0, odabrano: 1 }, { stavka: 0, odabrano: 0 }, { stavka: 0, odabrano: 2 }]), { tocnih: 0, ukupno: 1 });
+  const e = ekrani([{ vrsta: "prvi_glas", uputa: null, sadrzaj: { kolo: ["L", "N"], krugovi: [k, { slovo: null, slike: [100], tocno: [] }] } }]);
+  assert.equal(e.length, 1);
+  assert.ok(e[0].vrsta === "prvi_glas" && e[0].uputa.includes("{slovo}"));
+});

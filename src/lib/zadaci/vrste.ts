@@ -5,8 +5,9 @@
 // Čisti TS: koriste ga API (provjera ulaza), editor i prikaz u pregledniku te testovi.
 
 import { rimujuSe } from "./rima.ts";
+import { fonemi } from "../fonemi.ts";
 
-export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena" | "percepcija";
+export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena" | "percepcija" | "prvi_glas";
 export type Odnos = "rima";
 type Id = number | null;
 
@@ -29,7 +30,30 @@ export interface Scena { pozadina_id: Id; gumbi: { rijec_id: Id; tocno: boolean 
 export type Trazi = "razlicitu" | "par";
 export interface Polje { rijec_id: Id; izmjena: Izmjena }
 export interface Percepcija { trazi: Trazi; stavke: { polja: Polje[]; tocno: number[] }[] }
-export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija;
+/**
+ * Prvi glas (izdvajanje prvog glasa): dijete zavrti kolo sa slovima, kolo stane na `slovo`
+ * kruga, pa među 12–15 slika pronalazi sve koje počinju tim glasom. Kolo izgleda nasumično,
+ * a staje na slovo koje je logoped odabrao, jer slike kruga moraju odgovarati slovu (i na papiru).
+ * `tocno` su indeksi slika koje počinju glasom; editor ih računa iz riječi (`prviGlas`).
+ */
+export interface Krug { slovo: string | null; slike: Id[]; tocno: number[] }
+export interface PrviGlas { kolo: string[]; krugovi: Krug[] }
+export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija | PrviGlas;
+
+/** Hrvatska abeceda (30 slova, dvoslovi su jedno slovo). Redoslijed kola. */
+export const ABECEDA = ["A", "B", "C", "Č", "Ć", "D", "DŽ", "Đ", "E", "F", "G", "H", "I", "J", "K", "L", "LJ", "M", "N", "NJ", "O", "P", "R", "S", "Š", "T", "U", "V", "Z", "Ž"];
+export const SLIKA_MIN = 12, SLIKA_MAX = 15;
+/** Prvi glas riječi (LJULJAČKA → LJ, LAV → L), ili null ako riječ nema slova. */
+export const prviGlas = (rijec: string): string | null => fonemi(rijec)[0] ?? null;
+/** Koje slike kruga počinju slovom kruga. */
+export function tocneSlike(k: Pick<Krug, "slovo" | "slike">, rijec: (id: number) => string | undefined): number[] {
+  return k.slike.flatMap((id, i) => (k.slovo && id !== null && prviGlas(rijec(id) ?? "") === k.slovo ? [i] : []));
+}
+export const UPUTE_PRVOG_GLASA = {
+  kolo: "Zavrti kolo!",
+  ekran: "Pronađi sve slike koje počinju glasom {slovo}.",
+  ispis: "Zaokruži sve slike koje počinju glasom iz kruga.",
+};
 
 /**
  * Kako je slika u polju promijenjena. Crta se istim pravilima na ekranu (CSS), u HTML ispisu
@@ -97,6 +121,10 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     naziv: "Vizualna percepcija", opis: "U redu je nekoliko sličnih slika. Dijete pronalazi onu koja se razlikuje ili dvije iste.",
     uputa: UPUTE_PERCEPCIJE.razlicitu.ispis, ispis: "Prekriži / zaokruži", odnos: false,
   },
+  prvi_glas: {
+    naziv: "Prvi glas (kolo slova)", opis: "Dijete zavrti kolo sa slovima abecede. Kolo stane na slovo, a dijete među 12–15 slika pronalazi sve koje počinju tim glasom.",
+    uputa: UPUTE_PRVOG_GLASA.ispis, ispis: "Zaokruži", odnos: false,
+  },
 };
 
 /** Zadana uputa za papir; percepcija ovisi o tome traži li se različita ili par. */
@@ -121,6 +149,7 @@ export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
     case "uljez": return { odnos: "rima", stavke: n.map(() => ({ slike: [null, null, null, null], uljez: 0 })) };
     case "scena": return { pozadina_id: null, gumbi: Array.from({ length: 7 }, (_, i) => ({ rijec_id: null, tocno: i < 5 })) };
     case "percepcija": return { trazi: "razlicitu", stavke: n.map(() => slozRed(null, 4, "razlicitu")) };
+    case "prvi_glas": return { kolo: [...ABECEDA], krugovi: [{ slovo: null, slike: Array(SLIKA_MIN).fill(null), tocno: [] }] };
   }
 }
 
@@ -203,6 +232,18 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
         }),
       };
     }
+    case "prvi_glas": {
+      const kolo = ABECEDA.filter((x) => Array.isArray(o.kolo) && (o.kolo as unknown[]).includes(x));
+      return {
+        kolo: kolo.length >= 2 ? kolo : [...ABECEDA],
+        krugovi: niz(o.krugovi, MAX_REDOVA, (k) => {
+          const x = obj(k);
+          const slike = tocnoN(niz(x.slike, SLIKA_MAX, id), Math.max(SLIKA_MIN, Array.isArray(x.slike) ? Math.min(x.slike.length, SLIKA_MAX) : 0), () => null);
+          const slovo = typeof x.slovo === "string" && ABECEDA.includes(x.slovo) ? x.slovo : null;
+          return { slovo, slike, tocno: [...new Set(niz(x.tocno, SLIKA_MAX, (t) => t))].filter((t): t is number => Number.isInteger(t) && (t as number) >= 0 && (t as number) < slike.length && slike[t as number] !== null).sort((a, b) => a - b) };
+        }),
+      };
+    }
   }
 }
 
@@ -215,6 +256,7 @@ export function rijeciU(v: Vrsta, s: Sadrzaj): number[] {
   if (v === "uljez") for (const x of (s as Uljez).stavke) out.push(...x.slike);
   if (v === "scena") out.push(...(s as Scena).gumbi.map((g) => g.rijec_id));
   if (v === "percepcija") for (const x of (s as Percepcija).stavke) out.push(...x.polja.map((p) => p.rijec_id));
+  if (v === "prvi_glas") for (const k of (s as PrviGlas).krugovi) out.push(...k.slike);
   return [...new Set(out.filter((x): x is number => x !== null))];
 }
 
@@ -241,6 +283,23 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
     if (pune.length && pune.every((g) => g.tocno)) u.push({ gdje: "scena", poruka: "Nema ometača: sve slike su točne." });
     const vidjeno = new Set<number>();
     for (const g of pune) { if (vidjeno.has(g.rijec_id!)) u.push({ gdje: "scena", poruka: `${ime(g.rijec_id)} je dvaput.` }); vidjeno.add(g.rijec_id!); }
+    return u;
+  }
+  if (v === "prvi_glas") {
+    const pg = s as PrviGlas;
+    pg.krugovi.forEach((k, i) => {
+      const g = `Krug ${i + 1}`;
+      if (!k.slovo) { u.push({ gdje: g, poruka: "Nije odabrano slovo na kojem kolo stane." }); return; }
+      if (!pg.kolo.includes(k.slovo)) u.push({ gdje: g, poruka: `Slova ${k.slovo} nema na kolu.` });
+      const prazne = k.slike.filter((x) => x === null).length;
+      if (prazne) u.push({ gdje: g, poruka: `${prazne} prazn${prazne === 1 ? "a slika" : "ih slika"}.` });
+      const tocne = tocneSlike(k, (id) => R(id)?.rijec);
+      if (!tocne.length) u.push({ gdje: g, poruka: `Nijedna slika ne počinje glasom ${k.slovo}.` });
+      else if (tocne.length === k.slike.filter((x) => x !== null).length) u.push({ gdje: g, poruka: `Sve slike počinju glasom ${k.slovo}: nema ometača.` });
+      const vidjeno = new Set<number>();
+      for (const id of k.slike) { if (id === null) continue; if (vidjeno.has(id)) u.push({ gdje: g, poruka: `${ime(id)} je dvaput.` }); vidjeno.add(id); }
+    });
+    if (!pg.krugovi.length) u.push({ gdje: "zadatak", poruka: "Nema nijednog kruga." });
     return u;
   }
   if (v === "percepcija") {
@@ -313,6 +372,17 @@ export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: nu
     for (const o of odgovori) if ("lijevo" in o && !prvi.has(o.lijevo)) prvi.set(o.lijevo, o.desno);
     return { tocnih: p.parovi.filter((_, i) => p.desno_redoslijed[prvi.get(i) ?? -1] === i).length, ukupno: p.parovi.length };
   }
+  if (v === "prvi_glas") {
+    // Krug je točan ako su pronađene sve slike s glasom bez ijednog krivog dodira.
+    const kr = (s as PrviGlas).krugovi;
+    return {
+      tocnih: kr.filter((k, i) => {
+        const moji = odgovori.flatMap((o) => ("stavka" in o && o.stavka === i ? [o.odabrano] : []));
+        return k.tocno.length > 0 && k.tocno.every((t) => moji.includes(t)) && moji.every((m) => k.tocno.includes(m));
+      }).length,
+      ukupno: kr.length,
+    };
+  }
   if (v === "percepcija") {
     // Red je točan ako su pronađena sva točna polja bez ijednog krivog dodira.
     return {
@@ -351,6 +421,13 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   const n = Math.max(1, Math.min(p.stavki, 12));
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
+  if (v === "prvi_glas") {
+    // Slova za koja katalog ima dovoljno slika, svako jednom; krugova koliko traži `stavki` (do 6).
+    const sa = rijeci.filter((r) => r.slika);
+    const izvor = sa.length >= SLIKA_MIN ? sa : rijeci;
+    const slova = promijesaj(ABECEDA.filter((sl) => izvor.filter((r) => prviGlas(r.rijec) === sl).length >= 3), rnd).slice(0, Math.min(n, 6));
+    return { kolo: [...ABECEDA], krugovi: (slova.length ? slova : [null]).map((sl) => slozKrug(sl, izvor, SLIKA_MIN, rnd)) };
+  }
   if (v === "percepcija") {
     // Riječi sa slikom (bez slike je red riječi, što nije vizualni zadatak), svaka jednom.
     const izbor = promijesaj(rijeci.filter((r) => r.slika), rnd).slice(0, n);
@@ -381,4 +458,20 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     return { slike: slike.map((r) => r.id), uljez: slike.indexOf(uljez) };
   });
   return { odnos: "rima", stavke };
+}
+
+/**
+ * Krug za slovo: 3–5 slika koje počinju glasom (koliko ih katalog ima), ostalo ometači s
+ * drugim prvim glasom, svaka riječ jednom, redoslijed nasumičan.
+ */
+export function slozKrug(slovo: string | null, rijeci: RijecZadatka[], n = SLIKA_MIN, rnd: () => number = Math.random): Krug {
+  n = Math.max(SLIKA_MIN, Math.min(SLIKA_MAX, n));
+  if (!slovo) return { slovo: null, slike: Array(n).fill(null), tocno: [] };
+  const s = promijesaj(rijeci.filter((r) => prviGlas(r.rijec) === slovo), rnd);
+  const ostale = promijesaj(rijeci.filter((r) => { const g = prviGlas(r.rijec); return g !== null && g !== slovo; }), rnd);
+  const koliko = Math.min(s.length, 3 + Math.floor(rnd() * 3));
+  const izbor = promijesaj([...s.slice(0, koliko), ...ostale.slice(0, n - koliko)], rnd);
+  const slike: Id[] = [...izbor.map((r) => r.id), ...Array(Math.max(0, n - izbor.length)).fill(null)];
+  const m = new Map(rijeci.map((r) => [r.id, r.rijec]));
+  return { slovo, slike, tocno: tocneSlike({ slovo, slike }, (id) => m.get(id)) };
 }

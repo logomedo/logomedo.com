@@ -114,3 +114,12 @@ test("samostalan zadatak: prva stranica 3 reda odabira, ostale 4 (bez zaglavlja)
   const u = dokumentZadatka({ vrsta: "uljez", naslov: "", uputa: "", sadrzaj: { odnos: "rima", stavke: Array.from({ length: 9 }, () => ({ slike: [1, 2, 3, 4], uljez: 0 })) } }, rijeci, true);
   assert.deepEqual(u.stranice.map((s) => (s.tijelo as { redovi: unknown[] }).redovi.length), [4, 5]);
 });
+
+test("prvi glas: stranica po krugu, slovo i slike bez natpisa", () => {
+  const d = dokumentZadatka({ vrsta: "prvi_glas", naslov: "", uputa: "Zaokruži", sadrzaj: { kolo: ["L", "M"], krugovi: [
+    { slovo: "L", slike: [1, 2, null, 1], tocno: [0] }, { slovo: null, slike: [1], tocno: [] }, { slovo: "M", slike: [2], tocno: [0] },
+  ] } }, [{ id: 1, rijec: "lav", slika: "/a.jpg" }, { id: 2, rijec: "miš", slika: "/b.jpg" }], true);
+  assert.equal(d.stranice.length, 2);
+  const t = d.stranice[0].tijelo;
+  assert.ok(t.vrsta === "prvi_glas" && t.slovo === "L" && t.slike.length === 3 && t.slike.every((x) => x.natpis === ""));
+});

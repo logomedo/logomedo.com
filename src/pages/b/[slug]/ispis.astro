@@ -5,7 +5,7 @@ import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../../lib/biljeznice";
 import { TEME } from "../../../lib/teme";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
-import { izmjenaCss, VRSTE, zadanaUputa, type Odabir, type Percepcija, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
+import { izmjenaCss, VRSTE, zadanaUputa, type Odabir, type Percepcija, type PrviGlas, type Krug, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
 import { GRANCICA } from "../../../lib/ukrasi";
 import { dokumentBiljeznice } from "../../../lib/pdf/model";
 
@@ -22,12 +22,14 @@ type Stranica =
   | { vrsta: "uljez"; uputa: string; stavke: Uljez["stavke"] }
   | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
   | { vrsta: "scena"; uputa: string; pozadina: string | null; gumbi: number[] }
-  | { vrsta: "percepcija"; uputa: string; stavke: Percepcija["stavke"] };
+  | { vrsta: "percepcija"; uputa: string; stavke: Percepcija["stavke"] }
+  | { vrsta: "prvi_glas"; uputa: string; krug: Krug };
 const stranice: Stranica[] = [];
 for (const z of p.zadaci) {
   if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: VRSTE.odabir.uputa, stavke: k });
   if (z.vrsta === "uljez") for (const k of komadi((z.sadrzaj as Uljez).stavke, 4)) stranice.push({ vrsta: "uljez", uputa: VRSTE.uljez.uputa, stavke: k });
   if (z.vrsta === "percepcija") for (const k of komadi((z.sadrzaj as Percepcija).stavke, 4)) stranice.push({ vrsta: "percepcija", uputa: zadanaUputa("percepcija", z.sadrzaj), stavke: k });
+  if (z.vrsta === "prvi_glas") for (const k of (z.sadrzaj as PrviGlas).krugovi) if (k.slovo) stranice.push({ vrsta: "prvi_glas", uputa: zadanaUputa("prvi_glas"), krug: k });
   if (z.vrsta === "scena") {
     const sc = z.sadrzaj as Scena;
     const poz = p.pozadine.find((x) => x.id === sc.pozadina_id);
@@ -99,6 +101,18 @@ const grancica = tema.kutovi ? GRANCICA : "";
             ))}
           </div>
         ))}
+        {s.vrsta === "prvi_glas" && (
+          <div class="prvi-glas">
+            <div class="slovo-krug">{s.krug.slovo}</div>
+            <div class="mreza" style={`--stupaca:${s.krug.slike.length > 12 ? 5 : 4}`}>
+              {s.krug.slike.filter((id) => id !== null).map((id) => (
+                <figure class="slika">
+                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                </figure>
+              ))}
+            </div>
+          </div>
+        )}
         {s.vrsta === "percepcija" && s.stavke.map((x) => (
           <div class="red" style={`--n:${x.polja.length}`}>
             {x.polja.map((p) => (
@@ -219,6 +233,9 @@ const grancica = tema.kutovi ? GRANCICA : "";
   /* Izmjena (okret, zrcalo) ide na sliku, a okvir ostaje: okvir se crta oko figure. */
   .a4-percepcija .slika { border: 1.5px solid #000; border-radius: 4mm; padding: 2mm; background: #fff; overflow: hidden; }
   .a4-percepcija .slika img, .a4-percepcija .slika .bez { border: 0; padding: 0; }
+  .prvi-glas { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10mm; padding-top: 4mm; }
+  .slovo-krug { width: 30mm; height: 30mm; border: 2.5px solid #000; border-radius: 50%; display: grid; place-items: center; font-size: 50pt; font-weight: 900; line-height: 1; }
+  .prvi-glas .mreza { display: grid; grid-template-columns: repeat(var(--stupaca), 33mm); gap: 6mm; justify-content: center; }
   .povezi { flex: 1; display: flex; justify-content: space-between; padding: 0 8mm; }
   .stupac { display: flex; flex-direction: column; justify-content: space-around; }
   .scena-ispis { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }

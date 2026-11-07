@@ -5,7 +5,7 @@ import { VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
 
 const podrucja = await svaPodrucja();
 const listovi = podrucja.filter((p) => p.roditelj_id !== null);
-const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija" };
+const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas" };
 const vrste = Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][];
 
 // Mala shema rasporeda svake vrste (kvadratići = slike).
@@ -15,6 +15,7 @@ const shema: Record<Vrsta, string> = {
   uljez: `<rect x="4" y="20" width="17" height="17" rx="3"/><rect x="25" y="20" width="17" height="17" rx="3"/><rect x="46" y="20" width="17" height="17" rx="3" class="s-med"/><rect x="67" y="20" width="17" height="17" rx="3"/><path d="M48 22l13 13M61 22 48 35" class="s-crta"/>`,
   scena: `<rect x="4" y="2" width="80" height="54" rx="4"/><rect x="24" y="6" width="40" height="8" rx="2" class="s-jaka"/><rect x="8" y="40" width="12" height="12" rx="2" class="s-med"/><rect x="23" y="40" width="12" height="12" rx="2" class="s-med"/><rect x="38" y="40" width="12" height="12" rx="2"/><rect x="53" y="40" width="12" height="12" rx="2" class="s-med"/><rect x="68" y="40" width="12" height="12" rx="2"/>`,
   percepcija: `<rect x="4" y="20" width="17" height="17" rx="3"/><rect x="25" y="20" width="17" height="17" rx="3"/><rect x="46" y="20" width="17" height="17" rx="3" class="s-med"/><rect x="67" y="20" width="17" height="17" rx="3"/><path d="M9 33l6-9 4 9zM30 33l6-9 4 9zM50 24h10l-5 9zM72 33l6-9 4 9z" class="s-crta"/>`,
+  prvi_glas: `<circle cx="22" cy="29" r="20"/><path d="M22 9v40M2 29h40M8 15l28 28M36 15 8 43" class="s-crta"/><circle cx="22" cy="29" r="5" class="s-med"/><path d="M22 5l-3-5h6z" class="s-jaka"/><rect x="50" y="8" width="10" height="10" rx="2" class="s-med"/><rect x="63" y="8" width="10" height="10" rx="2"/><rect x="76" y="8" width="10" height="10" rx="2"/><rect x="50" y="24" width="10" height="10" rx="2"/><rect x="63" y="24" width="10" height="10" rx="2" class="s-med"/><rect x="76" y="24" width="10" height="10" rx="2"/><rect x="50" y="40" width="10" height="10" rx="2"/><rect x="63" y="40" width="10" height="10" rx="2"/><rect x="76" y="40" width="10" height="10" rx="2" class="s-med"/>`,
   listic: `<rect x="8" y="4" width="20" height="16" rx="3"/><rect x="34" y="4" width="20" height="16" rx="3"/><rect x="60" y="4" width="20" height="16" rx="3"/><rect x="8" y="26" width="20" height="16" rx="3"/><rect x="34" y="26" width="20" height="16" rx="3"/><rect x="60" y="26" width="20" height="16" rx="3"/><path d="M10 48h16M36 48h16M62 48h16" class="s-crta"/>`,
 };
 ---

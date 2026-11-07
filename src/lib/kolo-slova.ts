@@ -1,0 +1,110 @@
+// Kolo sa slovima (vrsta `prvi_glas`, docs/zadaci.md): dijete ga dodirne, kolo se zavrti i
+// uspori do zadanog slova. Isti DOM i CSS (kolo-slova.css) koriste admin pregled („Dijete
+// rješava”) i igra bilježnice. Okretanje je rAF s easingom, ne CSS transition, da se svaki
+// prijelaz preko pregrade može čuti (`naTik`).
+
+const SVG = "http://www.w3.org/2000/svg";
+// DOM tipovi u ovom projektu sudaraju se s tipovima Workera (append), pa kroz any kao u klijent.ts.
+const app = (e: unknown, ...d: unknown[]) => (e as any).append(...d);
+/** Boje polja kola, ciklički (pastelne, slovo je tamno). */
+const BOJE = ["#ffd166", "#ef8a7a", "#8fd3a8", "#86c5f0", "#c9a7e8", "#f7b267"];
+
+function s<K extends keyof SVGElementTagNameMap>(tag: K, a: Record<string, string | number> = {}): SVGElementTagNameMap[K] {
+  const e = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(a)) e.setAttribute(k, String(v));
+  return e;
+}
+
+/** Točka na kružnici; kut u stupnjevima od vrha, u smjeru kazaljke. */
+const tocka = (r: number, kut: number) => [r * Math.sin((kut * Math.PI) / 180), -r * Math.cos((kut * Math.PI) / 180)];
+
+export interface Kolo { el: HTMLElement; zavrti: () => void }
+
+export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => void; naTik?: () => void; naKraj: (slovo: string) => void; trajanje?: number }): Kolo {
+  const n = Math.max(2, o.slova.length);
+  const seg = 360 / n;
+  const svg = s("svg", { viewBox: "-104 -104 208 208", class: "kolo-svg", "aria-hidden": "true" });
+  const krug = s("g", { class: "kolo-krug" });
+  const R = 98;
+  // Font prema broju polja: 30 slova stane u ~12°, dvoslovi su uži.
+  const velicina = Math.min(22, Math.max(9, 330 / n));
+  o.slova.forEach((slovo, i) => {
+    const a0 = i * seg, a1 = (i + 1) * seg;
+    const [x0, y0] = tocka(R, a0), [x1, y1] = tocka(R, a1);
+    const g = s("g", { class: "kolo-polje", "data-i": i });
+    app(g, s("path", { d: `M0 0 L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`, fill: BOJE[i % BOJE.length] }));
+    const t = s("text", { x: 0, y: -(R - velicina * 0.95), "text-anchor": "middle", "dominant-baseline": "central", "font-size": slovo.length > 1 ? velicina * 0.78 : velicina,
+      transform: `rotate(${a0 + seg / 2})` });
+    t.textContent = slovo;
+    app(g, t);
+    app(krug, g);
+  });
+  app(krug, s("circle", { r: R, class: "kolo-rub" }));
+  // Čavlići na pregradama.
+  for (let i = 0; i < n; i++) { const [x, y] = tocka(R - 2, i * seg); app(krug, s("circle", { cx: x.toFixed(2), cy: y.toFixed(2), r: 1.6, class: "kolo-cavlic" })); }
+  app(svg, krug, s("circle", { r: 20, class: "kolo-sredina" }));
+  const strelica = s("path", { d: "M0 -88 L-9 -106 L9 -106 Z", class: "kolo-strelica" });
+  app(svg, strelica);
+
+  const gumb = document.createElement("button");
+  gumb.type = "button"; gumb.className = "kolo-gumb"; gumb.textContent = "Zavrti";
+  const el = document.createElement("div");
+  el.className = "kolo";
+  app(el, svg, gumb);
+
+  let kut = 0, vrti = false, gotovo = false;
+  const postavi = (k: number) => krug.setAttribute("transform", `rotate(${k.toFixed(3)})`);
+
+  function zavrti() {
+    if (vrti || gotovo) return;
+    const i = Math.max(0, o.slova.indexOf(o.cilj));
+    vrti = true;
+    el.classList.add("vrti");
+    o.naPocetak?.();
+    // Polje i mora završiti pod strelicom (vrh): kut + središte polja ≡ 0 (mod 360).
+    const odmak = (Math.random() - 0.5) * seg * 0.6;
+    const cilj = -(i * seg + seg / 2) + odmak;
+    const okretaja = 5 + Math.floor(Math.random() * 2);
+    const kraj = kut + okretaja * 360 + (((cilj - kut) % 360) + 360) % 360;
+    const pocetak = kut, put = kraj - pocetak;
+    const manje = matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const T = manje ? 900 : o.trajanje ?? 4600;
+    const t0 = performance.now();
+    let zadnjiTik = Math.floor((pocetak + seg / 2) / seg);
+    const korak = (t: number) => {
+      const x = Math.min(1, (t - t0) / T);
+      const e = 1 - Math.pow(1 - x, 4);   // easeOutQuart: brzo pa dugo usporava
+      kut = pocetak + put * e;
+      postavi(kut);
+      const tik = Math.floor((kut + seg / 2) / seg);
+      if (tik !== zadnjiTik) { zadnjiTik = tik; o.naTik?.(); }
+      if (x < 1) { requestAnimationFrame(korak); return; }
+      vrti = false; gotovo = true;
+      el.classList.remove("vrti"); el.classList.add("stalo");
+      krug.querySelector(`.kolo-polje[data-i="${i}"]`)?.classList.add("pobjednik");
+      setTimeout(() => o.naKraj(o.slova[i]), 450);
+    };
+    requestAnimationFrame(korak);
+  }
+  el.addEventListener("click", zavrti);
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zavrti(); } });
+  return { el, zavrti };
+}
+
+/** Veliko slovo koje „iskoči” iz kola (animacija u CSS-u). */
+export function iskocenoSlovo(slovo: string, kl = ""): HTMLElement {
+  const d = document.createElement("div");
+  d.className = `kolo-iskoci ${kl}`.trim();
+  const b = document.createElement("span");
+  b.textContent = slovo;
+  app(d, b);
+  return d;
+}
+
+/** Mala oznaka slova uz pitanje dok dijete traži slike. */
+export function znackaSlova(slovo: string): HTMLElement {
+  const d = document.createElement("span");
+  d.className = "kolo-znacka";
+  d.textContent = slovo;
+  return d;
+}

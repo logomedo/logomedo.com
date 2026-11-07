@@ -5,6 +5,7 @@ import { nazivPodrucja, podrucja as svaPodrucja, stilovi as sviStilovi, sveRijec
 import { VRSTE } from "../../../lib/zadaci/vrste";
 import { popis as svePozadine } from "../../../lib/pozadine";
 import "../../../lib/scena.css";
+import "../../../lib/kolo-slova.css";
 
 const z = await nadji(Number(Astro.params.id));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
@@ -80,6 +81,18 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-ponudeno, .z-cetiri { display: flex; gap: 12px; flex: none; }
   .z-red-gumbi { margin-left: auto; display: flex; gap: 2px; }
   .z-percepcija-red { flex-wrap: wrap; align-items: flex-start; }
+  .z-kolo-slova { display: flex; flex-wrap: wrap; gap: 4px; }
+  .z-kolo-slova .z-cip { min-width: 2.6em; justify-content: center; }
+  .z-krug { display: flex; flex-direction: column; gap: 12px; }
+  .z-krug-glava { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .z-krug-slovo { display: flex; align-items: center; gap: 6px; font-weight: 650; }
+  .z-krug-slovo select { font-size: 1.1rem; font-weight: 800; min-width: 4.5em; }
+  .z-krug-slike { display: flex; flex-wrap: wrap; gap: 10px; }
+  .z-krug-slike .z-slot { width: 104px; }
+  .z-kolo-okvir { display: grid; place-items: center; padding: 8px 0 16px; }
+  .z-kolo-okvir .kolo { --kolo: min(62vh, 82vw, 560px); }
+  .z-krug-mreza { display: grid; grid-template-columns: repeat(var(--stupaca), minmax(0, 132px)); gap: clamp(8px, 1.4vw, 16px); justify-content: center; width: 100%; }
+  .z-prvi-glas .kolo-znacka { font-size: 1.3em; vertical-align: middle; }
   .z-percepcija-polja { display: flex; gap: 10px; flex-wrap: wrap; }
   .z-percepcija-polja .z-slot { width: 104px; }
   .z-izmjena { font-size: .78rem; padding: 3px 4px; }
@@ -203,6 +216,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-crta { width: 8mm; border-top: 2px dashed #000; }
   .a4-odabir .a4-izbor { width: 34mm; }
   .a4-uljez .a4-red { justify-content: space-between; } .a4-uljez .a4-izbor { width: 38mm; }
+  .a4-krug { break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 5mm; margin-bottom: 9mm; }
+  .a4-slovo { width: 28mm; height: 28mm; border: 2.5px solid #000; border-radius: 50%; display: grid; place-items: center; font-size: 46pt; font-weight: 900; line-height: 1; }
+  .a4-krug-slike { display: grid; grid-template-columns: repeat(var(--stupaca), 31mm); gap: 5mm; justify-content: center; }
   .a4-percepcija .a4-red { justify-content: center; gap: 5mm; } .a4-percepcija .a4-izbor { width: min(38mm, calc((170mm - (var(--n) - 1) * 5mm) / var(--n))); }
   .a4-povezi { display: flex; justify-content: space-between; padding: 0 6mm; }
   .a4-stupac { display: flex; flex-direction: column; gap: 6mm; }

@@ -4,6 +4,7 @@ import { env } from "cloudflare:workers";
 import { GreskaElevenLabs, izgovori, prepisi } from "./elevenlabs";
 import { postavka } from "./postavke";
 import { ekrani, uputaZa, type ZadatakZaIgru } from "./biljeznice-ekrani";
+import { UPUTE_PRVOG_GLASA } from "./zadaci/vrste";
 import { izgovorZa, kljucZvuka, prolazi, slicnost } from "./zvukovi-tekst";
 import { javniUrl, ocistiCache } from "./generiranje";
 
@@ -19,7 +20,16 @@ export interface PorukaZvuka { posao: number }
 export function tekstoviIgre(zadaci: ZadatakZaIgru[], rijeci: { id: number; rijec: string }[], kraj: string): string[] {
   const ime = new Map(rijeci.map((r) => [r.id, r.rijec]));
   const t = new Set<string>();
-  for (const e of ekrani(zadaci)) t.add(kljucZvuka(uputaZa(e.uputa, e.vrsta === "odabir" ? ime.get(e.stavka.zadana!) ?? null : null)));
+  for (const e of ekrani(zadaci)) {
+    if (e.vrsta === "prvi_glas") {
+      // Isto što igra izgovara: poziv na kolo, slovo na kojem stane i pitanje sa slovom.
+      t.add(kljucZvuka(UPUTE_PRVOG_GLASA.kolo));
+      t.add(kljucZvuka(`Glas ${e.krug.slovo}!`));
+      t.add(kljucZvuka(e.uputa.replaceAll("{slovo}", e.krug.slovo!)));
+      continue;
+    }
+    t.add(kljucZvuka(uputaZa(e.uputa, e.vrsta === "odabir" ? ime.get(e.stavka.zadana!) ?? null : null)));
+  }
   for (const r of rijeci) t.add(kljucZvuka(r.rijec));
   t.add(kljucZvuka(kraj));
   t.delete("");

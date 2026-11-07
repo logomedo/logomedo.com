@@ -245,6 +245,20 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
       }
     }
 
+    if (t.vrsta === "prvi_glas") {
+      // Slovo u krugu gore, ispod mreža 4 ili 5 stupaca (12 → 4 × 3, 13–15 → 5 × 3).
+      const r = 15;
+      p.page.drawCircle({ x: p.X(L + W / 2), y: p.Y(vrh + r), size: r * MM, color: BIJELO, borderColor: CRNO, borderWidth: 2.5 });
+      const pt = t.slovo.length > 1 ? 40 : 50;
+      p.tekst(t.slovo, L + W / 2, vrh + r - (pt * 0.62) / MM, pt, { naslov: true });
+      const stupaca = t.slike.length > 12 ? 5 : 4, redova = Math.ceil(t.slike.length / stupaca);
+      const g = 6, y0 = vrh + 2 * r + 10;
+      const s = Math.min((W - (stupaca - 1) * g) / stupaca, (dno - y0 - (redova - 1) * g) / redova, 38);
+      const x0 = L + (W - (stupaca * s + (stupaca - 1) * g)) / 2;
+      for (const [i, sl] of t.slike.entries())
+        await slikaUOkviru(p, sl, x0 + (i % stupaca) * (s + g), y0 + Math.floor(i / stupaca) * (s + g), s);
+    }
+
     if (t.vrsta === "povezivanje") {
       const n = Math.max(t.lijevo.length, t.desno.length, 1);
       const nat = natpisa([...t.lijevo, ...t.desno]);

@@ -4,7 +4,7 @@
 
 import type { Tema } from "../teme.ts";
 import { TEME } from "../teme.ts";
-import { VRSTE, zadanaUputa, type Izmjena, type Listic, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
+import { VRSTE, zadanaUputa, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
 export interface SlikaPdf { url: string | null; rijec: string; natpis: string; izmjena?: Izmjena }
@@ -16,6 +16,7 @@ export type TijeloPdf =
   | { vrsta: "odabir"; redovi: { zadana: SlikaPdf; ponudeno: SlikaPdf[] }[] }
   | { vrsta: "uljez"; redovi: SlikaPdf[][] }
   | { vrsta: "percepcija"; redovi: SlikaPdf[][] }
+  | { vrsta: "prvi_glas"; slovo: string; slike: SlikaPdf[] }
   | { vrsta: "povezivanje"; lijevo: SlikaPdf[]; desno: SlikaPdf[] }
   | { vrsta: "listic"; kartice: { slika: SlikaPdf | null; tekst: string }[] }
   | { vrsta: "scena"; pozadina: string | null; gumbi: SlikaPdf[] };
@@ -80,6 +81,11 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
         return { ...o, natpis: "", izmjena: p.izmjena, url: o.url && p.izmjena === "siva" ? o.url + SIVA : o.url };
       })),
     }));
+  if (vrsta === "prvi_glas")
+    // Krug po stranici: slovo u krugu i do 15 slika. Natpis bi odao prvi glas.
+    return (s as PrviGlas).krugovi.filter((k) => k.slovo).map((k) => ({
+      vrsta: "prvi_glas", slovo: k.slovo!, slike: k.slike.filter((id) => id !== null).map((id) => ({ ...sl(id), natpis: "" })),
+    }));
   if (vrsta === "povezivanje") {
     const p = s as Povezivanje;
     return [{ vrsta: "povezivanje", lijevo: p.parovi.map((x) => sl(x.lijevo)), desno: p.desno_redoslijed.map((i) => sl(p.parovi[i].desno)) }];
@@ -131,6 +137,7 @@ export function slikeDokumenta(d: DokumentPdf): string[] {
   for (const { tijelo: t } of d.stranice) {
     if (t.vrsta === "odabir") t.redovi.forEach((r) => [r.zadana, ...r.ponudeno].forEach(dodaj));
     if (t.vrsta === "uljez" || t.vrsta === "percepcija") t.redovi.flat().forEach(dodaj);
+    if (t.vrsta === "prvi_glas") t.slike.forEach(dodaj);
     if (t.vrsta === "povezivanje") [...t.lijevo, ...t.desno].forEach(dodaj);
     if (t.vrsta === "listic") t.kartice.forEach((k) => dodaj(k.slika));
     if (t.vrsta === "scena") { if (t.pozadina) out.add(t.pozadina); t.gumbi.forEach(dodaj); }
