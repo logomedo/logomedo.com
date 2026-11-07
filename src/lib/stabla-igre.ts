@@ -37,7 +37,8 @@ export function mjestaBor(n: number): { lukovi: { y: number; l: number; d: numbe
     const k = Math.min(preostalo, i === lukovi.length - 1 ? preostalo : Math.round((n * duljine[i]) / ukupno));
     preostalo -= k;
     for (let j = 0; j < k; j++) {
-      const t = (j + 0.5) / k;
+      // Jedna lampica na luku: naizmjence lijevo i desno, inače malo lampica stoji u okomitoj crti.
+      const t = k === 1 ? (i % 2 ? 0.7 : 0.3) : (j + 0.5) / k;
       tocke.push({ x: l.l + (l.d - l.l) * t, y: l.y + l.p * Math.sin(Math.PI * t) });
     }
   });

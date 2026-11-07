@@ -269,6 +269,10 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
 - **Igra:** „Zavrti kolo!”, nakon zaustavljanja slovo iskoči i izgovori se („Glas B!”), pa pitanje
   sa slovom u kružiću i mreža 4 × 3 / 5 × 3 (uspravno 3 × 4 / 4 × 4). Kartice nemaju napisanu riječ
   (odala bi glas), ali imaju zvučnik. Tekstovi idu u `tekstoviIgre` za ElevenLabs.
+- **Provjereno E2E na produkciji (7. 11. 2026., Brave):** zadatak 43 spremljen s kolom A, C, D, G, O
+  crveno-bijelo (10 polja); u bilježnici /b/proba-kolo-slova sva 4 kruga: kolo stane na slovo kruga,
+  tikovi, krivi dodir trese, lampice 1→4, „Bravo!”. Uspravno 390 × 844 (headless Chrome na produkciji)
+  bez grešaka u konzoli. Snimki izgovora za tekstove kola još nema (govori preglednik).
 - **Pozadina igre** je od 7. 11. u stilu ilustracija (generirane slike, ilustrirani bor/jabuka s
   lampicama po obrisu krošnje): `docs/biljeznice.md`.
 - **Ispis:** krug po stranici: slovo u krugu, ispod mreža slika bez natpisa; uputa „Zaokruži sve
