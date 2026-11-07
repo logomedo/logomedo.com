@@ -1,7 +1,9 @@
 # Zadaci: predlošci, instance, rješavanja
 
-Status (2026-11-07): vrsta `prvi_glas` (kolo slova, izdvajanje prvog glasa) napravljena i provjerena lokalno
-(migracija 0022, editor, „Dijete rješava”, igra bilježnice vodoravno i uspravno, HTML ispis, PDF); nije na produkciji.
+Status (2026-11-07): vrsta `prvi_glas` (kolo slova, izdvajanje prvog glasa) i teme boja kola na produkciji
+(migracija 0022, deploy 827268e0; Time Travel bookmark prije migracije `00000316-00000000-0000511c-2e2ec4f124f229bf0fb1ae028f8363fc`).
+Provjereno u Braveu na produkciji: zadatak 43 (editor, „Dijete rješava”, Ispis, PDF složen bez preuzimanja) i probna javna
+bilježnica `/b/proba-kolo-slova` (id 6, još postoji: obrisati ili zadržati za Anitu). Zvuk i uspravni prikaz na produkciji nisu provjereni.
 Status (2026-11-02, navečer): vrsta `percepcija` (vizualna percepcija: pronađi različitu / dvije iste) na produkciji
 (migracija 0016, deploy 6fbc6ea3; Time Travel bookmark prije migracije `0000008a-00000182-00005117-78b34e56455b0d3413ecebd7a5cb87ee`).
 Na produkciji još nema nijednog zadatka te vrste.
@@ -260,6 +262,10 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
 - **Igra:** „Zavrti kolo!”, nakon zaustavljanja slovo iskoči i izgovori se („Glas B!”), pa pitanje
   sa slovom u kružiću i mreža 4 × 3 / 5 × 3 (uspravno 3 × 4 / 4 × 4). Kartice nemaju napisanu riječ
   (odala bi glas), ali imaju zvučnik. Tekstovi idu u `tekstoviIgre` za ElevenLabs.
+- **Otvoreno (7. 11.):** Matija želi pozadinu igre bilježnice (sada CSS nebo, kućice, bor) u stilu ilustracija
+  (bojice + akvarel); sadašnja „izgleda kao iz 2000-ih”. Prijedlog: pozadine tema kao generirane slike (vodoravna +
+  uspravna, Vertex, stil `ilustracija`), bor/jabuka ostaju SVG zbog lampica ili postaju slika s lampicama po
+  koordinatama (njegova odluka još nije pala), kartice i pitanje u papirnatim tonovima.
 - **Ispis:** krug po stranici: slovo u krugu, ispod mreža slika bez natpisa; uputa „Zaokruži sve
   slike koje počinju glasom iz kruga.” Flutter aplikacija vrstu još nema.
 
