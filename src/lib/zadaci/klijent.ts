@@ -294,6 +294,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const s = sadrzaj as PrviGlas;
     s.krugovi.forEach(uskladiKrug);
     const naKolu = (sl: string) => s.kolo.includes(sl);
+    const slovaKrugova = ABECEDA.filter((sl) => s.krugovi.some((k) => k.slovo === sl));
     const prebaci = (sl: string) => {
       const novo = naKolu(sl) ? s.kolo.filter((x) => x !== sl) : [...s.kolo, sl];
       if (novo.length < 2) return;
@@ -308,13 +309,16 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return h("div", { class: "z-uredi" },
       h("div", { class: "ploha z-scena-dio" },
         h("div", { class: "z-dio-glava" }, h("b", {}, `Slova na kolu (${s.kolo.length}/${ABECEDA.length})`),
-          s.kolo.length < ABECEDA.length ? h("button", { type: "button", class: "gumb mali tihi", onclick: () => { s.kolo = [...ABECEDA]; oznaci(); osvjezi(); } }, "Sva slova") : null),
+          s.kolo.length < ABECEDA.length ? h("button", { type: "button", class: "gumb mali tihi", onclick: () => { s.kolo = [...ABECEDA]; oznaci(); osvjezi(); } }, "Sva slova") : null,
+          // Kolo samo sa slovima na koja staje (barem 2, inače se ne bi imalo što vrtjeti).
+          slovaKrugova.length >= 2 && slovaKrugova.join() !== s.kolo.join()
+            ? h("button", { type: "button", class: "gumb mali tihi", title: "Na kolu ostaju samo slova odabrana u krugovima", onclick: () => { s.kolo = [...slovaKrugova]; oznaci(); resetRjesavanja(); osvjezi(); } }, "Samo slova krugova") : null),
         h("div", { class: "z-kolo-slova" }, ...ABECEDA.map((sl) => h("button", { type: "button", class: `z-cip${naKolu(sl) ? " on" : ""}`, title: `${brojSlova(sl)} riječi u katalogu`, onclick: () => prebaci(sl) }, sl))),
         h("div", { class: "z-dio-glava" }, h("b", {}, "Boje kola")),
         h("div", { class: "z-kolo-boje" }, ...(Object.entries(BOJE_KOLA) as [keyof typeof BOJE_KOLA, (typeof BOJE_KOLA)[keyof typeof BOJE_KOLA]][]).map(([kod, b]) =>
           h("button", { type: "button", class: `z-cip${(s.boje ?? "sareno") === kod ? " on" : ""}`, onclick: () => { s.boje = kod; oznaci(); resetRjesavanja(); osvjezi(); } },
             h("span", { class: "z-kolo-uzorak", style: `background:conic-gradient(${b.polja.flatMap((c, i, a) => [`${c} ${(i / a.length) * 100}%`, `${c} ${((i + 1) / a.length) * 100}%`]).join(",")})` }), b.naziv))),
-        h("p", { class: "sitno blijedo" }, "Kolo izgleda nasumično, a stane na slovo kruga. Slike koje počinju tim glasom označe se same (LJ, NJ i DŽ su jedan glas: LJULJAČKA ne počinje glasom L).")),
+        h("p", { class: "sitno blijedo" }, "Dodirom na slovo ono se makne s kola ili vrati na njega. Kolo izgleda nasumično, a stane na slovo kruga. Slike koje počinju tim glasom označe se same (LJ, NJ i DŽ su jedan glas: LJULJAČKA ne počinje glasom L).")),
       ...s.krugovi.map((k, i) => {
         const tocnih = k.tocno.length;
         const promijeni = (n: number) => { s.krugovi[i] = slozKrug(k.slovo, zaKrug(), n); oznaci(); resetRjesavanja(); osvjezi(); };

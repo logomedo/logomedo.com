@@ -29,14 +29,16 @@ export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => 
   const svg = s("svg", { viewBox: "-104 -104 208 208", class: "kolo-svg", "aria-hidden": "true" });
   const krug = s("g", { class: "kolo-krug" });
   const R = 98;
-  // Font prema broju polja: 30 slova stane u ~12°, dvoslovi su uži.
-  const velicina = Math.min(22, Math.max(9, 330 / n));
+  // Font prema broju polja: 30 slova stane u ~12°, dvoslovi su uži. S malo slova (logoped je
+  // odabrao samo neka) polja su široka, pa je slovo veće i bliže sredini polja.
+  const velicina = Math.min(n <= 8 ? 40 : 22, Math.max(9, 330 / n));
+  const polumjerSlova = n <= 8 ? R * 0.63 : R - velicina * 0.95;
   o.slova.forEach((slovo, i) => {
     const a0 = i * seg, a1 = (i + 1) * seg;
     const [x0, y0] = tocka(R, a0), [x1, y1] = tocka(R, a1);
     const g = s("g", { class: "kolo-polje", "data-i": i });
     app(g, s("path", { d: `M0 0 L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`, fill: tema.polja[boja(i)] }));
-    const t = s("text", { x: 0, y: -(R - velicina * 0.95), "text-anchor": "middle", "dominant-baseline": "central", "font-size": slovo.length > 1 ? velicina * 0.78 : velicina, fill: tema.slova[boja(i) % tema.slova.length],
+    const t = s("text", { x: 0, y: -polumjerSlova, "text-anchor": "middle", "dominant-baseline": "central", "font-size": slovo.length > 1 ? velicina * 0.78 : velicina, fill: tema.slova[boja(i) % tema.slova.length],
       transform: `rotate(${a0 + seg / 2})` });
     t.textContent = slovo;
     app(g, t);

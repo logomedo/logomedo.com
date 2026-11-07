@@ -254,6 +254,10 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
   prvim glasom, svaka riječ jednom; riječi sa slikom ako ih ima barem 12.
 - **Upozorenja:** krug bez slova, slovo kojeg nema na kolu, prazne slike, nijedna ili sve slike s
   glasom, ista riječ dvaput.
+- **Slova na kolu** (`kolo`, zadano svih 30): logoped dodirom na slovo u editoru makne ga s kola ili
+  vrati (najmanje 2). „Samo slova krugova” ostavi na kolu samo slova na koja kolo staje (Matija,
+  7. 11.: na kolo samo odabrana slova, ne sva). Do 8 slova polja su široka, pa su slova veća i
+  bliže sredini polja (`kolo-slova.ts`).
 - **Boje kola** (`boje` u sadržaju, `BOJE_KOLA`): šareno (zadano), crveno-bijelo, crveno-bijelo-plavo; bira se u editoru
   uz slova. Na crveno-bijelim kolima pobjedničko polje zasvijetli žuto (bijelo se ne bi istaknulo).
 - **Kolo** (`src/lib/kolo-slova.ts` + `.css`): SVG, okretanje kroz rAF s easeOutQuart (~4,6 s, uz
