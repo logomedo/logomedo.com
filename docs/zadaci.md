@@ -260,6 +260,9 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
   bliže sredini polja (`kolo-slova.ts`).
 - **Boje kola** (`boje` u sadržaju, `BOJE_KOLA`): šareno (zadano), crveno-bijelo, crveno-bijelo-plavo; bira se u editoru
   uz slova. Na crveno-bijelim kolima pobjedničko polje zasvijetli žuto (bijelo se ne bi istaknulo).
+  Crveno-bijelo s neparnim brojem slova: prvo i zadnje polje bi bila crvena jedno do drugog, pa se
+  do 15 slova slova na kolu ponove dvaput (kolo stane na jedno od dva polja slova), a od 17 jedno
+  polje bude zlatno.
 - **Kolo** (`src/lib/kolo-slova.ts` + `.css`): SVG, okretanje kroz rAF s easeOutQuart (~4,6 s, uz
   `prefers-reduced-motion` 0,9 s); `naTik` na svakoj pregradi (u igri tihi klik iz WebAudija).
   Isti DOM u adminu i bilježnici.

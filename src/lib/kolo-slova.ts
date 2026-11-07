@@ -20,12 +20,19 @@ const tocka = (r: number, kut: number) => [r * Math.sin((kut * Math.PI) / 180), 
 export interface Kolo { el: HTMLElement; zavrti: () => void }
 
 export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => void; naTik?: () => void; naKraj: (slovo: string) => void; trajanje?: number; boje?: BojeKola }): Kolo {
-  const n = Math.max(2, o.slova.length);
-  const seg = 360 / n;
   const tema = BOJE_KOLA[o.boje ?? "sareno"] ?? BOJE_KOLA.sareno;
   const m = tema.polja.length;
-  // Zadnje polje ne smije imati boju prvog (kolo je zatvoreno): tada uzme srednju boju.
-  const boja = (i: number) => (i === n - 1 && m > 2 && (n - 1) % m === 0 ? 1 : i % m);
+  // Dvije boje (crveno-bijelo) i neparan broj polja: prvo i zadnje bi bili iste boje. Do 15 slova
+  // slova se ponove dvaput (kao na pravom kolu sreće), inače jedno polje dobije zlatnu boju.
+  const neparno = m === 2 && o.slova.length % 2 === 1;
+  const polja = neparno && o.slova.length <= 15 ? [...o.slova, ...o.slova] : o.slova;
+  const n = Math.max(2, polja.length);
+  const seg = 360 / n;
+  const ZLATNO = -1;
+  // Zadnje polje ne smije imati boju prvog (kolo je zatvoreno): tada uzme srednju (ili zlatnu) boju.
+  const boja = (i: number) => (i === n - 1 && (n - 1) % m === 0 ? (m > 2 ? 1 : ZLATNO) : i % m);
+  const bojaPolja = (i: number) => (boja(i) === ZLATNO ? "#f4c542" : tema.polja[boja(i)]);
+  const bojaSlova = (i: number) => (boja(i) === ZLATNO ? "#8a1414" : tema.slova[boja(i) % tema.slova.length]);
   const svg = s("svg", { viewBox: "-104 -104 208 208", class: "kolo-svg", "aria-hidden": "true" });
   const krug = s("g", { class: "kolo-krug" });
   const R = 98;
@@ -33,12 +40,12 @@ export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => 
   // odabrao samo neka) polja su široka, pa je slovo veće i bliže sredini polja.
   const velicina = Math.min(n <= 8 ? 40 : 22, Math.max(9, 330 / n));
   const polumjerSlova = n <= 8 ? R * 0.63 : R - velicina * 0.95;
-  o.slova.forEach((slovo, i) => {
+  polja.forEach((slovo, i) => {
     const a0 = i * seg, a1 = (i + 1) * seg;
     const [x0, y0] = tocka(R, a0), [x1, y1] = tocka(R, a1);
     const g = s("g", { class: "kolo-polje", "data-i": i });
-    app(g, s("path", { d: `M0 0 L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`, fill: tema.polja[boja(i)] }));
-    const t = s("text", { x: 0, y: -polumjerSlova, "text-anchor": "middle", "dominant-baseline": "central", "font-size": slovo.length > 1 ? velicina * 0.78 : velicina, fill: tema.slova[boja(i) % tema.slova.length],
+    app(g, s("path", { d: `M0 0 L${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${seg > 180 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`, fill: bojaPolja(i) }));
+    const t = s("text", { x: 0, y: -polumjerSlova, "text-anchor": "middle", "dominant-baseline": "central", "font-size": slovo.length > 1 ? velicina * 0.78 : velicina, fill: bojaSlova(i),
       transform: `rotate(${a0 + seg / 2})` });
     t.textContent = slovo;
     app(g, t);
@@ -62,7 +69,9 @@ export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => 
 
   function zavrti() {
     if (vrti || gotovo) return;
-    const i = Math.max(0, o.slova.indexOf(o.cilj));
+    // Kad se slovo ponavlja, kolo stane na jedno od njegovih polja nasumično.
+    const mjesta = polja.flatMap((sl, j) => (sl === o.cilj ? [j] : []));
+    const i = mjesta.length ? mjesta[Math.floor(Math.random() * mjesta.length)] : 0;
     vrti = true;
     el.classList.add("vrti");
     o.naPocetak?.();
@@ -87,7 +96,7 @@ export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => 
       vrti = false; gotovo = true;
       el.classList.remove("vrti"); el.classList.add("stalo");
       krug.querySelector(`.kolo-polje[data-i="${i}"]`)?.classList.add("pobjednik");
-      setTimeout(() => o.naKraj(o.slova[i]), 450);
+      setTimeout(() => o.naKraj(polja[i]), 450);
     };
     requestAnimationFrame(korak);
   }
