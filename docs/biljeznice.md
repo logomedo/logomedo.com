@@ -28,7 +28,18 @@ upaljenim lampicama.
   drvenom okviru sa zvučnikom; točno = zelena kartica + zvonce (WebAudio) + lampica; krivo =
   trese se. Kraj: bor u sredini se vrti, lampice trepere, „Bravo!” i „Ponovi”. Kartica bez
   odobrene slike prikazuje samo riječ. Tablet vodoravno: bor desno; uspravno: bor mali dolje desno.
-  CSS klasa `.snijeg` pripada boru; padajući snijeg je `.pahulje`.
+  Padajući snijeg je `.pahulje`.
+- **Izgled igre u stilu ilustracija (7. 11. 2026.)**, jer je CSS crtež (nebo, kućice, livada)
+  „izgledao kao iz 2000-ih”: pozadina teme je slika (`public/igra/<tema>-vodoravno|uspravno.webp`,
+  bira se po orijentaciji), stablo je ilustracija (`public/igra/bor|jabuka.webp`, prozirna pozadina)
+  i preko nje SVG lampice/jabuke, `src/lib/stabla-igre.ts` (`tema.ukrasIgre(n)`). Mjesta lampica
+  slaže po obrisu krošnje (`src/lib/igra-stabla.ts`: lijevi i desni rub po redovima), pa radi za
+  bilo koji N; granice krošnje po visini su `KRUNA` u `stabla-igre.ts` (ručno, mijenjaju se s
+  novom slikom). Kartice, pitanje i uvod su u papirnatim tonovima (krem, obrub olovke).
+  Nova slika: `scripts/igra-slike.sh <dir> [ime]` (Vertex, stil `ilustracija`, ~$0,04 po slici;
+  treba bash 4, npr. `/opt/homebrew/bin/bash`), pa `python3 scripts/igra-obrada.py <dir>`
+  (izreže stabla, webp, osvježi obris). Prvi set je prošao iz prvog pokušaja (6 slika).
+  Ispis i PDF i dalje crtaju stara SVG stabla (`bor.ts`, `jabuka.ts`) jer trebaju obrise za bojanje.
 - **Ispis** `src/pages/b/[slug]/ispis.astro`: A4, naslovnica s borom za bojanje lampica,
   odabir 3 / uljez 4 / povezivanje 1 po stranici, grančice u kutovima.
 - **CSP** (`src/middleware.ts`): `img-src` uključuje `env.CDN_URL`.
@@ -60,8 +71,8 @@ Izostavljen je GRINČ (zaštićeni lik); dvosmislene riječi BAL, DJED i GRAD im
   u pregledniku i na serveru (`provjeriPolja`). „Primjer: Božićna rima” ostaje.
 - `/admin/biljeznice/[id]`: tema, greška za zauzetu poveznicu, uz zadatak broj ekrana ili
   „nije spreman za igru” (`brojEkrana([z]) === 0`).
-- Teme (`src/lib/teme.ts`, migracija 0011): `bozic` (bor, lampice) i `proljece` (dnevno nebo,
-  livada, `src/lib/jabuka.ts`: stablo s N plodova istih razreda kao lampice, pa igra ne zna temu).
+- Teme (`src/lib/teme.ts`, migracija 0011): `bozic` (bor, lampice) i `proljece` (livada,
+  `src/lib/jabuka.ts`: stablo s N plodova istih razreda kao lampice, pa igra ne zna temu).
   Igra (`tema-<kod>` na body), HTML ispis i PDF naslovnica uzimaju ukras i tekstove iz teme;
   grančice u kutovima samo za božić.
 - Upute za logopede: `docs/upute-vjezbenice.md`, PDF `docs/pdf/upute-vjezbenice.pdf`

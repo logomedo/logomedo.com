@@ -262,10 +262,8 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
 - **Igra:** „Zavrti kolo!”, nakon zaustavljanja slovo iskoči i izgovori se („Glas B!”), pa pitanje
   sa slovom u kružiću i mreža 4 × 3 / 5 × 3 (uspravno 3 × 4 / 4 × 4). Kartice nemaju napisanu riječ
   (odala bi glas), ali imaju zvučnik. Tekstovi idu u `tekstoviIgre` za ElevenLabs.
-- **Otvoreno (7. 11.):** Matija želi pozadinu igre bilježnice (sada CSS nebo, kućice, bor) u stilu ilustracija
-  (bojice + akvarel); sadašnja „izgleda kao iz 2000-ih”. Prijedlog: pozadine tema kao generirane slike (vodoravna +
-  uspravna, Vertex, stil `ilustracija`), bor/jabuka ostaju SVG zbog lampica ili postaju slika s lampicama po
-  koordinatama (njegova odluka još nije pala), kartice i pitanje u papirnatim tonovima.
+- **Pozadina igre** je od 7. 11. u stilu ilustracija (generirane slike, ilustrirani bor/jabuka s
+  lampicama po obrisu krošnje): `docs/biljeznice.md`.
 - **Ispis:** krug po stranici: slovo u krugu, ispod mreža slika bez natpisa; uputa „Zaokruži sve
   slike koje počinju glasom iz kruga.” Flutter aplikacija vrstu još nema.
 

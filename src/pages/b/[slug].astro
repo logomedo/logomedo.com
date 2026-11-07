@@ -37,49 +37,10 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body class={`igra tema-${b.tema}`}>
-    {b.tema === "proljece" ? (
-      <div class="nebo dan" aria-hidden="true">
-        <div class="sunce"></div>
-        <div class="oblak o1"></div><div class="oblak o2"></div>
-        <svg class="krajolik" viewBox="0 0 1200 360" preserveAspectRatio="xMidYMax slice">
-          <path d="M0 210 Q220 150 420 195 T820 175 T1200 185 V360 H0Z" class="livada-dalje" />
-          <path d="M0 260 Q280 205 600 250 T1200 235 V360 H0Z" class="livada" />
-          <path d="M0 315 Q320 280 720 308 T1200 298 V360 H0Z" class="livada-blize" />
-          {[[90, 300, "#ff8fab"], [210, 318, "#ffd166"], [380, 296, "#ffffff"], [560, 322, "#ff8fab"], [760, 305, "#cdb4ff"], [930, 320, "#ffd166"], [1110, 300, "#ffffff"]].map(([x, y, c]) => (
-            <g transform={`translate(${x} ${y})`}><path d="M0 0v22" class="stabljika" />{[0, 72, 144, 216, 288].map((k) => <circle r="6" cx={Math.cos((Number(k) * Math.PI) / 180) * 7} cy={Math.sin((Number(k) * Math.PI) / 180) * 7} fill={String(c)} />)}<circle r="4" class="sredina" /></g>
-          ))}
-        </svg>
-      </div>
-    ) : (
-    <div class="nebo" aria-hidden="true">
-      <div class="zvijezde"></div>
-      <svg class="krajolik" viewBox="0 0 1200 360" preserveAspectRatio="xMidYMax slice">
-        <path d="M0 210 Q180 150 360 190 T760 180 T1200 170 V360 H0Z" class="brijeg-dalje" />
-        <g class="selo" transform="translate(0 -28)">
-          <g transform="translate(120 150)">
-            <path d="M-6 40 L28 8 L62 40Z" class="krov" /><rect x="0" y="40" width="56" height="40" class="kuca" />
-            <rect x="8" y="50" width="12" height="12" class="prozor" /><rect x="36" y="50" width="12" height="12" class="prozor" />
-            <rect x="40" y="10" width="7" height="18" class="kuca" />
-          </g>
-          <g transform="translate(200 162)">
-            <path d="M-4 32 L22 6 L48 32Z" class="krov" /><rect x="0" y="32" width="44" height="34" class="kuca" />
-            <rect x="15" y="42" width="13" height="13" class="prozor" />
-          </g>
-          <g transform="translate(690 150) scale(.8)">
-            <path d="M-6 40 L28 8 L62 40Z" class="krov" /><rect x="0" y="40" width="56" height="40" class="kuca" />
-            <rect x="8" y="50" width="12" height="12" class="prozor" /><rect x="36" y="50" width="12" height="12" class="prozor" />
-          </g>
-          {[[60, 170, 1], [270, 170, .8], [640, 160, .7], [780, 158, .9], [40, 190, .7]].map(([x, y, s]) => (
-            <path transform={`translate(${x} ${y}) scale(${s})`} d="M0 -50 L18 -16 L9 -16 L24 10 L-24 10 L-9 -16 L-18 -16Z" class="jelka" />
-          ))}
-        </g>
-        <path d="M0 260 Q260 200 560 250 T1200 230 V360 H0Z" class="brijeg" />
-        <path d="M0 320 Q300 280 700 310 T1200 300 V360 H0Z" class="brijeg-blize" />
-      </svg>
-      <div class="pahulje s1"></div>
-      <div class="pahulje s2"></div>
+    {/* Pozadina teme: ilustracija (public/igra/, scripts/igra-slike.sh), vodoravna ili uspravna po ekranu */}
+    <div class={`nebo pozadina-${b.tema}`} aria-hidden="true">
+      {b.tema === "bozic" && <><div class="pahulje s1"></div><div class="pahulje s2"></div></>}
     </div>
-    )}
 
     <main class="pozornica">
       <section id="ekran" class="ekran" aria-live="polite">
@@ -90,7 +51,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
         </div>
       </section>
       <aside class="stablo">
-        <Fragment set:html={tema.ukras(n)} />
+        <Fragment set:html={tema.ukrasIgre(n)} />
         <p class="brojac" id="brojac"></p>
       </aside>
     </main>
@@ -105,25 +66,18 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
 
 <style is:global>
   :root { --nebo-1: #0f1a45; --nebo-2: #2b3f86; --nebo-3: #6b6fb5; --drvo-1: #b07a43; --drvo-2: #7a4a22; --drvo-3: #d49a5a;
-    --krem: #fbf3e2; --tinta: #2a2118; --plavo: #8fd0ff; --plavo-tamno: #2f7fc1; --zeleno: #3fae5a; --crveno: #d9483b;
+    --krem: #fbf3e2; --papir-rub: #e6d2ad; --olovka: #6b4423; --tinta: #2a2118; --plavo: #8fd0ff; --plavo-tamno: #2f7fc1; --zeleno: #3fae5a; --crveno: #d9483b;
     --font: "Nunito Variable", "Nunito", ui-rounded, system-ui, sans-serif; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
   body.igra { font-family: var(--font); color: var(--tinta); background: var(--nebo-1); overflow: hidden; -webkit-tap-highlight-color: transparent;
     user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 
-  /* ---- Pozadina: nebo, zvijezde, brežuljci, snijeg ---- */
-  .nebo { position: fixed; inset: 0; background: linear-gradient(180deg, var(--nebo-1) 0%, var(--nebo-2) 55%, var(--nebo-3) 85%, #a9a6d6 100%); overflow: hidden; }
-  .zvijezde { position: absolute; inset: 0 0 40% 0; opacity: .8;
-    background-image: radial-gradient(1.5px 1.5px at 10% 20%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 30% 8%, #fff 50%, transparent 51%),
-      radial-gradient(2px 2px at 52% 30%, #fff8d0 50%, transparent 51%), radial-gradient(1px 1px at 70% 14%, #fff 50%, transparent 51%),
-      radial-gradient(1.5px 1.5px at 86% 26%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 20% 44%, #fff 50%, transparent 51%),
-      radial-gradient(1px 1px at 62% 52%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 92% 6%, #fff 50%, transparent 51%);
-    background-size: 420px 300px; animation: trepere 4s ease-in-out infinite alternate; }
-  @keyframes trepere { to { opacity: .45; } }
-  .krajolik { position: absolute; left: 0; bottom: 0; width: 100%; height: 42%; }
-  .brijeg-dalje { fill: #c9d3ee; } .brijeg { fill: #e6ecfa; } .brijeg-blize { fill: #f7f9ff; }
-  .kuca { fill: #c98c5a; } .krov { fill: #f4f7ff; } .prozor { fill: #ffd56b; filter: drop-shadow(0 0 6px #ffcf4a); } .jelka { fill: #2d5a4a; }
+  /* ---- Pozadina: ilustracija teme (cover), na uspravnom ekranu uspravna verzija; snijeg pada preko ---- */
+  .nebo { position: fixed; inset: 0; overflow: hidden; background: var(--pozadina-boja) center bottom / cover no-repeat; background-image: var(--pozadina-v); }
+  @media (orientation: portrait) { .nebo { background-image: var(--pozadina-u); } }
+  .pozadina-bozic { --pozadina-boja: #8e8fc4; --pozadina-v: url(/igra/bozic-vodoravno.webp); --pozadina-u: url(/igra/bozic-uspravno.webp); }
+  .pozadina-proljece { --pozadina-boja: #e3f1f2; --pozadina-v: url(/igra/proljece-vodoravno.webp); --pozadina-u: url(/igra/proljece-uspravno.webp); }
   .pahulje { position: absolute; inset: -100% 0 0 0; pointer-events: none;
     background-image: radial-gradient(3px 3px at 20px 30px, #fff 50%, transparent 51%), radial-gradient(2px 2px at 140px 90px, #fff 50%, transparent 51%),
       radial-gradient(4px 4px at 80px 160px, #fff 50%, transparent 51%), radial-gradient(2.5px 2.5px at 200px 220px, #fff 50%, transparent 51%),
@@ -131,15 +85,16 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     background-size: 280px 260px; animation: pada 18s linear infinite; opacity: .9; }
   .pahulje.s2 { background-size: 190px 210px; animation-duration: 11s; opacity: .55; filter: blur(.6px); }
   @keyframes pada { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-40px, 50%, 0); } }
-  @media (prefers-reduced-motion: reduce) { .pahulje, .zvijezde { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .pahulje { animation: none; } }
 
   /* ---- Raspored: zadatak lijevo, bor desno ---- */
   .pozornica { position: relative; z-index: 1; height: 100dvh; display: grid; grid-template-columns: 1fr min(30vw, 52vh); gap: 1vw;
     padding: max(2vh, env(safe-area-inset-top)) max(2vw, env(safe-area-inset-right)) 2vh max(2vw, env(safe-area-inset-left)); }
   .ekran { min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: 2vh; }
   .stablo { align-self: end; display: flex; flex-direction: column; align-items: center; min-height: 0; }
-  .stablo .bor { width: 100%; max-height: 82vh; overflow: visible; filter: drop-shadow(0 10px 18px rgb(0 0 30 / .35)); }
-  .brojac { margin: .4vh 0 0; color: #fff; font-weight: 800; font-size: clamp(.9rem, 2.2vh, 1.3rem); text-shadow: 0 1px 4px #0008; min-height: 1.4em; }
+  .stablo .bor { width: 100%; max-height: 82vh; overflow: visible; filter: drop-shadow(0 8px 10px rgb(60 40 20 / .25)); }
+  .brojac { margin: .4vh 0 0; color: var(--olovka); font-weight: 800; font-size: clamp(.9rem, 2.2vh, 1.3rem); min-height: 1.4em; padding: 0 1.2vh; border-radius: 99px; background: rgb(251 243 226 / .85); }
+  .brojac:empty { visibility: hidden; }
   @media (orientation: portrait) {
     .pozornica { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
     .stablo { position: absolute; right: 2vw; bottom: 1vh; width: 22vw; z-index: -1; opacity: .95; }
@@ -148,13 +103,13 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
 
   /* ---- Bor ---- */
   .krosnja { fill: #2f7a4f; stroke: #1f5a39; stroke-width: 2; } .bor .snijeg { fill: #f4f8ff; opacity: .92; }
-  .deblo { fill: #7a4a22; } .girlanda { fill: none; stroke: #f1d27a; stroke-width: 2.5; stroke-dasharray: 2 5; stroke-linecap: round; opacity: .8; }
+  .deblo { fill: #7a4a22; } .girlanda { fill: none; stroke: #8a5a2c; stroke-width: 1.6; stroke-linecap: round; opacity: .75; }
   .zvijezda { fill: #ffd447; stroke: #e0a400; stroke-width: 2; stroke-linejoin: round; }
   .kapica { fill: #c9b27a; }
-  .lampica .kugla { fill: #4a5a6e; stroke: #2c3846; stroke-width: 1.5; transition: fill .4s; }
+  .lampica .kugla { fill: #f3e6c8; stroke: var(--olovka); stroke-width: 1.6; transition: fill .4s; }
   .lampica .sjaj { fill: var(--boja); opacity: 0; transition: opacity .5s; }
-  .lampica .odsjaj { fill: #fff; opacity: .35; }
-  .lampica.upaljena .kugla { fill: var(--boja); stroke: #fff8; }
+  .lampica .odsjaj { fill: #fff; opacity: .5; }
+  .lampica.upaljena .kugla { fill: var(--boja); stroke: var(--olovka); }
   .lampica.upaljena .sjaj { opacity: .35; animation: sjaji 1.8s ease-in-out infinite alternate; }
   .lampica.upaljena .odsjaj { opacity: .8; }
   .lampica { transform-box: fill-box; transform-origin: center; }
@@ -163,11 +118,12 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   @keyframes iskoci { 0% { transform: scale(1); } 40% { transform: scale(1.9); } 100% { transform: scale(1); } }
 
   /* ---- Uvod i pitanje ---- */
-  .uvod { text-align: center; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 2vh; text-shadow: 0 2px 10px #0009; }
+  .uvod { text-align: center; color: var(--olovka); display: flex; flex-direction: column; align-items: center; gap: 2vh; padding: 3vh 6vh; border-radius: 3vh;
+    background: rgb(251 243 226 / .9); box-shadow: inset 0 0 0 2px var(--papir-rub), 0 8px 24px rgb(60 40 20 / .2); }
   .uvod h1 { margin: 0; font-size: clamp(2.4rem, 9vh, 5.5rem); font-weight: 900; letter-spacing: .01em; }
   .uvod p { margin: 0; font-size: clamp(1.1rem, 3vh, 1.6rem); font-weight: 700; max-width: 30ch; }
-  .pitanje { display: flex; align-items: center; gap: 1.2vh; background: rgb(240 244 255 / .93); border: 2px solid #fff; border-radius: 2vh;
-    padding: 1vh 1.2vh 1vh 2.4vh; box-shadow: 0 6px 20px rgb(0 0 40 / .3); font-size: clamp(1.15rem, 4.4vh, 2.6rem); font-weight: 800; line-height: 1.15; text-align: center; max-width: 100%; }
+  .pitanje { display: flex; align-items: center; gap: 1.2vh; background: rgb(251 243 226 / .95); border: 2px solid var(--papir-rub); border-radius: 2vh; color: var(--olovka);
+    padding: 1vh 1.2vh 1vh 2.4vh; box-shadow: 0 6px 18px rgb(60 40 20 / .22); font-size: clamp(1.15rem, 4.4vh, 2.6rem); font-weight: 800; line-height: 1.15; text-align: center; max-width: 100%; }
   .gumb-kreni, .gumb-ponovi { font: inherit; font-weight: 900; font-size: clamp(1.4rem, 5vh, 2.6rem); color: #fff; padding: 1.6vh 6vh; border-radius: 999px; cursor: pointer;
     border: 4px solid #fff; background: linear-gradient(#e8574a, #b7302a); box-shadow: 0 6px 0 #7d1d18, 0 12px 26px rgb(0 0 0 / .35); }
   .gumb-kreni:active, .gumb-ponovi:active { translate: 0 4px; box-shadow: 0 2px 0 #7d1d18; }
@@ -179,12 +135,12 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .zvucnik.govori { animation: puls .6s ease-in-out infinite alternate; }
   @keyframes puls { to { transform: scale(1.12); } }
 
-  /* ---- Kartice: drveni okvir, krem unutra ---- */
+  /* ---- Kartice: papir s obrubom olovke, krem unutra ---- */
   .kartica { --s: min(26vh, 17vw); width: var(--s); border-radius: 2.2vh; padding: 1.1vh; position: relative; cursor: pointer; flex: none;
-    background: linear-gradient(135deg, var(--drvo-3), var(--drvo-1) 40%, var(--drvo-2)); box-shadow: inset 0 0 0 2px #5a3414, 0 8px 18px rgb(0 0 30 / .35);
+    background: var(--papir-rub); box-shadow: inset 0 0 0 2px #a07a4c, 0 6px 14px rgb(60 40 20 / .25);
     transition: transform .15s, box-shadow .2s; outline: none; }
   .kartica:hover, .kartica:focus-visible { transform: translateY(-.6vh); }
-  .kartica:focus-visible { box-shadow: inset 0 0 0 2px #5a3414, 0 0 0 5px #fff, 0 8px 18px rgb(0 0 30 / .35); }
+  .kartica:focus-visible { box-shadow: inset 0 0 0 2px #a07a4c, 0 0 0 5px #fff, 0 6px 14px rgb(60 40 20 / .25); }
   .unutra { background: var(--krem); border-radius: 1.4vh; box-shadow: inset 0 0 0 2px #5a341444, inset 0 0 18px #c99b5c55; display: flex; flex-direction: column; align-items: center;
     padding: .9vh; gap: .4vh; }
   .glava { display: flex; align-items: center; justify-content: center; gap: .8vh; width: 100%; min-height: calc(var(--s) * .17); }
@@ -207,12 +163,12 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .kartica.krivo { animation: trese .45s; }
   .kartica.uljez::after { content: ""; position: absolute; inset: 18%; pointer-events: none;
     background: linear-gradient(45deg, transparent 45%, var(--crveno) 45% 55%, transparent 55%), linear-gradient(-45deg, transparent 45%, var(--crveno) 45% 55%, transparent 55%); }
-  .kartica.odabrana { transform: translateY(-.6vh) scale(1.04); box-shadow: inset 0 0 0 2px #5a3414, 0 0 0 6px #ffd447, 0 8px 18px rgb(0 0 30 / .35); }
+  .kartica.odabrana { transform: translateY(-.6vh) scale(1.04); box-shadow: inset 0 0 0 2px #a07a4c, 0 0 0 6px #ffd447, 0 6px 14px rgb(60 40 20 / .25); }
   .kartica.spojena { cursor: default; }
   @keyframes trese { 0%, 100% { translate: 0 } 20%, 60% { translate: -1.4vh 0 } 40%, 80% { translate: 1.4vh 0 } }
   .zakljucano .kartica, .zakljucano .scena-gumb { pointer-events: none; }
   /* Scena preko cijelog ekrana; nakon rješenja se makne da se vidi lampica */
-  .scena-cijeli { position: fixed; inset: 0; z-index: 5; background: #1b2a5c; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); transition: opacity .5s; }
+  .scena-cijeli { position: fixed; inset: 0; z-index: 5; background: var(--krem); padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); transition: opacity .5s; }
   .scena-cijeli.odlazi { opacity: 0; pointer-events: none; }
 
   /* Zadana slika: široka kartica, riječ lijevo, slika desno */
@@ -263,6 +219,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   @media (orientation: portrait) {
     .ekran { justify-content: center; padding-bottom: 12vh; gap: 3vh; }
     .pitanje { font-size: clamp(1.1rem, 5.6vw, 2rem); }
+    .uvod { padding: 3vh 5vw; margin: 0 2vw; }
     .zvucnik { --z: 9vw; }
     .zadana { --s: 40vw; }
     .kartica { --s: 29vw; }
@@ -284,28 +241,17 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   }
   @media (orientation: landscape) and (max-height: 500px) { .pitanje { font-size: 5.4vh; } }
 
-  /* ---- Tema proljeće: dnevno nebo, sunce, livada, jabuka ---- */
-  .nebo.dan { background: linear-gradient(180deg, #8fd3ff 0%, #c4ecff 55%, #e9f8ff 100%); }
-  .sunce { position: absolute; top: 6vh; left: 7vw; width: 14vmin; height: 14vmin; border-radius: 50%; background: radial-gradient(circle, #fff6b0 0 45%, #ffd84d 46% 70%, #ffd84d00 71%);
-    box-shadow: 0 0 60px 20px #ffe48a88; animation: sija 6s ease-in-out infinite alternate; }
-  @keyframes sija { to { transform: scale(1.06); } }
-  .oblak { position: absolute; height: 7vmin; width: 22vmin; border-radius: 99px; background: #fff; opacity: .9; filter: drop-shadow(0 4px 6px #0001); animation: plovi 60s linear infinite; }
-  .oblak::before, .oblak::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
-  .oblak::before { width: 9vmin; height: 9vmin; left: 3vmin; top: -4.5vmin; } .oblak::after { width: 11vmin; height: 11vmin; left: 9vmin; top: -6vmin; }
-  .oblak.o1 { top: 12vh; left: 30vw; } .oblak.o2 { top: 22vh; left: 62vw; transform: scale(.7); animation-duration: 90s; }
-  @keyframes plovi { from { translate: 0 0; } to { translate: 40vw 0; } }
-  .livada-dalje { fill: #9fd88a; } .livada { fill: #7cc56b; } .livada-blize { fill: #62b257; }
-  .stabljika { stroke: #3e8a3a; stroke-width: 3; } .sredina { fill: #f4a23a; }
+  /* ---- Tema proljeće: jabuka ---- */
   .tema-proljece { --nebo-1: #3f8f4e; }
   .tema-proljece .brojac { color: #1f4d26; text-shadow: 0 1px 3px #fff9; }
   .jabuka .krosnja { fill: #4fa548; stroke: #2f7a34; stroke-width: 3; }
   .jabuka .deblo { fill: #8a5a32; } .jabuka .grana { fill: none; stroke: #8a5a32; stroke-width: 8; stroke-linecap: round; }
   .jabuka .peteljka { fill: none; stroke: #5a3a1c; stroke-width: 2.5; stroke-linecap: round; }
   .jabuka .lampica .kugla { fill: #c9e7a6; stroke: #8cbf63; stroke-width: 2; }
-  .jabuka .lampica.upaljena .kugla { fill: var(--boja); stroke: #fff8; }
+  .jabuka .lampica.upaljena .kugla { fill: var(--boja); stroke: var(--olovka); }
   .tema-proljece.kraj .stablo .bor { animation: njise 2.4s ease-in-out infinite alternate; transform-origin: 50% 100%; }
   @keyframes njise { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
-  @media (prefers-reduced-motion: reduce) { .sunce, .oblak, .tema-proljece.kraj .stablo .bor { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .tema-proljece.kraj .stablo .bor { animation: none; } }
 
   /* ---- Kraj: bor u sredini se vrti, lampice trepere ---- */
   .kraj .pozornica { grid-template-columns: 1fr; }
@@ -316,7 +262,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .kraj .lampica:nth-of-type(3n) .kugla { animation-delay: .33s; } .kraj .lampica:nth-of-type(3n+1) .kugla { animation-delay: .66s; }
   @keyframes treperi { to { opacity: .45; } }
   @keyframes vrti { from { transform: perspective(900px) rotateY(0deg); } to { transform: perspective(900px) rotateY(360deg); } }
-  .bravo { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 2vh; color: #fff; text-shadow: 0 3px 14px #000a; }
+  .bravo { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 2vh; color: var(--olovka); text-shadow: 0 0 6px #fffc, 0 0 16px #fff9; }
   .bravo h2 { margin: 0; font-size: clamp(3rem, 14vh, 8rem); font-weight: 900; color: #ffd447; -webkit-text-stroke: 2px #8a5a00; }
   .kraj .ekran { justify-content: stretch; padding: 2vh 0 4vh; }
   .kraj .ekran > .bravo { flex: 1; }
