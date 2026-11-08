@@ -13,7 +13,7 @@ Za svaku odobrenu nekvadratnu sliku bez varijante bira način:
 Varijanta ide na PUT /api/runner/varijanta/:id i čeka pregled; odobrena zamjenjuje original.
 Okolina: LOGOMEDO_URL i RUNNER_TOKEN (--prod: .env.production, inače .dev.vars), VERTEX_ACCOUNT, VERTEX_PROJECT.
 """
-import argparse, json, os, subprocess, sys, tempfile, urllib.request
+import argparse, json, os, shutil, subprocess, sys, tempfile, time, urllib.request
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter
@@ -152,12 +152,16 @@ def kvadrat(im: Image.Image) -> tuple[str, Image.Image | None]:
 
 def vertex(original: Path, izlaz: Path, env: dict) -> Path:
     racun = env.get("VERTEX_ACCOUNT") or sys.exit("Nema VERTEX_ACCOUNT")
-    gcloud = subprocess.run(["bash", "-lc", "command -v gcloud || echo $HOME/google-cloud-sdk/bin/gcloud"], capture_output=True, text=True).stdout.strip()
+    gcloud = os.environ.get("GCLOUD") or shutil.which("gcloud") or str(Path.home() / "google-cloud-sdk/bin/gcloud")
     token = subprocess.run([gcloud, "auth", "print-access-token", f"--account={racun}"], capture_output=True, text=True, check=True).stdout.strip()
-    r = subprocess.run([sys.executable, str(KORIJEN / "scripts/vertex-slika.py"), str(izlaz), PROMPT_MODEL, str(original)],
-                       capture_output=True, text=True,
-                       env={**os.environ, "VERTEX_TOKEN": token, "VERTEX_ASPECT": "1:1", "VERTEX_PREDLOZAK": "1",
-                            "VERTEX_PROJECT": env.get("VERTEX_PROJECT", "project-80b5a036-aed8-4b40-bd2")})
+    for pokusaj in range(4):  # 429 je minutna kvota: čekaj i ponovi
+        r = subprocess.run([sys.executable, str(KORIJEN / "scripts/vertex-slika.py"), str(izlaz), PROMPT_MODEL, str(original)],
+                           capture_output=True, text=True,
+                           env={**os.environ, "VERTEX_TOKEN": token, "VERTEX_ASPECT": "1:1", "VERTEX_PREDLOZAK": "1",
+                                "VERTEX_PROJECT": env.get("VERTEX_PROJECT", "project-80b5a036-aed8-4b40-bd2")})
+        if "HTTP 429" not in r.stderr:
+            break
+        time.sleep(60 * (pokusaj + 1))
     if r.returncode:
         raise RuntimeError(f"vertex: {r.stderr.strip()[-300:]}")
     return Path(r.stdout.strip().splitlines()[-1])
