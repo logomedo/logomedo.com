@@ -262,6 +262,10 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
   crvena napomena), ali ga igra bilježnice i „Dijete rješava” preskaču (`krugUIgri`). Prije je kolo
   u tom slučaju stalo na prvo polje (A), a dijete je tražilo slike drugog glasa. `koloSlova` za
   svaki slučaj ubaci cilj na kolo (`slovaKola`), da kolo i slike nikad ne govore različito.
+- **Mobitel** (8. 11., Matija): uspravno i uže od 600px mreža slika ima 2 stupca (kartica 42vw u
+  igri, 1fr u adminu), ekran igre se lista, a pitanje sa slovom je `sticky` na vrhu. Tablet ostaje
+  3 (uspravno) ili 4–5 stupaca. Provjera: Playwright `devices["iPhone 13"]` / `["iPad (gen 7)"]`
+  na /b/proba-kolo-slova; admin pregled na mobitelu nije gledan (passkey).
 - **Boje kola** (`boje` u sadržaju, `BOJE_KOLA`): šareno (zadano), crveno-bijelo, crveno-bijelo-plavo; bira se u editoru
   uz slova. Na crveno-bijelim kolima pobjedničko polje zasvijetli žuto (bijelo se ne bi istaknulo).
   Crveno-bijelo s neparnim brojem slova: prvo i zadnje polje bi bila crvena jedno do drugog, pa se
