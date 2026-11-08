@@ -158,6 +158,12 @@ Mjereno 8. 11.: od 1072 odobrenih i kandidata 18 je bilo 16:9, sve ručni upload
 - `/admin/pregled` uz varijantu pokazuje original. **Odobri** = varijanta odobrena, original odbijen s
   razlogom „zamijenjena kvadratnom #N” (i maknut s CDN-a). **Z / vrati** varijante vraća original.
 - Upload nekvadratne slike prolazi, ali stranica riječi upozori.
+- Pragovi (`kvadrat()`): rub je „jednolik” kad je >90 % rubnih piksela unutar 28 od medijana boje ruba;
+  predmet = pikseli >40 od te boje. Izrez ako je predmet ≤92 % kraće stranice; inače dopuna, osim ako je
+  predmet i visok (>85 %), tada model. Odbačeno: goli izrez sredine (rezao valjak, kalupe, šalicu,
+  orahnjaču) i dopuna za vrtuljak/pregaču (predmet pao na pola veličine).
+- Prvi prolaz 8. 11.: 8 izrez, 2 dopuna, 8 model (kandidati #1316–1333). Vertex daje 429 na uzastopne
+  pozive; skripta čeka 60/120/180 s i ponavlja.
 
 ## Javne slike (cdn.logomedo.com)
 
