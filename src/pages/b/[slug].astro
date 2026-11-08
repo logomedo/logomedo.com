@@ -239,6 +239,13 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     .red.prvi-glas.n5 .kartica { --s: 20vw; }
     .gumb-kreni, .gumb-ponovi { font-size: 7vw; }
   }
+  /* Mobitel uspravno: 2 stupca većih slika; 12–15 slika ne stane u visinu, pa se ekran lista. */
+  @media (orientation: portrait) and (max-width: 600px) {
+    .ekran:has(> .red.prvi-glas) { justify-content: flex-start; overflow-y: auto; padding: 0 0 6vh; -webkit-overflow-scrolling: touch; }
+    .ekran:has(> .red.prvi-glas) > .pitanje { position: sticky; top: 0; z-index: 2; }
+    .red.prvi-glas, .red.prvi-glas.n5 { grid-template-columns: repeat(2, auto); gap: 4vw; }
+    .red.prvi-glas .kartica, .red.prvi-glas.n5 .kartica { --s: 42vw; }
+  }
   @media (orientation: landscape) and (max-height: 500px) { .pitanje { font-size: 5.4vh; } }
 
   /* ---- Tema proljeće: jabuka ---- */
