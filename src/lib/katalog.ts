@@ -42,7 +42,7 @@ export async function glasovi(stilId: number): Promise<GlasPregled[]> {
        COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = rg.rijec_id AND s.stil_id = ?1 AND s.status = 'odobrena') THEN rg.rijec_id END) AS odobreno,
        COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = rg.rijec_id AND s.stil_id = ?1 AND s.status = 'kandidat') THEN rg.rijec_id END) AS kandidata,
        COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = rg.rijec_id AND q.stil_id = ?1 AND q.status IN ('ceka','radi')) THEN rg.rijec_id END) AS uRedu
-     FROM glasovi g LEFT JOIN rijec_glas rg ON rg.glas_id = g.id
+     FROM glasovi g LEFT JOIN (rijec_glas rg JOIN rijeci r ON r.id = rg.rijec_id AND r.aktivna = 1) ON rg.glas_id = g.id
      GROUP BY g.id ORDER BY g.redoslijed`,
   ).bind(stilId).all<GlasPregled>();
   return results;
