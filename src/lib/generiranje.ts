@@ -8,6 +8,7 @@ import { novaGrupa, sZapisom, zapisNastalih, zapisSkupa } from "./aktivnost";
 import { aktivnaSistemska, postavka, redPauziran } from "./postavke";
 import { blokIspravaka, spojiPrompt, type Ispravak } from "./prompt";
 import { pojave, slug as uSlug } from "./fonemi";
+import { dimenzije } from "./dimenzije";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
@@ -119,6 +120,7 @@ export const MAX_SVG_BAJTOVA = 2 * 1024 * 1024;
 async function spremi(
   c: { rijecId: number; stilId: number; stilKod: string; slug: string },
   mime: string, tijelo: ArrayBuffer, prompt: string | null, model: string | null, izvor: "agy" | "upload", tko: string,
+  zamjenjuje: number | null = null,
 ): Promise<{ slikaId: number } | { greska: string }> {
   const ext = MIME[mime];
   if (!ext) return { greska: `nepodržan tip ${mime || "(nepoznat)"}; samo PNG, JPEG ili WebP` };
@@ -127,14 +129,15 @@ async function spremi(
   const kljuc = `${c.stilKod}/${c.slug}/${hash.slice(0, 16)}.${ext}`;
   const ista = await env.DB.prepare("SELECT id FROM slike WHERE r2_kljuc = ?").bind(kljuc).first<{ id: number }>();
   if (ista) return { greska: `ista slika već postoji (#${ista.id})` };
+  const d = dimenzije(new Uint8Array(tijelo));
   await env.SLIKE.put(kljuc, tijelo, { httpMetadata: { contentType: mime } });
   const [, upis] = await env.DB.batch(sZapisom(
     { tko, radnja: izvor === "agy" ? "slika.nova" : "slika.ucitana", tablica: "slike", grupa: novaGrupa() },
     { sql: "SELECT id FROM slike WHERE r2_kljuc = ?", args: [kljuc] },
     [env.DB.prepare(
-      `INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, prompt, model, izvor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-    ).bind(c.rijecId, c.stilId, kljuc, hash, mime, tijelo.byteLength, prompt, model, izvor)],
+      `INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, prompt, model, izvor, sirina, visina, zamjenjuje)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    ).bind(c.rijecId, c.stilId, kljuc, hash, mime, tijelo.byteLength, prompt, model, izvor, d?.sirina ?? null, d?.visina ?? null, zamjenjuje)],
   ));
   return { slikaId: (upis.results[0] as { id: number }).id };
 }
@@ -146,6 +149,27 @@ export async function ucitaj(rijecId: number, stilKod: string, mime: string, tij
   ).bind(rijecId, stilKod).first<{ rijecId: number; slug: string; stilId: number; stilKod: string }>();
   if (!c) return { greska: "nema te riječi ili stila" };
   return spremi(c, mime, tijelo, prompt, alat, "upload", email);
+}
+
+/**
+ * Kvadratna varijanta nekvadratne slike (`scripts/kvadrat.py`): kandidat iste riječi i stila sa
+ * `zamjenjuje` = original. `nacin` je kako je nastala (izrez, dopuna, ili model koji ju je nacrtao).
+ */
+export async function predajVarijantu(originalId: number, mime: string, tijelo: ArrayBuffer, nacin: string) {
+  const o = await env.DB.prepare(
+    `SELECT s.id, s.rijec_id AS rijecId, s.stil_id AS stilId, st.kod AS stilKod, r.slug, s.status, s.sirina, s.visina, s.prompt,
+       (SELECT v.id FROM slike v WHERE v.zamjenjuje = s.id AND v.status IN ('kandidat', 'odobrena')) AS varijanta
+     FROM slike s JOIN stilovi st ON st.id = s.stil_id JOIN rijeci r ON r.id = s.rijec_id WHERE s.id = ?`,
+  ).bind(originalId).first<{ id: number; rijecId: number; stilId: number; stilKod: string; slug: string; status: string; sirina: number | null; visina: number | null; prompt: string | null; varijanta: number | null }>();
+  if (!o) return { greska: "original ne postoji" };
+  if (o.status !== "odobrena") return { greska: `original nije odobren (${o.status})` };
+  if (o.varijanta) return { greska: `varijanta već postoji (#${o.varijanta})` };
+  const d = dimenzije(new Uint8Array(tijelo));
+  if (!d || d.sirina !== d.visina) return { greska: `varijanta nije kvadratna (${d ? `${d.sirina}×${d.visina}` : "nepoznate dimenzije"})` };
+  const n = nacin.trim().slice(0, 100) || "nepoznato";
+  const model = n === "izrez" || n === "dopuna" ? null : n;
+  const prompt = `Kvadratna varijanta slike #${o.id} (${n}).${o.prompt ? `\n\nOriginal:\n${o.prompt}` : ""}`;
+  return spremi(o, mime, tijelo, prompt, model, model ? "agy" : "upload", "runner", o.id);
 }
 
 /** SVG (potrace) uz postojeću sliku: R2 pod istim ključem s .svg, a ako je slika odobrena, i u javni bucket. */
@@ -189,8 +213,8 @@ export type Ishod = { ok: true } | { ok: false; nema?: true; vec?: { status: str
 export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, grupa = novaGrupa(), dorada?: string): Promise<Ishod> {
   const db = env.DB;
   const zapis = (radnja: string) => ({ tko: email, radnja, tablica: "slike" as const, grupa });
-  const s = await db.prepare("SELECT id, rijec_id, stil_id, status, pregledao FROM slike WHERE id = ?").bind(slikaId)
-    .first<{ id: number; rijec_id: number; stil_id: number; status: string; pregledao: string | null }>();
+  const s = await db.prepare("SELECT id, rijec_id, stil_id, status, pregledao, zamjenjuje FROM slike WHERE id = ?").bind(slikaId)
+    .first<{ id: number; rijec_id: number; stil_id: number; status: string; pregledao: string | null; zamjenjuje: number | null }>();
   if (!s) return { ok: false, nema: true };
   // Tko je bio brži: čita se svježe, jer je status iz prvog SELECT-a možda već zastario.
   const vec = async () => {
@@ -205,6 +229,14 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
         .bind(email, s.id),
     ]));
     if (!r.meta.changes) return vec();
+    // Odobrena kvadratna varijanta: original više nije odobren, da svuda ostane samo kvadratna.
+    if (s.zamjenjuje) {
+      await db.batch(sZapisom(zapis("slika.zamijenjena"), s.zamjenjuje, [
+        db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'odobrena'")
+          .bind(`zamijenjena kvadratnom #${s.id}`, email, s.zamjenjuje),
+      ]));
+      await uskladiJavno([s.zamjenjuje]);
+    }
   } else if (akcija === "odbij") {
     const [, r] = await db.batch(sZapisom(zapis("slika.odbijena"), s.id, [
       db.prepare("UPDATE slike SET status = 'odbijena', razlog = ?, dorada = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
@@ -215,6 +247,14 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
     await db.batch(sZapisom(zapis("slika.u_kandidate"), s.id, [
       db.prepare("UPDATE slike SET status = 'kandidat', pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, s.id),
     ]));
+    // Poništeno odobrenje kvadratne varijante: original kojeg je zamijenila opet je odobren.
+    if (s.zamjenjuje && s.status === "odobrena") {
+      await db.batch(sZapisom(zapis("slika.vracena"), s.zamjenjuje, [
+        db.prepare("UPDATE slike SET status = 'odobrena', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'odbijena' AND razlog = ?")
+          .bind(email, s.zamjenjuje, `zamijenjena kvadratnom #${s.id}`),
+      ]));
+      await uskladiJavno([s.zamjenjuje]);
+    }
   }
   await uskladiJavno([s.id]);
   return { ok: true };

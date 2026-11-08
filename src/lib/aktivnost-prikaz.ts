@@ -18,6 +18,8 @@ export const RADNJE: Record<string, string> = {
   "slika.ucitana": "Učitana slika",
   "slika.premjestena": "Slika premještena na drugu riječ",
   "slika.stil": "Slika premještena u drugi stil",
+  "slika.zamijenjena": "Slika zamijenjena kvadratnom varijantom",
+  "slika.vracena": "Original vraćen (kvadratna varijanta poništena)",
   "generiranje.zatrazeno": "Zatraženo generiranje",
   "generiranje.uklonjeno": "Uklonjeno iz reda",
   "rijec.nova": "Nova riječ",

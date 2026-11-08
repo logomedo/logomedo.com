@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { MAX_BAJTOVA, ucitaj } from "../../../lib/generiranje";
 import { safeNext } from "../../../lib/admin/sesija";
+import { dimenzije } from "../../../lib/dimenzije";
 
 /** Ručni upload: slika iz vanjskog alata + prompt kako je nastala. Ulazi kao kandidat. */
 export const POST: APIRoute = async ({ request, locals }) => {
@@ -16,6 +17,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!(datoteka instanceof File) || !datoteka.size) return natrag("greska", "Odaberi sliku.");
   if (datoteka.size > MAX_BAJTOVA) return natrag("greska", "Slika je veća od 8 MB.");
   if (!prompt) return natrag("greska", "Upiši prompt kako je slika nastala.");
-  const r = await ucitaj(Number(f.get("rijec")), String(f.get("stil") || "bojanka"), datoteka.type, await datoteka.arrayBuffer(), prompt, alat, locals.admin!.email);
-  return "greska" in r ? natrag("greska", r.greska) : natrag("ucitano", String(r.slikaId));
+  const tijelo = await datoteka.arrayBuffer();
+  const r = await ucitaj(Number(f.get("rijec")), String(f.get("stil") || "bojanka"), datoteka.type, tijelo, prompt, alat, locals.admin!.email);
+  if ("greska" in r) return natrag("greska", r.greska);
+  // Katalog je kvadratan: nekvadratna slika se prima, ali uz upozorenje (kvadratnu verziju radi scripts/kvadrat.py).
+  const d = dimenzije(new Uint8Array(tijelo));
+  if (d && d.sirina !== d.visina) next.searchParams.set("oblik", `${d.sirina}×${d.visina}`);
+  return natrag("ucitano", String(r.slikaId));
 };

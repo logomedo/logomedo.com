@@ -4,11 +4,15 @@ import { env } from "cloudflare:workers";
 export interface Kandidat {
   id: number; prompt: string | null; model: string | null; rijec: string; slug: string;
   opis_za_sliku: string | null; odobrena_id: number | null; odobrenih: number; pozicije: string;
+  sirina: number | null; visina: number | null;
+  /** Kvadratna varijanta: id originala koji odobrenje zamjenjuje, i njegove dimenzije. */
+  zamjenjuje: number | null; z_sirina: number | null; z_visina: number | null;
 }
 
 export async function kandidati(glas: string | null): Promise<Kandidat[]> {
   const { results } = await env.DB.prepare(
-    `SELECT s.id, s.prompt, s.model, r.rijec, r.slug, r.opis_za_sliku,
+    `SELECT s.id, s.prompt, s.model, r.rijec, r.slug, r.opis_za_sliku, s.sirina, s.visina, s.zamjenjuje,
+       (SELECT z.sirina FROM slike z WHERE z.id = s.zamjenjuje) AS z_sirina, (SELECT z.visina FROM slike z WHERE z.id = s.zamjenjuje) AS z_visina,
        (SELECT o.id FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena' ORDER BY o.id DESC LIMIT 1) AS odobrena_id,
        (SELECT COUNT(*) FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.status = 'odobrena') AS odobrenih,
        (SELECT group_concat(g.oznaka || ' ' || rg.pozicija, ' · ') FROM rijec_glas rg JOIN glasovi g ON g.id = rg.glas_id WHERE rg.rijec_id = r.id) AS pozicije

@@ -35,6 +35,9 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   {Astro.url.searchParams.get("nova") && <div class="obavijest"><Ikona ime="kvacica" /> Riječ je dodana u katalog.</div>}
   {Astro.url.searchParams.get("postoji") && <div class="obavijest"><Ikona ime="upozorenje" /> Ta riječ je već u katalogu.</div>}
   {ucitano && <div class="obavijest"><Ikona ime="kvacica" /> Slika je učitana kao kandidat.</div>}
+  {ucitano && q("oblik") && (
+    <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Slika nije kvadratna ({q("oblik")}), a katalog je 1:1. Najbolje je učitati kvadratnu; inače nakon odobrenja kvadratnu verziju napravi <code>scripts/kvadrat.py</code>.</div>
+  )}
   {greskaUploada && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Upload nije uspio: {greskaUploada}</div>}
   {q("preimenovano") && <div class="obavijest"><Ikona ime="kvacica" /> Naziv je promijenjen.</div>}
   {q("spojeno") !== null && (

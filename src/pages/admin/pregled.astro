@@ -26,6 +26,7 @@ const results = await kandidati(glas);
         <h1 id="rijec" class="rijec"></h1>
         <p id="pozicije" class="blijedo"></p>
         <p id="opis" class="opis" hidden></p>
+        <p id="oblik" class="oblik" hidden></p>
 
         <div class="tipke">
           <button class="gumb glavni veliki" id="odobri"><kbd>A</kbd> Odobri</button>
@@ -81,7 +82,8 @@ const results = await kandidati(glas);
 </AdminOkvir>
 
 <script>
-  type K = { id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; odobrenih: number; pozicije: string };
+  type K = { id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; odobrenih: number; pozicije: string;
+    sirina: number | null; visina: number | null; zamjenjuje: number | null; z_sirina: number | null; z_visina: number | null };
   type Odluka = { id: number; status: string; pregledao: string | null };
   const el = document.getElementById("pregled")!;
   // `prosli` su već prikazani (odlučeni ili preskočeni) u ovoj kartici; `red` su preostali, red[0] je na ekranu.
@@ -106,9 +108,18 @@ const results = await kandidati(glas);
     if (prikazana === k.id) return;            // ista slika: ne diraj (razlog koji se upisuje ostaje)
     prikazana = k.id;
     $<HTMLImageElement>("slika").src = `/admin/slika/${k.id}`;
-    $("usporedba").hidden = !k.odobrena_id;
-    if (k.odobrena_id) $<HTMLImageElement>("slika-odobrena").src = `/admin/slika/${k.odobrena_id}`;
-    $("usporedba-naslov").textContent = k.odobrenih > 1 ? `Već odobreno: ${k.odobrenih} (zadnja)` : "Već odobrena";
+    // Kvadratna varijanta se uspoređuje s originalom koji zamjenjuje, ne sa zadnjom odobrenom.
+    const usporedna = k.zamjenjuje ?? k.odobrena_id;
+    $("usporedba").hidden = !usporedna;
+    if (usporedna) $<HTMLImageElement>("slika-odobrena").src = `/admin/slika/${usporedna}`;
+    $("usporedba-naslov").textContent = k.zamjenjuje
+      ? `Original${k.z_sirina ? ` ${k.z_sirina}×${k.z_visina}` : ""}`
+      : k.odobrenih > 1 ? `Već odobreno: ${k.odobrenih} (zadnja)` : "Već odobrena";
+    const nekvadratna = !!k.sirina && !!k.visina && k.sirina !== k.visina;
+    $("oblik").hidden = !k.zamjenjuje && !nekvadratna;
+    $("oblik").textContent = k.zamjenjuje
+      ? "Kvadratna verzija slike desno. Odobri = zamijeni original (on više neće biti u katalogu)."
+      : `Slika nije kvadratna (${k.sirina}×${k.visina}).`;
     $("rijec").textContent = k.rijec.toLocaleUpperCase("hr");
     $("pozicije").textContent = k.pozicije ?? "";
     $("opis").hidden = !k.opis_za_sliku; $("opis").textContent = k.opis_za_sliku ?? "";
@@ -343,6 +354,7 @@ const results = await kandidati(glas);
   .rijec { margin: 18px 0 0; font-family: var(--font-slova); font-weight: 600; font-size: 2.6rem; letter-spacing: .02em; line-height: 1.05;
     font-variation-settings: "SOFT" 50, "opsz" 144; word-break: break-word; }
   .opis { margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--info-blago); color: var(--info); font-size: .88rem; }
+  .oblik { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--med-blago); color: var(--med-tekst); font-size: .88rem; }
   .tipke { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
   .gumb.veliki { min-height: 52px; font-size: 1rem; justify-content: flex-start; }
   kbd { font: 600 .72rem var(--font); min-width: 22px; padding: 2px 6px; border-radius: 6px; border: 1px solid currentColor; opacity: .7; }

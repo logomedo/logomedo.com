@@ -143,6 +143,22 @@ Polje u bočnoj traci admina (prečac `/`). `GET /admin/api/trazi` vrati sve akt
 jednom (na prvi fokus), filtrira se u pregledniku bez dijakritika (c = č/ć, dj = đ), prvo
 riječi koje počinju upitom. Točka: zelena = odobrena slika, žuta = kandidat.
 
+## Kvadratne slike (8. 11. 2026.)
+
+Katalog je 1:1. Runner uvijek traži `1:1` (1024×1024), ali ručni upload iz Gemini weba je 2752×1536.
+Mjereno 8. 11.: od 1072 odobrenih i kandidata 18 je bilo 16:9, sve ručni upload od 1. do 4. 11. (božićne riječi).
+
+- `slike.sirina` / `visina` se pišu pri spremanju (`dimenzije()` iz zaglavlja). Stare popunjava
+  `python3 scripts/kvadrat.py --prod --mjeri`.
+- `python3 scripts/kvadrat.py --prod [--suho] [--id N]` za svaku odobrenu nekvadratnu sliku bez varijante
+  napravi kvadratnu: **izrez** (jednolika pozadina, predmet stane), **dopuna** (predmet širok i nizak, npr.
+  valjak: gore i dolje boja pozadine) ili **model** (scena do rubova ili predmet širok i visok: Vertex s
+  originalom kao predloškom, `aspekt 1:1`). Šalje je na `PUT /api/runner/varijanta/:id` kao kandidata sa
+  `zamjenjuje` = original. Lokalni pregled: `~/git/.agy-logomedo/kvadrat/pregled.jpg`.
+- `/admin/pregled` uz varijantu pokazuje original. **Odobri** = varijanta odobrena, original odbijen s
+  razlogom „zamijenjena kvadratnom #N” (i maknut s CDN-a). **Z / vrati** varijante vraća original.
+- Upload nekvadratne slike prolazi, ali stranica riječi upozori.
+
 ## Javne slike (cdn.logomedo.com)
 
 Dva R2 bucketa, isti ključ (`<stil>/<slug>/<16 hex sha256>.<ext>`):
