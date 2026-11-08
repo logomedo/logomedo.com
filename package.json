@@ -8,11 +8,11 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run build && CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 wrangler deploy",
     "types": "wrangler types",
     "check": "astro check",
     "test": "node --test 'src/**/*.test.ts'",
-    "db:migrate": "wrangler d1 migrations apply logomedo --remote",
+    "db:migrate": "CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 wrangler d1 migrations apply logomedo --remote",
     "db:migrate:local": "wrangler d1 migrations apply logomedo --local",
     "seed": "node scripts/seed-katalog.ts ../preuzimanje/data/catalog.csv > seed/katalog.sql",
     "seed:local": "wrangler d1 execute logomedo --local --file seed/katalog.sql"

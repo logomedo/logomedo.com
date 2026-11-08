@@ -26,7 +26,7 @@ Access aplikacija „LogoMedo admin (sso)” (AUD 81d4dce3…). Politika treba b
 Jedno pravilo s vrijednošću „a, b, c” Access uspoređuje doslovno kao jednu adresu, pa ne
 propušta nikoga, a OTP se tiho ne šalje (Anitin kod „nije stizao”). Provjera:
 `GET /accounts/<id>/access/policies/<id>` → `include` mora imati po jedan `{"email":{"email":…}}`. Deploy samo `npm run deploy` (build kopira wrangler.jsonc u dist).
-**Zamka (31. 10. 2026.):** `wrangler d1 migrations apply logomedo --remote` je bez `CLOUDFLARE_ACCOUNT_ID` vratio 7403 („account is not valid”) iako je `account_id` u wrangler.jsonc. S `CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4` prolazi; isto za `npm run deploy`.
+**Zamka (31. 10. 2026.):** `wrangler d1 migrations apply logomedo --remote` je bez `CLOUDFLARE_ACCOUNT_ID` vratio 7403 („account is not valid”) iako je `account_id` u wrangler.jsonc. S `CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4` prolazi; isto za `npm run deploy`. Od 8. 11. 2026. ga `npm run db:migrate` i `npm run deploy` postavljaju sami: tog je dana migracija 0024 tiho pala (izlaz kroz `| tail` sakrio je grešku), a deploy je prošao, pa je `/admin/zvukovi` oko minutu tražio stupac koji nije postojao. Migracija uvijek ide prije deploya, s provjerom izlaza.
 Stari Firebase A zapisi za apex i www su obrisani; `stage.logomedo.com` je ostao na Firebaseu.
 
 ## Bilo otvoreno prije produkcije (stavke 1–4 i 6 su gotove)
