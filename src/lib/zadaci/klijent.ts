@@ -7,7 +7,7 @@
 import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
 import {
   ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
-  ABECEDA, BOJE_KOLA, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, type Krug, type PrviGlas,
+  ABECEDA, BOJE_KOLA, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, krugUIgri, type Krug, type PrviGlas,
   type Izmjena, type Listic, type Odabir, type Odgovor, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta,
 } from "./vrste.ts";
 import { iskocenoSlovo, koloSlova, znackaSlova } from "../kolo-slova.ts";
@@ -299,6 +299,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const novo = naKolu(sl) ? s.kolo.filter((x) => x !== sl) : [...s.kolo, sl];
       if (novo.length < 2) return;
       s.kolo = ABECEDA.filter((x) => novo.includes(x));
+      // Krug čije slovo nije na kolu ostaje u editoru, ali ga igra i pregled preskaču.
+      resetRjesavanja();
       oznaci(); osvjezi();
     };
     const nasumicnoSlovo = () => {
@@ -326,9 +328,12 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
           h("div", { class: "z-krug-glava" },
             h("div", { class: "z-red-broj" }, String(i + 1)),
             h("label", { class: "z-krug-slovo" }, "Kolo stane na ",
-              h("select", { class: k.slovo ? "" : "neispravno", onchange: (e: Event) => { k.slovo = (e.target as HTMLSelectElement).value || null; uskladiKrug(k); oznaci(); resetRjesavanja(); osvjezi(); } },
+              h("select", { class: k.slovo && naKolu(k.slovo) ? "" : "neispravno", onchange: (e: Event) => { k.slovo = (e.target as HTMLSelectElement).value || null; uskladiKrug(k); oznaci(); resetRjesavanja(); osvjezi(); } },
                 h("option", { value: "" }, "—"),
+                // Slovo maknuto s kola ostaje vidljivo, da se zna zašto igra preskače krug.
+                k.slovo && !naKolu(k.slovo) ? h("option", { value: k.slovo, selected: true }, `${k.slovo} (nije na kolu)`) : null,
                 ...s.kolo.map((sl) => h("option", { value: sl, selected: sl === k.slovo }, sl)))),
+            k.slovo && !naKolu(k.slovo) ? h("span", { class: "sitno", style: "color:var(--greska)" }, "Slovo nije na kolu: igra preskače ovaj krug.") : null,
             k.slovo ? h("span", { class: "sitno blijedo" }, `${tocnih} od ${k.slike.filter((x) => x !== null).length} slika počinje glasom ${k.slovo}`) : null,
             h("div", { class: "z-red-gumbi z-percepcija-alati" },
               h("button", { type: "button", class: "gumb mali", disabled: !k.slovo, title: "Nove slike iz kataloga za ovo slovo", onclick: () => promijeni(k.slike.length) }, "Složi slike"),
@@ -478,7 +483,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   function dijetePrviGlas(): HTMLElement {
     const s = sadrzaj as PrviGlas;
     const ms = () => Math.round(performance.now() - t0);
-    const krugovi = s.krugovi.map((k, i) => ({ k, i })).filter(({ k }) => k.slovo && k.tocno.length);
+    const krugovi = s.krugovi.map((k, i) => ({ k, i })).filter(({ k }) => krugUIgri(s, k));
     const glava = (tekst: string, ...d: Dijete[]) => h("div", { class: "z-dijete-glava" }, h("h2", {}, naslov || VRSTE[vrsta].naziv), h("p", {}, tekst, ...d));
     if (!krugovi.length) return h("div", { class: "z-dijete" }, glava("Nijedan krug nema slovo i slike koje počinju njime."));
     if (pgKrug >= krugovi.length) {

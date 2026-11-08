@@ -258,6 +258,10 @@ ocjena: krug je točan ako su pronađene sve slike s glasom bez ijednog krivog d
   vrati (najmanje 2). „Samo slova krugova” ostavi na kolu samo slova na koja kolo staje (Matija,
   7. 11.: na kolo samo odabrana slova, ne sva). Do 8 slova polja su široka, pa su slova veća i
   bliže sredini polja (`kolo-slova.ts`).
+- **Krug sa slovom koje nije na kolu** (8. 11.): ostaje u editoru (select „Z (nije na kolu)” i
+  crvena napomena), ali ga igra bilježnice i „Dijete rješava” preskaču (`krugUIgri`). Prije je kolo
+  u tom slučaju stalo na prvo polje (A), a dijete je tražilo slike drugog glasa. `koloSlova` za
+  svaki slučaj ubaci cilj na kolo (`slovaKola`), da kolo i slike nikad ne govore različito.
 - **Boje kola** (`boje` u sadržaju, `BOJE_KOLA`): šareno (zadano), crveno-bijelo, crveno-bijelo-plavo; bira se u editoru
   uz slova. Na crveno-bijelim kolima pobjedničko polje zasvijetli žuto (bijelo se ne bi istaknulo).
   Crveno-bijelo s neparnim brojem slova: prvo i zadnje polje bi bila crvena jedno do drugog, pa se

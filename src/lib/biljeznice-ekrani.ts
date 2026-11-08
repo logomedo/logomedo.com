@@ -1,7 +1,7 @@
 // Ekrani bilježnice: svaka stavka odabira i uljeza je jedan ekran, povezivanje je jedan
 // ekran, listić se u igri preskače. Broj ekrana = broj lampica na boru. Čisti TS: server
 // (broj lampica, ispis), preglednik (igra) i testovi.
-import { UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
+import { UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, krugUIgri, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
 
 export interface ZadatakZaIgru { vrsta: Vrsta; uputa: string | null; sadrzaj: Sadrzaj }
 export type Ekran =
@@ -34,7 +34,7 @@ export function ekrani(zadaci: ZadatakZaIgru[]): Ekran[] {
       // Svaki krug je ekran: kolo, pa traženje. Uputa za papir („iz kruga”) se na ekranu zamijeni.
       const s = z.sadrzaj as PrviGlas;
       const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_PRVOG_GLASA.ispis ? UPUTE_PRVOG_GLASA.ekran : z.uputa.trim();
-      for (const k of s.krugovi) if (k.slovo && k.tocno.length && k.slike.some((x) => x !== null)) out.push({ vrsta: "prvi_glas", uputa, kolo: s.kolo, boje: s.boje, krug: k });
+      for (const k of s.krugovi) if (krugUIgri(s, k)) out.push({ vrsta: "prvi_glas", uputa, kolo: s.kolo, boje: s.boje, krug: k });
       continue;
     }
     const uputa = z.uputa?.trim() || UPUTE[z.vrsta];

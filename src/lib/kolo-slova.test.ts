@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rasporedKola } from "./kolo-slova.ts";
+import { rasporedKola, slovaKola } from "./kolo-slova.ts";
 import { ABECEDA, BOJE_KOLA } from "./zadaci/vrste.ts";
 
 test("kolo: susjedna polja nikad iste boje, za svaku temu i broj slova 2–30", () => {
@@ -21,4 +21,10 @@ test("kolo: crveno-bijelo s 3 slova ponovi slova, sa 17 dobije jedno zlatno polj
   const { polja, boje } = rasporedKola(ABECEDA.slice(0, 17), 2);
   assert.equal(polja.length, 17);
   assert.equal(boje.filter((b) => b === -1).length, 1);
+});
+
+test("slovo kruga je uvijek na kolu, na svom mjestu u abecedi", () => {
+  assert.deepEqual(slovaKola(["A", "C", "D"], "C"), ["A", "C", "D"]);
+  assert.deepEqual(slovaKola(["A", "C", "O"], "G"), ["A", "C", "G", "O"]);
+  assert.deepEqual(slovaKola(["A", "Z"], "DŽ"), ["A", "DŽ", "Z"]);
 });

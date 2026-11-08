@@ -6,7 +6,7 @@
 const SVG = "http://www.w3.org/2000/svg";
 // DOM tipovi u ovom projektu sudaraju se s tipovima Workera (append), pa kroz any kao u klijent.ts.
 const app = (e: unknown, ...d: unknown[]) => (e as any).append(...d);
-import { BOJE_KOLA, type BojeKola } from "./zadaci/vrste.ts";
+import { ABECEDA, BOJE_KOLA, type BojeKola } from "./zadaci/vrste.ts";
 
 function s<K extends keyof SVGElementTagNameMap>(tag: K, a: Record<string, string | number> = {}): SVGElementTagNameMap[K] {
   const e = document.createElementNS(SVG, tag);
@@ -33,9 +33,16 @@ export function rasporedKola(slova: string[], m: number): { polja: string[]; boj
   return { polja, boje };
 }
 
+/**
+ * Slova na kolu uvijek sadrže cilj. Bez toga kolo nema polje na koje bi stalo (krug s
+ * maknutim slovom), pa bi stalo na prvo polje (A), a dijete bi tražilo slike drugog glasa.
+ */
+export const slovaKola = (slova: string[], cilj: string) =>
+  slova.includes(cilj) ? slova : ABECEDA.includes(cilj) ? ABECEDA.filter((x) => x === cilj || slova.includes(x)) : [...slova, cilj];
+
 export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => void; naTik?: () => void; naKraj: (slovo: string) => void; trajanje?: number; boje?: BojeKola }): Kolo {
   const tema = BOJE_KOLA[o.boje ?? "sareno"] ?? BOJE_KOLA.sareno;
-  const { polja, boje } = rasporedKola(o.slova, tema.polja.length);
+  const { polja, boje } = rasporedKola(slovaKola(o.slova, o.cilj), tema.polja.length);
   const n = Math.max(2, polja.length);
   const seg = 360 / n;
   const boja = (i: number) => boje[i];
@@ -79,7 +86,7 @@ export function koloSlova(o: { slova: string[]; cilj: string; naPocetak?: () => 
     if (vrti || gotovo) return;
     // Kad se slovo ponavlja, kolo stane na jedno od njegovih polja nasumično.
     const mjesta = polja.flatMap((sl, j) => (sl === o.cilj ? [j] : []));
-    const i = mjesta.length ? mjesta[Math.floor(Math.random() * mjesta.length)] : 0;
+    const i = mjesta[Math.floor(Math.random() * mjesta.length)];
     vrti = true;
     el.classList.add("vrti");
     o.naPocetak?.();

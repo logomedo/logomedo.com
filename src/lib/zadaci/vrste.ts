@@ -38,6 +38,11 @@ export interface Percepcija { trazi: Trazi; stavke: { polja: Polje[]; tocno: num
  */
 export interface Krug { slovo: string | null; slike: Id[]; tocno: number[] }
 export interface PrviGlas { kolo: string[]; boje?: BojeKola; krugovi: Krug[] }
+/**
+ * Krug ide u igru (bilježnica i „Dijete rješava”) samo ako ima slovo koje je na kolu, točnu
+ * sliku i barem jednu sliku. Slovo maknuto s kola u editoru ostavlja krug, ali ga igra preskače.
+ */
+export const krugUIgri = (pg: PrviGlas, k: Krug) => !!k.slovo && pg.kolo.includes(k.slovo) && k.tocno.length > 0 && k.slike.some((x) => x !== null);
 /** Boje polja kola (ciklički) i boja slova na svakoj. */
 export type BojeKola = "sareno" | "crveno-bijelo" | "crveno-bijelo-plavo";
 export const BOJE_KOLA: Record<BojeKola, { naziv: string; polja: string[]; slova: string[] }> = {
@@ -299,7 +304,7 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
     pg.krugovi.forEach((k, i) => {
       const g = `Krug ${i + 1}`;
       if (!k.slovo) { u.push({ gdje: g, poruka: "Nije odabrano slovo na kojem kolo stane." }); return; }
-      if (!pg.kolo.includes(k.slovo)) u.push({ gdje: g, poruka: `Slova ${k.slovo} nema na kolu.` });
+      if (!pg.kolo.includes(k.slovo)) u.push({ gdje: g, poruka: `Slova ${k.slovo} nema na kolu: u igri se krug preskače.` });
       const prazne = k.slike.filter((x) => x === null).length;
       if (prazne) u.push({ gdje: g, poruka: `${prazne} prazn${prazne === 1 ? "a slika" : "ih slika"}.` });
       const tocne = tocneSlike(k, (id) => R(id)?.rijec);
