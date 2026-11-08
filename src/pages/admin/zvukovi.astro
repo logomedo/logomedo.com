@@ -25,8 +25,10 @@ if (Astro.request.method === "POST") {
     if (/^[a-z0-9_]{3,40}$/.test(model)) await postavi("zvuk_model", model, email);
     poruka = "spremljeno";
   }
-  if (a === "odobri" || a === "odbij") {
-    const ok = await odluciZvuk(id, a, email, { razlog: String(f.get("razlog") ?? ""), izgovor: String(f.get("izgovor") ?? "") });
+  if (a === "odobri" || a === "odbij" || a === "odbij-samo") {
+    const ok = await odluciZvuk(id, a === "odobri" ? "odobri" : "odbij", email, {
+      razlog: String(f.get("razlog") ?? ""), izgovor: String(f.get("izgovor") ?? ""), ponovo: a !== "odbij-samo",
+    });
     if (!ok) poruka = "vec";
   }
   if (a === "ponovi") {
@@ -159,6 +161,7 @@ const natrag = Astro.url.pathname + Astro.url.search.replace(/[?&]p=[^&]*/, "");
                 : <span class="oznaka">bez provjere</span>}
               {" "}#{z.id} · {kad(z.created_at)}{z.pregledao && <> · {z.pregledao}</>}
               {z.razlog && <div class="razlog">{z.razlog}</div>}
+              {z.bez_ponavljanja === 1 && <div class="razlog">Samo odbijeno: ne generira se ponovno dok ga netko ne vrati u red.</div>}
             </div>
           </div>
           <audio controls preload="none" src={`/admin/zvuk/${z.id}`}></audio>
@@ -175,6 +178,7 @@ const natrag = Astro.url.pathname + Astro.url.search.replace(/[?&]p=[^&]*/, "");
                     <input name="razlog" placeholder="Što ne valja (npr. krivi naglasak, ne čuje se Č)" />
                     <input name="izgovor" placeholder={`Kako napisati za izgovor (neobavezno): ${z.izgovor}`} />
                     <button class="gumb opasno" name="akcija" value="odbij">Odbij i generiraj ponovno</button>
+                    <button class="gumb tihi" name="akcija" value="odbij-samo" title="Bez novog generiranja: ElevenLabs ovo ne zna izgovoriti">Samo odbij</button>
                   </div>
                 </details>
               </>

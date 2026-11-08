@@ -53,7 +53,7 @@ if (Astro.url.searchParams.has("nova")) poruka = "Bilježnica je napravljena. Do
 
 const [zadaci, stanje, svi, zvuci] = await Promise.all([zadaciBiljeznice(id), stanjeSlika(b), sviZadaci(), tekstoviBiljeznice(b).then(stanjeZvukova)]);
 const zvukaOdobreno = zvuci.filter((z) => z.odobren).length;
-const zvukaBez = zvuci.filter((z) => !z.odobren && !z.kandidata && !z.u_redu).length;
+const zvukaBez = zvuci.filter((z) => !z.odobren && !z.kandidata && !z.u_redu && !z.bez_ponavljanja).length;
 const ukljuceni = new Set(zadaci.map((z) => z.id));
 const ostali = svi.filter((z) => !ukljuceni.has(z.id));
 const ekrana = brojEkrana(zadaci);
@@ -137,6 +137,7 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
                 {z.odobren ? <span class="oznaka uspjeh">odobren</span>
                   : z.kandidata ? <a class="oznaka med" href="/admin/zvukovi">{z.kandidata} za pregled</a>
                   : z.u_redu ? <span class="oznaka info">u redu</span>
+                  : z.bez_ponavljanja ? <a class="oznaka" href="/admin/zvukovi?s=odbijen" title="ElevenLabs ovo ne zna izgovoriti; igra koristi glas preglednika">samo odbijen</a>
                   : z.greska ? <span class="oznaka greska" title={z.greska}>greška</span>
                   : <span class="oznaka">nema</span>}
               </td>

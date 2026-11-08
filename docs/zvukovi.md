@@ -36,6 +36,9 @@ flowchart LR
   radi, snimka ide čovjeku s oznakom „bez provjere”.
 - **Čovjek odlučuje.** Javno ide samo `odobren`. Odbijanje traži razlog i nudi polje „kako
   napisati za izgovor” (npr. drugačiji pravopis ili naglasak), koje ide u novi posao.
+  „Samo odbij” ne pravi novi posao i označi snimku `bez_ponavljanja`: za riječi koje ElevenLabs
+  ne zna izgovoriti. Takav tekst preskače i „Generiraj zvukove” na bilježnici, dok ga netko ne
+  vrati „Generiraj ponovno” na tabu Odbijeni (`migrations/0024_zvuk_bez_ponavljanja.sql`).
 
 ## Dijelovi
 

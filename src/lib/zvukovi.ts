@@ -45,7 +45,7 @@ export async function odobreniZvukovi(kljucevi: string[]): Promise<Record<string
   return Object.fromEntries(results.map((r) => [r.kljuc, javniUrl(r.r2_kljuc)]));
 }
 
-export interface StanjeZvuka { kljuc: string; odobren: number | null; kandidata: number; u_redu: number; greska: string | null }
+export interface StanjeZvuka { kljuc: string; odobren: number | null; kandidata: number; u_redu: number; greska: string | null; bez_ponavljanja: number }
 
 export async function stanjeZvukova(kljucevi: string[]): Promise<StanjeZvuka[]> {
   if (!kljucevi.length) return [];
@@ -54,7 +54,8 @@ export async function stanjeZvukova(kljucevi: string[]): Promise<StanjeZvuka[]> 
        (SELECT z.id FROM zvukovi z WHERE z.kljuc = k.value AND z.status = 'odobren' ORDER BY z.id DESC LIMIT 1) AS odobren,
        (SELECT COUNT(*) FROM zvukovi z WHERE z.kljuc = k.value AND z.status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM zvuk_generiranja q WHERE q.kljuc = k.value AND q.status IN ('ceka', 'radi')) AS u_redu,
-       (SELECT q.greska FROM zvuk_generiranja q WHERE q.kljuc = k.value AND q.status = 'greska' ORDER BY q.id DESC LIMIT 1) AS greska
+       (SELECT q.greska FROM zvuk_generiranja q WHERE q.kljuc = k.value AND q.status = 'greska' ORDER BY q.id DESC LIMIT 1) AS greska,
+       COALESCE((SELECT z.bez_ponavljanja FROM zvukovi z WHERE z.kljuc = k.value ORDER BY z.id DESC LIMIT 1), 0) AS bez_ponavljanja
      FROM json_each(?) k`,
   ).bind(JSON.stringify(kljucevi)).all<StanjeZvuka>();
   return results;
@@ -62,9 +63,9 @@ export async function stanjeZvukova(kljucevi: string[]): Promise<StanjeZvuka[]> 
 
 // ── Red ──────────────────────────────────────────────────────────────────────────────────────
 
-/** Posao za svaki ključ bez odobrene snimke, kandidata i posla u redu. Vraća broj dodanih. */
+/** Posao za svaki ključ bez odobrene snimke, kandidata, posla u redu i „samo odbij”. Vraća broj dodanih. */
 export async function dodajZvukove(kljucevi: string[], email: string): Promise<number> {
-  const trebaju = (await stanjeZvukova(kljucevi.map(kljucZvuka))).filter((s) => !s.odobren && !s.kandidata && !s.u_redu);
+  const trebaju = (await stanjeZvukova(kljucevi.map(kljucZvuka))).filter((s) => !s.odobren && !s.kandidata && !s.u_redu && !s.bez_ponavljanja);
   const ids: number[] = [];
   for (const s of trebaju) ids.push(await novPosao(s.kljuc, izgovorZa(s.kljuc), email));
   await posalji(ids);
@@ -177,12 +178,12 @@ async function zavrsi(posaoId: number, zvukId: number) {
 
 export interface Zvuk {
   id: number; kljuc: string; izgovor: string; status: string; provjera: string; prijepis: string | null; slicnost: number | null;
-  razlog: string | null; pregledao: string | null; model: string; glas_id: string; created_at: string;
+  razlog: string | null; bez_ponavljanja: number; pregledao: string | null; model: string; glas_id: string; created_at: string;
 }
 
 export async function zvukoviZaPregled(status: "kandidat" | "odobren" | "odbijen", limit = 200): Promise<Zvuk[]> {
   const { results } = await env.DB.prepare(
-    `SELECT id, kljuc, izgovor, status, provjera, prijepis, slicnost, razlog, pregledao, model, glas_id, created_at
+    `SELECT id, kljuc, izgovor, status, provjera, prijepis, slicnost, razlog, bez_ponavljanja, pregledao, model, glas_id, created_at
      FROM zvukovi WHERE status = ? ORDER BY ${status === "kandidat" ? "provjera = 'ok', id" : "id DESC"} LIMIT ?`,
   ).bind(status, limit).all<Zvuk>();
   return results;
@@ -191,9 +192,11 @@ export async function zvukoviZaPregled(status: "kandidat" | "odobren" | "odbijen
 /**
  * Odobri: snimka ide na CDN, prijašnja odobrena za isti tekst postaje odbijena („zamijenjena”).
  * Odbij: s razlogom; ako tekst više nema ni kandidata ni odobrene, novi posao (s ispravljenim
- * izgovorom, ako ga je recenzent upisao). Vraća false ako snimka više nije kandidat.
+ * izgovorom, ako ga je recenzent upisao). `ponovo: false` = samo odbij, bez novog posla (ElevenLabs
+ * neke riječi ne zna izgovoriti; tekst se kasnije može vratiti „Generiraj ponovno” na tabu Odbijeni).
+ * Vraća false ako snimka više nije kandidat.
  */
-export async function odluciZvuk(id: number, akcija: "odobri" | "odbij", email: string, o: { razlog?: string; izgovor?: string } = {}): Promise<boolean> {
+export async function odluciZvuk(id: number, akcija: "odobri" | "odbij", email: string, o: { razlog?: string; izgovor?: string; ponovo?: boolean } = {}): Promise<boolean> {
   const db = env.DB;
   const z = await db.prepare("SELECT id, kljuc, izgovor, status FROM zvukovi WHERE id = ?").bind(id)
     .first<{ id: number; kljuc: string; izgovor: string; status: string }>();
@@ -208,8 +211,9 @@ export async function odluciZvuk(id: number, akcija: "odobri" | "odbij", email: 
     for (const s of stari) await makniJavni(s.r2_kljuc);
     return true;
   }
-  await db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
-    .bind(o.razlog?.trim() || null, email, id).run();
+  await db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = ?, bez_ponavljanja = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
+    .bind(o.razlog?.trim() || null, o.ponovo === false ? 1 : 0, email, id).run();
+  if (o.ponovo === false) return true;
   const [s] = await stanjeZvukova([z.kljuc]);
   if (!s.odobren && !s.kandidata && !s.u_redu) {
     const pid = await novPosao(z.kljuc, o.izgovor?.trim() || z.izgovor, email);
