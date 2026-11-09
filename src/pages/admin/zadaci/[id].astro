@@ -94,6 +94,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-krug-slike .z-slot { width: 104px; }
   .z-kolo-okvir { display: grid; place-items: center; padding: 8px 0 16px; }
   .z-kolo-okvir .kolo { --kolo: min(62vh, 82vw, 560px); }
+  .z-slog-gumbi { display: flex; gap: 6px; justify-content: center; }
   .z-krug-mreza { display: grid; grid-template-columns: repeat(var(--stupaca), minmax(0, 132px)); gap: clamp(8px, 1.4vw, 16px); justify-content: center; width: 100%; }
   /* Mobitel: 2 stupca većih slika, kao igra bilježnice (stranica se ionako lista). */
   @media (max-width: 600px) { .z-krug-mreza { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }

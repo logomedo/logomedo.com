@@ -606,10 +606,12 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
           h("div", { class: "z-slog-krugovi velike" }, ...Array.from({ length: s.krugova }, (_, j) => h("button", { type: "button", class: j < n ? "on" : "", disabled: gotova, "aria-label": String(j + 1), onclick: () => {
             slogKrugova.set(x.i, n === j + 1 ? j : j + 1); osvjezi();
           } }))),
-          gotova ? h("span", { class: "z-bravo-malo" }, "✓") : h("button", { type: "button", class: "gumb mali", onclick: () => {
+          gotova ? h("span", { class: "z-bravo-malo" }, "✓") : h("div", { class: "z-slog-gumbi" }, h("button", { type: "button", class: "gumb mali z-bubanj", title: "Bubanj: udarac oboji sljedeći krug", "aria-label": "bubanj", onclick: () => {
+            if (n < s.krugova) { slogKrugova.set(x.i, n + 1); osvjezi(); }
+          } }, "🥁"), h("button", { type: "button", class: "gumb mali", onclick: () => {
             odgovori.push({ stavka: x.i, odabrano: n, ms: ms() });
             if (n === tocnoSlogovi("analiza", x.slogova)) { rijeseno.add(x.i); osvjezi(); } else tresi(kartica);
-          } }, "Gotovo"));
+          } }, "Gotovo")));
         return kartica;
       })), kraj(pune.length));
   }
