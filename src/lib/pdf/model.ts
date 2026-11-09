@@ -4,7 +4,7 @@
 
 import type { Tema } from "../teme.ts";
 import { TEME } from "../teme.ts";
-import { VRSTE, zadanaUputa, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
+import { VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
 export interface SlikaPdf { url: string | null; rijec: string; natpis: string; izmjena?: Izmjena }
@@ -17,8 +17,10 @@ export type TijeloPdf =
   | { vrsta: "uljez"; redovi: SlikaPdf[][] }
   | { vrsta: "percepcija"; redovi: SlikaPdf[][] }
   | { vrsta: "prvi_glas"; slovo: string; slike: SlikaPdf[] }
+  /** `legenda` (duljina): boje bojica; `krugova` (analiza): prazni krugovi ispod svake slike. */
+  | { vrsta: "slogovi"; legenda?: { naziv: string; boja: string; duga: boolean }[]; krugova: number; slike: SlikaPdf[] }
   | { vrsta: "povezivanje"; lijevo: SlikaPdf[]; desno: SlikaPdf[] }
-  | { vrsta: "listic"; kartice: { slika: SlikaPdf | null; tekst: string }[] }
+  | { vrsta: "listic"; kartice: { slika: SlikaPdf | null; tekst: string }[]; raspored?: RasporedListica }
   | { vrsta: "scena"; pozadina: string | null; gumbi: SlikaPdf[] };
 
 export interface StranicaPdf {
@@ -86,6 +88,15 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
     return (s as PrviGlas).krugovi.filter((k) => k.slovo).map((k) => ({
       vrsta: "prvi_glas", slovo: k.slovo!, slike: k.slike.filter((id) => id !== null).map((id) => ({ ...sl(id), natpis: "" })),
     }));
+  if (vrsta === "slogovi") {
+    // Duljina 4 × 3 slike, analiza 3 × 3 (krugovi trebaju mjesta); stranica bez zaglavlja red više.
+    const sg = s as Slogovi;
+    const po = sg.nacin === "duljina" ? 4 : 3, redova = 3;
+    const slike = sg.slike.filter((x) => x.rijec_id !== null).map((x) => sl(x.rijec_id));
+    const legenda = sg.nacin === "duljina" ? (["duga", "kratka"] as const).map((k) => ({ naziv: VELIKO(BOJE_DULJINE[k].naziv), boja: BOJE_DULJINE[k].boja, duga: k === "duga" })) : undefined;
+    const komad = nastavakBezZaglavlja ? komadiSPrvim(slike, po * redova, po * (redova + 1)) : komadi(slike, po * redova);
+    return komad.map((k) => ({ vrsta: "slogovi", legenda, krugova: sg.nacin === "analiza" ? sg.krugova : 0, slike: k }));
+  }
   if (vrsta === "povezivanje") {
     const p = s as Povezivanje;
     return [{ vrsta: "povezivanje", lijevo: p.parovi.map((x) => sl(x.lijevo)), desno: p.desno_redoslijed.map((i) => sl(p.parovi[i].desno)) }];
@@ -96,7 +107,7 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
   }
   const kartice = (s as Listic).kartice.filter((k) => k.rijec_id || k.tekst)
     .map((k) => ({ slika: k.rijec_id ? { ...sl(k.rijec_id), natpis: "" } : null, tekst: k.tekst }));
-  return komadi(kartice, 12).map((k) => ({ vrsta: "listic", kartice: k }));
+  return komadi(kartice, 12).map((k) => ({ vrsta: "listic", kartice: k, raspored: (s as Listic).raspored }));
 }
 
 /** Samostalan zadatak (admin): naslov, uputa i ime na prvoj stranici. */
@@ -137,7 +148,7 @@ export function slikeDokumenta(d: DokumentPdf): string[] {
   for (const { tijelo: t } of d.stranice) {
     if (t.vrsta === "odabir") t.redovi.forEach((r) => [r.zadana, ...r.ponudeno].forEach(dodaj));
     if (t.vrsta === "uljez" || t.vrsta === "percepcija") t.redovi.flat().forEach(dodaj);
-    if (t.vrsta === "prvi_glas") t.slike.forEach(dodaj);
+    if (t.vrsta === "prvi_glas" || t.vrsta === "slogovi") t.slike.forEach(dodaj);
     if (t.vrsta === "povezivanje") [...t.lijevo, ...t.desno].forEach(dodaj);
     if (t.vrsta === "listic") t.kartice.forEach((k) => dodaj(k.slika));
     if (t.vrsta === "scena") { if (t.pozadina) out.add(t.pozadina); t.gumbi.forEach(dodaj); }

@@ -160,3 +160,62 @@ test("prvi glas: boje kola, nepoznate su šarene", () => {
   assert.equal((normaliziraj("prvi_glas", { boje: "crveno-bijelo-plavo", krugovi: [] }) as PrviGlas).boje, "crveno-bijelo-plavo");
   assert.equal((normaliziraj("prvi_glas", { boje: "zeleno", krugovi: [] }) as PrviGlas).boje, "sareno");
 });
+
+// ---- Slogovi ----
+import { slozSlogove, jeDuga, zadanaUputa, UPUTE_SLOGOVA, type Slogovi } from "./vrste.ts";
+
+const SL = ["sat", "miš", "krava", "riba", "kapa", "kornjača", "lokomotiva", "televizor", "krokodil", "papiga", "jabuka", "auto"]
+  .map((r, i) => ({ id: 200 + i, rijec: r, rima: null, slogova: brojSlogova(r), slika: `/s/${i}.jpg` }) as RijecZadatka);
+const SM = new Map(SL.map((r) => [r.id, r]));
+
+test("slogovi: duljina složi pola kratkih i pola dugačkih", () => {
+  sjeme = 7;
+  const s = slozSlogove("duljina", SL, 8, 4, rnd);
+  assert.equal(s.slike.length, 8);
+  assert.equal(s.slike.filter((x) => jeDuga(x.slogova)).length, 4);
+  assert.equal(new Set(s.slike.map((x) => x.rijec_id)).size, 8);
+  assert.deepEqual(provjeri("slogovi", s, SM), []);
+});
+
+test("slogovi: analiza ne uzima riječi s više slogova od krugova", () => {
+  sjeme = 3;
+  const s = slozSlogove("analiza", SL, 8, 3, rnd);
+  assert.ok(s.slike.every((x) => x.slogova <= 3));
+  assert.ok(new Set(s.slike.map((x) => x.slogova)).size >= 3);
+});
+
+test("slogovi: normalizacija, ocjena prvog pokušaja i uputa", () => {
+  const s = normaliziraj("slogovi", { nacin: "analiza", krugova: 99, slike: [{ rijec_id: 205, slogova: 3 }, { rijec_id: null, slogova: 0 }, { rijec_id: 200, slogova: 1 }] }) as Slogovi;
+  assert.equal(s.krugova, 6);
+  assert.equal(s.slike[1].slogova, 1);
+  // Slika 0: prvo 2 pa 3 (krivo), slika 2: odmah 1 (točno).
+  const o = ocijeni("slogovi", s, [{ stavka: 0, odabrano: 2 }, { stavka: 0, odabrano: 3 }, { stavka: 2, odabrano: 1 }]);
+  assert.deepEqual(o, { tocnih: 1, ukupno: 2 });
+  const d: Slogovi = { nacin: "duljina", krugova: 4, slike: [{ rijec_id: 205, slogova: 3 }, { rijec_id: 200, slogova: 1 }] };
+  assert.deepEqual(ocijeni("slogovi", d, [{ stavka: 0, odabrano: 1 }, { stavka: 1, odabrano: 1 }]), { tocnih: 1, ukupno: 2 });
+  assert.equal(zadanaUputa("slogovi", s), UPUTE_SLOGOVA.analiza.ispis);
+  assert.match(provjeri("slogovi", { ...s, krugova: 2 }, SM).map((u) => u.poruka).join(" "), /ima 3 sloga, a krugova je 2/);
+});
+
+test("slogovi u igri: duljina ravnomjerno po ekranima, analiza slika po ekranu", () => {
+  const slike = SL.slice(0, 10).map((r) => ({ rijec_id: r.id, slogova: r.slogova }));
+  const e = ekrani([{ vrsta: "slogovi", uputa: UPUTE_SLOGOVA.duljina.ispis, sadrzaj: { nacin: "duljina", krugova: 4, slike } }]);
+  assert.deepEqual(e.map((x) => (x.vrsta === "slogovi" ? x.slike.length : 0)), [5, 5]);
+  assert.equal(e[0].uputa, UPUTE_SLOGOVA.duljina.ekran);
+  assert.equal(ekrani([{ vrsta: "slogovi", uputa: null, sadrzaj: { nacin: "analiza", krugova: 4, slike: [...slike.slice(0, 3), { rijec_id: null, slogova: 1 }] } }]).length, 3);
+});
+
+// ---- Radni listić: veličina slika prema broju slika ----
+import { rasporedListica } from "./vrste.ts";
+
+test("listić: manje slika, veće slike; 3 × 4 ostaje za stare listiće", () => {
+  const m = (n: number) => { const r = rasporedListica(n, "auto", 180, 222); return [r.stupaca, r.redova]; };
+  assert.deepEqual(m(1), [1, 1]);
+  assert.deepEqual(m(4), [2, 2]);
+  assert.deepEqual(m(6), [2, 3]);
+  assert.deepEqual(m(12), [3, 4]);
+  assert.ok(rasporedListica(4, "auto", 180, 222).s > 2 * rasporedListica(12, "auto", 180, 222).s * 0.9);
+  assert.deepEqual([rasporedListica(4, undefined, 180, 222).stupaca, rasporedListica(4, "3x4", 180, 222).redova], [3, 4]);
+  assert.equal((normaliziraj("listic", { kartice: [] }) as { raspored?: string }).raspored, "3x4");
+  assert.equal((normaliziraj("listic", { kartice: [], raspored: "auto" }) as { raspored?: string }).raspored, "auto");
+});

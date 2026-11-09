@@ -203,6 +203,26 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .kartica.bez-rijeci .glava { position: absolute; top: .4vh; right: .4vh; width: auto; min-height: 0; z-index: 1; }
   .kartica.bez-rijeci .zvucnik { --z: calc(var(--s) * .22); }
   .pitanje .kolo-znacka { font-size: 1.15em; margin-left: .15em; vertical-align: middle; }
+  /* Slogovi, duljina: dvije bojice gore (crvena dugačka, plava kratka), ispod do 8 kartica */
+  .bojice { display: flex; gap: 3vw; justify-content: center; }
+  .bojica { --b: #d62828; display: flex; align-items: center; gap: 1.2vh; padding: 1.2vh 2.4vh 1.2vh 1.2vh; border: 0; border-radius: 99px; background: #fffdf6;
+    box-shadow: 0 4px 10px rgb(60 40 20 / .22), inset 0 0 0 2px #a07a4c66; font: inherit; font-weight: 900; font-size: 3.4vh; color: #4a2f17; cursor: pointer; transition: transform .15s, box-shadow .15s; }
+  .bojica .vrh { width: 0; height: 0; border-block: 2vh solid transparent; border-right: 3vh solid var(--b); }
+  .bojica .crta { height: 4vh; border-radius: 0 1vh 1vh 0; background: var(--b); margin-left: -1.2vh; }
+  .bojica.duga .crta { width: 18vh; } .bojica.kratka .crta { width: 7vh; }
+  .bojica.on { transform: translateY(-.6vh) scale(1.05); box-shadow: 0 0 0 6px var(--b), 0 6px 14px rgb(60 40 20 / .3); }
+  .bojica.krivo { animation: trese .45s; }
+  .red.slogovi-duljina { display: grid; grid-template-columns: repeat(4, auto); justify-content: center; gap: 1.6vh 1.6vw; }
+  .red.slogovi-duljina.n1, .red.slogovi-duljina.n2, .red.slogovi-duljina.n3 { grid-template-columns: repeat(3, auto); }
+  .red.slogovi-duljina .kartica { --s: min(24vh, 15vw); }
+  .kartica.obojena { box-shadow: inset 0 0 0 2px #a07a4c, 0 0 0 .9vh var(--b), 0 6px 14px rgb(60 40 20 / .25); cursor: default; }
+  /* Slogovi, analiza: velika slika, krugovi ispod, Gotovo */
+  .slog-analiza { display: flex; flex-direction: column; align-items: center; gap: 2.4vh; }
+  .slog-slika { --s: min(40vh, 34vw); cursor: default; }
+  .slog-krugovi { display: flex; gap: 2.2vh; }
+  .slog-krug { width: 9vh; height: 9vh; border-radius: 50%; border: .7vh solid #5a3414; background: #fffdf6; cursor: pointer; transition: background .15s, transform .15s; }
+  .slog-krug.on { background: radial-gradient(circle at 35% 30%, #ffe08a, #f2a33a 60%, #d9822b); transform: scale(1.06); }
+  .gumb-gotovo { font: inherit; font-weight: 900; font-size: 4vh; padding: 1vh 5vh; border: 0; border-radius: 99px; background: var(--zeleno); color: #fff; box-shadow: 0 5px 0 #1d6b33; cursor: pointer; }
   .povezi { position: relative; display: flex; justify-content: space-between; width: min(100%, 92vh); }
   .stupac { display: flex; flex-direction: column; gap: 1.4vh; position: relative; z-index: 1; }
   .povezi .kartica { --s: min(15.5vh, 11vw); width: auto; }
@@ -237,6 +257,11 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     .red.prvi-glas .kartica { --s: 27vw; }
     .red.prvi-glas.n5 { grid-template-columns: repeat(4, auto); gap: 2.4vw; }
     .red.prvi-glas.n5 .kartica { --s: 20vw; }
+    .red.slogovi-duljina { grid-template-columns: repeat(2, auto); gap: 3vw; }
+    .red.slogovi-duljina .kartica { --s: min(36vw, 17vh); }
+    .bojica { font-size: 4.4vw; } .bojica.duga .crta { width: 20vw; } .bojica.kratka .crta { width: 8vw; }
+    .slog-slika { --s: 70vw; }
+    .slog-krug { width: 14vw; height: 14vw; }
     .gumb-kreni, .gumb-ponovi { font-size: 7vw; }
   }
   /* Mobitel uspravno: 2 stupca većih slika; 12–15 slika ne stane u visinu, pa se ekran lista. */

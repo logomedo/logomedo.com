@@ -1,7 +1,7 @@
 // Ekrani bilježnice: svaka stavka odabira i uljeza je jedan ekran, povezivanje je jedan
 // ekran, listić se u igri preskače. Broj ekrana = broj lampica na boru. Čisti TS: server
 // (broj lampica, ispis), preglednik (igra) i testovi.
-import { UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, krugUIgri, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
+import { UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, UPUTE_SLOGOVA, type Slogovi, type SlikaSlogova, krugUIgri, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
 
 export interface ZadatakZaIgru { vrsta: Vrsta; uputa: string | null; sadrzaj: Sadrzaj }
 export type Ekran =
@@ -10,9 +10,10 @@ export type Ekran =
   | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
   | { vrsta: "scena"; uputa: string; s: Scena }
   | { vrsta: "percepcija"; uputa: string; trazi: Percepcija["trazi"]; stavka: Percepcija["stavke"][0] }
+  | { vrsta: "slogovi"; uputa: string; nacin: Slogovi["nacin"]; krugova: number; slike: SlikaSlogova[] }
   | { vrsta: "prvi_glas"; uputa: string; kolo: string[]; boje: PrviGlas["boje"]; krug: Krug };
 
-const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija" | "prvi_glas">, string> = {
+const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija" | "prvi_glas" | "slogovi">, string> = {
   odabir: "Što se rimuje s riječi {zadana}?",
   uljez: "Koja se riječ ne rimuje s ostalima?",
   povezivanje: "Poveži riječi koje se rimuju.",
@@ -28,6 +29,16 @@ export function ekrani(zadaci: ZadatakZaIgru[]): Ekran[] {
       const s = z.sadrzaj as Percepcija;
       const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_PERCEPCIJE[s.trazi].ispis ? UPUTE_PERCEPCIJE[s.trazi].ekran : z.uputa.trim();
       for (const st of s.stavke) if (st.polja.every((p) => p.rijec_id !== null)) out.push({ vrsta: "percepcija", uputa, trazi: s.trazi, stavka: st });
+      continue;
+    }
+    if (z.vrsta === "slogovi") {
+      // Duljina: do 8 slika po ekranu (bojice gore). Analiza: jedna velika slika s krugovima po ekranu.
+      const s = z.sadrzaj as Slogovi;
+      const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_SLOGOVA[s.nacin].ispis ? UPUTE_SLOGOVA[s.nacin].ekran : z.uputa.trim();
+      const pune = s.slike.filter((x) => x.rijec_id !== null);
+      // 10 slika su 2 ekrana po 5, ne 8 + 2.
+      const po = s.nacin === "duljina" ? Math.ceil(pune.length / Math.ceil(pune.length / 8)) : 1;
+      for (let i = 0; i < pune.length; i += po) out.push({ vrsta: "slogovi", uputa, nacin: s.nacin, krugova: s.krugova, slike: pune.slice(i, i + po) });
       continue;
     }
     if (z.vrsta === "prvi_glas") {

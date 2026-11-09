@@ -5,7 +5,7 @@ import "@fontsource-variable/nunito";
 import { poSlugu, podaci } from "../../../lib/biljeznice";
 import { TEME } from "../../../lib/teme";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
-import { izmjenaCss, VRSTE, zadanaUputa, type Odabir, type Percepcija, type PrviGlas, type Krug, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
+import { izmjenaCss, VRSTE, zadanaUputa, BOJE_DULJINE, type Slogovi, type Odabir, type Percepcija, type PrviGlas, type Krug, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
 import { GRANCICA } from "../../../lib/ukrasi";
 import { dokumentBiljeznice } from "../../../lib/pdf/model";
 
@@ -23,12 +23,18 @@ type Stranica =
   | { vrsta: "povezivanje"; uputa: string; s: Povezivanje }
   | { vrsta: "scena"; uputa: string; pozadina: string | null; gumbi: number[] }
   | { vrsta: "percepcija"; uputa: string; stavke: Percepcija["stavke"] }
-  | { vrsta: "prvi_glas"; uputa: string; krug: Krug };
+  | { vrsta: "prvi_glas"; uputa: string; krug: Krug }
+  | { vrsta: "slogovi"; uputa: string; nacin: Slogovi["nacin"]; krugova: number; slike: number[] };
 const stranice: Stranica[] = [];
 for (const z of p.zadaci) {
   if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: VRSTE.odabir.uputa, stavke: k });
   if (z.vrsta === "uljez") for (const k of komadi((z.sadrzaj as Uljez).stavke, 4)) stranice.push({ vrsta: "uljez", uputa: VRSTE.uljez.uputa, stavke: k });
   if (z.vrsta === "percepcija") for (const k of komadi((z.sadrzaj as Percepcija).stavke, 4)) stranice.push({ vrsta: "percepcija", uputa: zadanaUputa("percepcija", z.sadrzaj), stavke: k });
+  if (z.vrsta === "slogovi") {
+    const sg = z.sadrzaj as Slogovi;
+    const pune = sg.slike.flatMap((x) => (x.rijec_id === null ? [] : [x.rijec_id]));
+    for (const k of komadi(pune, sg.nacin === "duljina" ? 12 : 9)) stranice.push({ vrsta: "slogovi", uputa: zadanaUputa("slogovi", sg), nacin: sg.nacin, krugova: sg.krugova, slike: k });
+  }
   if (z.vrsta === "prvi_glas") for (const k of (z.sadrzaj as PrviGlas).krugovi) if (k.slovo) stranice.push({ vrsta: "prvi_glas", uputa: zadanaUputa("prvi_glas"), krug: k });
   if (z.vrsta === "scena") {
     const sc = z.sadrzaj as Scena;
@@ -101,6 +107,25 @@ const grancica = tema.kutovi ? GRANCICA : "";
             ))}
           </div>
         ))}
+        {s.vrsta === "slogovi" && (
+          <div class={`slogovi ${s.nacin}`}>
+            {s.nacin === "duljina" && (
+              <div class="legenda">
+                {(["duga", "kratka"] as const).map((k) => <span style={`--b:${BOJE_DULJINE[k].boja}`}><i class={k} />{VEL(BOJE_DULJINE[k].naziv)}</span>)}
+              </div>
+            )}
+            <div class="mreza">
+              {s.slike.map((id) => (
+                <div class="stavka">
+                  <figure class="slika">
+                    {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                  </figure>
+                  {s.nacin === "analiza" && <div class="krugovi">{Array.from({ length: s.krugova }, () => <i />)}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {s.vrsta === "prvi_glas" && (
           <div class="prvi-glas">
             <div class="slovo-krug">{s.krug.slovo}</div>
@@ -236,6 +261,15 @@ const grancica = tema.kutovi ? GRANCICA : "";
   .prvi-glas { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10mm; padding-top: 4mm; }
   .slovo-krug { width: 30mm; height: 30mm; border: 2.5px solid #000; border-radius: 50%; display: grid; place-items: center; font-size: 50pt; font-weight: 900; line-height: 1; }
   .prvi-glas .mreza { display: grid; grid-template-columns: repeat(var(--stupaca), 33mm); gap: 6mm; justify-content: center; }
+  .slogovi { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8mm; padding-top: 2mm; }
+  .legenda { display: flex; gap: 14mm; font-size: 14pt; font-weight: 800; }
+  .legenda span { display: flex; align-items: center; gap: 3mm; }
+  .legenda i { display: inline-block; height: 4mm; background: var(--b); border-radius: 0 2mm 2mm 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .legenda i.duga { width: 30mm; } .legenda i.kratka { width: 11mm; }
+  .slogovi .mreza { display: grid; grid-template-columns: repeat(4, 38mm); gap: 7mm 5mm; justify-content: center; }
+  .slogovi.analiza .mreza { grid-template-columns: repeat(3, 46mm); gap: 8mm 10mm; }
+  .krugovi { display: flex; justify-content: center; gap: 2.5mm; margin-top: 3mm; }
+  .krugovi i { width: 8mm; height: 8mm; border: 2px solid #000; border-radius: 50%; }
   .povezi { flex: 1; display: flex; justify-content: space-between; padding: 0 8mm; }
   .stupac { display: flex; flex-direction: column; justify-content: space-around; }
   .scena-ispis { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }

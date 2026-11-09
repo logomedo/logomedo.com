@@ -128,6 +128,7 @@ može služiti u više podpodručja.
 
 | Područje | Podpodručje | Vrste |
 |---|---|---|
+| Korekcija artikulacije | Slogovi: duljina riječi i slogovna analiza (prvo podpodručje) | `slogovi` |
 | Korekcija artikulacije | glas × pozicija (postojeći katalog) | `listic` |
 | Predvještine čitanja i pisanja | Prepoznavanje rime | `odabir`, `povezivanje`, `uljez` |
 | Predvještine čitanja i pisanja | Vizualna percepcija | `percepcija` |
@@ -386,6 +387,40 @@ iz drugih skupina. Admin onda mijenja pojedinu sliku. Spremljen je samo rezultat
 Naslov + niz kartica (slika iz kataloga + uređivi tekst ispod). Ispis PDF. Prijenos starog
 `working-sheets` dokumenta: `header.title` → `naslov`, `cards[].header.title` → tekst kartice,
 `cards[].body.image` → `rijec_id` po staroj putanji iz `preuzimanje/data/catalog.csv`.
+
+**Veličina slika (9. 11. 2026.)**: `raspored` u sadržaju. `auto` („Prema broju slika”, zadano za
+nove listiće) bira mrežu s najvećom slikom za broj kartica na stranici (`rasporedListica`, ista
+funkcija za PDF i HTML ispis): 1 → 1 × 1, 4 → 2 × 2 (oko 8 cm), 6 → 2 × 3, 12 → 3 × 4. Mreža s
+praznim mjestima stoji okomito centrirano. `3x4` je stari raspored (12 po stranici bez obzira na
+broj) i zadan je svim listićima spremljenim prije, da se ispis postojećih ne promijeni. Na
+stranicu i dalje stane najviše 12 kartica. „Složi automatski” sad poštuje broj kartica (1–12).
+
+### `slogovi`: dugačke i kratke riječi, slogovna analiza (9. 11. 2026.)
+
+Prvi predložak za artikulaciju (podpodručje „Slogovi”, migracija 0025). Jedna vrsta, dva načina
+(`nacin`, kao `trazi` u percepciji):
+
+```ts
+{ nacin: "duljina" | "analiza", krugova: 3..6, slike: { rijec_id, slogova }[] }   // do 24 slike
+```
+
+- **`duljina`**: dijete jednom bojom zaokruži dugačke riječi, drugom kratke. Dugačka = 3 i više
+  slogova (`DUGA_OD`), crvena; kratka = 1–2, plava (`BOJE_DULJINE`). Papir: legenda s bojom i
+  dugom/kratkom crtom (dijete ne mora čitati), 4 × 3 slike po stranici. Igra: dvije bojice gore
+  (dugačka/kratka crta), dijete uzme bojicu i dodirne sliku; kriva boja trese karticu, slika bez
+  odabrane bojice trese bojice. Do 8 slika po ekranu, ravnomjerno (10 → 5 + 5).
+- **`analiza`**: ispod svake slike `krugova` praznih krugova, isti broj ispod svake (da broj
+  krugova ne oda odgovor); dijete oboji onoliko koliko riječ ima slogova. Papir 3 × 3. Igra: jedna
+  velika slika po ekranu, dodir kruga oboji krugove do njega (ponovni dodir zadnjeg ga skine),
+  „Gotovo” provjeri.
+- Kartice u igri nemaju napisanu riječ (odala bi duljinu), samo zvučnik.
+- `slogova` se pri odabiru slike računa iz riječi (`brojSlogova`: IJE je jedan slog, slogotvorno
+  R se broji), a logoped ga ispravlja s − / +. Provjera upozori kad upisano odstupa od pravila
+  i kad u analizi riječ ima više slogova od krugova.
+- Ocjena: prvi odgovor po slici (boja 1/0 ili broj obojenih krugova), kao odabir.
+- Generator (`slozSlogove`): duljina pola kratkih (1 i 2 sloga naizmjence) i pola dugačkih
+  (prednost 4+ sloga), analiza podjednako od 1 do `krugova` slogova; riječi sa slikom.
+- Flutter aplikacija ovu vrstu još nema (kao ni percepciju i prvi glas).
 
 ### Deploy dok paralelna sesija radi u istoj mapi (2. 11. 2026.)
 

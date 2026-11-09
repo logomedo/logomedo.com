@@ -98,6 +98,30 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   /* Mobitel: 2 stupca većih slika, kao igra bilježnice (stranica se ionako lista). */
   @media (max-width: 600px) { .z-krug-mreza { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
   .z-prvi-glas .kolo-znacka { font-size: 1.3em; vertical-align: middle; }
+  .z-slogovi-slike { display: flex; flex-wrap: wrap; gap: 14px; }
+  .z-slog-slot { width: 120px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .z-slog-slot .z-slot { width: 100%; }
+  .z-slog-slot .z-red-gumbi { margin: 0; }
+  .z-slog-broj { white-space: nowrap; display: flex; align-items: center; gap: 4px; font-size: .84rem; font-weight: 650; }
+  .z-duljina { font-size: .8rem; font-weight: 750; color: #fff; background: var(--b); border-radius: 999px; padding: 2px 10px; }
+  .z-slog-krugovi { display: flex; gap: 4px; justify-content: center; }
+  .z-slog-krugovi > * { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rub-jak); background: none; padding: 0; }
+  .z-slog-krugovi > .on { background: var(--med); border-color: var(--med); }
+  .z-slog-mreza { grid-template-columns: repeat(var(--stupaca), minmax(0, 190px)); }
+  .z-slog-zadatak .z-slika { width: 140px; }
+  .z-slog-krugovi.velike { gap: 6px; margin-top: 4px; }
+  .z-slog-krugovi.velike > * { width: 26px; height: 26px; border-width: 3px; cursor: pointer; }
+  .z-slog-zadatak { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px; border-radius: 20px; border: 3px solid transparent; }
+  .z-slog-zadatak.gotov { border-color: var(--uspjeh); }
+  .z-slog-zadatak.krivo { animation: z-trese .4s; border-color: var(--greska); }
+  .z-bravo-malo { color: var(--uspjeh); font-weight: 800; font-size: 1.3rem; }
+  .z-bojice { display: flex; gap: 14px; justify-content: center; margin-bottom: 16px; }
+  .z-bojica { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 750; padding: 8px 16px; border-radius: 999px; border: 2px solid var(--rub-jak); background: var(--povrsina); color: var(--tinta); cursor: pointer; }
+  .z-bojica i { height: 14px; border-radius: 0 6px 6px 0; background: var(--b); }
+  .z-bojica.duga i { width: 70px; } .z-bojica.kratka i { width: 26px; }
+  .z-bojica.on { border-color: var(--b); box-shadow: 0 0 0 4px color-mix(in srgb, var(--b) 30%, transparent); }
+  .z-bojica.krivo { animation: z-trese .4s; }
+  .z-karta.obojena { border-color: var(--b); box-shadow: 0 0 0 4px color-mix(in srgb, var(--b) 35%, transparent); }
   .z-percepcija-polja { display: flex; gap: 10px; flex-wrap: wrap; }
   .z-percepcija-polja .z-slot { width: 104px; }
   .z-izmjena { font-size: .78rem; padding: 3px 4px; }
@@ -225,6 +249,14 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-slovo { width: 28mm; height: 28mm; border: 2.5px solid #000; border-radius: 50%; display: grid; place-items: center; font-size: 46pt; font-weight: 900; line-height: 1; }
   .a4-krug-slike { display: grid; grid-template-columns: repeat(var(--stupaca), 31mm); gap: 5mm; justify-content: center; }
   .a4-percepcija .a4-red { justify-content: center; gap: 5mm; } .a4-percepcija .a4-izbor { width: min(38mm, calc((170mm - (var(--n) - 1) * 5mm) / var(--n))); }
+  .a4-legenda { display: flex; justify-content: center; gap: 14mm; margin-bottom: 7mm; font-size: 14pt; font-weight: 800; }
+  .a4-legenda span { display: flex; align-items: center; gap: 3mm; }
+  .a4-crta-boje { display: inline-block; height: 4mm; border-radius: 0 2mm 2mm 0; background: var(--b); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .a4-crta-boje.duga { width: 30mm; } .a4-crta-boje.kratka { width: 11mm; }
+  .a4-slogovi-mreza { display: grid; grid-template-columns: repeat(4, 38mm); gap: 7mm 5mm; justify-content: center; }
+  .a4-slogovi.analiza .a4-slogovi-mreza { grid-template-columns: repeat(3, 46mm); gap: 8mm 10mm; }
+  .a4-krugovi { display: flex; justify-content: center; gap: 2.5mm; margin-top: 3mm; }
+  .a4-krugovi i { width: 8mm; height: 8mm; border: 2px solid #000; border-radius: 50%; }
   .a4-povezi { display: flex; justify-content: space-between; padding: 0 6mm; }
   .a4-stupac { display: flex; flex-direction: column; gap: 6mm; }
   .a4-par { display: flex; align-items: center; gap: 4mm; } .a4-par .z-slika { width: 36mm; }

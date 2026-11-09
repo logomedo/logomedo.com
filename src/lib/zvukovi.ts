@@ -28,6 +28,7 @@ export function tekstoviIgre(zadaci: ZadatakZaIgru[], rijeci: { id: number; rije
       t.add(kljucZvuka(e.uputa.replaceAll("{slovo}", e.krug.slovo!)));
       continue;
     }
+    if (e.vrsta === "slogovi" && e.nacin === "duljina") { t.add(kljucZvuka("dugačka riječ")); t.add(kljucZvuka("kratka riječ")); }
     t.add(kljucZvuka(uputaZa(e.uputa, e.vrsta === "odabir" ? ime.get(e.stavka.zadana!) ?? null : null)));
   }
   for (const r of rijeci) t.add(kljucZvuka(r.rijec));

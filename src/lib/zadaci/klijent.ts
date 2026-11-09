@@ -7,6 +7,8 @@
 import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
 import {
   ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
+  BOJE_DULJINE, DUGA_OD, KRUGOVA_MIN, KRUGOVA_MAX, SLOGOVA_MAX, SLOGOVI_SLIKA_MAX, UPUTE_SLOGOVA, jeDuga, slozSlogove, tocnoSlogovi, type NacinSlogova, type Slogovi,
+  LISTIC_PO_STRANICI, rasporedListica, type RasporedListica,
   ABECEDA, BOJE_KOLA, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, krugUIgri, type Krug, type PrviGlas,
   type Izmjena, type Listic, type Odabir, type Odgovor, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta,
 } from "./vrste.ts";
@@ -55,7 +57,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   if (!["uredi", "dijete", "ispis"].includes(pogled)) pogled = "uredi";
   let promijenjeno = false;
   let sRijecima = false;
-  const postavke = { stavki: vrsta === "povezivanje" ? 4 : 4, maxSlogova: 3, samoSaSlikom: false };
+  const postavke = { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : 4, maxSlogova: 3, samoSaSlikom: false };
 
   /** Slike svih riječi u stilu zadatka (riječ bez slike u njemu uzima drugi stil). */
   function postaviStil(kod: string) {
@@ -348,8 +350,49 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       h("button", { type: "button", class: "gumb", disabled: s.krugovi.length >= MAX_REDOVA, onclick: () => { s.krugovi.push(slozKrug(nasumicnoSlovo(), zaKrug())); oznaci(); osvjezi(); } }, "+ Dodaj krug"));
   }
 
+  /** Krugovi slogova (prazni ili obojeni do `obojeno`). */
+  const kruzici = (n: number, obojeno = 0, kl = "z-slog-krugovi") => h("div", { class: kl }, ...Array.from({ length: n }, (_, i) => h("i", { class: i < obojeno ? "on" : "" })));
+  const oznakaDuljine = (slogova: number) => { const k = jeDuga(slogova) ? "duga" : "kratka"; return h("span", { class: "z-duljina", style: `--b:${BOJE_DULJINE[k].boja}` }, BOJE_DULJINE[k].naziv); };
+
+  function urediSlogove(): HTMLElement {
+    const s = sadrzaj as Slogovi;
+    const promijeniNacin = (n: NacinSlogova) => {
+      if (n === s.nacin) return;
+      if (uputa === UPUTE_SLOGOVA[s.nacin].ispis || !uputa.trim()) uputa = UPUTE_SLOGOVA[n].ispis;
+      s.nacin = n; oznaci(); resetRjesavanja(); osvjezi();
+    };
+    return h("div", { class: "z-uredi" },
+      h("div", { class: "ploha z-scena-dio" },
+        h("div", { class: "z-dio-glava" }, h("b", {}, "Što dijete radi")),
+        h("div", { class: "z-prekidac" },
+          ...([["duljina", "Dugačke i kratke riječi"], ["analiza", "Slogovna analiza (krugovi)"]] as const).map(([k, t]) =>
+            h("button", { type: "button", class: `z-tocno${s.nacin === k ? " on" : ""}`, onclick: () => promijeniNacin(k) }, t))),
+        s.nacin === "duljina"
+          ? h("p", { class: "sitno blijedo" }, `Dugačka riječ ima ${DUGA_OD} ili više slogova (${BOJE_DULJINE.duga.bojom} bojom), kratka 1 ili 2 (${BOJE_DULJINE.kratka.bojom}). Broj slogova se računa iz riječi; ispravi ga s − i + ako pravilo griješi.`)
+          : h("div", { class: "z-krug-glava" },
+            h("span", {}, `Krugova ispod slike: ${s.krugova}`),
+            h("button", { type: "button", class: "gumb mali tihi", disabled: s.krugova <= KRUGOVA_MIN, onclick: () => { s.krugova--; oznaci(); osvjezi(); } }, "−"),
+            h("button", { type: "button", class: "gumb mali tihi", disabled: s.krugova >= KRUGOVA_MAX, onclick: () => { s.krugova++; oznaci(); osvjezi(); } }, "+"),
+            h("span", { class: "sitno blijedo" }, "Isti broj krugova ispod svake slike, da broj krugova ne oda odgovor."))),
+      h("div", { class: "ploha z-slogovi-slike" }, ...s.slike.map((x, i) => h("div", { class: "z-slog-slot" },
+        slot(x.rijec_id, (n) => { x.rijec_id = n; x.slogova = R(n)?.slogova ?? 1; }),
+        h("div", { class: "z-slog-broj" },
+          h("button", { type: "button", class: "gumb mali tihi", title: "Slog manje", disabled: x.slogova <= 1, onclick: () => { x.slogova--; oznaci(); osvjezi(); } }, "−"),
+          h("span", {}, `${x.slogova} slog${x.slogova === 1 ? "" : x.slogova < 5 ? "a" : "ova"}`),
+          h("button", { type: "button", class: "gumb mali tihi", title: "Slog više", disabled: x.slogova >= SLOGOVA_MAX, onclick: () => { x.slogova++; oznaci(); osvjezi(); } }, "+")),
+        s.nacin === "duljina" ? oznakaDuljine(x.slogova) : kruzici(s.krugova, x.slogova),
+        h("div", { class: "z-red-gumbi" },
+          h("button", { type: "button", class: "gumb mali tihi", title: "Ranije", disabled: i === 0, onclick: () => { [s.slike[i - 1], s.slike[i]] = [s.slike[i], s.slike[i - 1]]; oznaci(); osvjezi(); } }, "←"),
+          h("button", { type: "button", class: "gumb mali tihi", title: "Kasnije", disabled: i === s.slike.length - 1, onclick: () => { [s.slike[i + 1], s.slike[i]] = [s.slike[i], s.slike[i + 1]]; oznaci(); osvjezi(); } }, "→"),
+          h("button", { type: "button", class: "gumb mali tihi opasno", title: "Makni", onclick: () => { s.slike.splice(i, 1); oznaci(); osvjezi(); } }, "×"))))),
+      h("div", { class: "z-gumbi" },
+        h("button", { type: "button", class: "gumb", disabled: s.slike.length >= SLOGOVI_SLIKA_MAX, onclick: () => { s.slike.push({ rijec_id: null, slogova: 1 }); oznaci(); osvjezi(); } }, "+ Dodaj sliku"),
+        h("button", { type: "button", class: "gumb mali tihi", onclick: () => { s.slike = promijesaj(s.slike); oznaci(); osvjezi(); } }, "Promiješaj redoslijed")));
+  }
+
   function uredi(): HTMLElement {
     if (vrsta === "scena") return urediScenu();
+    if (vrsta === "slogovi") return urediSlogove();
     if (vrsta === "prvi_glas") return urediPrviGlas();
     if (vrsta === "percepcija") return urediPercepciju();
     if (vrsta === "odabir") {
@@ -400,7 +443,17 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
           h("button", { type: "button", class: "gumb tihi", onclick: () => { s.desno_redoslijed = promijesajRed(s.parovi.length); oznaci(); osvjezi(); } }, "Promiješaj desni stupac")));
     }
     const s = sadrzaj as Listic;
+    const pune = s.kartice.filter((k) => k.rijec_id || k.tekst).length;
+    const r = rasporedListica(Math.min(pune, LISTIC_PO_STRANICI), s.raspored, ...A4_LISTIC);
     return h("div", { class: "z-uredi" },
+      h("div", { class: "ploha z-scena-dio" },
+        h("div", { class: "z-dio-glava" }, h("b", {}, "Veličina slika")),
+        h("div", { class: "z-prekidac" },
+          ...([["auto", "Prema broju slika"], ["3x4", "Uvijek 3 × 4"]] as [RasporedListica, string][]).map(([k, t]) =>
+            h("button", { type: "button", class: `z-tocno${(s.raspored ?? "3x4") === k ? " on" : ""}`, onclick: () => { s.raspored = k; oznaci(); osvjezi(); } }, t))),
+        h("p", { class: "sitno blijedo" }, s.raspored === "auto"
+          ? `Manje slika, veće slike. Sad ${pune} ${pune === 1 ? "slika" : pune < 5 ? "slike" : "slika"}: ${r.stupaca} × ${r.redova}, slika oko ${Math.floor(r.s / 10)} cm.${pune > LISTIC_PO_STRANICI ? ` Na stranicu stane ${LISTIC_PO_STRANICI}, ostale idu na sljedeću.` : ""}`
+          : `12 slika na stranici, oko ${Math.floor(r.s / 10)} cm, bez obzira na broj slika (kao stari LogoMedo).`)),
       h("div", { class: "z-listic-uredi" }, ...s.kartice.map((k, i) => h("div", { class: "ploha z-kartica-uredi" },
         slot(k.rijec_id, (n) => { const stara = R(k.rijec_id); k.rijec_id = n; if (!k.tekst || (stara && k.tekst === VELIKO(stara.rijec))) k.tekst = n ? VELIKO(R(n)!.rijec) : ""; }),
         h("input", { type: "text", value: k.tekst, placeholder: "Tekst ispod slike", maxLength: 200, oninput: (e: Event) => { k.tekst = (e.target as HTMLInputElement).value; oznaci(); } }),
@@ -423,7 +476,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   let odabranLijevi: number | null = null;
 
   let t0 = performance.now();               // vrijeme odgovora od početka rješavanja, ne od zadnjeg crtanja
-  function resetRjesavanja() { odgovori = []; rijeseno = new Set(); spojevi = []; odabranLijevi = null; pogodeni = new Set(); nadjena = new Map(); pgKrug = 0; pgFaza = "kolo"; t0 = performance.now(); }
+  function resetRjesavanja() { odgovori = []; rijeseno = new Set(); spojevi = []; odabranLijevi = null; pogodeni = new Set(); nadjena = new Map(); pgKrug = 0; pgFaza = "kolo"; bojica = null; slogKrugova = new Map(); t0 = performance.now(); }
   let pgKrug = 0, pgFaza: "kolo" | "trazi" = "kolo";   // prvi glas: krug i faza u pregledu
 
   let orijentacijaPregleda: Orijentacija = "vodoravno";
@@ -521,6 +574,46 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("button", { type: "button", class: "gumb mali glavni", onclick: () => { pgKrug++; pgFaza = "kolo"; osvjezi(); } }, pgKrug + 1 < krugovi.length ? "Sljedeći krug" : "Gotovo")) : null);
   }
 
+  let bojica: "duga" | "kratka" | null = null;     // slogovi, duljina: odabrana bojica
+  let slogKrugova = new Map<number, number>();      // slogovi, analiza: obojeni krugovi po slici
+
+  function dijeteSlogovi(glava: HTMLElement, kraj: (n: number) => HTMLElement | null, ms: () => number): HTMLElement {
+    const s = sadrzaj as Slogovi;
+    const pune = s.slike.map((x, i) => ({ ...x, i })).filter((x) => x.rijec_id !== null);
+    const tresi = (b: Element) => { b.classList.remove("krivo"); void (b as HTMLElement).offsetWidth; b.classList.add("krivo"); };
+    if (s.nacin === "duljina") {
+      const bojice = h("div", { class: "z-bojice" }, ...(["duga", "kratka"] as const).map((k) => h("button", {
+        type: "button", class: `z-bojica ${k}${bojica === k ? " on" : ""}`, style: `--b:${BOJE_DULJINE[k].boja}`, onclick: () => { bojica = k; osvjezi(); },
+      }, h("i", {}), BOJE_DULJINE[k].naziv)));
+      return h("div", { class: "z-dijete z-slogovi" }, glava, bojice,
+        h("div", { class: "z-krug-mreza", style: "--stupaca:4" }, ...pune.map((x) => {
+          const gotova = rijeseno.has(x.i);
+          const b = h("button", { type: "button", class: `z-karta${gotova ? " obojena" : ""}`, style: gotova ? `--b:${BOJE_DULJINE[jeDuga(x.slogova) ? "duga" : "kratka"].boja}` : undefined, onclick: () => {
+            if (rijeseno.has(x.i)) return;
+            if (!bojica) { bojice.querySelectorAll(".z-bojica").forEach(tresi); return; }
+            odgovori.push({ stavka: x.i, odabrano: bojica === "duga" ? 1 : 0, ms: ms() });
+            if ((bojica === "duga") !== jeDuga(x.slogova)) { tresi(b); return; }
+            rijeseno.add(x.i); osvjezi();
+          } }, slika(x.rijec_id, "", sRijecima));
+          return b;
+        })), kraj(pune.length));
+    }
+    return h("div", { class: "z-dijete z-slogovi" }, glava,
+      h("div", { class: "z-krug-mreza z-slog-mreza", style: "--stupaca:3" }, ...pune.map((x) => {
+        const gotova = rijeseno.has(x.i);
+        const n = slogKrugova.get(x.i) ?? 0;
+        const kartica = h("div", { class: `z-slog-zadatak${gotova ? " gotov" : ""}` }, slika(x.rijec_id, "", sRijecima),
+          h("div", { class: "z-slog-krugovi velike" }, ...Array.from({ length: s.krugova }, (_, j) => h("button", { type: "button", class: j < n ? "on" : "", disabled: gotova, "aria-label": String(j + 1), onclick: () => {
+            slogKrugova.set(x.i, n === j + 1 ? j : j + 1); osvjezi();
+          } }))),
+          gotova ? h("span", { class: "z-bravo-malo" }, "✓") : h("button", { type: "button", class: "gumb mali", onclick: () => {
+            odgovori.push({ stavka: x.i, odabrano: n, ms: ms() });
+            if (n === tocnoSlogovi("analiza", x.slogova)) { rijeseno.add(x.i); osvjezi(); } else tresi(kartica);
+          } }, "Gotovo"));
+        return kartica;
+      })), kraj(pune.length));
+  }
+
   function dijete(): HTMLElement {
     if (vrsta === "scena") return dijeteScena();
     if (vrsta === "prvi_glas") return dijetePrviGlas();
@@ -533,6 +626,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     };
     const glava = h("div", { class: "z-dijete-glava" }, h("h2", {}, naslov || VRSTE[vrsta].naziv), uputa ? h("p", {}, uputa) : null);
     if (vrsta === "percepcija") return dijetePercepcija(glava, kraj, ms);
+    if (vrsta === "slogovi") return dijeteSlogovi(glava, kraj, ms);
 
     if (vrsta === "odabir" || vrsta === "uljez") {
       const st = (sadrzaj as Odabir | Uljez).stavke;
@@ -603,8 +697,14 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return h("div", { class: "z-dijete" }, glava, listicMreza(sadrzaj as Listic));
   }
 
-  function listicMreza(s: Listic) {
-    return h("div", { class: "z-listic" }, ...s.kartice.filter((k) => k.rijec_id || k.tekst).map((k) =>
+  /** A4 bez rubova i zaglavlja (mm), za raspored listića u HTML ispisu. */
+  const A4_LISTIC: [number, number] = [180, 222];
+  function listicMreza(s: Listic, a4 = false) {
+    const pune = s.kartice.filter((k) => k.rijec_id || k.tekst);
+    // Na papiru: mreža i veličina iz rasporedListica (isto kao PDF); prva stranica određuje veličinu.
+    const r = rasporedListica(Math.min(pune.length, LISTIC_PO_STRANICI), s.raspored, ...A4_LISTIC, 7, pune.some((k) => k.tekst) ? 9 : 0);
+    const stil = a4 ? `grid-template-columns:repeat(${r.stupaca},${Math.floor(r.s)}mm);justify-content:center` : s.raspored === "auto" && pune.length <= 6 ? `grid-template-columns:repeat(${r.stupaca},minmax(0,${pune.length <= 2 ? 340 : 240}px));justify-content:center` : undefined;
+    return h("div", { class: "z-listic", style: stil }, ...pune.map((k) =>
       h("figure", {}, slika(k.rijec_id, "", false), h("figcaption", {}, k.tekst))));
   }
 
@@ -626,6 +726,13 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       tijelo = h("div", { class: "a4-prvi-glas" }, ...(sadrzaj as PrviGlas).krugovi.map((k) => h("section", { class: "a4-krug" },
         h("div", { class: "a4-slovo" }, k.slovo ?? "?"),
         h("div", { class: "a4-krug-slike", style: `--stupaca:${k.slike.length > 12 ? 5 : 4}` }, ...k.slike.filter((x) => x !== null).map((id) => h("div", { class: "a4-izbor" }, slika(id, "", sRijecima)))))));
+    } else if (vrsta === "slogovi") {
+      const s = sadrzaj as Slogovi;
+      const pune = s.slike.filter((x) => x.rijec_id !== null);
+      tijelo = h("div", { class: `a4-slogovi ${s.nacin}` },
+        s.nacin === "duljina" ? h("div", { class: "a4-legenda" }, ...(["duga", "kratka"] as const).map((k) => h("span", { style: `--b:${BOJE_DULJINE[k].boja}` }, h("i", { class: `a4-crta-boje ${k}` }), BOJE_DULJINE[k].naziv))) : null,
+        h("div", { class: "a4-slogovi-mreza" }, ...pune.map((x) => h("div", { class: "a4-izbor" }, slika(x.rijec_id, "", sRijecima),
+          s.nacin === "analiza" ? kruzici(s.krugova, 0, "a4-krugovi") : null))));
     } else if (vrsta === "povezivanje") {
       const s = sadrzaj as Povezivanje;
       tijelo = h("div", { class: "a4-povezi" },
@@ -638,7 +745,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         poz ? h("img", { class: "a4-pozadina", src: poz.slika.url, alt: "" }) : h("div", { class: "z-slika prazna a4-pozadina" }, h("span", {}, "pozadina")),
         h("div", { class: "a4-scena-gumbi" }, ...vidljiviGumbi(s).map((g) => h("div", { class: "a4-izbor" }, slika(g.rijec_id, "", true)))));
     } else {
-      tijelo = listicMreza(sadrzaj as Listic);
+      tijelo = listicMreza(sadrzaj as Listic, true);
     }
     return h("div", { class: "a4-okvir" }, h("article", { class: `a4 a4-${vrsta}` },
       h("header", {}, h("h1", {}, naslov || VRSTE[vrsta].naziv), uputa ? h("p", {}, uputa) : null,
@@ -718,17 +825,18 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         ? h("div", { class: "ploha z-upozorenja" }, h("b", {}, `Upozorenja (${upozorenja.length})`),
           h("ul", {}, ...upozorenja.map((u) => h("li", {}, h("span", { class: "blijedo" }, `${u.gdje}: `), u.poruka))))
         : h("div", { class: "ploha z-upozorenja ok" }, "✓ Zadatak je ispravan."),
-      VRSTE[vrsta].odnos || vrsta === "listic" || vrsta === "percepcija" || vrsta === "prvi_glas" ? h("details", { class: "ploha z-slozi" },
+      VRSTE[vrsta].odnos || vrsta === "listic" || vrsta === "percepcija" || vrsta === "prvi_glas" || vrsta === "slogovi" ? h("details", { class: "ploha z-slozi" },
         h("summary", {}, "Složi automatski iz kataloga"),
-        h("label", {}, vrsta === "povezivanje" ? "Parova" : vrsta === "listic" ? "Kartica (do 12)" : vrsta === "prvi_glas" ? "Krugova (do 6)" : "Redova"), brojStavki,
+        h("label", {}, vrsta === "povezivanje" ? "Parova" : vrsta === "listic" ? "Kartica (do 12)" : vrsta === "prvi_glas" ? "Krugova (do 6)" : vrsta === "slogovi" ? "Slika (do 12)" : "Redova"), brojStavki,
+        vrsta === "slogovi" ? h("p", { class: "sitno blijedo" }, (sadrzaj as Slogovi).nacin === "duljina" ? "Pola kratkih (1–2 sloga), pola dugačkih (3 i više) riječi sa slikom." : "Podjednako riječi od 1 sloga do broja krugova.") : null,
         vrsta === "percepcija" ? h("p", { class: "sitno blijedo" }, "Nasumične riječi sa slikom, po jedna u redu.") : null,
         vrsta === "prvi_glas" ? h("p", { class: "sitno blijedo" }, `Nasumična slova s kola, svako s ${SLIKA_MIN} slika: 3–5 počinje tim glasom, ostale ne.`) : null,
-        vrsta === "percepcija" || vrsta === "prvi_glas" ? null : h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: postavke.maxSlogova === 3, onchange: (e: Event) => (postavke.maxSlogova = (e.target as HTMLInputElement).checked ? 3 : 0) }), " Najviše 3 sloga"),
-        vrsta === "percepcija" || vrsta === "prvi_glas" ? null : h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: postavke.samoSaSlikom, onchange: (e: Event) => (postavke.samoSaSlikom = (e.target as HTMLInputElement).checked) }), " Samo riječi sa slikom"),
+        vrsta === "percepcija" || vrsta === "prvi_glas" || vrsta === "slogovi" ? null : h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: postavke.maxSlogova === 3, onchange: (e: Event) => (postavke.maxSlogova = (e.target as HTMLInputElement).checked ? 3 : 0) }), " Najviše 3 sloga"),
+        vrsta === "percepcija" || vrsta === "prvi_glas" || vrsta === "slogovi" ? null : h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: postavke.samoSaSlikom, onchange: (e: Event) => (postavke.samoSaSlikom = (e.target as HTMLInputElement).checked) }), " Samo riječi sa slikom"),
         h("button", { type: "button", class: "gumb", onclick: () => {
           if (rijeciU(vrsta, sadrzaj).length && !confirm("Zamijeniti sadržaj novim prijedlogom?")) return;
           const prije = sadrzaj;
-          sadrzaj = slozi(vrsta, p.rijeci, postavke);
+          sadrzaj = vrsta === "slogovi" ? slozSlogove((prije as Slogovi).nacin, p.rijeci, postavke.stavki, (prije as Slogovi).krugova) : slozi(vrsta, p.rijeci, postavke);
           // Prvi glas zadržava odabir slova na kolu; slova krugova biraju se samo s kola.
           if (vrsta === "prvi_glas") {
             const kolo = (prije as PrviGlas).kolo, s = sadrzaj as PrviGlas;

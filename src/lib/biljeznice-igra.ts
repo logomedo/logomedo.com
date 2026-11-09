@@ -4,7 +4,7 @@
 // Ništa se ne sprema i ništa ne odlazi na server.
 import { ekrani, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
 import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts";
-import { izmjenaCss, UPUTE_PRVOG_GLASA, type Polje } from "./zadaci/vrste.ts";
+import { izmjenaCss, UPUTE_PRVOG_GLASA, BOJE_DULJINE, jeDuga, type Polje } from "./zadaci/vrste.ts";
 import { iskocenoSlovo, koloSlova, znackaSlova } from "./kolo-slova.ts";
 import { kljucZvuka } from "./zvukovi-tekst.ts";
 
@@ -277,6 +277,59 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return { cvorovi: [q.el, okvir], tekst: UPUTE_PRVOG_GLASA.kolo, gumb: q.gumb };
   }
 
+  /** Kartica bez napisane riječi (odala bi duljinu), sa zvučnikom u kutu. */
+  function karticaBezRijeci(id: number, naKlik?: (k: HTMLElement) => void, kl = "") {
+    const k = h("div", { class: `kartica bez-rijeci ${kl}`.trim() },
+      h("div", { class: "unutra" }, h("div", { class: "glava" }, zvucnik(() => ime(id))), slika(id)));
+    if (naKlik) {
+      k.setAttribute("role", "button"); k.tabIndex = 0; k.setAttribute("aria-label", "slika");
+      k.addEventListener("click", () => { if (!zakljucano) naKlik(k); });
+      k.addEventListener("keydown", (ev) => { if ((ev.key === "Enter" || ev.key === " ") && !zakljucano) { ev.preventDefault(); naKlik(k); } });
+    }
+    return k;
+  }
+
+  /**
+   * Slogovi. Duljina: dijete uzme bojicu (crvena = dugačka, plava = kratka) i dodirne sliku.
+   * Analiza: velika slika, ispod krugovi; dodir kruga oboji krugove do njega, „Gotovo” provjeri.
+   */
+  function ekranSlogovi(e: Extract<Ekran, { vrsta: "slogovi" }>) {
+    const q = pitanje(e.uputa);
+    if (e.nacin === "duljina") {
+      let bojica: "duga" | "kratka" | null = null;
+      const bojice = (["duga", "kratka"] as const).map((k) => {
+        const b = h("button", { type: "button", class: `bojica ${k}`, style: `--b:${BOJE_DULJINE[k].boja}`, "aria-label": `${BOJE_DULJINE[k].naziv} riječ` },
+          h("i", { class: "vrh" }), h("i", { class: "crta" }), h("span", {}, BOJE_DULJINE[k].naziv));
+        b.addEventListener("click", () => { bojica = k; bojice.forEach((x) => x.classList.toggle("on", x === b)); govori(`${BOJE_DULJINE[k].naziv} riječ`, undefined); });
+        return b;
+      });
+      const gotove = new Set<number>();
+      const red = h("div", { class: `red slogovi-duljina n${e.slike.length}` }, ...e.slike.map((x, j) => karticaBezRijeci(x.rijec_id!, (k) => {
+        if (gotove.has(j)) return;
+        if (!bojica) { bojice.forEach(tresi); return; }
+        if ((bojica === "duga") !== jeDuga(x.slogova)) { tresi(k); return; }
+        gotove.add(j);
+        k.classList.add("obojena"); k.style.setProperty("--b", BOJE_DULJINE[bojica].boja);
+        if (gotove.size === e.slike.length) rijeseno(); else mekiPogodak();
+      })));
+      return { cvorovi: [q.el, h("div", { class: "bojice" }, ...bojice), red], tekst: e.uputa, gumb: q.gumb };
+    }
+    const x = e.slike[0];
+    let obojeno = 0;
+    const krugovi = Array.from({ length: e.krugova }, (_, i) => {
+      const c = h("button", { type: "button", class: "slog-krug", "aria-label": `${i + 1}` });
+      c.addEventListener("click", () => { if (zakljucano) return; obojeno = obojeno === i + 1 ? i : i + 1; krugovi.forEach((y, j) => y.classList.toggle("on", j < obojeno)); ton(880 + i * 110, 0, 0.12, 0.08); });
+      return c;
+    });
+    const kart = karticaBezRijeci(x.rijec_id!, undefined, "slog-slika");
+    const gotovo = h("button", { type: "button", class: "gumb-gotovo" }, "Gotovo");
+    gotovo.addEventListener("click", () => {
+      if (zakljucano) return;
+      if (obojeno === x.slogova) { kart.classList.add("tocno"); rijeseno(); } else tresi(kart);
+    });
+    return { cvorovi: [q.el, h("div", { class: "slog-analiza" }, kart, h("div", { class: "slog-krugovi" }, ...krugovi), gotovo)], tekst: e.uputa, gumb: q.gumb };
+  }
+
   function ekranPovezi(e: Extract<Ekran, { vrsta: "povezivanje" }>) {
     const tekst = uputaZa(e.uputa, null);
     const q = pitanje(tekst);
@@ -355,7 +408,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return;
     }
     const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : e.vrsta === "percepcija" ? ekranPercepcija(e)
-      : e.vrsta === "prvi_glas" ? ekranPrviGlas(e)
+      : e.vrsta === "prvi_glas" ? ekranPrviGlas(e) : e.vrsta === "slogovi" ? ekranSlogovi(e)
       : ekranPovezi(e as Extract<Ekran, { vrsta: "povezivanje" }>);
     zamijeni(korijen, ...x.cvorovi);
     setTimeout(() => govori(x.tekst, x.gumb), 350);

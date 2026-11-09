@@ -123,3 +123,14 @@ test("prvi glas: stranica po krugu, slovo i slike bez natpisa", () => {
   const t = d.stranice[0].tijelo;
   assert.ok(t.vrsta === "prvi_glas" && t.slovo === "L" && t.slike.length === 3 && t.slike.every((x) => x.natpis === ""));
 });
+
+test("slogovi: duljina s legendom 12 po stranici, analiza s krugovima 9", () => {
+  const rijeci = Array.from({ length: 14 }, (_, i) => ({ id: i + 1, rijec: `r${i}`, slika: null }));
+  const slike = rijeci.map((r) => ({ rijec_id: r.id, slogova: 2 }));
+  const d = dokumentZadatka({ vrsta: "slogovi", naslov: "", uputa: "", sadrzaj: { nacin: "duljina", krugova: 4, slike } }, rijeci, false);
+  assert.deepEqual(d.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [12, 2]);
+  assert.ok(d.stranice[0].tijelo.vrsta === "slogovi" && d.stranice[0].tijelo.legenda?.length === 2 && d.stranice[0].tijelo.krugova === 0);
+  const a = dokumentZadatka({ vrsta: "slogovi", naslov: "", uputa: "", sadrzaj: { nacin: "analiza", krugova: 5, slike } }, rijeci, false);
+  assert.deepEqual(a.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [9, 5]);
+  assert.ok(a.stranice[0].tijelo.vrsta === "slogovi" && a.stranice[0].tijelo.krugova === 5 && !a.stranice[0].tijelo.legenda);
+});

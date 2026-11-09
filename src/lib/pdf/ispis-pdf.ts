@@ -6,7 +6,7 @@
 // Fontovi (Nunito 800/900, OFL) ugrađuju se kao podskup, pa hrvatska slova rade svugdje.
 
 import { degrees, PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
-import type { Izmjena } from "../zadaci/vrste.ts";
+import { rasporedListica, type Izmjena } from "../zadaci/vrste.ts";
 import fontkit from "@pdf-lib/fontkit";
 import { TEME } from "../teme.ts";
 import { GRANCICA } from "../ukrasi.ts";
@@ -292,13 +292,44 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
       }
     }
 
+    if (t.vrsta === "slogovi") {
+      // Legenda bojica (dugačka crta crvena, kratka plava), pa mreža; u analizi krugovi ispod slike.
+      let y0 = vrh;
+      if (t.legenda) {
+        const pt = 13, duz = (d: boolean) => (d ? 30 : 11);
+        const sirine = t.legenda.map((x) => duz(x.duga) + 3 + p.sirina(x.naziv, pt));
+        let x = L + (W - sirine.reduce((a, b) => a + b, 0) - 14 * (sirine.length - 1)) / 2;
+        for (const [i, l] of t.legenda.entries()) {
+          const c = parseInt(l.boja.slice(1), 16);
+          p.page.drawRectangle({ x: p.X(x), y: p.Y(y0 + 5), width: duz(l.duga) * MM, height: 4 * MM, color: rgb((c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255) });
+          p.tekst(l.naziv, x + duz(l.duga) + 3, y0 + 1.2, pt, { poravnanje: "l" });
+          x += sirine[i] + 14;
+        }
+        y0 += 14;
+      }
+      const stupaca = t.krugova ? 3 : 4, redova = Math.max(1, Math.ceil(t.slike.length / stupaca));
+      const nat = natpisa(t.slike), kr = t.krugova ? 12 : 0, g = t.krugova ? 9 : 6;
+      const s = Math.min((W - (stupaca - 1) * g) / stupaca, (dno - y0 - (redova - 1) * g) / redova - nat - kr, t.krugova ? 46 : 44);
+      const x0 = L + (W - (stupaca * s + (stupaca - 1) * g)) / 2;
+      for (const [i, sl] of t.slike.entries()) {
+        const x = x0 + (i % stupaca) * (s + g), y = y0 + Math.floor(i / stupaca) * (s + nat + kr + g);
+        const h = await slikaUOkviru(p, sl, x, y, s);
+        const r = 4, razmak = 2.5, ukupno = t.krugova * 2 * r + (t.krugova - 1) * razmak;
+        for (let k = 0; k < t.krugova; k++)
+          p.page.drawCircle({ x: p.X(x + (s - ukupno) / 2 + r + k * (2 * r + razmak)), y: p.Y(y + h + 3 + r), size: r * MM, color: BIJELO, borderColor: CRNO, borderWidth: 1.4 });
+      }
+    }
+
     if (t.vrsta === "listic") {
-      // 3 stupca × 4 retka; tekst ispod slike.
-      const g = 7, sirinaStupca = (W - 2 * g) / 3;
-      const visinaReda = (H - 3 * g) / 4;
-      const s = Math.min(sirinaStupca, visinaReda - 9);
+      // 3 × 4, ili mreža prema broju kartica (manje kartica, veće slike); tekst ispod slike.
+      const g = 7, tekst = t.kartice.some((k) => k.tekst) ? 9 : 0;
+      const { stupaca, redova, s: velicina } = rasporedListica(t.kartice.length, t.raspored, W, H, g, tekst);
+      const sirinaStupca = (W - (stupaca - 1) * g) / stupaca, visinaReda = (H - (redova - 1) * g) / redova;
+      const s = Math.min(velicina, sirinaStupca);
+      // Mreža je okomito centrirana kad slike ne popune visinu (npr. 2 × 1).
+      const y0 = vrh + Math.max(0, (H - redova * (s + tekst) - (redova - 1) * g) / 2) * (t.raspored === "auto" ? 1 : 0);
       for (const [i, k] of t.kartice.entries()) {
-        const x = L + (i % 3) * (sirinaStupca + g), y = vrh + Math.floor(i / 3) * (visinaReda + g);
+        const x = L + (i % stupaca) * (sirinaStupca + g), y = t.raspored === "auto" ? y0 + Math.floor(i / stupaca) * (s + tekst + g) : vrh + Math.floor(i / stupaca) * (visinaReda + g);
         if (k.slika) await slikaUOkviru(p, k.slika, x + (sirinaStupca - s) / 2, y, s);
         if (k.tekst) p.tekst(k.tekst, x + sirinaStupca / 2, y + (k.slika ? s + 2 : s / 2), 12, { sirina: sirinaStupca });
       }
