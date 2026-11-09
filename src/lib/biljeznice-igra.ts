@@ -35,6 +35,13 @@ const dodaj = (e: unknown, ...d: Dijete[]) => (e as any).append(...d.filter((x) 
 const zamijeni = (e: unknown, ...d: Dijete[]) => (e as any).replaceChildren(...d.filter((x) => x !== null && x !== undefined && x !== false));
 const VELIKO = (s: string) => s.toLocaleUpperCase("hr");
 const SVG = "http://www.w3.org/2000/svg";
+// Bubanj s palicama (analiza slogova); palice se pri udarcu zakrenu (.udarac).
+const IKONA_BUBANJ = `<svg viewBox="0 0 120 100" aria-hidden="true">
+  <g class="palica l"><line x1="18" y1="6" x2="52" y2="34" stroke="#8a5a2b" stroke-width="6" stroke-linecap="round"/><circle cx="52" cy="34" r="6" fill="#f2c27a"/></g>
+  <g class="palica d"><line x1="102" y1="6" x2="68" y2="34" stroke="#8a5a2b" stroke-width="6" stroke-linecap="round"/><circle cx="68" cy="34" r="6" fill="#f2c27a"/></g>
+  <path d="M14 46v32c0 9 20 16 46 16s46-7 46-16V46" fill="#d9442b" stroke="#5a3414" stroke-width="4"/>
+  <path d="M14 52l15 38M37 59l10 33M60 62v32M83 59l-10 33M106 52l-15 38" stroke="#ffd36b" stroke-width="3.5" fill="none"/>
+  <ellipse cx="60" cy="46" rx="46" ry="14" fill="#fffdf6" stroke="#5a3414" stroke-width="4"/></svg>`;
 const IKONA_ZVUK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>`;
 
@@ -291,7 +298,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   /**
    * Slogovi. Duljina: dijete uzme bojicu (crvena = dugačka, plava = kratka) i dodirne sliku.
-   * Analiza: velika slika, ispod krugovi; dodir kruga oboji krugove do njega, „Gotovo” provjeri.
+   * Analiza: velika slika, ispod krugovi; udarac u bubanj oboji sljedeći krug, dodir kruga oboji
+   * krugove do njega (ispravak), „Gotovo” provjeri.
    */
   function ekranSlogovi(e: Extract<Ekran, { vrsta: "slogovi" }>) {
     const q = pitanje(e.uputa);
@@ -322,12 +330,21 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return c;
     });
     const kart = karticaBezRijeci(x.rijec_id!, undefined, "slog-slika");
+    // Bubanj: svaki udarac oboji sljedeći krug, slika poskoči (dijete lupa slogove).
+    const bubanj = h("button", { type: "button", class: "bubanj", "aria-label": "bubanj" });
+    bubanj.innerHTML = IKONA_BUBANJ;
+    bubanj.addEventListener("click", () => {
+      if (zakljucano) return;
+      for (const el of [bubanj, kart]) { el.classList.remove("udarac"); void el.offsetWidth; el.classList.add("udarac"); }
+      ton(95, 0, 0.22, 0.4, "sine"); ton(190, 0, 0.08, 0.12, "triangle");
+      if (obojeno < e.krugova) { obojeno++; krugovi.forEach((y, j) => y.classList.toggle("on", j < obojeno)); }
+    });
     const gotovo = h("button", { type: "button", class: "gumb-gotovo" }, "Gotovo");
     gotovo.addEventListener("click", () => {
       if (zakljucano) return;
       if (obojeno === x.slogova) { kart.classList.add("tocno"); rijeseno(); } else tresi(kart);
     });
-    return { cvorovi: [q.el, h("div", { class: "slog-analiza" }, kart, h("div", { class: "slog-krugovi" }, ...krugovi), gotovo)], tekst: e.uputa, gumb: q.gumb };
+    return { cvorovi: [q.el, h("div", { class: "slog-analiza" }, kart, h("div", { class: "slog-krugovi" }, ...krugovi), h("div", { class: "slog-dolje" }, bubanj, gotovo))], tekst: e.uputa, gumb: q.gumb };
   }
 
   function ekranPovezi(e: Extract<Ekran, { vrsta: "povezivanje" }>) {

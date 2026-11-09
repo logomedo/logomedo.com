@@ -93,7 +93,7 @@ export const BOJE_DULJINE = {
 } as const;
 export const UPUTE_SLOGOVA: Record<NacinSlogova, { ekran: string; ispis: string }> = {
   duljina: { ekran: "Dugačke riječi oboji crvenom, a kratke plavom bojicom.", ispis: "Dugačke riječi zaokruži crvenom bojom, a kratke plavom." },
-  analiza: { ekran: "Koliko slogova ima riječ? Oboji toliko krugova.", ispis: "Izgovori riječ i pljesni na svaki slog. Oboji onoliko krugova koliko riječ ima slogova." },
+  analiza: { ekran: "Lupni po bubnju za svaki slog u riječi.", ispis: "Izgovori riječ i pljesni na svaki slog. Oboji onoliko krugova koliko riječ ima slogova." },
 };
 export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija | PrviGlas | Slogovi;
 

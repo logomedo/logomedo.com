@@ -222,6 +222,19 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .slog-krugovi { display: flex; gap: 2.2vh; }
   .slog-krug { width: 9vh; height: 9vh; border-radius: 50%; border: .7vh solid #5a3414; background: #fffdf6; cursor: pointer; transition: background .15s, transform .15s; }
   .slog-krug.on { background: radial-gradient(circle at 35% 30%, #ffe08a, #f2a33a 60%, #d9822b); transform: scale(1.06); }
+  .slog-dolje { display: flex; align-items: center; gap: 4vh; }
+  .bubanj { width: 16vh; height: 13.3vh; padding: 0; border: 0; background: none; cursor: pointer; }
+  .bubanj svg { width: 100%; height: 100%; overflow: visible; }
+  .bubanj .palica { transform-box: fill-box; }
+  .bubanj .palica.l { transform-origin: 0% 0%; } .bubanj .palica.d { transform-origin: 100% 0%; }
+  .bubanj.udarac svg { animation: bubanj-trese .22s ease-out; }
+  .bubanj.udarac .palica.l { animation: palica-l .22s ease-out; }
+  .bubanj.udarac .palica.d { animation: palica-d .22s ease-out; }
+  .slog-slika.udarac { animation: poskoci .3s ease-out; }
+  @keyframes bubanj-trese { 30% { transform: scale(1.08, .94); } }
+  @keyframes palica-l { 0% { transform: rotate(-14deg); } 40% { transform: rotate(4deg); } }
+  @keyframes palica-d { 0% { transform: rotate(14deg); } 40% { transform: rotate(-4deg); } }
+  @keyframes poskoci { 40% { transform: translateY(-3vh); } }
   .gumb-gotovo { font: inherit; font-weight: 900; font-size: 4vh; padding: 1vh 5vh; border: 0; border-radius: 99px; background: var(--zeleno); color: #fff; box-shadow: 0 5px 0 #1d6b33; cursor: pointer; }
   .povezi { position: relative; display: flex; justify-content: space-between; width: min(100%, 92vh); }
   .stupac { display: flex; flex-direction: column; gap: 1.4vh; position: relative; z-index: 1; }
@@ -262,6 +275,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     .bojica { font-size: 4.4vw; } .bojica.duga .crta { width: 20vw; } .bojica.kratka .crta { width: 8vw; }
     .slog-slika { --s: 70vw; }
     .slog-krug { width: 14vw; height: 14vw; }
+    .bubanj { width: 24vw; height: 20vw; }
     .gumb-kreni, .gumb-ponovi { font-size: 7vw; }
   }
   /* Mobitel uspravno: 2 stupca većih slika; 12–15 slika ne stane u visinu, pa se ekran lista. */

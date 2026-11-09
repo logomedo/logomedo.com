@@ -133,6 +133,7 @@ može služiti u više podpodručja.
 | Predvještine čitanja i pisanja | Prepoznavanje rime | `odabir`, `povezivanje`, `uljez` |
 | Predvještine čitanja i pisanja | Vizualna percepcija | `percepcija` |
 | Predvještine čitanja i pisanja | Prvi glas u riječi | `prvi_glas` |
+| Predvještine čitanja i pisanja | Orijentacija: red i stupac, prvi i zadnji (plan 9. 11.) | `orijentacija` |
 | Razumijevanje i rječnik | Situacije: što pripada | `scena` |
 
 ```sql
@@ -411,8 +412,9 @@ Prvi predložak za artikulaciju (podpodručje „Slogovi”, migracija 0025). Je
   odabrane bojice trese bojice. Do 8 slika po ekranu, ravnomjerno (10 → 5 + 5).
 - **`analiza`**: ispod svake slike `krugova` praznih krugova, isti broj ispod svake (da broj
   krugova ne oda odgovor); dijete oboji onoliko koliko riječ ima slogova. Papir 3 × 3. Igra: jedna
-  velika slika po ekranu, dodir kruga oboji krugove do njega (ponovni dodir zadnjeg ga skine),
-  „Gotovo” provjeri.
+  velika slika po ekranu, ispod krugovi, bubanj i „Gotovo”. Udarac u bubanj (palice, zvuk, slika
+  poskoči) oboji sljedeći krug; dodir kruga oboji krugove do njega (ponovni dodir zadnjeg ga
+  skine, za ispravak); „Gotovo” provjeri. Uputa na ekranu: „Lupni po bubnju za svaki slog u riječi.”
 - Kartice u igri nemaju napisanu riječ (odala bi duljinu), samo zvučnik.
 - `slogova` se pri odabiru slike računa iz riječi (`brojSlogova`: IJE je jedan slog, slogotvorno
   R se broji), a logoped ga ispravlja s − / +. Provjera upozori kad upisano odstupa od pravila
@@ -421,6 +423,25 @@ Prvi predložak za artikulaciju (podpodručje „Slogovi”, migracija 0025). Je
 - Generator (`slozSlogove`): duljina pola kratkih (1 i 2 sloga naizmjence) i pola dugačkih
   (prednost 4+ sloga), analiza podjednako od 1 do `krugova` slogova; riječi sa slikom.
 - Flutter aplikacija ovu vrstu još nema (kao ni percepciju i prvi glas).
+
+### Plan (9. 11. 2026., skica logopedice): bubanj, sinteza, `orijentacija`
+
+Redoslijed: bubanj → sinteza → orijentacija.
+
+1. ~~**Bubanj u analizi**~~ napravljeno 9. 11. (gore, `analiza`).
+2. **`slogovi` / `nacin: "sinteza"`** (glasovna sinteza, „ŽI – RA – FA”). Dijete pritisne ▷, čuje
+   riječ rastavljenu na slogove i bira između 3 sličice. Stavka: `{ rijec_id, ponude: [rijec_id ×2] }`.
+   Zvuk je novi ključ: riječ po slogovima s pauzama (`zvukovi-tekst.ts`), generira se i odobrava
+   kao ostali izgovori. Papir: tri slike u redu, logoped čita riječ po slogovima, dijete zaokruži.
+   Generator: ponude sa sličnim brojem slogova (da duljina ne oda odgovor).
+3. **Nova vrsta `orijentacija`** (podpodručje „Orijentacija”, predvještine čitanja i pisanja).
+   Mehanika je položaj u mreži, ne odnos riječi, pa je vrsta, a ne način. Mreža slika (npr. 4 × 4,
+   bilo koje slike iz kataloga) + niz uputa: označi red / stupac (1. ili zadnji), prva / zadnja
+   slika u redu. Kasnije gore/dolje, lijevo/desno, sredina.
+   - Papir: upute s ikonom (red/stupac, strelica prvi/zadnji), dijete ne mora čitati.
+   - Igra: uputa se čuje (ElevenLabs); za red/stupac dodir bilo koje slike oboji cijeli red ili
+     stupac, za prvu/zadnju bira se jedna slika. Bilježi se odabrani položaj (zamjena reda i
+     stupca, prvog i zadnjeg je logopedu korisna informacija).
 
 ### Deploy dok paralelna sesija radi u istoj mapi (2. 11. 2026.)
 
