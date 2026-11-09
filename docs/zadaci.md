@@ -423,6 +423,11 @@ Prvi predložak za artikulaciju (podpodručje „Slogovi”, migracija 0025). Je
 - Generator (`slozSlogove`): duljina pola kratkih (1 i 2 sloga naizmjence) i pola dugačkih
   (prednost 4+ sloga), analiza podjednako od 1 do `krugova` slogova; riječi sa slikom.
 - Flutter aplikacija ovu vrstu još nema (kao ni percepciju i prvi glas).
+- **Provjereno na produkciji (9. 11. 2026., Brave):** zadatak 48 u oba načina (editor, „Dijete
+  rješava”, ispis, PDF), listić 49 sa 4 (2 × 2) i 6 (2 × 3) slika. Zamke pri automatizaciji:
+  „Složi automatski” zove `confirm()` koji blokira karticu (prije klika `window.confirm = () => true`);
+  PDF se ne da prikazati u stranici (CSP bez `blob:`), pa se provjerava presretanjem
+  `URL.createObjectURL`; admin nakon deploya drži stari JS do ponovnog učitavanja.
 
 ### Plan (9. 11. 2026., skica logopedice): bubanj, sinteza, `orijentacija`
 
