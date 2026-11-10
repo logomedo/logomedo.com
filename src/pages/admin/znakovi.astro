@@ -6,7 +6,7 @@ import KatalogKartice from "../../components/KatalogKartice.astro";
 import Ikona from "../../components/Ikona.astro";
 import { noviZnak, postaviAktivan, sviZnakovi } from "../../lib/znakovi-baza";
 import { SKUPINE_ZNAKOVA, skupinaZnaka, ZNAK_MAX, type SkupinaZnaka } from "../../lib/znakovi";
-import "@fontsource-variable/nunito";
+import "@fontsource/andika/700.css";
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -51,7 +51,7 @@ const aktivnih = znakovi.length - skriveni.length;
       <input id="z-novi" class="znak-unos" type="text" name="znak" required maxlength={ZNAK_MAX} autocomplete="off" spellcheck="false" placeholder="q" />
       <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Dodaj</button>
     </div>
-    <p class="pomoc">Jedan do {ZNAK_MAX} znaka, točno kako se prikazuju: q, W, DŽ, 10, +. Riječi idu u „Slike riječi”.</p>
+    <p class="pomoc">Jedan do {ZNAK_MAX} znaka, točno kako se prikazuju: q, W, DŽ, 10, §. Riječi idu u „Slike riječi”.</p>
   </form>
 
   {skupine.map((g) => (
@@ -92,7 +92,7 @@ const aktivnih = znakovi.length - skriveni.length;
   .novi { display: grid; gap: 8px; padding: 20px 22px; max-width: 520px; margin-bottom: 18px; }
   .novi label { font-weight: 650; }
   .red { display: flex; gap: 10px; }
-  .znak-unos { font-family: "Nunito Variable", Nunito, sans-serif; font-size: 1.6rem; font-weight: 700; max-width: 110px; padding: 8px 12px; }
+  .znak-unos { font-family: Andika, "Nunito Variable", sans-serif; font-size: 1.6rem; font-weight: 700; max-width: 110px; padding: 8px 12px; }
   .pomoc { margin: 0; font-size: .78rem; color: var(--blijedo); }
   .skupina { padding: 18px 22px; margin-bottom: 14px; }
   .skupina h2, .skupina summary { margin: 0 0 12px; font-size: 1rem; font-weight: 700; cursor: default; }
@@ -100,7 +100,7 @@ const aktivnih = znakovi.length - skriveni.length;
   .skupina[open] summary { margin-bottom: 12px; }
   .mreza { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
   .znak { position: relative; display: grid; justify-items: center; gap: 2px; padding: 10px 4px 6px; border: 1px solid var(--rub); border-radius: 12px; background: var(--papir-slike); }
-  .glif { font-family: "Nunito Variable", Nunito, sans-serif; font-weight: 700; font-size: 2.4rem; line-height: 1; color: #2b2118; }
+  .glif { font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; font-size: 2.4rem; line-height: 1; color: #2b2118; }
   .koristi { font-size: .7rem; color: var(--blijedo); min-height: 1em; }
   .skrij { position: absolute; top: 2px; right: 4px; border: 0; background: none; color: var(--vrlo-blijedo); font-size: 1.1rem; cursor: pointer; padding: 2px 6px; border-radius: 6px; opacity: 0; }
   .znak:hover .skrij, .skrij:focus-visible { opacity: 1; }

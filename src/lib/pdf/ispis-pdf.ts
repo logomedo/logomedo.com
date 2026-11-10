@@ -13,7 +13,8 @@ import { GRANCICA } from "../ukrasi.ts";
 import type { DokumentPdf, SlikaPdf, StranicaPdf } from "./model.ts";
 import { nacrtajSvg, omjer } from "./svg.ts";
 
-export interface FontoviPdf { tekst: Uint8Array; naslov: Uint8Array }
+/** `znak`: Andika (font za početno čitanje) za slova i brojke iz kataloga znakova; bez njega znak ide naslovnim fontom. */
+export interface FontoviPdf { tekst: Uint8Array; naslov: Uint8Array; znak?: Uint8Array }
 /** Slika po URL-u: JPEG ili PNG bajtovi (preglednik ih prije smanji, vidi preglednik.ts). */
 export type SlikePdf = Map<string, Uint8Array>;
 
@@ -28,11 +29,12 @@ const CRNO = rgb(0, 0, 0);
 /** Crtanje u mm s ishodištem gore lijevo (pdf-lib ima točke i ishodište dolje lijevo). */
 class Platno {
   page: PDFPage;
-  private f: { tekst: PDFFont; naslov: PDFFont };
-  constructor(page: PDFPage, f: { tekst: PDFFont; naslov: PDFFont }) { this.page = page; this.f = f; }
+  private f: { tekst: PDFFont; naslov: PDFFont; znak: PDFFont };
+  constructor(page: PDFPage, f: { tekst: PDFFont; naslov: PDFFont; znak: PDFFont }) { this.page = page; this.f = f; }
   X = (mm: number) => mm * MM;
   Y = (mm: number) => (A4.h - mm) * MM;
 
+  sirinaZnaka(t: string, pt: number) { return this.f.znak.widthOfTextAtSize(t, pt) / MM; }
   sirina(t: string, pt: number, naslov = false) { return (naslov ? this.f.naslov : this.f.tekst).widthOfTextAtSize(t, pt) / MM; }
 
   /** Tekst centriran oko `cx`; `y` je vrh retka. Vraća visinu u mm. */
@@ -79,9 +81,9 @@ class Platno {
     // M = T(X,Y) · R(kut) · S(sx,sy) · T(-X,-Y)
     const a = c * sx, b = s * sx, cc = -s * sy, d = c * sy;
     this.page.pushOperators(pushGraphicsState(), concatTransformationMatrix(a, b, cc, d, X - a * X - cc * Y, Y - b * X - d * Y));
-    const w = this.f.naslov.widthOfTextAtSize(t, pt);
+    const w = this.f.znak.widthOfTextAtSize(t, pt);
     // Osnovna crta tako da je visina velikog slova (~0.7 pt) centrirana oko cy.
-    this.page.drawText(t, { x: X - w / 2, y: Y - pt * 0.35, size: pt, font: this.f.naslov, color: TINTA });
+    this.page.drawText(t, { x: X - w / 2, y: Y - pt * 0.35, size: pt, font: this.f.znak, color: TINTA });
     this.page.pushOperators(popGraphicsState());
   }
 
@@ -131,6 +133,7 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     tekst: await pdf.embedFont(fontovi.tekst, { subset: true }),
     naslov: await pdf.embedFont(fontovi.naslov, { subset: true }),
   };
+  const sF = { ...f, znak: fontovi.znak ? await pdf.embedFont(fontovi.znak, { subset: true }) : f.naslov };
 
   // Svaka slika se ugrađuje jednom, koliko god se puta pojavila.
   const ugradene = new Map<string, PDFImage | null>();
@@ -147,7 +150,7 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
   };
 
   const nova = () => {
-    const p = new Platno(pdf.addPage([A4.w * MM, A4.h * MM]), f);
+    const p = new Platno(pdf.addPage([A4.w * MM, A4.h * MM]), sF);
     if (dok.ukrasi) {
       const k = 34, r = 4;
       for (const [x, y, zx, zy] of [[r, r, false, false], [A4.w - r - k, r, true, false], [r, A4.h - r - k, false, true], [A4.w - r - k, A4.h - r - k, true, true]] as const)
@@ -166,7 +169,7 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     else if (sl.znak) {
       // Znak ispunjava okvir: oko 55 % visine, manje za dvoslove (DŽ) i više znakova.
       let pt = (s * MM) * (sl.rijec.length > 1 ? 0.42 : 0.6);
-      while (pt > 10 && p.sirina(sl.rijec, pt, true) > s - 6) pt -= 1;
+      while (pt > 10 && p.sirinaZnaka(sl.rijec, pt) > s - 6) pt -= 1;
       p.znak(sl.rijec, x + s / 2, y + s / 2, pt, sl.izmjena);
     } else {
       // Bez slike: riječ u okviru, smanjena da stane.

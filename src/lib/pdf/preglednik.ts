@@ -13,6 +13,14 @@ const NAJVISE_PX = 800;
 const NAJVISE_PX_VELIKE = 1800;
 
 let fontovi: Promise<FontoviPdf> | null = null;
+let andika: Promise<Uint8Array> | null = null;
+/** Andika za znakove (slova, brojke) samo kad ih dokument ima: datoteka ima ~0,7 MB. */
+function ucitajAndiku(dok: DokumentPdf): Promise<Uint8Array | undefined> {
+  if (!JSON.stringify(dok.stranice).includes('"znak":true')) return Promise.resolve(undefined);
+  andika ??= fetch("/fonts/andika-700.ttf").then(async (r) => { if (!r.ok) throw new Error(`font ${r.status}`); return new Uint8Array(await r.arrayBuffer()); })
+    .catch((e: unknown) => { andika = null; throw e; });
+  return andika;
+}
 function ucitajFontove(): Promise<FontoviPdf> {
   const f = async (url: string) => {
     const r = await fetch(url);
@@ -77,7 +85,7 @@ export async function preuzmiPdf(dok: DokumentPdf, imeDatoteke: string, napredak
       napredak?.(++gotovo, urls.length);
     }
   }));
-  const bajtovi = await napraviPdf(dok, slike, await f);
+  const bajtovi = await napraviPdf(dok, slike, { ...(await f), znak: await ucitajAndiku(dok) });
   const url = URL.createObjectURL(new Blob([bajtovi as BlobPart], { type: "application/pdf" }));
   const a = document.createElement("a");
   a.href = url; a.download = imeDatoteke;

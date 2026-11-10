@@ -13,7 +13,7 @@ export const ZNAK_MAX = 3;
 
 export type SkupinaZnaka = "veliko" | "malo" | "brojka" | "ostalo";
 export const SKUPINE_ZNAKOVA: Record<SkupinaZnaka, string> = {
-  veliko: "Velika slova", malo: "Mala slova", brojka: "Brojke", ostalo: "Ostali znakovi",
+  veliko: "Velika slova", malo: "Mala slova", brojka: "Brojke", ostalo: "Simboli",
 };
 
 const VELIKO = (s: string) => s.toLocaleUpperCase("hr");
@@ -56,6 +56,12 @@ export function usporediZnakove(a: string, b: string): number {
 
 /** Znakovi koje migracija 0026 upisuje: abeceda velikim i malim slovima te brojke 0–9. */
 export const POCETNI_ZNAKOVI = [...ABECEDA_ZNAKOVA, ...ABECEDA_ZNAKOVA.map(MALO), ..."0123456789"];
+
+/**
+ * Simboli koje migracija 0027 upisuje: znakovi koji nisu ni slovo ni brojka, a izgledaju dovoljno
+ * slično da budu uljez među slovima (§ među S, ¢ među c, ¥ među Y).
+ */
+export const POCETNI_SIMBOLI = [..."§¥¢£€$¤¶&@#%©?!+=×÷*"];
 
 /** Kako se znak ili riječ prikazuje: riječ velikim tiskanim slovima, znak točno kako je upisan. */
 export const prikazRijeci = (r: { rijec: string; znak?: boolean }) => (r.znak ? r.rijec : VELIKO(r.rijec));

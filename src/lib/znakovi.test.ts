@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizirajZnak, POCETNI_ZNAKOVI, prikazRijeci, skupinaZnaka, slugZnaka, usporediZnakove } from "./znakovi.ts";
+import { normalizirajZnak, POCETNI_SIMBOLI, POCETNI_ZNAKOVI, prikazRijeci, skupinaZnaka, slugZnaka, usporediZnakove } from "./znakovi.ts";
 
 test("skupina znaka", () => {
   assert.equal(skupinaZnaka("B"), "veliko");
@@ -39,4 +39,12 @@ test("početnih znakova 70, prikaz ne mijenja veličinu znaka", () => {
   assert.equal(POCETNI_ZNAKOVI.length, 70);
   assert.equal(prikazRijeci({ rijec: "b", znak: true }), "b");
   assert.equal(prikazRijeci({ rijec: "miš" }), "MIŠ");
+});
+
+test("simboli su svi u skupini simbola i imaju različit slug", () => {
+  assert.equal(POCETNI_SIMBOLI.length, 20);
+  assert.ok(POCETNI_SIMBOLI.every((z) => skupinaZnaka(z) === "ostalo"));
+  const svi = [...POCETNI_ZNAKOVI, ...POCETNI_SIMBOLI].map(slugZnaka);
+  assert.equal(new Set(svi).size, svi.length);
+  assert.equal(slugZnaka("§"), "znak-ua7");
 });

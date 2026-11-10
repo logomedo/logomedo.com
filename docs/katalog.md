@@ -410,11 +410,17 @@ slovarica 74, slova i brojke 62, RAN 58, razmaknuta slova 70; slovo i slika 86 k
   referencira istim `rijec_id` kao sliku i nijedna vrsta zadatka ne treba novo polje. Nema glasova
   (`rijec_glas`), slika ni rime. `rijec` je UNIQUE (BINARY), pa su `b` i `B` dva znaka; slug ih
   razlikuje (`znak-b`, `znak-b-veliko`, `znak-dzh-veliko`, `znak-7`, ostali po kodu `znak-u2b`).
-- **Početni sadržaj:** abeceda velikim i malim slovima (30 + 30, dvoslovi su jedan znak) i brojke 0–9.
+- **Početni sadržaj:** abeceda velikim i malim slovima (30 + 30, dvoslovi su jedan znak) i brojke 0–9;
+  migracija 0027 dodaje 20 simbola (§ ¥ ¢ £ € $ ¤ ¶ & @ # % © ? ! + = × ÷ *) koji mogu biti uljez među
+  slovima (§ među S, ¢ među c, ¥ među Y). Na stranici su u skupini „Simboli”.
+- **Font:** znak se svuda crta **Andikom** (SIL, OFL; font za početno čitanje: jednokatni a, I s
+  poprečnim crtama, l s repom, pa se I, l i 1 ne miješaju). Web: `@fontsource/andika` (700), PDF:
+  `public/fonts/andika-700.ttf`, koji preglednik dohvaća samo kad dokument ima znak (~0,7 MB).
+  Riječi i upute ostaju u Nunitu.
 - **Admin:** `/admin/znakovi`: novi znak (1–3 znaka, točno kako se prikazuje), skrivanje i vraćanje,
   broj zadataka koji ga koriste. Skriven znak editor ne nudi, a postojeći zadaci ga i dalje prikazuju.
 - **Editor zadatka:** u dijalogu za odabir slike gumbi „Riječi” / „Znakovi”; polje koje već ima znak
-  otvara znakove. Znak se crta Nunitom, a izmjene percepcije (zrcalo, naopako, okreti, manja) vrijede i
+  otvara znakove. Znak se crta Andikom, a izmjene percepcije (zrcalo, naopako, okreti, manja) vrijede i
   za njega: zrcaljeni `b` je `d`. Generatori (`zaGenerator`) znakove ne uzimaju.
 - **Provjere:** red sa znakom preskače provjere rime (odabir, uljez). U povezivanju par slovo–slika
   vrijedi ako riječ počinje glasom slova (`prviGlas`, pa LJULJAČKA ne počinje s L).

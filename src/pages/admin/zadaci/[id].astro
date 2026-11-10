@@ -7,6 +7,7 @@ import { popis as svePozadine } from "../../../lib/pozadine";
 import "../../../lib/scena.css";
 import "../../../lib/kolo-slova.css";
 import "@fontsource-variable/nunito";
+import "@fontsource/andika/700.css";
 
 const z = await nadji(Number(Astro.params.id));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
@@ -68,13 +69,13 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-slika .z-natpis { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-weight: 700; font-size: .78rem; letter-spacing: .05em; color: #3a3226; }
   .z-slika.mala { width: 56px; flex: none; border-radius: 9px; }
   .z-slika.mala .z-bez { font-size: calc(.55rem * var(--m, 1)); }
-  /* Znak (slovo, brojka): veliko, tamno, Nunito kao u igri i PDF-u; izmjena (zrcalo, naopako) je na samom znaku */
-  .z-slika .z-znak { display: inline-block; font-family: "Nunito Variable", Nunito, system-ui, sans-serif; font-weight: 700; line-height: 1; color: #2b2118;
+  /* Znak (slovo, brojka): veliko, tamno, Andika (font za početno čitanje) kao u igri i PDF-u; izmjena (zrcalo, naopako) je na samom znaku */
+  .z-slika .z-znak { display: inline-block; font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; line-height: 1; color: #2b2118;
     font-size: calc(clamp(2.4rem, 6vw, 4.2rem) * var(--m, 1)); }
   .z-slika.mala .z-znak { font-size: calc(1.7rem * var(--m, 1)); }
   .a4 .z-slika .z-znak { font-size: calc(40pt * var(--m, 1)); color: #1a1a1a; }
   .z-znakovi { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
-  .z-izbor-znak { aspect-ratio: 1; border: 1px solid var(--rub); border-radius: 10px; background: var(--papir-slike); font-family: "Nunito Variable", Nunito, sans-serif;
+  .z-izbor-znak { aspect-ratio: 1; border: 1px solid var(--rub); border-radius: 10px; background: var(--papir-slike); font-family: Andika, "Nunito Variable", sans-serif;
     font-size: 1.6rem; font-weight: 700; color: #2b2118; cursor: pointer; }
   .z-izbor-znak:hover { border-color: var(--rub-jak); } .z-izbor-znak.on { border-color: var(--med); background: var(--med-blago); }
   .z-cip.z-vrsta { font-weight: 700; }
