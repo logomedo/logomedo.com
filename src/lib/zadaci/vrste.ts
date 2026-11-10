@@ -6,6 +6,7 @@
 
 import { brojSlogova, rimujuSe } from "./rima.ts";
 import { fonemi } from "../fonemi.ts";
+import { prikazRijeci } from "../znakovi.ts";
 
 export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena" | "percepcija" | "prvi_glas" | "slogovi";
 export type Odnos = "rima";
@@ -145,7 +146,10 @@ const istoPolje = (a: Polje, b: Polje) => a.rijec_id === b.rijec_id && a.izmjena
 /** Riječ kakvu editor i prikaz trebaju. `slika` je URL ili null (prikazuje se riječ). */
 /** Najbolja slika riječi po kodu stila; `ok` = odobrena (inače kandidat). */
 export type SlikeRijeci = Record<string, { src: string; ok: boolean }>;
-export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null; slike?: SlikeRijeci }
+/** `znak`: slovo, brojka ili simbol iz kataloga znakova (src/lib/znakovi.ts); prikazuje se kao upisani znak, bez slike. */
+export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null; slike?: SlikeRijeci; znak?: boolean }
+/** Riječi za generatore zadataka: znakovi se biraju samo ručno. */
+export const zaGenerator = <T extends { znak?: boolean }>(r: T[]) => r.filter((x) => !x.znak);
 
 /** Slika za stil zadatka: odobrena u stilu, odobrena u drugom, kandidat u stilu, bilo koja. */
 export function slikaUStilu(m: SlikeRijeci, stil: string): string | null {
@@ -344,7 +348,9 @@ export interface Upozorenje { gdje: string; poruka: string }
 export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>): Upozorenje[] {
   const u: Upozorenje[] = [];
   const R = (x: Id) => (x === null ? null : rijeci.get(x) ?? null);
-  const ime = (x: Id) => R(x)?.rijec.toLocaleUpperCase("hr") ?? "?";
+  const ime = (x: Id) => { const r = R(x); return r ? prikazRijeci(r) : "?"; };
+  // Red sa znakom (slovo, brojka) nije zadatak rime: provjere rime ga preskaču.
+  const imaZnak = (ids: Id[]) => ids.some((x) => R(x)?.znak);
   const rim = (a: Id, b: Id) => { const x = R(a), y = R(b); return !!x && !!y && rimujuSe(x, y); };
   if (v === "listic") {
     const l = s as Listic;
@@ -418,6 +424,7 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
     (s as Odabir).stavke.forEach((x, i) => {
       const g = `Red ${i + 1}`;
       if (x.zadana === null || x.ponudeno.some((p) => p === null)) { u.push({ gdje: g, poruka: "Nisu popunjene sve slike." }); return; }
+      if (imaZnak([x.zadana, ...x.ponudeno])) return;
       if (!rim(x.zadana, x.ponudeno[x.tocno])) u.push({ gdje: g, poruka: `Točan odgovor ${ime(x.ponudeno[x.tocno])} se ne rimuje s ${ime(x.zadana)}.` });
       x.ponudeno.forEach((p, j) => { if (j !== x.tocno && rim(x.zadana, p)) u.push({ gdje: g, poruka: `${ime(p)} se također rimuje s ${ime(x.zadana)}: dva točna odgovora.` }); });
     });
@@ -427,6 +434,15 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
     p.forEach((x, i) => {
       const g = `Par ${i + 1}`;
       if (x.lijevo === null || x.desno === null) { u.push({ gdje: g, poruka: "Par nije popunjen." }); return; }
+      const zl = R(x.lijevo)?.znak, zd = R(x.desno)?.znak;
+      if (zl || zd) {
+        // Slovo i slika: par vrijedi ako riječ počinje glasom slova (LJULJAČKA počinje s LJ, ne s L).
+        if (zl !== zd) {
+          const znak = R(zl ? x.lijevo : x.desno)!, rij = R(zl ? x.desno : x.lijevo)!;
+          if (prviGlas(rij.rijec) !== znak.rijec.toLocaleUpperCase("hr")) u.push({ gdje: g, poruka: `${ime(rij.id)} ne počinje glasom ${znak.rijec.toLocaleUpperCase("hr")}.` });
+        }
+        return;
+      }
       if (!rim(x.lijevo, x.desno)) u.push({ gdje: g, poruka: `${ime(x.lijevo)} i ${ime(x.desno)} se ne rimuju.` });
       p.forEach((y, j) => { if (j !== i && rim(x.lijevo, y.desno)) u.push({ gdje: g, poruka: `${ime(x.lijevo)} se rimuje i s ${ime(y.desno)} (par ${j + 1}).` }); });
     });
@@ -436,6 +452,7 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
     (s as Uljez).stavke.forEach((x, i) => {
       const g = `Red ${i + 1}`;
       if (x.slike.some((p) => p === null)) { u.push({ gdje: g, poruka: "Nisu popunjene sve slike." }); return; }
+      if (imaZnak(x.slike)) return;
       const ostale = x.slike.filter((_, j) => j !== x.uljez);
       if (!rim(ostale[0], ostale[1]) || !rim(ostale[1], ostale[2])) u.push({ gdje: g, poruka: "Tri slike koje nisu uljez se ne rimuju sve međusobno." });
       if (ostale.some((o) => rim(o, x.slike[x.uljez]))) u.push({ gdje: g, poruka: `Uljez ${ime(x.slike[x.uljez])} se rimuje s ostalima.` });

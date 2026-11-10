@@ -155,7 +155,8 @@ tri nova modula. Zato:
 - rješavanje bilježi **što je dijete odabralo**, ne samo točno/netočno: koji distraktor zbunjuje
   je logopedu korisna informacija
 
-Svaka slika je `rijec_id` iz kataloga (slika se bira po stilu pri prikazu).
+Svaka slika je `rijec_id` iz kataloga (slika se bira po stilu pri prikazu). Od 10. 11. 2026. to može biti i
+**znak** (slovo, brojka) iz kataloga znakova: isti `rijec_id`, crta se kao znak (docs/katalog.md, „Znakovi”).
 
 ### `odabir`: zadana slika, odaberi onu koja se rimuje
 

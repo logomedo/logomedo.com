@@ -11,6 +11,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const b = (await request.json().catch(() => ({}))) as { rijec?: unknown };
   const rijec = String(b.rijec ?? "").trim().toLocaleLowerCase("hr").replace(/\s+/g, " ");
   if (!rijec || rijec.length > 40 || !/^[a-zčćđšž -]+$/.test(rijec)) return json({ error: "Riječ smije imati samo slova (do 40)." }, 400);
+  const znak = await env.DB.prepare("SELECT 1 FROM rijeci WHERE rijec = ? AND vrsta = 'znak'").bind(rijec).first();
+  if (znak) return json({ error: `„${rijec}” je znak, ne riječ: odaberi ga među znakovima.` }, 409);
   const upis = await env.DB.batch(sZapisom(
     { tko: locals.admin!.email, radnja: "rijec.nova", tablica: "rijeci", grupa: novaGrupa() },
     { sql: "SELECT id FROM rijeci WHERE rijec = ?", args: [rijec] },

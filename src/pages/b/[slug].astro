@@ -17,7 +17,7 @@ const tema = TEME[b.tema] ?? TEME.bozic;
 const za = {
   naslov: b.naslov, podnaslov: b.podnaslov,
   zadaci: p.zadaci.map((z) => ({ vrsta: z.vrsta, uputa: z.uputa, sadrzaj: z.sadrzaj })),
-  rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika })),
+  rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika, znak: r.znak })),
   pozadine: p.pozadine,
   kraj: tema.kraj,
   // Odobrene snimke izgovora (ElevenLabs) po ključu teksta; bez snimke igra koristi glas preglednika.
@@ -148,6 +148,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .kartica .zvucnik { --z: calc(var(--s) * .16); }
   .slika { width: 100%; aspect-ratio: 1; display: grid; place-items: center; }
   .slika img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; pointer-events: none; -webkit-user-drag: none; }
+  .slika span.znak { display: inline-block; font-weight: 800; font-size: calc(var(--s) * .55); line-height: 1; color: #3b2412; }
   .slika .bez { font-weight: 900; font-size: calc(var(--s) * .2); color: #8a5a2c; text-align: center; overflow-wrap: anywhere; }
   .bez-slike .unutra { position: relative; justify-content: center; min-height: var(--s); }
   .bez-slike .glava { position: absolute; top: .6vh; right: .6vh; width: auto; min-height: 0; }

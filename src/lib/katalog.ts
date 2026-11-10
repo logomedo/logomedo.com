@@ -72,7 +72,7 @@ export interface RijecDetalj {
 
 export async function rijec(slug: string) {
   const r = await DB().prepare(
-    "SELECT id, rijec, slug, opis_za_sliku, recenica, legacy_koristeno, izvor, rima FROM rijeci WHERE slug = ?",
+    "SELECT id, rijec, slug, opis_za_sliku, recenica, legacy_koristeno, izvor, rima FROM rijeci WHERE slug = ? AND vrsta = 'rijec'",
   ).bind(slug).first<RijecDetalj>();
   if (!r) return null;
   const [pozicije, slike, red] = await DB().batch([
@@ -112,7 +112,7 @@ export async function ukupnoSvihStilova() {
 /** Ukupni brojevi za zaglavlje. */
 export async function ukupno(stilId: number) {
   return (await DB().prepare(
-    `SELECT (SELECT COUNT(*) FROM rijeci WHERE aktivna = 1) AS rijeci,
+    `SELECT (SELECT COUNT(*) FROM rijeci WHERE aktivna = 1 AND vrsta = 'rijec') AS rijeci,
        (SELECT COUNT(DISTINCT rijec_id) FROM slike WHERE stil_id = ?1 AND status = 'odobrena') AS odobreno,
        (SELECT COUNT(*) FROM slike WHERE stil_id = ?1 AND status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM generiranja WHERE stil_id = ?1 AND status IN ('ceka','radi')) AS uRedu,
@@ -141,6 +141,6 @@ export async function indeksRijeci() {
     `SELECT r.rijec AS r, r.slug AS s,
        EXISTS (SELECT 1 FROM slike x WHERE x.rijec_id = r.id AND x.status = 'odobrena') AS o,
        (SELECT COUNT(*) FROM slike x WHERE x.rijec_id = r.id AND x.status = 'kandidat') AS k
-     FROM rijeci r WHERE r.aktivna = 1 ORDER BY r.rijec`,
+     FROM rijeci r WHERE r.aktivna = 1 AND r.vrsta = 'rijec' ORDER BY r.rijec`,
   ).all<{ r: string; s: string; o: number; k: number }>()).results;
 }

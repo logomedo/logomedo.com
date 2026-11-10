@@ -34,9 +34,9 @@ export async function korisnikId(email: string): Promise<number> {
   return r!.id;
 }
 
-const SQL_RIJECI = `SELECT r.id, r.rijec, r.rima AS rima_rucno FROM rijeci r`;
+const SQL_RIJECI = `SELECT r.id, r.rijec, r.rima AS rima_rucno, r.vrsta FROM rijeci r`;
 
-type RijecRedak = { id: number; rijec: string; rima_rucno: string | null };
+type RijecRedak = { id: number; rijec: string; rima_rucno: string | null; vrsta: "rijec" | "znak" };
 
 /** Stilovi za izbor u editoru zadatka. */
 export async function stilovi(): Promise<{ kod: string; naziv: string }[]> {
@@ -61,6 +61,8 @@ async function sRijecima(rijeci: RijecRedak[], stil: string): Promise<RijecZadat
   }
   return rijeci.map((r) => {
     const m: SlikeRijeci = slike.get(r.id) ?? {};
+    // Znak (slovo, brojka) nema sliku, rimu ni slogove: prikazuje se kao upisani znak.
+    if (r.vrsta === "znak") return { id: r.id, rijec: r.rijec, rima: null, slogova: 0, slika: null, znak: true };
     return {
       id: r.id, rijec: r.rijec, rima: r.rima_rucno ?? izvediRimu(r.rijec), slogova: brojSlogova(r.rijec),
       slika: slikaUStilu(m, stil), slike: m,
@@ -70,7 +72,7 @@ async function sRijecima(rijeci: RijecRedak[], stil: string): Promise<RijecZadat
 
 /** Sve aktivne riječi s rimom i slikama po stilu. */
 export async function sveRijeci(stil = "ilustracija"): Promise<RijecZadatka[]> {
-  const { results } = await DB().prepare(`${SQL_RIJECI} WHERE r.aktivna = 1 ORDER BY r.rijec COLLATE NOCASE`).all<RijecRedak>();
+  const { results } = await DB().prepare(`${SQL_RIJECI} WHERE r.aktivna = 1 ORDER BY r.vrsta, r.rijec COLLATE NOCASE`).all<RijecRedak>();
   return sRijecima(results, stil);
 }
 

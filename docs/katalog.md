@@ -398,3 +398,29 @@ Pregled sada razdvaja dvije stvari (migracija 0017):
   izvornu riječ, `slike.premjestena_u` pokazuje na kopiju; uz kvačicu izvorna riječ dobiva novi posao.
   `premjesti()` u `src/lib/generiranje.ts`, `POST /admin/api/slika/{id}/premjesti` i
   `/api/v1/admin/slike/{id}/premjesti`. Z (Poništi) ga ne vraća; vraća se iz Aktivnosti.
+
+## Znakovi (10. 11. 2026.)
+
+Treća kartica kataloga, uz „Slike riječi” i „Situacije”: **slova, brojke i simboli** koje dijete
+gleda kao sam znak (slična slova b/d/p, slova i brojke, slovo uz sliku). Iz pregleda tipova zadataka
+iz vježbenice „Iz vrtića u školu”: polje „znak” otvara šest tipova odjednom (slična slova 78, brza
+slovarica 74, slova i brojke 62, RAN 58, razmaknuta slova 70; slovo i slika 86 kroz povezivanje).
+
+- **Model:** znak je redak u `rijeci` s `vrsta = 'znak'` (migracija 0026), pa ga svaki zadatak
+  referencira istim `rijec_id` kao sliku i nijedna vrsta zadatka ne treba novo polje. Nema glasova
+  (`rijec_glas`), slika ni rime. `rijec` je UNIQUE (BINARY), pa su `b` i `B` dva znaka; slug ih
+  razlikuje (`znak-b`, `znak-b-veliko`, `znak-dzh-veliko`, `znak-7`, ostali po kodu `znak-u2b`).
+- **Početni sadržaj:** abeceda velikim i malim slovima (30 + 30, dvoslovi su jedan znak) i brojke 0–9.
+- **Admin:** `/admin/znakovi`: novi znak (1–3 znaka, točno kako se prikazuje), skrivanje i vraćanje,
+  broj zadataka koji ga koriste. Skriven znak editor ne nudi, a postojeći zadaci ga i dalje prikazuju.
+- **Editor zadatka:** u dijalogu za odabir slike gumbi „Riječi” / „Znakovi”; polje koje već ima znak
+  otvara znakove. Znak se crta Nunitom, a izmjene percepcije (zrcalo, naopako, okreti, manja) vrijede i
+  za njega: zrcaljeni `b` je `d`. Generatori (`zaGenerator`) znakove ne uzimaju.
+- **Provjere:** red sa znakom preskače provjere rime (odabir, uljez). U povezivanju par slovo–slika
+  vrijedi ako riječ počinje glasom slova (`prviGlas`, pa LJULJAČKA ne počinje s L).
+- **Igra i papir:** igra crta znak bez zvučnika i ne traži snimku za njega (`tekstoviIgre`); PDF
+  crta znak u okviru s izmjenom kao matricom oko središta (`Platno.znak`). `/api/v1` šalje `znak: true`;
+  Flutter ga zasad crta kao riječ bez slike.
+- **Odvojeno od riječi:** brojač kataloga, tražilica, stranica riječi (`/admin/rijec/znak-b` je 404),
+  „Novi glas” i „Generiraj ilustracije” bilježnice gledaju samo `vrsta = 'rijec'`. „Nova riječ” odbija
+  zapis koji je već znak.

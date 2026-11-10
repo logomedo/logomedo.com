@@ -219,3 +219,34 @@ test("listić: manje slika, veće slike; 3 × 4 ostaje za stare listiće", () =>
   assert.equal((normaliziraj("listic", { kartice: [] }) as { raspored?: string }).raspored, "3x4");
   assert.equal((normaliziraj("listic", { kartice: [], raspored: "auto" }) as { raspored?: string }).raspored, "auto");
 });
+
+// ---- Znakovi (slova, brojke) u zadacima ----
+const ZN: RijecZadatka[] = [
+  ...["b", "d", "K", "S", "7"].map((z, i) => ({ id: 100 + i, rijec: z, rima: null, slogova: 0, slika: null, znak: true })),
+  { id: 200, rijec: "krava", rima: "AVA", slogova: 2, slika: null }, { id: 201, rijec: "sat", rima: "AT", slogova: 1, slika: null },
+];
+const ZM = new Map(ZN.map((r) => [r.id, r]));
+
+test("znakovi: uljez sa slovima i brojkom nema upozorenja o rimi", () => {
+  const u: Uljez = { odnos: "rima", stavke: [{ slike: [100, 101, 104, 100], uljez: 2 }] };
+  assert.deepEqual(provjeri("uljez", u, ZM), []);
+});
+
+test("znakovi: povezivanje slova i slike provjerava prvi glas", () => {
+  const ok: Povezivanje = { odnos: "rima", parovi: [{ lijevo: 102, desno: 200 }, { lijevo: 103, desno: 201 }, { lijevo: 100, desno: 101 }], desno_redoslijed: [1, 0, 2] };
+  assert.deepEqual(provjeri("povezivanje", ok, ZM), []);
+  const krivo: Povezivanje = { ...ok, parovi: [{ lijevo: 102, desno: 201 }, { lijevo: 103, desno: 200 }, { lijevo: 100, desno: 101 }] };
+  assert.deepEqual(provjeri("povezivanje", krivo, ZM).map((x) => x.poruka), ["SAT ne počinje glasom K.", "KRAVA ne počinje glasom S."]);
+});
+
+test("znakovi: percepcija sa zrcaljenim slovom, poruka čuva malo slovo", () => {
+  const b = (izmjena: Izmjena) => ({ rijec_id: 100, izmjena });
+  assert.deepEqual(provjeri("percepcija", { trazi: "razlicitu", stavke: [{ polja: [b(""), b("zrcalo"), b("")], tocno: [1] }] } as Percepcija, ZM), []);
+  const krivo: Percepcija = { trazi: "razlicitu", stavke: [{ polja: [b(""), b(""), b("")], tocno: [0] }] };
+  assert.deepEqual(provjeri("percepcija", krivo, ZM).map((x) => x.poruka), ["Označena slika je ista kao ostale: b (izvorna)."]);
+});
+
+test("znakovi: generator ih ne uzima", async () => {
+  const { zaGenerator } = await import("./vrste.ts");
+  assert.deepEqual(zaGenerator(ZN).map((r) => r.rijec), ["krava", "sat"]);
+});

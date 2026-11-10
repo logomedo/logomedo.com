@@ -1,0 +1,111 @@
+---
+// Znakovi: slova, brojke i simboli koji se u zadacima prikazuju kao znak, a ne kao slika
+// (src/lib/znakovi.ts). Stranica sama obrađuje POST, kao /admin/situacije.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import KatalogKartice from "../../components/KatalogKartice.astro";
+import Ikona from "../../components/Ikona.astro";
+import { noviZnak, postaviAktivan, sviZnakovi } from "../../lib/znakovi-baza";
+import { SKUPINE_ZNAKOVA, skupinaZnaka, ZNAK_MAX, type SkupinaZnaka } from "../../lib/znakovi";
+import "@fontsource-variable/nunito";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const email = Astro.locals.admin!.email;
+  const natrag = (k: "greska" | "ok", poruka: string) => Astro.redirect(`/admin/znakovi?${k}=${encodeURIComponent(poruka)}`, 303);
+  const akcija = String(f.get("akcija"));
+  if (akcija === "novi") {
+    const r = await noviZnak(f.get("znak"), email);
+    return "greska" in r ? natrag("greska", r.greska) : natrag("ok", `Znak „${String(f.get("znak")).trim()}” je u katalogu.`);
+  }
+  if (akcija === "skrij" || akcija === "vrati") {
+    const id = Number(f.get("id")) || 0;
+    if (id) await postaviAktivan(id, akcija === "vrati", email);
+    return natrag("ok", akcija === "vrati" ? "Znak je vraćen." : "Znak je skriven: editor ga više ne nudi, a postojeći zadaci ga i dalje prikazuju.");
+  }
+  return natrag("greska", "Nepoznata radnja.");
+}
+
+const q = Astro.url.searchParams;
+const znakovi = await sviZnakovi();
+const skupine = (Object.keys(SKUPINE_ZNAKOVA) as SkupinaZnaka[])
+  .map((s) => ({ s, naziv: SKUPINE_ZNAKOVA[s], znakovi: znakovi.filter((z) => z.aktivna && skupinaZnaka(z.znak) === s) }))
+  .filter((g) => g.znakovi.length);
+const skriveni = znakovi.filter((z) => !z.aktivna);
+const aktivnih = znakovi.length - skriveni.length;
+---
+<AdminOkvir naslov="Znakovi" aktivno="katalog">
+  <div class="naslov"><div>
+    <KatalogKartice aktivno="znakovi" />
+    <h1>Znakovi</h1>
+    <p class="podnaslov">Slova, brojke i simboli za zadatke u kojima dijete gleda sam znak: slična slova (b, d, p), slova i brojke, slovo uz sliku.
+      U editoru zadatka biraju se kao slika, pod „Znakovi”. Velika i mala slova su različiti znakovi. U katalogu: {aktivnih}.</p>
+  </div></div>
+
+  {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
+  {q.get("ok") && <div class="obavijest uspjeh"><Ikona ime="kvacica" /> {q.get("ok")}</div>}
+
+  <form method="post" class="ploha novi">
+    <input type="hidden" name="akcija" value="novi" />
+    <label for="z-novi">Novi znak</label>
+    <div class="red">
+      <input id="z-novi" class="znak-unos" type="text" name="znak" required maxlength={ZNAK_MAX} autocomplete="off" spellcheck="false" placeholder="q" />
+      <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Dodaj</button>
+    </div>
+    <p class="pomoc">Jedan do {ZNAK_MAX} znaka, točno kako se prikazuju: q, W, DŽ, 10, +. Riječi idu u „Slike riječi”.</p>
+  </form>
+
+  {skupine.map((g) => (
+    <section class="ploha skupina">
+      <h2>{g.naziv} <span class="blijedo">{g.znakovi.length}</span></h2>
+      <div class="mreza">
+        {g.znakovi.map((z) => (
+          <div class="znak" id={z.slug}>
+            <span class="glif">{z.znak}</span>
+            <span class="koristi" title="Zadaci koji ga koriste">{z.zadataka ? `${z.zadataka} zad.` : " "}</span>
+            <form method="post">
+              <input type="hidden" name="akcija" value="skrij" /><input type="hidden" name="id" value={z.id} />
+              <button class="skrij" type="submit" title={`Skrij ${z.znak}`} aria-label={`Skrij ${z.znak}`}>×</button>
+            </form>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+
+  {skriveni.length > 0 && (
+    <details class="ploha skupina">
+      <summary>Skriveni <span class="blijedo">{skriveni.length}</span></summary>
+      <div class="mreza">
+        {skriveni.map((z) => (
+          <form method="post" class="znak skriven">
+            <input type="hidden" name="akcija" value="vrati" /><input type="hidden" name="id" value={z.id} />
+            <span class="glif">{z.znak}</span>
+            <button class="gumb mali" type="submit">Vrati</button>
+          </form>
+        ))}
+      </div>
+    </details>
+  )}
+</AdminOkvir>
+
+<style>
+  .novi { display: grid; gap: 8px; padding: 20px 22px; max-width: 520px; margin-bottom: 18px; }
+  .novi label { font-weight: 650; }
+  .red { display: flex; gap: 10px; }
+  .znak-unos { font-family: "Nunito Variable", Nunito, sans-serif; font-size: 1.6rem; font-weight: 700; max-width: 110px; padding: 8px 12px; }
+  .pomoc { margin: 0; font-size: .78rem; color: var(--blijedo); }
+  .skupina { padding: 18px 22px; margin-bottom: 14px; }
+  .skupina h2, .skupina summary { margin: 0 0 12px; font-size: 1rem; font-weight: 700; cursor: default; }
+  .skupina summary { cursor: pointer; margin: 0; }
+  .skupina[open] summary { margin-bottom: 12px; }
+  .mreza { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 8px; }
+  .znak { position: relative; display: grid; justify-items: center; gap: 2px; padding: 10px 4px 6px; border: 1px solid var(--rub); border-radius: 12px; background: var(--papir-slike); }
+  .glif { font-family: "Nunito Variable", Nunito, sans-serif; font-weight: 700; font-size: 2.4rem; line-height: 1; color: #2b2118; }
+  .koristi { font-size: .7rem; color: var(--blijedo); min-height: 1em; }
+  .skrij { position: absolute; top: 2px; right: 4px; border: 0; background: none; color: var(--vrlo-blijedo); font-size: 1.1rem; cursor: pointer; padding: 2px 6px; border-radius: 6px; opacity: 0; }
+  .znak:hover .skrij, .skrij:focus-visible { opacity: 1; }
+  .skrij:hover { color: var(--greska); background: var(--greska-blago); }
+  @media (hover: none) { .skrij { opacity: 1; } }
+  .skriven { opacity: .75; }
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+</style>

@@ -7,7 +7,8 @@ import { TEME } from "../teme.ts";
 import { VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
-export interface SlikaPdf { url: string | null; rijec: string; natpis: string; izmjena?: Izmjena }
+/** `znak`: slovo ili brojka iz kataloga znakova, crta se kao znak u okviru (s izmjenom), ne kao riječ. */
+export interface SlikaPdf { url: string | null; rijec: string; natpis: string; izmjena?: Izmjena; znak?: boolean }
 
 /** Siva slika je zasebna datoteka: preglednik je pri smanjivanju pretvori u sivu (preglednik.ts). */
 export const SIVA = "#siva";
@@ -44,7 +45,7 @@ export interface DokumentPdf {
   stranice: StranicaPdf[];
 }
 
-export interface RijecPdf { id: number; rijec: string; slika: string | null }
+export interface RijecPdf { id: number; rijec: string; slika: string | null; znak?: boolean }
 /** Pozadina scene za papir: A4 je uspravan, pa uspravna slika ima prednost. */
 export interface PozadinaPdf { id: number; uspravno: { url: string } | null; vodoravno: { url: string } | null }
 const urlPozadine = (pozadine: PozadinaPdf[], id: number | null) => {
@@ -67,6 +68,7 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
   const sl = (id: number | null): SlikaPdf => {
     const r = id === null ? undefined : rijeci.get(id);
     if (!r) return { url: null, rijec: "?", natpis: "" };
+    if (r.znak) return { url: null, rijec: r.rijec, natpis: "", znak: true };
     // Bez slike je riječ već u okviru, pa natpis ne treba.
     return { url: r.slika, rijec: VELIKO(r.rijec), natpis: sRijecima && r.slika ? VELIKO(r.rijec) : "" };
   };

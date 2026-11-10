@@ -25,7 +25,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!rijec || rijec.length > 40 || !DOPUSTENO.test(rijec)) return natrag("Riječ smije imati samo hrvatska slova (do 40).");
 
   const db = env.DB;
-  const postoji = await db.prepare("SELECT id, slug, aktivna FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string; aktivna: number }>();
+  const postoji = await db.prepare("SELECT id, slug, aktivna, vrsta FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string; aktivna: number; vrsta: string }>();
+  if (postoji?.vrsta === "znak") return natrag(`„${rijec}” je znak u katalogu (/admin/znakovi), ne riječ.`);
   if (postoji?.aktivna) return new Response(null, { status: 303, headers: { location: `/admin/rijec/${postoji.slug}?postoji=1` } });
 
   const { results: glasovi } = await db.prepare("SELECT id, oznaka, skupine FROM glasovi").all<{ id: number; oznaka: string; skupine: number }>();

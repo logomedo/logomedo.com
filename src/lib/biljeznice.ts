@@ -19,7 +19,7 @@ export interface Biljeznica {
   id: number; slug: string; naslov: string; podnaslov: string | null; tema: Tema; stil: string; javna: number; updated_at: string;
 }
 export interface ZadatakBiljeznice { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; sadrzaj: Sadrzaj }
-export interface RijecBiljeznice { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null }
+export interface RijecBiljeznice { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null; znak?: boolean }
 export interface PodaciBiljeznice { biljeznica: Biljeznica; zadaci: ZadatakBiljeznice[]; rijeci: RijecBiljeznice[]; pozadine: Pozadina[] }
 
 const SQL_B = "SELECT id, slug, naslov, podnaslov, tema, stil, javna, updated_at FROM biljeznice";
@@ -59,15 +59,15 @@ export async function podaci(b: Biljeznica): Promise<PodaciBiljeznice> {
 export async function rijeciIPozadine(zadaci: { vrsta: Vrsta; sadrzaj: Sadrzaj }[], stil: string): Promise<{ rijeci: RijecBiljeznice[]; pozadine: Pozadina[] }> {
   const ids = [...new Set(zadaci.flatMap((z) => rijeciU(z.vrsta, z.sadrzaj)))];
   const { results } = await DB().prepare(
-    `SELECT r.id, r.rijec, r.rima AS rima_rucno,
+    `SELECT r.id, r.rijec, r.rima AS rima_rucno, r.vrsta,
        (SELECT s.r2_kljuc FROM slike s JOIN stilovi st ON st.id = s.stil_id
         WHERE s.rijec_id = r.id AND s.status = 'odobrena'
         ORDER BY CASE st.kod WHEN ?2 THEN 0 ELSE 1 END LIMIT 1) AS kljuc
      FROM rijeci r WHERE r.id IN (SELECT value FROM json_each(?1))`,
-  ).bind(JSON.stringify(ids), stil).all<{ id: number; rijec: string; rima_rucno: string | null; kljuc: string | null }>();
+  ).bind(JSON.stringify(ids), stil).all<{ id: number; rijec: string; rima_rucno: string | null; vrsta: string; kljuc: string | null }>();
   return {
     pozadine: await pozadinePoId(pozadineU(zadaci)),
-    rijeci: results.map((r) => ({
+    rijeci: results.map((r) => r.vrsta === "znak" ? { id: r.id, rijec: r.rijec, rima: null, slogova: 0, slika: null, znak: true } : ({
       id: r.id, rijec: r.rijec, rima: r.rima_rucno ?? izvediRimu(r.rijec), slogova: brojSlogova(r.rijec),
       slika: r.kljuc ? javniUrl(r.kljuc) : null,
     })),
@@ -89,7 +89,7 @@ export async function stanjeSlika(b: Biljeznica) {
        (SELECT s.id FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.rijec_id = r.id AND st.kod = ?2 AND s.status = 'odobrena' ORDER BY s.id DESC LIMIT 1) AS odobrena,
        (SELECT COUNT(*) FROM slike s JOIN stilovi st ON st.id = s.stil_id WHERE s.rijec_id = r.id AND st.kod = ?2 AND s.status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM generiranja q JOIN stilovi st ON st.id = q.stil_id WHERE q.rijec_id = r.id AND st.kod = ?2 AND q.status IN ('ceka','radi')) AS u_redu
-     FROM rijeci r WHERE r.id IN (SELECT value FROM json_each(?1)) ORDER BY r.rijec`,
+     FROM rijeci r WHERE r.id IN (SELECT value FROM json_each(?1)) AND r.vrsta = 'rijec' ORDER BY r.rijec`,
   ).bind(JSON.stringify(ids), b.stil).all<{ id: number; rijec: string; slug: string; odobrena: number | null; kandidata: number; u_redu: number }>()).results;
 }
 

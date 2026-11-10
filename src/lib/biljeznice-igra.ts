@@ -11,7 +11,7 @@ import { kljucZvuka } from "./zvukovi-tekst.ts";
 interface Podaci {
   naslov: string; podnaslov: string | null;
   zadaci: ZadatakZaIgru[];
-  rijeci: { id: number; rijec: string; slika: string | null }[];
+  rijeci: { id: number; rijec: string; slika: string | null; znak?: boolean }[];
   pozadine?: PozadinaPrikaz[];
   /** Rečenica na kraju (iz teme). */
   kraj?: string;
@@ -134,8 +134,11 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   };
   const ime = (id: number | null) => (id === null ? "" : rijeci.get(id)?.rijec ?? "");
 
+  const jeZnak = (id: number | null) => id !== null && !!rijeci.get(id)?.znak;
   function slika(id: number | null) {
     const r = id === null ? null : rijeci.get(id);
+    // Znak (slovo, brojka) se crta kao znak; izmjena percepcije ide na sam <span>.
+    if (r?.znak) return h("div", { class: "slika znak" }, h("span", { class: "znak" }, r.rijec));
     if (r?.slika) return h("div", { class: "slika" }, h("img", { src: r.slika, alt: r.rijec, loading: "eager", draggable: "false" }));
     return h("div", { class: "slika" }, h("span", { class: "bez" }, VELIKO(r?.rijec ?? "?")));
   }
@@ -145,7 +148,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const bez = !(id !== null && rijeci.get(id)?.slika);
     const k = h("div", { class: `kartica ${bez ? "bez-slike " : ""}${kl}`.trim() },
       h("div", { class: "unutra" },
-        h("div", { class: "glava" }, h("span", { class: "rijec" }, VELIKO(ime(id))), zvucnik(() => ime(id))),
+        h("div", { class: "glava" }, h("span", { class: "rijec" }, VELIKO(ime(id))), jeZnak(id) ? null : zvucnik(() => ime(id))),
         slika(id)));
     if (naKlik) {
       k.setAttribute("role", "button"); k.tabIndex = 0;
@@ -158,7 +161,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   function zadanaKartica(id: number | null) {
     const bez = !(id !== null && rijeci.get(id)?.slika);
     return h("div", { class: `kartica zadana${bez ? " bez-slike" : ""}` },
-      h("div", { class: "unutra" }, h("span", { class: "rijec" }, VELIKO(ime(id))), slika(id), zvucnik(() => ime(id))));
+      h("div", { class: "unutra" }, h("span", { class: "rijec" }, VELIKO(ime(id))), slika(id), jeZnak(id) ? null : zvucnik(() => ime(id))));
   }
   const tresi = (k: HTMLElement) => { krivo(); k.classList.remove("krivo"); void k.offsetWidth; k.classList.add("krivo"); };
 
@@ -266,7 +269,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const slike = e.krug.slike.flatMap((id, j) => (id === null ? [] : [{ id, j }]));
       const mreza = h("div", { class: `red prvi-glas n${slike.length > 12 ? 5 : 4}` }, ...slike.map(({ id, j }) => {
         const k = h("div", { class: "kartica bez-rijeci", role: "button", tabindex: "0", "aria-label": "slika" },
-          h("div", { class: "unutra" }, h("div", { class: "glava" }, zvucnik(() => ime(id))), slika(id)));
+          h("div", { class: "unutra" }, h("div", { class: "glava" }, jeZnak(id) ? null : zvucnik(() => ime(id))), slika(id)));
         const klik = () => {
           if (zakljucano || nadjene.has(j)) return;
           if (!e.krug.tocno.includes(j)) { tresi(k); return; }

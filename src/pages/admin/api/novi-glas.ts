@@ -29,7 +29,7 @@ export const POST: APIRoute = async ({ request }) => {
      VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(redoslijed), 0) + 1 FROM glasovi)) RETURNING id`,
   ).bind(oznaka, g, skupina, skupine).first<{ id: number }>();
 
-  const { results: rijeci } = await db.prepare("SELECT id, rijec FROM rijeci").all<{ id: number; rijec: string }>();
+  const { results: rijeci } = await db.prepare("SELECT id, rijec FROM rijeci WHERE vrsta = 'rijec'").all<{ id: number; rijec: string }>();
   const veze = rijeci.flatMap((r) => pojave(r.rijec, [oznaka], skupine ? [oznaka] : []).map((p) => [r.id, p.pozicija] as const));
   // Po 30 redova u jednom INSERT-u (D1: najviše 100 parametara po upitu).
   const upiti: D1PreparedStatement[] = [];

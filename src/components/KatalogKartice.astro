@@ -1,10 +1,11 @@
 ---
-// Kartice kataloga: slike riječi i situacije (pozadine scena; u kodu i bazi i dalje `pozadine`).
-interface Props { aktivno: "rijeci" | "situacije" }
+// Kartice kataloga: slike riječi, situacije i znakovi (slova, brojke) (pozadine scena; u kodu i bazi i dalje `pozadine`).
+interface Props { aktivno: "rijeci" | "situacije" | "znakovi" }
 const { aktivno } = Astro.props;
 const kartice = [
   { kod: "rijeci", href: "/admin", tekst: "Slike riječi" },
   { kod: "situacije", href: "/admin/situacije", tekst: "Situacije" },
+  { kod: "znakovi", href: "/admin/znakovi", tekst: "Znakovi" },
 ] as const;
 ---
 <nav class="kartice" aria-label="Katalog">

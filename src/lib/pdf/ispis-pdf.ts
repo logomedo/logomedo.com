@@ -5,7 +5,7 @@
 // Raspored prati HTML ispis (/b/<slug>/ispis i pogled „Ispis" u editoru): A4, mjere u mm.
 // Fontovi (Nunito 800/900, OFL) ugrađuju se kao podskup, pa hrvatska slova rade svugdje.
 
-import { degrees, PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { concatTransformationMatrix, degrees, popGraphicsState, pushGraphicsState, PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { rasporedListica, type Izmjena } from "../zadaci/vrste.ts";
 import fontkit from "@pdf-lib/fontkit";
 import { TEME } from "../teme.ts";
@@ -65,6 +65,24 @@ class Platno {
 
   tocka(cx: number, cy: number, r: number) {
     this.page.drawCircle({ x: this.X(cx), y: this.Y(cy), size: r * MM, color: CRNO });
+  }
+
+  /**
+   * Znak (slovo, brojka) centriran u (cx, cy) mm, s izmjenom kao u `izmjenaCss`: zrcalo i okreti su
+   * matrica oko središta (pdf-lib drawText ne zna zrcaliti), siva je ionako crna.
+   */
+  znak(t: string, cx: number, cy: number, pt: number, izmjena: Izmjena = "") {
+    const X = this.X(cx), Y = this.Y(cy);
+    const kut = izmjena === "naopako" ? Math.PI : izmjena === "lijevo" ? Math.PI / 2 : izmjena === "desno" ? -Math.PI / 2 : 0;
+    const sx = (izmjena === "zrcalo" ? -1 : 1) * (izmjena === "mala" ? 0.68 : 1), sy = izmjena === "mala" ? 0.68 : 1;
+    const c = Math.cos(kut), s = Math.sin(kut);
+    // M = T(X,Y) · R(kut) · S(sx,sy) · T(-X,-Y)
+    const a = c * sx, b = s * sx, cc = -s * sy, d = c * sy;
+    this.page.pushOperators(pushGraphicsState(), concatTransformationMatrix(a, b, cc, d, X - a * X - cc * Y, Y - b * X - d * Y));
+    const w = this.f.naslov.widthOfTextAtSize(t, pt);
+    // Osnovna crta tako da je visina velikog slova (~0.7 pt) centrirana oko cy.
+    this.page.drawText(t, { x: X - w / 2, y: Y - pt * 0.35, size: pt, font: this.f.naslov, color: TINTA });
+    this.page.pushOperators(popGraphicsState());
   }
 
   slika(img: PDFImage, x: number, y: number, w: number, h: number, izmjena: Izmjena = "") {
@@ -145,7 +163,12 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     p.okvir(x, y, s, s, 4, debljinaPt);
     const img = await ugradi(sl.url);
     if (img) p.slika(img, x + 2, y + 2, s - 4, s - 4, sl.izmjena);
-    else {
+    else if (sl.znak) {
+      // Znak ispunjava okvir: oko 55 % visine, manje za dvoslove (DŽ) i više znakova.
+      let pt = (s * MM) * (sl.rijec.length > 1 ? 0.42 : 0.6);
+      while (pt > 10 && p.sirina(sl.rijec, pt, true) > s - 6) pt -= 1;
+      p.znak(sl.rijec, x + s / 2, y + s / 2, pt, sl.izmjena);
+    } else {
       // Bez slike: riječ u okviru, smanjena da stane.
       let pt = 14;
       while (pt > 7 && p.sirina(sl.rijec, pt, true) > s - 5) pt -= 0.5;

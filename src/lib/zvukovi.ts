@@ -17,7 +17,7 @@ export interface PorukaZvuka { posao: number }
 // ── Tekstovi koje bilježnica izgovara ────────────────────────────────────────────────────────
 
 /** Isti tekstovi koje igra predaje `govori()`: riječi, upute (s riječju) i kraj. Ključevi, bez ponavljanja. */
-export function tekstoviIgre(zadaci: ZadatakZaIgru[], rijeci: { id: number; rijec: string }[], kraj: string): string[] {
+export function tekstoviIgre(zadaci: ZadatakZaIgru[], rijeci: { id: number; rijec: string; znak?: boolean }[], kraj: string): string[] {
   const ime = new Map(rijeci.map((r) => [r.id, r.rijec]));
   const t = new Set<string>();
   for (const e of ekrani(zadaci)) {
@@ -31,7 +31,8 @@ export function tekstoviIgre(zadaci: ZadatakZaIgru[], rijeci: { id: number; rije
     if (e.vrsta === "slogovi" && e.nacin === "duljina") { t.add(kljucZvuka("dugačka riječ")); t.add(kljucZvuka("kratka riječ")); }
     t.add(kljucZvuka(uputaZa(e.uputa, e.vrsta === "odabir" ? ime.get(e.stavka.zadana!) ?? null : null)));
   }
-  for (const r of rijeci) t.add(kljucZvuka(r.rijec));
+  // Znakovi (slova, brojke) se u igri ne izgovaraju.
+  for (const r of rijeci) if (!r.znak) t.add(kljucZvuka(r.rijec));
   t.add(kljucZvuka(kraj));
   t.delete("");
   return [...t];

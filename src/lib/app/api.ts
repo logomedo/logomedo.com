@@ -42,7 +42,7 @@ export function cdnZa(zahtjev: URL): (u: string) => string {
 export function slikePrikaz(p: { rijeci: RijecBiljeznice[]; pozadine: Pozadina[] }, cdn: (u: string) => string) {
   const sl = <T extends { url: string } | null>(s: T): T => (s ? { ...s, url: cdn(s.url) } : s);
   return {
-    rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika ? cdn(r.slika) : null })),
+    rijeci: p.rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika ? cdn(r.slika) : null, ...(r.znak ? { znak: true } : {}) })),
     pozadine: p.pozadine.map((x) => ({ ...x, uspravno: sl(x.uspravno), vodoravno: sl(x.vodoravno) })),
   };
 }
