@@ -474,3 +474,33 @@ Zadnjih 5 redova zadatka 27 vraćeno je ručno iz PDF-a (vrtuljak, pšenica, ži
 „Spremi” i oznaka „● Promjene nisu spremljene” stoje u ljepljivoj traci s karticama (Uredi / Dijete
 rješava / Ispis), a ne više samo u bočnoj ploči pogleda Uredi, gdje se s Ispisa nisu vidjeli. Naslov taba
 dobiva `•`, a `beforeunload` postavlja i `returnValue`.
+
+## Vrste iz vježbenice „Iz vrtića u školu” (procjena 10. 11. 2026.)
+
+62 vrste zadataka iz vježbenice ocijenjene su 0–100 prema četiri mjerila: imamo li sadržaj (35),
+koliko koda treba (30), treba li zvuk (15) i ima li smisla u appu (20). Ocjene i skice ekrana su u
+privatnom dizajn-artefaktu (claude.ai, „Main” + skice), ovdje samo zaključak.
+
+Stanje sadržaja na dan procjene: 576 aktivnih riječi (573 sa slikom), 65 s odobrenim izgovorom,
+9 rečenica, 95 grupa rima (≥ 2 riječi, 405 riječi). Slogova: 1 → 96, 2 → 281, 3 → 147, 4+ → 45.
+Rijetka početna slova: NJ 1, Ć 2, LJ 4, DŽ 5, Đ 5, Ž 7. Zadnji glas: A 198, R 53, E 44, K 33, O 32.
+
+Najbolje ocijenjene, redom kojim ih vrijedi raditi:
+
+| Vrsta | Ocjena | Napomena |
+|---|---|---|
+| Zadnji glas (zaokruži slike koje završavaju na S) | 88 | samo A ima dovoljno riječi bez truda; R, E, K, O za 3 × 4 listić |
+| Slogovna sinteza (čuješ TI-GAR, odaberi od 3) | 88 | = `slogovi`/`nacin: "sinteza"` iz plana gore |
+| Prvi glas od 3 slike | 86 | proširenje `prvi_glas` |
+| Memory s rimama | 80 | 95 grupa rima |
+| Broj glasova (koliko glasova ima riječ) | 80 | fonemi se već računaju |
+| Slična slova (b/d/p, uljez među slovima) | 78 | **napravljeno** kroz znakove (dolje) i `percepcija` |
+| Glasovna sinteza (S-I-R → slika) | 76 | treba zvuk po glasu ili logoped čita |
+
+## Izbor fonta za znakove (prijedlog, nije napravljeno)
+
+Znakovi su sada uvijek Andika (editor, igra, PDF; `public/fonts/andika-700.ttf` se učitava samo kad
+PDF ima znak). Matija je pitao može li se birati font. Prijedlog: izbor **po zadatku** (kao stil
+slika), zadano Andika, ponuda Andika / Playwrite HR (hrvatska pisana slova) / OpenDyslexic / Nunito,
+sve OFL. PDF treba TTF po fontu, učitan samo kad ga zadatak koristi. Font po bilježnici ili djetetu
+odgođen do profila djeteta. Čeka Matijin odgovor na skup fontova.
