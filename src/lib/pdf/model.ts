@@ -4,7 +4,7 @@
 
 import type { Tema } from "../teme.ts";
 import { TEME } from "../teme.ts";
-import { VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
+import { poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
 /** `znak`: slovo ili brojka iz kataloga znakova, crta se kao znak u okviru (s izmjenom), ne kao riječ. */
@@ -109,7 +109,7 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
   }
   const kartice = (s as Listic).kartice.filter((k) => k.rijec_id || k.tekst)
     .map((k) => ({ slika: k.rijec_id ? { ...sl(k.rijec_id), natpis: "" } : null, tekst: k.tekst }));
-  return komadi(kartice, 12).map((k) => ({ vrsta: "listic", kartice: k, raspored: (s as Listic).raspored }));
+  return komadi(kartice, poStraniciListica((s as Listic).raspored)).map((k) => ({ vrsta: "listic", kartice: k, raspored: (s as Listic).raspored }));
 }
 
 /** Samostalan zadatak (admin): naslov, uputa i ime na prvoj stranici. */

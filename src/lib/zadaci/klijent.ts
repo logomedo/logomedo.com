@@ -8,7 +8,7 @@ import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
 import {
   ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   BOJE_DULJINE, DUGA_OD, KRUGOVA_MIN, KRUGOVA_MAX, SLOGOVA_MAX, SLOGOVI_SLIKA_MAX, UPUTE_SLOGOVA, jeDuga, slozSlogove, tocnoSlogovi, type NacinSlogova, type Slogovi,
-  LISTIC_PO_STRANICI, rasporedListica, type RasporedListica,
+  LISTIC_PO_STRANICI, MREZA_MAX, MREZE_LISTICA, mrezaListica, poStraniciListica, rasporedListica, type RasporedListica,
   ABECEDA, BOJE_KOLA, jednaRijec, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, krugUIgri, type Krug, type PrviGlas,
   type Izmjena, type Listic, type Odabir, type Odgovor, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta, zaGenerator,
 } from "./vrste.ts";
@@ -464,16 +464,31 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     }
     const s = sadrzaj as Listic;
     const pune = s.kartice.filter((k) => k.rijec_id || k.tekst).length;
-    const r = rasporedListica(Math.min(pune, LISTIC_PO_STRANICI), s.raspored, ...A4_LISTIC);
+    const raspored = s.raspored ?? "3x4";
+    const r = rasporedListica(Math.min(pune, poStraniciListica(raspored)), raspored, ...A4_LISTIC);
+    const postavi = (k: RasporedListica) => { s.raspored = k; oznaci(); osvjezi(); };
+    // Vlastita mreža: zadnja upisana (ili trenutna kad nije među ponuđenima).
+    const m = mrezaListica(raspored);
+    const vlastita = m && !(MREZE_LISTICA as readonly string[]).includes(raspored);
+    const broj = (v: number, max: number, naziv: string, promjena: (n: number) => void) => h("input", {
+      type: "number", min: 1, max, value: v, class: "z-mreza-broj", "aria-label": naziv,
+      onchange: (e: Event) => { const n = Math.round(Number((e.target as HTMLInputElement).value)); if (n >= 1 && n <= max) promjena(n); else osvjezi(); },
+    });
+    const mc = m?.stupaca ?? 4, mr = m?.redova ?? 5;
+    const stranica = poStraniciListica(raspored);
     return h("div", { class: "z-uredi" },
       h("div", { class: "ploha z-scena-dio" },
-        h("div", { class: "z-dio-glava" }, h("b", {}, "Veličina slika")),
-        h("div", { class: "z-prekidac" },
-          ...([["auto", "Prema broju slika"], ["3x4", "Uvijek 3 × 4"]] as [RasporedListica, string][]).map(([k, t]) =>
-            h("button", { type: "button", class: `z-tocno${(s.raspored ?? "3x4") === k ? " on" : ""}`, onclick: () => { s.raspored = k; oznaci(); osvjezi(); } }, t))),
-        h("p", { class: "sitno blijedo" }, s.raspored === "auto"
+        h("div", { class: "z-dio-glava" }, h("b", {}, "Veličina slika"), h("span", { class: "sitno blijedo" }, "stupaca × redova na stranici")),
+        h("div", { class: "z-prekidac z-mreze" },
+          h("button", { type: "button", class: `z-tocno${raspored === "auto" ? " on" : ""}`, onclick: () => postavi("auto") }, "Prema broju slika"),
+          ...MREZE_LISTICA.map((k) => h("button", { type: "button", class: `z-tocno${raspored === k ? " on" : ""}`, onclick: () => postavi(k) }, k.replace("x", " × "))),
+          h("span", { class: `z-mreza-vlastita${vlastita ? " on" : ""}` },
+            broj(mc, MREZA_MAX.stupaca, "Stupaca", (n) => postavi(`${n}x${mr}`)), "×",
+            broj(mr, MREZA_MAX.redova, "Redova", (n) => postavi(`${mc}x${n}`)),
+            vlastita ? null : h("button", { type: "button", class: "z-tocno", onclick: () => postavi(`${mc}x${mr}`) }, "Primijeni"))),
+        h("p", { class: "sitno blijedo" }, raspored === "auto"
           ? `Manje slika, veće slike. Sad ${pune} ${pune === 1 ? "slika" : pune < 5 ? "slike" : "slika"}: ${r.stupaca} × ${r.redova}, slika oko ${Math.floor(r.s / 10)} cm.${pune > LISTIC_PO_STRANICI ? ` Na stranicu stane ${LISTIC_PO_STRANICI}, ostale idu na sljedeću.` : ""}`
-          : `12 slika na stranici, oko ${Math.floor(r.s / 10)} cm, bez obzira na broj slika (kao stari LogoMedo).`)),
+          : `${stranica} ${stranica === 1 ? "slika" : stranica % 10 >= 2 && stranica % 10 <= 4 && (stranica < 12 || stranica > 14) ? "slike" : "slika"} na stranici, oko ${Math.floor(r.s / 10)} cm.${pune > stranica ? ` Ima ih ${pune}, pa listić ima ${Math.ceil(pune / stranica)} ${Math.ceil(pune / stranica) < 5 ? "stranice" : "stranica"}.` : ""}`)),
       h("div", { class: "z-listic-uredi" }, ...s.kartice.map((k, i) => h("div", { class: "ploha z-kartica-uredi" },
         slot(k.rijec_id, (n) => { const stara = R(k.rijec_id); k.rijec_id = n; if (!k.tekst || (stara && k.tekst === VELIKO(stara.rijec))) k.tekst = n ? VELIKO(R(n)!.rijec) : ""; }),
         h("input", { type: "text", value: k.tekst, placeholder: "Tekst ispod slike", maxLength: 200, oninput: (e: Event) => { k.tekst = (e.target as HTMLInputElement).value; oznaci(); } }),
@@ -724,7 +739,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   function listicMreza(s: Listic, a4 = false) {
     const pune = s.kartice.filter((k) => k.rijec_id || k.tekst);
     // Na papiru: mreža i veličina iz rasporedListica (isto kao PDF); prva stranica određuje veličinu.
-    const r = rasporedListica(Math.min(pune.length, LISTIC_PO_STRANICI), s.raspored, ...A4_LISTIC, 7, pune.some((k) => k.tekst) ? 9 : 0);
+    const r = rasporedListica(Math.min(pune.length, poStraniciListica(s.raspored)), s.raspored, ...A4_LISTIC, 7, pune.some((k) => k.tekst) ? 9 : 0);
     const stil = a4 ? `grid-template-columns:repeat(${r.stupaca},${Math.floor(r.s)}mm);justify-content:center` : s.raspored === "auto" && pune.length <= 6 ? `grid-template-columns:repeat(${r.stupaca},minmax(0,${pune.length <= 2 ? 340 : 240}px));justify-content:center` : undefined;
     return h("div", { class: "z-listic", style: stil }, ...pune.map((k) =>
       h("figure", {}, slika(k.rijec_id, "", false), h("figcaption", {}, k.tekst))));

@@ -264,3 +264,18 @@ test("slogovi i prvi glas preskaču izraze od više riječi", async () => {
     assert.ok(slozKrug("L", rij, 12, rnd).slike.every((x) => x === null || !izrazi.has(x)));
   }
 });
+
+test("listić: fiksne mreže stupaca × redova i broj po stranici", async () => {
+  const { mrezaListica, poStraniciListica, rasporedListica, normaliziraj } = await import("./vrste.ts");
+  assert.deepEqual(mrezaListica("2x3"), { stupaca: 2, redova: 3 });
+  assert.equal(mrezaListica("6x1"), null);
+  assert.equal(mrezaListica("auto"), null);
+  assert.equal(poStraniciListica("1x1"), 1);
+  assert.equal(poStraniciListica("4x5"), 20);
+  assert.equal(poStraniciListica("auto"), 12);
+  assert.equal(poStraniciListica(undefined), 12);
+  const r = rasporedListica(3, "1x2", 180, 222);
+  assert.equal(r.stupaca, 1); assert.equal(r.redova, 2);
+  assert.equal((normaliziraj("listic", { kartice: [], raspored: "4x5" }) as { raspored: string }).raspored, "4x5");
+  assert.equal((normaliziraj("listic", { kartice: [], raspored: "9x9" }) as { raspored: string }).raspored, "3x4");
+});

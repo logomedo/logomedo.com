@@ -14,19 +14,39 @@ type Id = number | null;
 
 /**
  * `raspored`: `auto` = veličina slika prema broju slika na stranici (4 slike → 2 × 2 velike),
- * `3x4` = uvijek 3 stupca × 4 reda kao stari LogoMedo (zadano za listiće bez polja).
+ * `CxR` = fiksna mreža C stupaca × R redova na svakoj stranici (`3x4` kao stari LogoMedo, zadano
+ * za listiće bez polja). Na stranicu stane C × R slika, ostale idu na sljedeću.
  */
-export type RasporedListica = "auto" | "3x4";
+export type RasporedListica = "auto" | `${number}x${number}`;
 export interface Listic { kartice: { rijec_id: Id; tekst: string }[]; raspored?: RasporedListica }
-/** Najviše kartica na jednoj A4 stranici listića. */
+/** Najviše kartica na jednoj A4 stranici listića s rasporedom `auto`. */
 export const LISTIC_PO_STRANICI = 12;
+/** Granice vlastite mreže (A4 uspravno: 5 × 6 daje slike od oko 3 cm). */
+export const MREZA_MAX = { stupaca: 5, redova: 6 } as const;
+/** Ponuđene mreže u editoru (stupaca × redova). */
+export const MREZE_LISTICA = ["1x1", "1x2", "2x2", "2x3", "3x3", "3x4"] as const;
+
+/** Fiksna mreža iz rasporeda, ili null za `auto` i neispravno. */
+export function mrezaListica(r: string | undefined): { stupaca: number; redova: number } | null {
+  const m = /^(\d)x(\d)$/.exec(r ?? "");
+  if (!m) return null;
+  const stupaca = Number(m[1]), redova = Number(m[2]);
+  return stupaca >= 1 && redova >= 1 && stupaca <= MREZA_MAX.stupaca && redova <= MREZA_MAX.redova ? { stupaca, redova } : null;
+}
+/** Koliko kartica stane na jednu stranicu listića. */
+export const poStraniciListica = (r: RasporedListica | undefined) => { const m = mrezaListica(r ?? "3x4"); return r === "auto" || !m ? LISTIC_PO_STRANICI : m.stupaca * m.redova; };
+
 /**
  * Mreža stranice listića s `n` kartica u prostoru `W` × `H` mm (razmak `g`, `tekst` mm ispod slike):
- * broj stupaca koji daje najveću sliku (kod jednake, manje praznih mjesta). Isto računaju PDF i HTML ispis.
+ * fiksna mreža rasporeda, ili za `auto` broj stupaca koji daje najveću sliku (kod jednake, manje
+ * praznih mjesta). Isto računaju PDF i HTML ispis.
  */
 export function rasporedListica(n: number, raspored: RasporedListica | undefined, W: number, H: number, g = 7, tekst = 9): { stupaca: number; redova: number; s: number } {
   const velicina = (c: number, r: number) => Math.min((W - (c - 1) * g) / c, (H - (r - 1) * g) / r - tekst);
-  if (raspored !== "auto") return { stupaca: 3, redova: 4, s: velicina(3, 4) };
+  if (raspored !== "auto") {
+    const m = mrezaListica(raspored) ?? { stupaca: 3, redova: 4 };
+    return { ...m, s: velicina(m.stupaca, m.redova) };
+  }
   n = Math.max(1, Math.min(LISTIC_PO_STRANICI, n));
   let naj = { stupaca: 1, redova: n, s: -Infinity };
   for (let c = 1; c <= 4; c++) {
@@ -268,7 +288,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
   const o = obj(ulaz);
   switch (v) {
     case "listic":
-      return { kartice: niz(o.kartice, MAX_KARTICA_LISTICA, (k) => ({ rijec_id: id(obj(k).rijec_id), tekst: String(obj(k).tekst ?? "").slice(0, 200) })), raspored: o.raspored === "auto" ? "auto" : "3x4" };
+      return { kartice: niz(o.kartice, MAX_KARTICA_LISTICA, (k) => ({ rijec_id: id(obj(k).rijec_id), tekst: String(obj(k).tekst ?? "").slice(0, 200) })), raspored: o.raspored === "auto" ? "auto" : mrezaListica(String(o.raspored)) ? (String(o.raspored) as RasporedListica) : "3x4" };
     case "odabir":
       return {
         odnos: "rima",

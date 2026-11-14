@@ -181,6 +181,10 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-gumb-scene .z-slot { width: 100%; }
   .z-gumb-scene .z-red-gumbi { margin: 0; justify-content: center; }
   .z-prekidac { display: flex; gap: 4px; } .z-prekidac .z-tocno { flex: 1; }
+  .z-mreze { flex-wrap: wrap; } .z-mreze .z-tocno { flex: 0 0 auto; white-space: nowrap; }
+  .z-mreza-vlastita { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 10px; border: 1px dashed var(--rub-jak); color: var(--blijedo); }
+  .z-mreza-vlastita.on { border-style: solid; border-color: var(--med); background: var(--med-blago); color: var(--med-tamno); }
+  .z-mreza-broj { width: 3.2em; font: inherit; font-weight: 650; text-align: center; padding: 4px 2px; border: 1px solid var(--rub-jak); border-radius: 7px; background: var(--povrsina); color: var(--tinta); }
   .z-tocno.ometac.on { background: var(--greska-blago); color: var(--greska); border-color: var(--greska); }
   .z-greska-polja { margin: 0; color: var(--greska); font-weight: 600; }
   input.neispravno { border-color: var(--greska) !important; box-shadow: 0 0 0 3px var(--greska-blago) !important; }
