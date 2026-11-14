@@ -90,8 +90,9 @@ flowchart LR
 LogoMedu (pdfmake). PDF se slaže u pregledniku: Nunito 800/900 iz `public/fonts/` kao podskup (hrvatska
 slova), slike smanjene na ≤ 800 px JPEG (PDF bilježnice ~1–2 MB, ne 6 MB), raspored kao HTML ispis
 (odabir 3 reda, uljez 4, povezivanje 1 stranica, listić 3 × 4). Slike idu kroz `/cdn/` jer
-cdn.logomedo.com nema CORS, a CSP stranice dopušta `connect-src 'self'`. „Ispiši” (dijalog preglednika)
-ostaje kao sporedni gumb.
+cdn.logomedo.com nema CORS, a CSP stranice dopušta `connect-src 'self'`. Gumb „Ispiši” (dijalog
+preglednika) je uklonjen 14. 11. 2026.: ispis iz preglednika imao je dosta problema, PDF je jasniji.
+HTML pogled Ispis ostaje kao pregled.
 
 Izmjereno na produkciji 1. 11. 2026. (Božićna rima, 6 stranica, 14 slika): 1009 KB, ~1,5 s od klika.
 Bez smanjivanja slika isti PDF ima 5,8 MB. Zamke: u `drawSvgPath` pdf-lib skalira i debljinu crte i

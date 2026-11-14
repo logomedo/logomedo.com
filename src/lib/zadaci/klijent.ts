@@ -917,7 +917,6 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("button", { type: "button", class: `z-kartica${pogled === k ? " on" : ""}`, onclick: () => { pogled = k; history.replaceState(null, "", `#${k}`); resetRjesavanja(); osvjezi(); } }, t)),
       h("span", { class: "z-razmak" }),
       pogled !== "uredi" ? h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: sRijecima, onchange: (e: Event) => { sRijecima = (e.target as HTMLInputElement).checked; osvjezi(); } }), " Riječi ispod slika") : null,
-      pogled === "ispis" ? h("button", { type: "button", class: "gumb mali", title: "Dijalog za ispis preglednika", onclick: () => print() }, "Ispiši") : null,
       pogled === "ispis" ? h("button", { type: "button", class: "gumb glavni mali", onclick: preuzmiPdf }, "Preuzmi PDF") : null,
       pogled !== "uredi" ? h("button", { type: "button", class: "gumb mali", onclick: () => document.documentElement.requestFullscreen?.() }, "Cijeli zaslon") : null,
       stanjeEl, spremiGumb,
