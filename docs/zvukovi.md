@@ -2,8 +2,8 @@
 
 Igra bilježnice (`/b/<slug>`) izgovara riječi, upute i rečenicu na kraju. Do 4. 11. 2026. to je
 radio samo glas preglednika (`speechSynthesis`), loše za hrvatski. Sada svaki tekst dobiva
-snimku iz ElevenLabsa, koja prolazi automatsku provjeru i ljudski pregled. Glas preglednika
-ostaje zamjena dok tekst nema odobrene snimke.
+snimku iz ElevenLabsa, koja prolazi automatsku provjeru i ljudski pregled. Od 14. 11. 2026. glasa
+preglednika više nema: tekst bez odobrene snimke nema zvučnik i samo se čita.
 
 ```mermaid
 flowchart LR
@@ -57,8 +57,7 @@ Tekst za TTS (`izgovorZa`) ima veliko slovo na početku rečenice i točku na kr
 VELIKIM slovima model zna čitati kao kraticu, a gola riječ dobiva nedovršenu intonaciju.
 
 Igra svira sve snimke kroz jedan `Audio` element, otključan u dodiru „Kreni” (iOS). Ako snimka
-ne krene (mreža, format), jednom padne na glas preglednika. `AbortError` (sljedeći tekst je
-prekinuo prethodni) nije greška.
+ne krene (mreža, format), igra šuti.
 
 ## Glas
 

@@ -23,6 +23,8 @@ export interface OpcijeScene {
   naDodir?: (i: number, tocno: boolean) => void;
   naKraj?: () => void;
   govori?: (tekst: string, gumb?: HTMLElement) => void;
+  /** Ima li tekst odobrenu snimku (zvučnik se prikazuje samo tada). */
+  imaZvuk?: (tekst: string) => boolean;
   zvuk?: { pogodak?: () => void; krivo?: () => void };
 }
 
@@ -39,19 +41,6 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, kl: string, ...djeca:
   return e;
 }
 
-/** Glas preglednika (hr-HR), kad pozivatelj nema svoj. */
-export function govoriPreglednik(tekst: string, gumb?: HTMLElement) {
-  if (!("speechSynthesis" in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(tekst);
-  u.lang = "hr-HR"; u.rate = 0.85;
-  const hr = speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith("hr"));
-  const g = hr.find((v) => /lana/i.test(v.name)) ?? hr[0];
-  if (g) u.voice = g;
-  if (gumb) { gumb.classList.add("govori"); u.onend = u.onerror = () => gumb.classList.remove("govori"); }
-  speechSynthesis.speak(u);
-}
-
 /** Slika pozadine za orijentaciju: tražena, inače ona koja postoji. */
 export function slikaZa(p: PozadinaPrikaz | null, o: Orijentacija): { slika: SlikaPozadine; tocna: boolean } | null {
   if (!p) return null;
@@ -64,7 +53,7 @@ export function slikaZa(p: PozadinaPrikaz | null, o: Orijentacija): { slika: Sli
 export const vidljiviGumbi = (s: Scena) => s.gumbi.map((g, i) => ({ ...g, i })).filter((g) => g.rijec_id !== null);
 
 export function scena(o: OpcijeScene): HTMLElement {
-  const govori = o.govori ?? govoriPreglednik;
+  const govori = o.govori ?? (() => {});
   const gumbi = vidljiviGumbi(o.sadrzaj);
   const tocnih = gumbi.filter((g) => g.tocno).length;
   const poz = slikaZa(o.pozadina, o.orijentacija);
@@ -79,10 +68,15 @@ export function scena(o: OpcijeScene): HTMLElement {
     dodaj(korijen, el("div", "scena-pozadina prazna", "Situacija nije odabrana"));
   }
 
-  const zv = el("button", "zvucnik");
-  zv.type = "button"; zv.setAttribute("aria-label", "Poslušaj pitanje"); zv.innerHTML = IKONA_ZVUK;
-  zv.addEventListener("click", (e) => { e.stopPropagation(); govori(o.pitanje, zv); });
-  dodaj(korijen, el("div", "scena-pitanje", el("span", "", o.pitanje || "…"), zv));
+  // Zvučnik samo kad pitanje ima odobrenu snimku; inače se pitanje samo čita.
+  const pitanje = el("div", "scena-pitanje", el("span", "", o.pitanje || "…"));
+  if (o.imaZvuk?.(o.pitanje)) {
+    const zv = el("button", "zvucnik");
+    zv.type = "button"; zv.setAttribute("aria-label", "Poslušaj pitanje"); zv.innerHTML = IKONA_ZVUK;
+    zv.addEventListener("click", (e) => { e.stopPropagation(); govori(o.pitanje, zv); });
+    dodaj(pitanje, zv);
+  }
+  dodaj(korijen, pitanje);
 
   const traka = el("div", "scena-traka");
   let gotovo = tocnih > 0 && gumbi.every((g) => !g.tocno || o.pogodeni.has(g.i));

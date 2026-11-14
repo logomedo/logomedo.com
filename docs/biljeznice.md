@@ -9,8 +9,8 @@ upaljenim lampicama.
 
 - **Slike:** novi stil `ilustracija` (akvarel u boji, bijela pozadina), uz bojanku. Javno se
   prikazuju samo odobrene slike (cdn.logomedo.com): stil bilježnice, pa bojanka, inače riječ.
-- **Zvuk:** glas preglednika (`speechSynthesis`, `hr-HR`, glas „Lana” na iPadu/Macu) sada;
-  kasnije snimke logopedice po riječi (R2), koje imaju prednost.
+- **Zvuk:** samo odobrene ElevenLabs snimke (`docs/zvukovi.md`). Tekst bez snimke se samo čita,
+  bez zvučnika; glas preglednika je uklonjen 14. 11. 2026. (preloš za hrvatski).
 - **Pristup:** javna poveznica bez prijave; ništa se ne sprema o djetetu (samo igra i ispis).
 
 ## Kako je složeno
@@ -63,7 +63,7 @@ Izostavljen je GRINČ (zaštićeni lik); dvosmislene riječi BAL, DJED i GRAD im
 1. Generiranje ~22 ilustracije ide kroz kvotu agyja (~12 pa 3–5 h čekanja): gumb u adminu
    bilježnice. Nakon toga ih odobriti u Pregledu (tek odobrene idu na CDN i u igru).
 2. Popis riječi i parova neka pregleda Anita (logopedica).
-3. Izgovor: ElevenLabs snimke s pregledom (`docs/zvukovi.md`, 4. 11. 2026.); glas preglednika je zamjena.
+3. Izgovor: ElevenLabs snimke s pregledom (`docs/zvukovi.md`, 4. 11. 2026.); bez snimke nema zvuka.
 
 ## Nova bilježnica i teme (2. 11. 2026., na produkciji)
 
