@@ -188,7 +188,7 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     uputa: "", ispis: "Imenuj, oboji, zaokruži", odnos: false,
   },
   slogovi: {
-    naziv: "Slogovi", opis: "Dugačke i kratke riječi (dijete ih zaokruži dvjema bojama) ili slogovna analiza (ispod slike oboji onoliko krugova koliko riječ ima slogova).",
+    naziv: "Prebrajanje", opis: "Ispod svake slike su kružići: dijete oboji onoliko koliko prebroji (npr. slogova u riječi). Ili dugačke i kratke riječi zaokruži dvjema bojama.",
     uputa: UPUTE_SLOGOVA.duljina.ispis, ispis: "Zaokruži bojama / oboji krugove", odnos: false,
   },
   odabir: {

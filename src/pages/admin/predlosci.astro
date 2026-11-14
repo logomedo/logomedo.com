@@ -16,7 +16,7 @@ const vrste = Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][];
 // Svaka vrsta ide u svoje podpodručje (ono je samo oznaka; mijenja se u uređivaču), a gumbi su njezine inačice.
 const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
   listic: [{ tekst: "Iz cijelog kataloga" }],
-  slogovi: [{ tekst: "Dugačke i kratke", nacin: "duljina" }, { tekst: "Slogovna analiza", nacin: "analiza" }],
+  slogovi: [{ tekst: "Slogovi u riječi", nacin: "analiza" }, { tekst: "Dugačke i kratke riječi", nacin: "duljina" }],
   odabir: [{ tekst: "Rima" }], povezivanje: [{ tekst: "Rima" }], uljez: [{ tekst: "Rima" }],
   percepcija: [{ tekst: "Nađi različitu", nacin: "razlicitu" }, { tekst: "Nađi dvije iste", nacin: "par" }],
   prvi_glas: [{ tekst: "Kolo slova" }], scena: [{ tekst: "Nova scena" }],
