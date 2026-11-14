@@ -27,7 +27,7 @@ const za = {
   rijeci: rijeci.map((r) => ({ id: r.id, rijec: r.rijec, slika: r.slika, znak: r.znak })),
   pozadine,
   kraj: tema.kraj,
-  // Odobrene snimke izgovora (ElevenLabs) po ključu teksta; bez snimke igra koristi glas preglednika.
+  // Odobrene snimke izgovora (ElevenLabs) po ključu teksta; bez snimke igra šuti.
   zvukovi: await odobreniZvukovi(tekstoviIgre(zadaci, rijeci, tema.kraj)),
 };
 // JSON u <script type="application/json">: „</” se ne smije pojaviti doslovno.

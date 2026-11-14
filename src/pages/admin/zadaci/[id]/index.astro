@@ -4,6 +4,9 @@ import Ikona from "../../../../components/Ikona.astro";
 import { nazivPodrucja, podrucja as svaPodrucja, stilovi as sviStilovi, sveRijeci, zadatak as nadji } from "../../../../lib/zadaci/baza";
 import { VRSTE } from "../../../../lib/zadaci/vrste";
 import { popis as svePozadine } from "../../../../lib/pozadine";
+import { rijeciIPozadine } from "../../../../lib/biljeznice";
+import { dodajZvukove, stanjeZvukova, tekstoviIgre } from "../../../../lib/zvukovi";
+import { TEME } from "../../../../lib/teme";
 import "../../../../lib/scena.css";
 import "../../../../lib/kolo-slova.css";
 import "@fontsource-variable/nunito";
@@ -11,6 +14,23 @@ import "@fontsource/andika/700.css";
 
 const z = await nadji(Number(Astro.params.id));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
+
+// Izgovor (ElevenLabs) za spremljenu verziju zadatka: isti tekstovi koje igra izgovara, uz kraj
+// zadane teme. Pregled za dijete govori samo odobrene snimke (docs/zvukovi.md).
+const tekstoviZadatka = async () => {
+  const zadaci = [{ vrsta: z.vrsta, uputa: z.uputa, sadrzaj: z.sadrzaj }];
+  return tekstoviIgre(zadaci, (await rijeciIPozadine(zadaci, z.stil)).rijeci, TEME.bozic.kraj);
+};
+if (Astro.request.method === "POST" && (await Astro.request.formData()).get("akcija") === "zvukovi") {
+  const n = await dodajZvukove(await tekstoviZadatka(), Astro.locals.admin!.email);
+  return Astro.redirect(`/admin/zadaci/${z.id}?zvukova=${n}`, 303);
+}
+const zvuci = await stanjeZvukova(await tekstoviZadatka());
+const zvukaOdobreno = zvuci.filter((x) => x.odobren).length;
+const zvukaZaPregled = zvuci.filter((x) => !x.odobren && x.kandidata).length;
+const zvukaURedu = zvuci.filter((x) => !x.odobren && !x.kandidata && x.u_redu).length;
+const zvukaBez = zvuci.filter((x) => !x.odobren && !x.kandidata && !x.u_redu && !x.bez_ponavljanja).length;
+const zvukova = Astro.url.searchParams.get("zvukova");
 const [rijeci, podrucja, stilovi, pozadine] = await Promise.all([sveRijeci(z.stil), svaPodrucja(), sviStilovi(), z.vrsta === "scena" ? svePozadine() : Promise.resolve([])]);
 const podaci = {
   zadatak: z,
@@ -29,10 +49,20 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
       <h1>{z.naslov || VRSTE[z.vrsta].naziv}</h1>
       <p class="podnaslov"><span class="oznaka med">{VRSTE[z.vrsta].naziv}</span> {nazivPodrucja(podrucja, z.podrucje_id)} · verzija {z.aktivna_verzija}</p>
     </div>
-    <form method="post" action={`/admin/api/zadatak/${z.id}`}>
-      <button class="gumb mali tihi opasno" name="akcija" value="obrisi" type="submit">Obriši zadatak</button>
-    </form>
+    <div class="z-zaglavlje-desno">
+      <form class="z-izgovor" method="post">
+        <input type="hidden" name="akcija" value="zvukovi" />
+        <span class="sitno blijedo" title="Snimke za spremljenu verziju: riječi, uputa i rečenica na kraju">
+          Izgovor: {zvukaOdobreno} od {zvuci.length} odobreno{zvukaZaPregled > 0 && <>, <a href="/admin/zvukovi">{zvukaZaPregled} za pregled</a></>}{zvukaURedu > 0 && `, ${zvukaURedu} u redu`}
+        </span>
+        <button class="gumb mali" type="submit" disabled={!zvukaBez}>Generiraj zvukove ({zvukaBez})</button>
+      </form>
+      <form method="post" action={`/admin/api/zadatak/${z.id}`}>
+        <button class="gumb mali tihi opasno" name="akcija" value="obrisi" type="submit">Obriši zadatak</button>
+      </form>
+    </div>
   </div>
+  {zvukova !== null && <p class="ploha z-poruka">{Number(zvukova) ? `U red izgovora dodano ${zvukova} tekstova. Snimke stižu u Zvukovi za minutu-dvije; tamo ih odobri.` : "Svi tekstovi već imaju snimku ili posao u redu."}</p>}
   <div id="zadatak"></div>
   <script type="application/json" id="podaci" set:html={json}></script>
 </AdminOkvir>
@@ -45,6 +75,10 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
 
 <style is:global>
   .z-zaglavlje { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
+  .z-zaglavlje-desno { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .z-izgovor { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .z-poruka { margin: -6px 0 16px; padding: 10px 14px; }
+  @media (max-width: 700px) { .z-zaglavlje { flex-direction: column; align-items: stretch; } .z-zaglavlje-desno, .z-izgovor { align-items: flex-start; justify-content: flex-start; } }
   .z-zaglavlje h1 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: clamp(1.7rem, 3vw, 2.3rem); letter-spacing: -.02em; }
   .z-zaglavlje .podnaslov { display: flex; gap: 8px; align-items: center; }
 

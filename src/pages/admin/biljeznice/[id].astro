@@ -127,7 +127,7 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
           <button class="gumb mali" type="submit" disabled={!zvukaBez}>Generiraj zvukove ({zvukaBez})</button>
         </form>
       </div>
-      <p class="sitno blijedo">ElevenLabs izgovori svaku riječ i uputu, STT provjeri snimku, a odobrava se u <a href="/admin/zvukovi">Zvukovi</a>. Bez odobrene snimke igra koristi glas preglednika.</p>
+      <p class="sitno blijedo">ElevenLabs izgovori svaku riječ i uputu, STT provjeri snimku, a odobrava se u <a href="/admin/zvukovi">Zvukovi</a>. Bez odobrene snimke igra šuti, a tekst se samo čita.</p>
       <table>
         <tbody>
           {zvuci.map((z) => (
@@ -137,7 +137,7 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
                 {z.odobren ? <span class="oznaka uspjeh">odobren</span>
                   : z.kandidata ? <a class="oznaka med" href="/admin/zvukovi">{z.kandidata} za pregled</a>
                   : z.u_redu ? <span class="oznaka info">u redu</span>
-                  : z.bez_ponavljanja ? <a class="oznaka" href="/admin/zvukovi?s=odbijen" title="ElevenLabs ovo ne zna izgovoriti; igra koristi glas preglednika">samo odbijen</a>
+                  : z.bez_ponavljanja ? <a class="oznaka" href="/admin/zvukovi?s=odbijen" title="ElevenLabs ovo ne zna izgovoriti; igra ovdje šuti">samo odbijen</a>
                   : z.greska ? <span class="oznaka greska" title={z.greska}>greška</span>
                   : <span class="oznaka">nema</span>}
               </td>
