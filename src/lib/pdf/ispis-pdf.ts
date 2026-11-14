@@ -5,7 +5,7 @@
 // Raspored prati HTML ispis (/b/<slug>/ispis i pogled „Ispis" u editoru): A4, mjere u mm.
 // Fontovi (Nunito 800/900, OFL) ugrađuju se kao podskup, pa hrvatska slova rade svugdje.
 
-import { concatTransformationMatrix, degrees, popGraphicsState, pushGraphicsState, PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { concatTransformationMatrix, degrees, LineCapStyle, popGraphicsState, pushGraphicsState, PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { rasporedListica, type Izmjena } from "../zadaci/vrste.ts";
 import fontkit from "@pdf-lib/fontkit";
 import { TEME } from "../teme.ts";
@@ -25,6 +25,9 @@ const BLIJEDO = rgb(0x9a / 255, 0x90 / 255, 0x7f / 255);
 const BEZ = rgb(0x5c / 255, 0x53 / 255, 0x45 / 255);
 const BIJELO = rgb(1, 1, 1);
 const CRNO = rgb(0, 0, 0);
+/** Podloga ponuđenih slika u uparivanju: dovoljno svijetla da se na crno-bijelom pisaču vidi kao blaga siva. */
+const LADICA = rgb(0xf1 / 255, 0xee / 255, 0xe8 / 255);
+const LADICA_RUB = rgb(0xb5 / 255, 0xad / 255, 0x9f / 255);
 
 /** Crtanje u mm s ishodištem gore lijevo (pdf-lib ima točke i ishodište dolje lijevo). */
 class Platno {
@@ -52,14 +55,18 @@ class Platno {
   }
 
   /** Zaobljeni pravokutnik (x, y gore lijevo, mm). */
-  okvir(x: number, y: number, w: number, h: number, r: number, debljinaPt: number) {
+  okvir(x: number, y: number, w: number, h: number, r: number, debljinaPt: number, boja = BIJELO, rub = CRNO) {
     const d = `M${r} 0 H${w - r} Q${w} 0 ${w} ${r} V${h - r} Q${w} ${h} ${w - r} ${h} H${r} Q0 ${h} 0 ${h - r} V${r} Q0 0 ${r} 0 Z`;
-    this.page.drawSvgPath(d, { x: this.X(x), y: this.Y(y), scale: MM, color: BIJELO, borderColor: CRNO, borderWidth: debljinaPt / MM });
+    this.page.drawSvgPath(d, { x: this.X(x), y: this.Y(y), scale: MM, color: boja, borderColor: rub, borderWidth: debljinaPt / MM });
   }
 
-  crtkano(x1: number, y: number, x2: number, debljinaPt: number) {
-    this.page.drawLine({ start: { x: this.X(x1), y: this.Y(y) }, end: { x: this.X(x2), y: this.Y(y) }, thickness: debljinaPt, color: CRNO, dashArray: [4, 3] });
+  /** Puna strelica udesno od x1 do x2 na visini y (mm): crta i trokutasti vrh. */
+  strelica(x1: number, y: number, x2: number, debljinaPt: number) {
+    const vrh = 5, pola = 3.6;
+    this.page.drawLine({ start: { x: this.X(x1), y: this.Y(y) }, end: { x: this.X(x2 - vrh + 0.5), y: this.Y(y) }, thickness: debljinaPt, color: CRNO, lineCap: LineCapStyle.Round });
+    this.page.drawSvgPath(`M0 ${-pola} L${vrh} 0 L0 ${pola} Z`, { x: this.X(x2 - vrh), y: this.Y(y), scale: MM, color: CRNO });
   }
+
 
   crta(x1: number, y: number, x2: number) {
     this.page.drawLine({ start: { x: this.X(x1), y: this.Y(y) }, end: { x: this.X(x2), y: this.Y(y) }, thickness: 0.75, color: CRNO });
@@ -239,16 +246,20 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     };
 
     if (t.vrsta === "odabir") {
-      const z = 38, s3 = 32, g = 6, c = 8;
-      const sirinaReda = z + g + c + g + 3 * s3 + 2 * g;
+      // Zadana slika (debeli okvir) → strelica → tri ponuđene u zajedničkoj sivoj podlozi („jedna od ovih”).
+      const z = 38, s3 = 30, g = 5, c = 13, pad = 3.5;
+      const ladica = 2 * pad + 3 * s3 + 2 * g;
+      const sirinaReda = z + g + c + g + ladica;
       const x0 = L + (W - sirinaReda) / 2;
       const nat = natpisa(t.redovi.flatMap((r) => [r.zadana, ...r.ponudeno]));
       const ys = raspodijeli(t.redovi.length, z + nat, 30);
       for (const [i, r] of t.redovi.entries()) {
         const y = ys[i];
-        await slikaUOkviru(p, r.zadana, x0, y, z, 2.25);
-        p.crtkano(x0 + z + g, y + z / 2, x0 + z + g + c, 1.5);
-        for (const [j, sl] of r.ponudeno.entries()) await slikaUOkviru(p, sl, x0 + z + 2 * g + c + j * (s3 + g), y + (z - s3) / 2, s3);
+        await slikaUOkviru(p, r.zadana, x0, y, z, 2.5);
+        p.strelica(x0 + z + g, y + z / 2, x0 + z + g + c, 2.75);
+        const lx = x0 + z + 2 * g + c, ly = y + (z - s3) / 2 - pad;
+        p.okvir(lx, ly, ladica, s3 + 2 * pad + nat, 6, 0.75, LADICA, LADICA_RUB);
+        for (const [j, sl] of r.ponudeno.entries()) await slikaUOkviru(p, sl, lx + pad + j * (s3 + g), ly + pad, s3);
       }
     }
 

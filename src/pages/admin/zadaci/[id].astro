@@ -254,9 +254,14 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4 .z-slika .z-bez { color: #5c5345; font-size: calc(12pt * var(--m, 1)); }
   .a4-red { display: flex; align-items: center; gap: 6mm; }
   .a4-odabir, .a4-uljez { display: flex; flex-direction: column; gap: 7mm; }
-  .a4-odabir .a4-zadana { width: 36mm; } .a4-odabir .a4-zadana .z-slika { border-width: 3px; }
-  .a4-crta { width: 8mm; border-top: 2px dashed #000; }
-  .a4-odabir .a4-izbor { width: 34mm; }
+  /* Uparivanje: zadana (debeli okvir) → strelica → tri ponuđene u sivoj podlozi; isto kao PDF (ispis-pdf.ts). */
+  .a4-odabir .a4-red { justify-content: center; gap: 5mm; }
+  .a4-odabir .a4-zadana { width: 38mm; } .a4-odabir .a4-zadana .z-slika { border-width: 3.3px; }
+  .a4-strelica, .a4-ladica { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .a4-strelica { position: relative; width: 13mm; height: 1mm; background: #000; border-radius: .5mm; margin-right: 1.5mm; }
+  .a4-strelica::after { content: ""; position: absolute; right: -1.5mm; top: 50%; transform: translateY(-50%); border-left: 5mm solid #000; border-block: 3.6mm solid transparent; }
+  .a4-ladica { display: flex; gap: 5mm; padding: 3.5mm; background: #f1eee8; border: 1px solid #b5ad9f; border-radius: 6mm; }
+  .a4-odabir .a4-izbor { width: 30mm; }
   .a4-uljez .a4-red { justify-content: space-between; } .a4-uljez .a4-izbor { width: 38mm; }
   .a4-krug { break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 5mm; margin-bottom: 9mm; }
   .a4-slovo { width: 28mm; height: 28mm; border: 2.5px solid #000; border-radius: 50%; display: grid; place-items: center; font-size: 46pt; font-weight: 900; line-height: 1; }

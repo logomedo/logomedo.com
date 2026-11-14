@@ -88,13 +88,15 @@ const grancica = tema.kutovi ? GRANCICA : "";
               {R(x.zadana)?.slika ? <img src={R(x.zadana)!.slika!} alt="" /> : <span class="bez">{VEL(R(x.zadana)?.rijec ?? "")}</span>}
               <figcaption>{VEL(R(x.zadana)?.rijec ?? "")}</figcaption>
             </figure>
-            <div class="crta" />
-            {x.ponudeno.map((id) => (
-              <figure class="slika">
-                {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
-                <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
-              </figure>
-            ))}
+            <div class="strelica" />
+            <div class="ladica">
+              {x.ponudeno.map((id) => (
+                <figure class="slika">
+                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                  <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
+                </figure>
+              ))}
+            </div>
           </div>
         ))}
         {s.vrsta === "uljez" && s.stavke.map((x) => (
@@ -251,8 +253,11 @@ const grancica = tema.kutovi ? GRANCICA : "";
   .slika .bez { display: grid; place-items: center; font-weight: 900; font-size: 14pt; color: #5c5345; }
   .slika figcaption { font-weight: 800; font-size: 12pt; letter-spacing: .04em; }
   .red { display: flex; align-items: center; justify-content: center; gap: 6mm; }
-  .a4-odabir .red { flex: 1; } .a4-odabir .slika { width: 34mm; } .a4-odabir .zadana { width: 40mm; } .a4-odabir .zadana img, .a4-odabir .zadana .bez { border-width: 3px; }
-  .crta { width: 8mm; border-top: 2px dashed #000; }
+  /* Uparivanje: zadana (debeli okvir) → strelica → tri ponuđene u sivoj podlozi; isto kao PDF (ispis-pdf.ts). */
+  .a4-odabir .red { flex: 1; gap: 5mm; } .a4-odabir .slika { width: 30mm; } .a4-odabir .zadana { width: 38mm; } .a4-odabir .zadana img, .a4-odabir .zadana .bez { border-width: 3.3px; }
+  .strelica { position: relative; width: 13mm; height: 1mm; background: #000; border-radius: .5mm; margin-right: 1.5mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .strelica::after { content: ""; position: absolute; right: -1.5mm; top: 50%; transform: translateY(-50%); border-left: 5mm solid #000; border-block: 3.6mm solid transparent; }
+  .ladica { display: flex; gap: 5mm; padding: 3.5mm; background: #f1eee8; border: 1px solid #b5ad9f; border-radius: 6mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .a4-uljez .red { flex: 1; justify-content: space-between; } .a4-uljez .slika { width: 37mm; }
   .a4-percepcija .red { flex: 1; gap: 5mm; } .a4-percepcija .slika { width: min(37mm, calc((170mm - (var(--n) - 1) * 5mm) / var(--n))); }
   /* Izmjena (okret, zrcalo) ide na sliku, a okvir ostaje: okvir se crta oko figure. */

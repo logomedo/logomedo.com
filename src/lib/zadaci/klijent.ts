@@ -736,8 +736,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     let tijelo: HTMLElement;
     if (vrsta === "odabir") {
       tijelo = h("div", { class: "a4-odabir" }, ...(sadrzaj as Odabir).stavke.map((x) => h("div", { class: "a4-red" },
-        h("div", { class: "a4-zadana" }, slika(x.zadana)), h("div", { class: "a4-crta" }),
-        ...x.ponudeno.map((pid) => h("div", { class: "a4-izbor" }, slika(pid))))));
+        h("div", { class: "a4-zadana" }, slika(x.zadana)), h("div", { class: "a4-strelica" }),
+        h("div", { class: "a4-ladica" }, ...x.ponudeno.map((pid) => h("div", { class: "a4-izbor" }, slika(pid)))))));
     } else if (vrsta === "uljez") {
       tijelo = h("div", { class: "a4-uljez" }, ...(sadrzaj as Uljez).stavke.map((x) => h("div", { class: "a4-red" },
         ...x.slike.map((pid) => h("div", { class: "a4-izbor" }, slika(pid))))));
