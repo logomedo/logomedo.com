@@ -40,6 +40,52 @@ flowchart LR
   ne zna izgovoriti. Takav tekst preskače i „Generiraj zvukove” na bilježnici, dok ga netko ne
   vrati „Generiraj ponovno” na tabu Odbijeni (`migrations/0024_zvuk_bez_ponavljanja.sql`).
 
+## Kratke riječi: načini izgovora (14. 11. 2026.)
+
+Na produkciji (glas Elena, `eleven_v4`) kratke riječi su se čule engleski: „Led.” → „Lead” (9 od
+9 pokušaja), „Dim.” → „Dimenzija”, „Šal.” → „Shall”, „Dar” s engleskim R. Odbijanje je samo
+ponovilo isti poziv, pa isti rezultat. Pokus (Scribe kao sudac):
+
+| riječ | v4 | v4 + kontekst | multilingual v2 + kontekst |
+|---|---|---|---|
+| led | Lead | Lead | Led |
+| dim | Dimenzija | Dimenzija | Dim |
+| šal | Shall | Shall | Šal |
+| bal | Ball | Bal | Bal |
+| kamper | Camper | Kamper | Kamper |
+
+Zato snimka pamti **način** (`zvukovi.nacin`, migracija 0030): `model`, `model+kontekst`
+(`previous_text` „Ovo je hrvatska riječ:”; v3 ga ne podržava) ili `model+rez` (rečenica „Reci
+riječ: led.” kroz `/with-timestamps`, pa `src/lib/mp3.ts` odreže MP3 okvire prije riječi).
+`naciniZa()` u `zvukovi-tekst.ts`: riječ (do dvije) ide multilingual v2 s kontekstom → izrezano →
+glavni model; rečenica glavni model → glavni model → multilingual v2. i-ti pokušaj uzima i-ti način.
+
+Kad čovjek odbije snimku, novi posao ima `varijante = 1`: snime se **sva tri načina** i sva idu u
+pregled (i ona koju STT ne čuje točno), a čovjek bira. „Odobri” jednu odbije ostale iz skupine
+(„odabrana druga snimka”).
+
+Scribe kratku riječ zna prepisati ćirilicom („дим”, „Бал”, „Конь”) iako je izgovor dobar:
+`zaUsporedbu` je prvo preslovi (`latinica`).
+
+## Stranica Izgovor (/admin/zvukovi)
+
+Po dizajnu „1.3 Odobravanje izgovora”: kartica po tekstu sa svim snimkama, tabovi Čeka / Odobreno
+/ Odbijeno / Nije uspjelo s brojevima. Odluke idu `fetch`om (zaglavlje `x-ajax`, odgovor JSON), bez
+ponovnog učitavanja: odobrena kartica nestane, scroll ostaje. Odbijena kartica ostaje **na istom
+mjestu** („Snima se…”), jer se kartice slažu po prvoj snimci teksta, a stranica svakih 5 s u
+pozadini dohvaća samu sebe i mijenja kartice u izradi. Bez JS-a forme rade s redirectom.
+
+## Izbor glasa (/admin/zvukovi/glasovi)
+
+Glas koji čita, model za rečenice i **probe glasova**: svaki glas iz ElevenLabs knjižnice
+(hrvatski) i računa na stalnom testnom skupu (`TEST_SKUP`, riječi koje su padale; postavka
+`zvuk_test_skup` ga mijenja) i odabranom načinu. Proba se trajno sprema (`zvuk_probe`, mp3 u R2
+`proba/<hash>.mp3`), pa ponovno slušanje i usporedba ne koštaju. Uz svaku probu 👍/👎 i „zašto?”,
+uz glas ocjena i napomena (`zvuk_glas_biljeske`, migracija 0031). Rang glasova (`bodovi()` u
+`src/lib/zvuk-probe.ts`): ocjena glasa, ocjene proba, STT točnost i odluke na /admin/zvukovi za
+taj glas. Točke u retku glasa su regresija na skupu: zelena = STT točno, crvena = čuje drugo,
+obrub = tvoja ocjena.
+
 ## Dijelovi
 
 | Što | Gdje |
@@ -49,7 +95,9 @@ flowchart LR
 | TTS, STT, popis glasova | `src/lib/elevenlabs.ts` |
 | Red, obrada, odluke, CDN | `src/lib/zvukovi.ts` |
 | Consumer | `src/worker.ts` (`queue`), `wrangler.jsonc` (`queues`) |
-| Pregled, glas, proba glasa | `src/pages/admin/zvukovi.astro`, `src/pages/admin/api/zvuk-proba.ts`, `src/pages/admin/zvuk/[id].ts` |
+| Načini, rez MP3 | `naciniZa`, `snimi()` u `src/lib/elevenlabs.ts`, `src/lib/mp3.ts` |
+| Pregled | `src/pages/admin/zvukovi.astro`, `src/pages/admin/zvuk/[id].ts` |
+| Glas, probe, ocjene | `src/pages/admin/zvukovi/glasovi.astro`, `src/lib/zvuk-probe.ts`, `src/pages/admin/api/zvuk-proba.ts` |
 | Bilježnica | `tekstoviBiljeznice()` u `src/lib/biljeznice.ts`, odjeljak „Izgovor” u `/admin/biljeznice/[id]` |
 | Igra | `src/pages/b/[slug].astro` (`zvukovi`), `govori()` u `src/lib/biljeznice-igra.ts` |
 
@@ -61,8 +109,7 @@ ne krene (mreža, format), igra šuti.
 
 ## Glas
 
-Glas je postavka (`/admin/zvukovi` → Glas), vrijedi za nove poslove. Uz „Poslušaj probu” se
-glas čuje prije spremanja; proba se ne sprema. Popis glasova traži dozvolu ključa `voices_read`,
+Glas je postavka (`/admin/zvukovi/glasovi`), vrijedi za nove poslove. Popis glasova traži dozvolu ključa `voices_read`,
 a bez nje se upisuje `voice_id`.
 
 Proba 4. 11. 2026. s engleskim glasom (Rachel): rečenice dobro, a riječi sa Š, Č, Ž, NJ i IJE

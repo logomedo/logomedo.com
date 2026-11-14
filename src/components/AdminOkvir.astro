@@ -19,7 +19,7 @@ if (admin) {
     `SELECT (SELECT COUNT(*) FROM slike WHERE status = 'kandidat') AS kandidata,
        (SELECT COUNT(*) FROM generiranja WHERE status IN ('ceka','radi')) AS uRedu,
        (SELECT COUNT(*) FROM generiranja WHERE status = 'greska') AS gresaka,
-       (SELECT COUNT(*) FROM zvukovi WHERE status = 'kandidat') AS zvukova`,
+       (SELECT COUNT(DISTINCT kljuc) FROM zvukovi WHERE status = 'kandidat') AS zvukova`,
   ).first<typeof brojevi>()) ?? brojevi;
 }
 type Stavka = { kod: NonNullable<Props["aktivno"]>; href: string; tekst: string; ikona: ComponentProps<typeof Ikona>["ime"]; broj: number; greska?: boolean };

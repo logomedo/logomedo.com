@@ -1,5 +1,7 @@
 // ElevenLabs: TTS (izgovor) i Scribe STT (automatska provjera). Ključ je secret ELEVENLABS_API_KEY.
 import { env } from "cloudflare:workers";
+import { izrezi } from "./mp3";
+import { KONTEKST, NOSAC, razloziNacin } from "./zvukovi-tekst";
 
 const API = "https://api.elevenlabs.io/v1";
 
@@ -17,13 +19,39 @@ async function provjeri(r: Response, sto: string): Promise<Response> {
   throw new GreskaElevenLabs(r.status, `${sto}: HTTP ${r.status} ${poruka}`);
 }
 
-export async function izgovori(tekst: string, glasId: string, model: string): Promise<ArrayBuffer> {
+export async function izgovori(tekst: string, glasId: string, model: string, prethodni?: string): Promise<ArrayBuffer> {
   const r = await fetch(`${API}/text-to-speech/${encodeURIComponent(glasId)}?output_format=mp3_44100_128`, {
+    method: "POST",
+    headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "content-type": "application/json" },
+    body: JSON.stringify({ text: tekst, model_id: model, language_code: "hr", ...(prethodni ? { previous_text: prethodni } : {}) }),
+  });
+  return (await provjeri(r, "TTS")).arrayBuffer();
+}
+
+/** Rečenica s vremenom svakog znaka; vraća mp3 od znaka `od` do kraja. */
+async function izgovoriOd(tekst: string, od: number, glasId: string, model: string): Promise<ArrayBuffer> {
+  const r = await fetch(`${API}/text-to-speech/${encodeURIComponent(glasId)}/with-timestamps?output_format=mp3_44100_128`, {
     method: "POST",
     headers: { "xi-api-key": env.ELEVENLABS_API_KEY, "content-type": "application/json" },
     body: JSON.stringify({ text: tekst, model_id: model, language_code: "hr" }),
   });
-  return (await provjeri(r, "TTS")).arrayBuffer();
+  const j = (await (await provjeri(r, "TTS")).json()) as { audio_base64: string; alignment?: { character_start_times_seconds: number[] } };
+  const mp3 = Uint8Array.from(atob(j.audio_base64), (c) => c.charCodeAt(0));
+  const t = j.alignment?.character_start_times_seconds[od];
+  if (t === undefined) throw new GreskaElevenLabs(422, "TTS: nema vremenskih oznaka za rez");
+  return izrezi(mp3, t).slice().buffer;
+}
+
+/** Snimka teksta zadanim načinom (zvukovi-tekst.ts: naciniZa): model, „+kontekst” ili „+rez”. */
+export async function snimi(tekst: string, glasId: string, nacin: string): Promise<ArrayBuffer> {
+  const { model, dodatak } = razloziNacin(nacin);
+  if (dodatak === "kontekst") return izgovori(tekst, glasId, model, KONTEKST);
+  if (dodatak === "rez") {
+    // Riječ malim početnim slovom unutar rečenice, inače bi je model naglasio kao naslov.
+    const rijec = tekst.charAt(0).toLocaleLowerCase("hr") + tekst.slice(1);
+    return izgovoriOd(NOSAC + rijec, NOSAC.length, glasId, model);
+  }
+  return izgovori(tekst, glasId, model);
 }
 
 export async function prepisi(mp3: ArrayBuffer): Promise<string> {

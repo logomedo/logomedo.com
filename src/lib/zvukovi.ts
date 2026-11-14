@@ -1,11 +1,11 @@
 // Izgovor kroz ElevenLabs (docs/zvukovi.md): red u D1 + Cloudflare Queue, Worker sam zove
 // TTS, Scribe STT provjeri snimku, ljudski pregled na /admin/zvukovi, odobrena ide na CDN.
 import { env } from "cloudflare:workers";
-import { GreskaElevenLabs, izgovori, prepisi } from "./elevenlabs";
+import { GreskaElevenLabs, prepisi, snimi } from "./elevenlabs";
 import { postavka } from "./postavke";
 import { ekrani, uputaZa, type ZadatakZaIgru } from "./biljeznice-ekrani";
 import { UPUTE_PRVOG_GLASA } from "./zadaci/vrste";
-import { izgovorZa, kljucZvuka, prolazi, slicnost } from "./zvukovi-tekst";
+import { izgovorZa, kljucZvuka, naciniZa, prolazi, slicnost } from "./zvukovi-tekst";
 import { javniUrl, ocistiCache } from "./generiranje";
 
 /** TTS poziva po poslu: STT razlika = još jedan pokušaj, zadnji ide čovjeku s oznakom „razlika”. */
@@ -74,9 +74,9 @@ export async function dodajZvukove(kljucevi: string[], email: string): Promise<n
   return ids.length;
 }
 
-async function novPosao(kljuc: string, izgovor: string, email: string): Promise<number> {
-  const r = await env.DB.prepare("INSERT INTO zvuk_generiranja (kljuc, izgovor, zatrazio) VALUES (?, ?, ?) RETURNING id")
-    .bind(kljuc, izgovor, email).first<{ id: number }>();
+async function novPosao(kljuc: string, izgovor: string, email: string, varijante = false): Promise<number> {
+  const r = await env.DB.prepare("INSERT INTO zvuk_generiranja (kljuc, izgovor, zatrazio, varijante) VALUES (?, ?, ?, ?) RETURNING id")
+    .bind(kljuc, izgovor, email, varijante ? 1 : 0).first<{ id: number }>();
   return r!.id;
 }
 
@@ -110,59 +110,68 @@ async function hash16(b: ArrayBuffer) {
 }
 
 /**
- * Jedan posao iz Queuea. Baca `GreskaElevenLabs` s `privremena` (429, 5xx): consumer tada
- * vraća poruku u Queue s odgodom, a posao natrag na „čeka”.
+ * Jedan posao iz Queuea. i-ti pokušaj uzima i-ti način (`naciniZa`): STT razlika = sljedeći način,
+ * do 3, a najbolji ide čovjeku s oznakom „razlika”. Posao s `varijante` (nakon ljudskog odbijanja)
+ * snimi sve načine i sve pošalje čovjeku, pa on bira. Baca `GreskaElevenLabs` s `privremena`
+ * (429, 5xx): consumer tada vraća poruku u Queue s odgodom, a posao natrag na „čeka”.
  */
 export async function obradi(posaoId: number): Promise<void> {
   const db = env.DB;
   const p = await db.prepare(
     `UPDATE zvuk_generiranja SET status = 'radi', uzeto_at = datetime('now') WHERE id = ? AND status = 'ceka'
-     RETURNING id, kljuc, izgovor, pokusaji`,
-  ).bind(posaoId).first<{ id: number; kljuc: string; izgovor: string; pokusaji: number }>();
+     RETURNING id, kljuc, izgovor, pokusaji, varijante`,
+  ).bind(posaoId).first<{ id: number; kljuc: string; izgovor: string; pokusaji: number; varijante: number }>();
   if (!p) return;   // već obrađen ili obrisan
 
   const glas = (await postavka("zvuk_glas")).trim();
   const model = (await postavka("zvuk_model")).trim() || "eleven_v3";
   if (!glas) {
     await db.prepare("UPDATE zvuk_generiranja SET status = 'greska', greska = ? WHERE id = ?")
-      .bind("Nije odabran glas (/admin/zvukovi → Glas).", p.id).run();
+      .bind("Nije odabran glas (/admin/zvukovi/glasovi).", p.id).run();
     return;
   }
+  const nacini = naciniZa(p.kljuc, model);
 
   let pokusaji = p.pokusaji;
   try {
-    const nastali: { id: number; s: number }[] = [];
-    while (pokusaji < MAX_POKUSAJA) {
-      const mp3 = await izgovori(p.izgovor, glas, model);
+    while (pokusaji < Math.min(MAX_POKUSAJA, nacini.length)) {
+      const nacin = nacini[pokusaji];
+      const mp3 = await snimi(p.izgovor, glas, nacin);
       pokusaji++;
       await db.prepare("UPDATE zvuk_generiranja SET pokusaji = ? WHERE id = ?").bind(pokusaji, p.id).run();
       let prijepis: string | null = null;
       try { prijepis = await prepisi(mp3); } catch (e) { console.error(`STT posao ${p.id}: ${e}`); }
       const s = prijepis === null ? null : slicnost(p.kljuc, prijepis);
       const ok = prijepis === null || prolazi(p.kljuc, prijepis);
+      // Varijante idu čovjeku sve; inače STT razlika = automatski odbijeno i sljedeći način.
+      const kandidat = ok || p.varijante === 1;
       const r2 = `zvuk/${await hash16(mp3)}.mp3`;
       await env.SLIKE.put(r2, mp3, { httpMetadata: { contentType: "audio/mpeg" } });
-      const z = await db.prepare(
-        `INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, bajtova, glas_id, model, prijepis, slicnost, provjera, status, razlog, pregledao, pregledano_at, posao_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      await db.prepare(
+        `INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, bajtova, glas_id, model, nacin, prijepis, slicnost, provjera, status, razlog, pregledao, pregledano_at, posao_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).bind(
-        p.kljuc, p.izgovor, r2, mp3.byteLength, glas, model, prijepis, s,
+        p.kljuc, p.izgovor, r2, mp3.byteLength, glas, nacin.split("+")[0], nacin, prijepis, s,
         prijepis === null ? "bez" : ok ? "ok" : "razlika",
-        ok ? "kandidat" : "odbijen",
-        ok ? null : `Automatska provjera: čuje se „${prijepis}”`,
-        ok ? null : "automatski", ok ? null : new Date().toISOString().slice(0, 19).replace("T", " "),
+        kandidat ? "kandidat" : "odbijen",
+        kandidat ? null : `Automatska provjera: čuje se „${prijepis}”`,
+        kandidat ? null : "automatski", kandidat ? null : new Date().toISOString().slice(0, 19).replace("T", " "),
         p.id,
-      ).first<{ id: number }>();
-      if (ok) return zavrsi(p.id, z!.id);
-      nastali.push({ id: z!.id, s: s ?? 0 });
+      ).run();
+      if (ok && p.varijante !== 1) break;
     }
-    // Nijedan pokušaj nije prošao provjeru: najbolji ide čovjeku (oznaka „razlika” ostaje).
-    const naj = nastali.sort((a, b) => b.s - a.s)[0];
-    if (naj) {
+    // Najbolja snimka posla: točna, inače najsličnija; ako nijedna nije kandidat, ona postaje.
+    const naj = await db.prepare(
+      `SELECT id, status FROM zvukovi WHERE posao_id = ? ORDER BY status = 'kandidat' DESC, provjera = 'ok' DESC, slicnost DESC, id LIMIT 1`,
+    ).bind(p.id).first<{ id: number; status: string }>();
+    if (!naj) {
+      await db.prepare("UPDATE zvuk_generiranja SET status = 'greska', greska = 'iscrpljeni pokušaji' WHERE id = ?").bind(p.id).run();
+      return;
+    }
+    if (naj.status !== "kandidat") {
       await db.prepare("UPDATE zvukovi SET status = 'kandidat', pregledao = NULL, pregledano_at = NULL WHERE id = ?").bind(naj.id).run();
-      return zavrsi(p.id, naj.id);
     }
-    await db.prepare("UPDATE zvuk_generiranja SET status = 'greska', greska = 'iscrpljeni pokušaji' WHERE id = ?").bind(p.id).run();
+    return zavrsi(p.id, naj.id);
   } catch (e) {
     const privremena = e instanceof GreskaElevenLabs && e.privremena;
     await db.prepare("UPDATE zvuk_generiranja SET status = ?, greska = ?, uzeto_at = NULL WHERE id = ?")
@@ -180,55 +189,116 @@ async function zavrsi(posaoId: number, zvukId: number) {
 
 export interface Zvuk {
   id: number; kljuc: string; izgovor: string; status: string; provjera: string; prijepis: string | null; slicnost: number | null;
-  razlog: string | null; bez_ponavljanja: number; pregledao: string | null; model: string; glas_id: string; created_at: string;
+  razlog: string | null; bez_ponavljanja: number; pregledao: string | null; model: string; nacin: string | null; glas_id: string; created_at: string;
+}
+const STUPCI = "id, kljuc, izgovor, status, provjera, prijepis, slicnost, razlog, bez_ponavljanja, pregledao, model, nacin, glas_id, created_at";
+
+/** Kartica na /admin/zvukovi: jedan tekst, njegove snimke i je li nova u izradi. */
+export interface Skupina { kljuc: string; izgovor: string; snimke: Zvuk[]; uIzradi: boolean; zadnjeOdbijanje: Zvuk | null }
+export type TabIzgovora = "ceka" | "odobreno" | "odbijeno" | "greske";
+
+export async function brojeviIzgovora(): Promise<Record<TabIzgovora, number>> {
+  const r = await env.DB.prepare(
+    `SELECT
+       (SELECT COUNT(*) FROM (SELECT kljuc FROM zvukovi WHERE status = 'kandidat' UNION SELECT kljuc FROM zvuk_generiranja WHERE status IN ('ceka', 'radi'))) AS ceka,
+       (SELECT COUNT(*) FROM zvukovi WHERE status = 'odobren') AS odobreno,
+       (SELECT COUNT(*) FROM (${ODBIJENI_KLJUCEVI})) AS odbijeno,
+       (SELECT COUNT(*) FROM zvuk_generiranja WHERE status = 'greska') AS greske`,
+  ).first<Record<TabIzgovora, number>>();
+  return r ?? { ceka: 0, odobreno: 0, odbijeno: 0, greske: 0 };
 }
 
-export async function zvukoviZaPregled(status: "kandidat" | "odobren" | "odbijen", limit = 200): Promise<Zvuk[]> {
+// Tekstovi bez odobrene snimke, bez kandidata i bez posla: zadnja snimka je odbijena.
+const ODBIJENI_KLJUCEVI = `SELECT kljuc, MAX(id) AS id FROM zvukovi z GROUP BY kljuc
+  HAVING SUM(status IN ('odobren', 'kandidat')) = 0
+     AND NOT EXISTS (SELECT 1 FROM zvuk_generiranja q WHERE q.kljuc = z.kljuc AND q.status IN ('ceka', 'radi'))`;
+
+/**
+ * Kartice za tab. „Čeka”: tekstovi s kandidatima ili poslom u izradi, poredani po prvoj snimci
+ * teksta (ne zadnjoj), pa odbijena i ponovno snimljena riječ ostaje na istom mjestu.
+ */
+export async function skupineIzgovora(tab: TabIzgovora): Promise<Skupina[]> {
+  const db = env.DB;
+  if (tab === "ceka") {
+    const [snimke, poslovi, odbijene, prvi] = await db.batch([
+      db.prepare(`SELECT ${STUPCI} FROM zvukovi WHERE status = 'kandidat' ORDER BY id`),
+      db.prepare("SELECT kljuc, izgovor FROM zvuk_generiranja WHERE status IN ('ceka', 'radi') ORDER BY id"),
+      db.prepare(`SELECT ${STUPCI} FROM zvukovi WHERE id IN (SELECT MAX(id) FROM zvukovi WHERE status = 'odbijen' AND pregledao != 'automatski' GROUP BY kljuc)`),
+      db.prepare("SELECT kljuc, MIN(id) AS id FROM zvukovi GROUP BY kljuc"),
+    ]) as [D1Result<Zvuk>, D1Result<{ kljuc: string; izgovor: string }>, D1Result<Zvuk>, D1Result<{ kljuc: string; id: number }>];
+    const red = new Map(prvi.results.map((r) => [r.kljuc, r.id]));
+    const odb = new Map(odbijene.results.map((z) => [z.kljuc, z]));
+    const m = new Map<string, Skupina>();
+    const skupina = (kljuc: string, izgovor: string) => {
+      if (!m.has(kljuc)) m.set(kljuc, { kljuc, izgovor, snimke: [], uIzradi: false, zadnjeOdbijanje: odb.get(kljuc) ?? null });
+      return m.get(kljuc)!;
+    };
+    for (const z of snimke.results) skupina(z.kljuc, z.izgovor).snimke.push(z);
+    for (const q of poslovi.results) skupina(q.kljuc, q.izgovor).uIzradi = true;
+    // U skupini točna snimka prva.
+    for (const s of m.values()) s.snimke.sort((a, b) => Number(b.provjera === "ok") - Number(a.provjera === "ok") || a.id - b.id);
+    return [...m.values()].sort((a, b) => (red.get(a.kljuc) ?? Infinity) - (red.get(b.kljuc) ?? Infinity));
+  }
+  const upit = tab === "odobreno"
+    ? `SELECT ${STUPCI} FROM zvukovi WHERE status = 'odobren' ORDER BY id DESC LIMIT 400`
+    : `SELECT ${STUPCI} FROM zvukovi WHERE id IN (SELECT id FROM (${ODBIJENI_KLJUCEVI})) ORDER BY id DESC LIMIT 400`;
+  const { results } = await db.prepare(upit).all<Zvuk>();
+  return results.map((z) => ({ kljuc: z.kljuc, izgovor: z.izgovor, snimke: [z], uIzradi: false, zadnjeOdbijanje: null }));
+}
+
+export interface GreskaPosla { id: number; kljuc: string; izgovor: string; greska: string | null; pokusaji: number; created_at: string }
+export async function greskeIzgovora(): Promise<GreskaPosla[]> {
   const { results } = await env.DB.prepare(
-    `SELECT id, kljuc, izgovor, status, provjera, prijepis, slicnost, razlog, bez_ponavljanja, pregledao, model, glas_id, created_at
-     FROM zvukovi WHERE status = ? ORDER BY ${status === "kandidat" ? "provjera = 'ok', id" : "id DESC"} LIMIT ?`,
-  ).bind(status, limit).all<Zvuk>();
+    "SELECT id, kljuc, izgovor, greska, pokusaji, created_at FROM zvuk_generiranja WHERE status = 'greska' ORDER BY id DESC LIMIT 200",
+  ).all<GreskaPosla>();
   return results;
 }
 
 /**
- * Odobri: snimka ide na CDN, prijašnja odobrena za isti tekst postaje odbijena („zamijenjena”).
- * Odbij: s razlogom; ako tekst više nema ni kandidata ni odobrene, novi posao (s ispravljenim
- * izgovorom, ako ga je recenzent upisao). `ponovo: false` = samo odbij, bez novog posla (ElevenLabs
- * neke riječi ne zna izgovoriti; tekst se kasnije može vratiti „Generiraj ponovno” na tabu Odbijeni).
- * Vraća false ako snimka više nije kandidat.
+ * Odobri: snimka ide na CDN, prijašnja odobrena za isti tekst postaje odbijena („zamijenjena”), a
+ * ostali kandidati istog teksta odbijeni („odabrana druga”). Vraća false ako snimka nije kandidat.
  */
-export async function odluciZvuk(id: number, akcija: "odobri" | "odbij", email: string, o: { razlog?: string; izgovor?: string; ponovo?: boolean } = {}): Promise<boolean> {
+export async function odobriZvuk(id: number, email: string): Promise<boolean> {
   const db = env.DB;
-  const z = await db.prepare("SELECT id, kljuc, izgovor, status FROM zvukovi WHERE id = ?").bind(id)
-    .first<{ id: number; kljuc: string; izgovor: string; status: string }>();
+  const z = await db.prepare("SELECT id, kljuc, status FROM zvukovi WHERE id = ?").bind(id).first<{ id: number; kljuc: string; status: string }>();
   if (!z || z.status !== "kandidat") return false;
-  if (akcija === "odobri") {
-    const { results: stari } = await db.prepare("SELECT id, r2_kljuc FROM zvukovi WHERE kljuc = ? AND status = 'odobren'").bind(z.kljuc).all<{ id: number; r2_kljuc: string }>();
-    await db.batch([
-      db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = 'zamijenjen novijom', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'odobren'").bind(email, z.kljuc),
-      db.prepare("UPDATE zvukovi SET status = 'odobren', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, id),
-    ]);
-    await uskladiJavniZvuk(id);
-    for (const s of stari) await makniJavni(s.r2_kljuc);
-    return true;
-  }
-  await db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = ?, bez_ponavljanja = ?, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'")
-    .bind(o.razlog?.trim() || null, o.ponovo === false ? 1 : 0, email, id).run();
-  if (o.ponovo === false) return true;
-  const [s] = await stanjeZvukova([z.kljuc]);
-  if (!s.odobren && !s.kandidata && !s.u_redu) {
-    const pid = await novPosao(z.kljuc, o.izgovor?.trim() || z.izgovor, email);
-    await posalji([pid]);
-  }
+  const { results: stari } = await db.prepare("SELECT id, r2_kljuc FROM zvukovi WHERE kljuc = ? AND status = 'odobren'").bind(z.kljuc).all<{ id: number; r2_kljuc: string }>();
+  await db.batch([
+    db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = 'zamijenjen novijom', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'odobren'").bind(email, z.kljuc),
+    db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = 'odabrana druga snimka', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'kandidat' AND id != ?").bind(email, z.kljuc, id),
+    db.prepare("UPDATE zvukovi SET status = 'odobren', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, id),
+  ]);
+  await uskladiJavniZvuk(id);
+  for (const s of stari) await makniJavni(s.r2_kljuc);
   return true;
 }
 
-/** Odobreni tekst ponovno: novi posao (npr. nakon promjene glasa). Stara odobrena ostaje dok nova ne bude odobrena. */
+/**
+ * Odbij kandidate jednog teksta, s razlogom. Ako tekst više nema ni kandidata ni odobrene, novi
+ * posao s varijantama (svi načini, čovjek bira), s ispravljenim izgovorom ako ga je upisao.
+ * `ponovo: false` = samo odbij (ElevenLabs neke riječi ne zna izgovoriti; vraća se „Snimi ponovo”
+ * na tabu Odbijeno). Vraća broj odbijenih.
+ */
+export async function odbijZvukove(ids: number[], email: string, o: { razlog?: string; izgovor?: string; ponovo?: boolean } = {}): Promise<number> {
+  const db = env.DB;
+  const { results } = await db.prepare(
+    `UPDATE zvukovi SET status = 'odbijen', razlog = ?, bez_ponavljanja = ?, pregledao = ?, pregledano_at = datetime('now')
+     WHERE id IN (SELECT value FROM json_each(?)) AND status = 'kandidat' RETURNING kljuc, izgovor`,
+  ).bind(o.razlog?.trim() || null, o.ponovo === false ? 1 : 0, email, JSON.stringify(ids)).all<{ kljuc: string; izgovor: string }>();
+  if (o.ponovo === false) return results.length;
+  const kljucevi = [...new Map(results.map((r) => [r.kljuc, r.izgovor])).entries()];
+  for (const [kljuc, izgovor] of kljucevi) {
+    const [s] = await stanjeZvukova([kljuc]);
+    if (!s.odobren && !s.kandidata && !s.u_redu) await posalji([await novPosao(kljuc, o.izgovor?.trim() || izgovor, email, true)]);
+  }
+  return results.length;
+}
+
+/** Tekst ponovno (odobren ili odbijen): posao s varijantama. Stara odobrena ostaje dok nova ne bude odobrena. */
 export async function ponoviZvuk(kljuc: string, email: string, izgovor?: string): Promise<boolean> {
   const [s] = await stanjeZvukova([kljuc]);
   if (s.u_redu || s.kandidata) return false;
-  await posalji([await novPosao(kljuc, izgovor?.trim() || izgovorZa(kljuc), email)]);
+  await posalji([await novPosao(kljuc, izgovor?.trim() || izgovorZa(kljuc), email, true)]);
   return true;
 }
 
