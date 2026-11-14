@@ -54,5 +54,19 @@ npx wrangler d1 execute logomedo --local --command "INSERT INTO admin_sessions (
 echo "__Host-logomedo_admin=$T"   # kolačić za localhost:4321
 ```
 
+Kolačić se u Braveu postavi na `http://localhost:4321/admin/login` kroz konzolu:
+`document.cookie = "__Host-logomedo_admin=<T>; path=/; secure; samesite=lax"` (Chromium dopušta `secure` na
+localhostu). Prije toga `npx wrangler d1 migrations apply logomedo --local`. Lokalna baza ima tek 2 riječi sa
+slikom, pa brojeve (npr. listić po glasovima) provjeravati istim upitom na `--remote` (samo čitanje).
+`npm run dev` se odvoji kao pozadinski proces; gasi se s `npx astro dev stop`.
+
 Kad je sesija svježa (`method = 'access'`, < 10 min), na `/admin/passkeys` se može dodati
 lokalni passkey (rpID `localhost`, ne vrijedi za produkciju).
+
+## Bočna traka (14. 11. 2026.)
+
+Izbornik je po poslu, ne po stranicama (`src/components/AdminOkvir.astro`): **Odobravanje** (Slike = `/admin/pregled`,
+Izgovor = `/admin/zvukovi`, s brojem onoga što čeka), **Sadržaj** (Katalog; Riječi, Situacije i Znakovi su kartice u njemu),
+**Vježbe** (Novi zadatak = `/admin/predlosci`, Zadaci, Bilježnice), a dolje bez okvira Red generiranja, Prompt, Aktivnost
+i Ključevi. Prvi korak redizajna admina prema dizajnu u Claude artefaktu (poveznica u lokalnoj memoriji, ne ovdje).
+Iz dizajna još nije napravljena „Početna” (pregled onoga što čeka), pa `/admin` ostaje Katalog.

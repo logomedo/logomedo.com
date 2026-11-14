@@ -177,6 +177,10 @@ Gore jedna slika, ispod tri; jedna se rimuje sa zadanom.
 odgovori: [{ stavka, odabrano: 0..2, ms }]
 ```
 Ispis: zaokruži. Distraktori se ne smiju rimovati sa zadanom (provjera u editoru).
+Na papiru (od 14. 11. 2026.): zadana slika s debelim okvirom, puna strelica, a tri ponuđene u zajedničkoj
+svijetlosivoj podlozi (#f1eee8), da se vidi da se bira jedna od njih. Prije su između stajale četiri crtice, što je
+logopedici bilo nejasno. Isto u PDF-u (`ispis-pdf.ts`), HTML ispisu editora i `/b/<slug>/ispis`; u HTML-u
+podloga i strelica trebaju `print-color-adjust: exact`, inače ih preglednik ne ispiše.
 
 ### `povezivanje`: dva stupca, poveži parove koji se rimuju
 
