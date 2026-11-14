@@ -250,3 +250,17 @@ test("znakovi: generator ih ne uzima", async () => {
   const { zaGenerator } = await import("./vrste.ts");
   assert.deepEqual(zaGenerator(ZN).map((r) => r.rijec), ["krava", "sat"]);
 });
+
+test("slogovi i prvi glas preskaču izraze od više riječi", async () => {
+  const { jednaRijec, slozSlogove, slozKrug } = await import("./vrste.ts");
+  assert.equal(jednaRijec("čarobni štapić"), false);
+  assert.equal(jednaRijec("luk-strijela"), false);
+  assert.equal(jednaRijec(" lopta "), true);
+  const rij = ["lopta", "lav", "lonac", "lisica", "luk-strijela", "lijepi leptir", "čarobni štapić", "morski pas", "kamp kućica", "sat", "miš", "riba", "kuća", "pas", "vrata", "torba"]
+    .map((r, i) => ({ id: i + 1, rijec: r, rima: null, slogova: brojSlogova(r), slika: null }));
+  const izrazi = new Set(rij.filter((r) => !jednaRijec(r.rijec)).map((r) => r.id));
+  for (let i = 0; i < 20; i++) {
+    assert.ok(slozSlogove("analiza", rij, 12, 4, rnd).slike.every((x) => !izrazi.has(x.rijec_id!)));
+    assert.ok(slozKrug("L", rij, 12, rnd).slike.every((x) => x === null || !izrazi.has(x)));
+  }
+});

@@ -9,7 +9,7 @@ import {
   ocijeni, provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   BOJE_DULJINE, DUGA_OD, KRUGOVA_MIN, KRUGOVA_MAX, SLOGOVA_MAX, SLOGOVI_SLIKA_MAX, UPUTE_SLOGOVA, jeDuga, slozSlogove, tocnoSlogovi, type NacinSlogova, type Slogovi,
   LISTIC_PO_STRANICI, rasporedListica, type RasporedListica,
-  ABECEDA, BOJE_KOLA, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, krugUIgri, type Krug, type PrviGlas,
+  ABECEDA, BOJE_KOLA, jednaRijec, SLIKA_MIN, SLIKA_MAX, UPUTE_PRVOG_GLASA, prviGlas, slozKrug, tocneSlike, krugUIgri, type Krug, type PrviGlas,
   type Izmjena, type Listic, type Odabir, type Odgovor, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta, zaGenerator,
 } from "./vrste.ts";
 import { usporediZnakove } from "../znakovi.ts";
@@ -98,6 +98,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   function biraj(trenutna: number | null, uzor: number | null, nacin: "rima" | "ne-rima" | null, gotovo: (id: number | null) => void) {
     let filtar: "sve" | "rima" | "ne-rima" = nacin ?? "sve";
     let samoSlika = false;
+    // Slogovi i prvi glas: samo jedna riječ (izraz poput ČAROBNI ŠTAPIĆ nema smisla brojati).
+    const samoJedne = vrsta === "slogovi" || vrsta === "prvi_glas";
     // Riječi (slike) ili znakovi (slova, brojke); polje koje već ima znak otvara znakove.
     let znakovi = !!R(trenutna)?.znak;
     const KORAK = 120;
@@ -127,7 +129,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         !zn.length ? h("p", { class: "blijedo" }, "Nema takvog znaka. Novi znak dodaje se u Katalog › Znakovi.") : null);
         return;
       }
-      const svi = p.rijeci.filter((r) => !r.znak &&
+      const svi = p.rijeci.filter((r) => !r.znak && (!samoJedne || jednaRijec(r.rijec)) &&
         (!q || (rima ? r.rima?.endsWith(rima) : r.rijec.toLocaleLowerCase("hr").includes(q))) &&
         (!samoSlika || r.slika) &&
         (!u || filtar === "sve" || (filtar === "rima" ? rimujuSe(u, r) : !rimujuSe(u, r) && r.id !== u.id)));
@@ -307,7 +309,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   /** Točne slike kruga uvijek prate riječi i slovo (prvi glas je pravopisan, ne bira se rukom). */
   const uskladiKrug = (k: Krug) => { k.tocno = tocneSlike(k, (id) => R(id)?.rijec); };
   /** Riječi za slaganje kruga: sa slikom ako ih ima dovoljno (zadatak je slikovni). */
-  const zaKrug = () => { const rij = zaGenerator(p.rijeci), sa = rij.filter((r) => r.slika); return sa.length >= SLIKA_MIN ? sa : rij; };
+  const zaKrug = () => { const rij = zaGenerator(p.rijeci).filter((r) => jednaRijec(r.rijec)), sa = rij.filter((r) => r.slika); return sa.length >= SLIKA_MIN ? sa : rij; };
   const brojSlova = (sl: string) => zaKrug().filter((r) => prviGlas(r.rijec) === sl).length;
 
   function urediPrviGlas(): HTMLElement {

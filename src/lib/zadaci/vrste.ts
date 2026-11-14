@@ -150,6 +150,11 @@ export type SlikeRijeci = Record<string, { src: string; ok: boolean }>;
 export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null; slike?: SlikeRijeci; znak?: boolean }
 /** Riječi za generatore zadataka: znakovi se biraju samo ručno. */
 export const zaGenerator = <T extends { znak?: boolean }>(r: T[]) => r.filter((x) => !x.znak);
+/**
+ * Jedna riječ, ne izraz („ČAROBNI ŠTAPIĆ”, „LUK-STRIJELA”). Izraz je dobar za listić (artikulacija),
+ * ali ne za slogove ni glasove: dijete broji slogove i traži prvi glas jedne riječi.
+ */
+export const jednaRijec = (rijec: string) => !/[\s-]/.test(rijec.trim());
 
 /** Slika za stil zadatka: odobrena u stilu, odobrena u drugom, kandidat u stilu, bilo koja. */
 export function slikaUStilu(m: SlikeRijeci, stil: string): string | null {
@@ -542,8 +547,8 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   if (v === "slogovi") return slozSlogove("duljina", rijeci, p.stavki, 4, rnd);
   if (v === "prvi_glas") {
     // Slova za koja katalog ima dovoljno slika, svako jednom; krugova koliko traži `stavki` (do 6).
-    const sa = rijeci.filter((r) => r.slika);
-    const izvor = sa.length >= SLIKA_MIN ? sa : rijeci;
+    const jedne = rijeci.filter((r) => jednaRijec(r.rijec)), sa = jedne.filter((r) => r.slika);
+    const izvor = sa.length >= SLIKA_MIN ? sa : jedne;
     const slova = promijesaj(ABECEDA.filter((sl) => izvor.filter((r) => prviGlas(r.rijec) === sl).length >= 3), rnd).slice(0, Math.min(n, 6));
     return { kolo: [...ABECEDA], krugovi: (slova.length ? slova : [null]).map((sl) => slozKrug(sl, izvor, SLIKA_MIN, rnd)) };
   }
@@ -586,6 +591,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
 export function slozKrug(slovo: string | null, rijeci: RijecZadatka[], n = SLIKA_MIN, rnd: () => number = Math.random): Krug {
   n = Math.max(SLIKA_MIN, Math.min(SLIKA_MAX, n));
   if (!slovo) return { slovo: null, slike: Array(n).fill(null), tocno: [] };
+  rijeci = rijeci.filter((r) => jednaRijec(r.rijec));
   const s = promijesaj(rijeci.filter((r) => prviGlas(r.rijec) === slovo), rnd);
   const ostale = promijesaj(rijeci.filter((r) => { const g = prviGlas(r.rijec); return g !== null && g !== slovo; }), rnd);
   const koliko = Math.min(s.length, 3 + Math.floor(rnd() * 3));
@@ -605,6 +611,7 @@ export const tocnoSlogovi = (nacin: NacinSlogova, slogova: number) => (nacin ===
  */
 export function slozSlogove(nacin: NacinSlogova, rijeci: RijecZadatka[], n: number, krugova = 4, rnd: () => number = Math.random): Slogovi {
   n = Math.max(2, Math.min(SLOGOVI_SLIKA_MAX, n));
+  rijeci = rijeci.filter((r) => jednaRijec(r.rijec));
   const sa = rijeci.filter((r) => r.slika);
   const izvor = sa.length >= n * 2 ? sa : rijeci;
   const skupine = new Map<number, RijecZadatka[]>();
