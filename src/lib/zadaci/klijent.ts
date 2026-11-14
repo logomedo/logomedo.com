@@ -736,12 +736,13 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   /** A4 bez rubova i zaglavlja (mm), za raspored listića u HTML ispisu. */
   const A4_LISTIC: [number, number] = [180, 222];
-  function listicMreza(s: Listic, a4 = false) {
+  /** Mreža listića; `dio` = kartice jedne A4 stranice (veličinu i dalje određuje cijeli listić, kao u PDF-u). */
+  function listicMreza(s: Listic, a4 = false, dio?: Listic["kartice"]) {
     const pune = s.kartice.filter((k) => k.rijec_id || k.tekst);
     // Na papiru: mreža i veličina iz rasporedListica (isto kao PDF); prva stranica određuje veličinu.
     const r = rasporedListica(Math.min(pune.length, poStraniciListica(s.raspored)), s.raspored, ...A4_LISTIC, 7, pune.some((k) => k.tekst) ? 9 : 0);
     const stil = a4 ? `grid-template-columns:repeat(${r.stupaca},${Math.floor(r.s)}mm);justify-content:center` : s.raspored === "auto" && pune.length <= 6 ? `grid-template-columns:repeat(${r.stupaca},minmax(0,${pune.length <= 2 ? 340 : 240}px));justify-content:center` : undefined;
-    return h("div", { class: "z-listic", style: stil }, ...pune.map((k) =>
+    return h("div", { class: "z-listic", style: stil }, ...(dio ?? pune).map((k) =>
       h("figure", {}, slika(k.rijec_id, "", false), h("figcaption", {}, k.tekst))));
   }
 
@@ -782,13 +783,25 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         poz ? h("img", { class: "a4-pozadina", src: poz.slika.url, alt: "" }) : h("div", { class: "z-slika prazna a4-pozadina" }, h("span", {}, "pozadina")),
         h("div", { class: "a4-scena-gumbi" }, ...vidljiviGumbi(s).map((g) => h("div", { class: "a4-izbor" }, slika(g.rijec_id, "", true)))));
     } else {
-      tijelo = listicMreza(sadrzaj as Listic, true);
+      // Listić po stranicama kao PDF: na stranicu stane koliko daje mreža, zaglavlje samo na prvoj.
+      const l = sadrzaj as Listic;
+      const pune = l.kartice.filter((k) => k.rijec_id || k.tekst);
+      const n = poStraniciListica(l.raspored);
+      const dijelovi = pune.length ? Array.from({ length: Math.ceil(pune.length / n) }, (_, i) => pune.slice(i * n, i * n + n)) : [[]];
+      return h("div", { class: "a4-okvir" }, ...dijelovi.map((dio, i) => h("article", { class: `a4 a4-${vrsta}` },
+        i === 0 ? zaglavljeA4() : null,
+        listicMreza(l, true, dio),
+        h("footer", {}, dijelovi.length > 1 ? `logomedo.com · ${i + 1}/${dijelovi.length}` : "logomedo.com"))));
     }
     return h("div", { class: "a4-okvir" }, h("article", { class: `a4 a4-${vrsta}` },
-      h("header", {}, h("h1", {}, naslov || VRSTE[vrsta].naziv), uputa ? h("p", {}, uputa) : null,
-        h("div", { class: "a4-ime" }, "Ime: ", h("span", {}))),
+      zaglavljeA4(),
       tijelo,
       h("footer", {}, "logomedo.com")));
+  }
+
+  function zaglavljeA4() {
+    return h("header", {}, h("h1", {}, naslov || VRSTE[vrsta].naziv), uputa ? h("p", {}, uputa) : null,
+      h("div", { class: "a4-ime" }, "Ime: ", h("span", {})));
   }
 
   async function preuzmiPdf(e: Event) {

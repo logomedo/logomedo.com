@@ -287,6 +287,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-pozadina { width: 100%; max-height: 165mm; object-fit: contain; border-radius: 3mm; border: 1.5px solid #000; }
   .a4-scena-gumbi { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4mm; }
   .a4 .z-listic { grid-template-columns: repeat(3, 1fr); gap: 7mm; } .a4 .z-listic figcaption { font-size: 12pt; }
+  /* Listić po stranicama: svaka A4 stranica zasebno, na ekranu s razmakom, na papiru nova stranica. */
+  .a4-listic { height: 297mm; overflow: hidden; }
+  .a4 + .a4 { margin-top: 10mm; }
 
   @media print {
     @page { size: A4; margin: 0; }
@@ -295,5 +298,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
     .sadrzaj { padding: 0 !important; max-width: none !important; }
     .a4-okvir { padding: 0; background: none; border-radius: 0; }
     .a4 { box-shadow: none; margin: 0; }
+    .a4 + .a4 { margin-top: 0; break-before: page; }
+    .a4-listic { height: 296mm; }
   }
 </style>
