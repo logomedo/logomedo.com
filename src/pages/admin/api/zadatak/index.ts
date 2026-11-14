@@ -28,7 +28,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const kartice = izaberi(izbor, brojSlika(f.get("broj") as string | null, MAX_KARTICA_LISTICA));
     sadrzaj = { kartice: kartice.map(kartica), raspored: "auto" };
   } else {
-    sadrzaj = slozi(vrsta, zaGenerator(await sveRijeci()), { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : 4, maxSlogova: 3 });
+    sadrzaj = slozi(vrsta, zaGenerator(await sveRijeci()), { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : 4, maxSlogova: 3, nacin: String(f.get("nacin") ?? "") });
   }
   const id = await stvori(await korisnikId(locals.admin!.email), vrsta, podrucje, naslov, zadanaUputa(vrsta, sadrzaj), sadrzaj);
   return new Response(null, { status: 303, headers: { location: `/admin/zadaci/${id}` } });

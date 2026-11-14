@@ -279,3 +279,13 @@ test("listić: fiksne mreže stupaca × redova i broj po stranici", async () => 
   assert.equal((normaliziraj("listic", { kartice: [], raspored: "4x5" }) as { raspored: string }).raspored, "4x5");
   assert.equal((normaliziraj("listic", { kartice: [], raspored: "9x9" }) as { raspored: string }).raspored, "3x4");
 });
+
+test("slozi: način s gumba predloška (slogovi analiza, percepcija par)", () => {
+  const S = R.map((r) => ({ ...r, slika: "x" }));
+  assert.equal((slozi("slogovi", S, { stavki: 6, nacin: "analiza" }, rnd) as { nacin: string }).nacin, "analiza");
+  assert.equal((slozi("slogovi", S, { stavki: 6 }, rnd) as { nacin: string }).nacin, "duljina");
+  const p = slozi("percepcija", S, { stavki: 3, nacin: "par" }, rnd) as Percepcija;
+  assert.equal(p.trazi, "par");
+  assert.ok(p.stavke.every((x) => x.tocno.length === 2));
+  assert.equal((slozi("percepcija", S, { stavki: 3 }, rnd) as Percepcija).trazi, "razlicitu");
+});

@@ -547,7 +547,8 @@ export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: nu
 
 // ---- Generator: složi zadatak iz kataloga po skupinama rime ----
 
-export interface Postavke { stavki: number; maxSlogova?: number; samoSaSlikom?: boolean }
+/** `nacin`: inačica vrste s gumba predloška (slogovi: duljina | analiza, percepcija: razlicitu | par). */
+export interface Postavke { stavki: number; maxSlogova?: number; samoSaSlikom?: boolean; nacin?: string }
 
 function promijesaj<T>(a: T[], rnd: () => number): T[] {
   const b = [...a];
@@ -564,7 +565,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   const n = Math.max(1, Math.min(p.stavki, 12));
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
-  if (v === "slogovi") return slozSlogove("duljina", rijeci, p.stavki, 4, rnd);
+  if (v === "slogovi") return slozSlogove(p.nacin === "analiza" ? "analiza" : "duljina", rijeci, p.stavki, 4, rnd);
   if (v === "prvi_glas") {
     // Slova za koja katalog ima dovoljno slika, svako jednom; krugova koliko traži `stavki` (do 6).
     const jedne = rijeci.filter((r) => jednaRijec(r.rijec)), sa = jedne.filter((r) => r.slika);
@@ -575,7 +576,8 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   if (v === "percepcija") {
     // Riječi sa slikom (bez slike je red riječi, što nije vizualni zadatak), svaka jednom.
     const izbor = promijesaj(rijeci.filter((r) => r.slika), rnd).slice(0, n);
-    return { trazi: "razlicitu", stavke: (izbor.length ? izbor : [null]).map((r) => slozRed(r?.id ?? null, 4, "razlicitu", rnd)) };
+    const trazi: Trazi = p.nacin === "par" ? "par" : "razlicitu";
+    return { trazi, stavke: (izbor.length ? izbor : [null]).map((r) => slozRed(r?.id ?? null, 4, trazi, rnd)) };
   }
   if (v === "listic") {
     return { kartice: promijesaj(dobre, rnd).slice(0, Math.max(1, Math.min(p.stavki, 12))).map((r) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") })), raspored: "auto" };
