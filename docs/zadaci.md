@@ -10,6 +10,9 @@ Logopedski mod (`/admin/postavke`, `korisnici.logopedski_mod`, migracija 0029, z
 Prebrajanje uzima samo riječi s glasom; rima traži skupinu rime s riječi s glasom i stavlja je kao zadanu (lijevu) sliku, ostale
 su slobodne (`Postavke.cilj` u `slozi`); „bez” vrijedi za sve slike. Prvi glas: odabrani glasovi su krugovi (do 6), bez pozicije.
 Scena i Vizualna percepcija gumb nemaju (scenu slaže logoped, percepcija se ne izgovara). Dijalog broji građu funkcijom `moguce`.
+Zašto rima samo na zadanoj slici (produkcija 14. 11. 2026., 575 riječi sa slikom, rima do 3 sloga nije uračunata): parova rime s
+glasom R 32, K 29, L 29, S 25, M 14, Š 11, G 10, Z 9, Č 8, C 5, Ž 2, DŽ/Đ 0; skupina od 3+ za uljeza R 14, K/L 12, S 9, ostali 0–7.
+Traženje glasa na svim slikama reda ostavilo bi zadatak praznim za većinu glasova.
 Veličina slika listića: „Prema broju slika” (`auto`) ili fiksna mreža stupaca × redova (`raspored: "2x3"`; gumbi 1×1, 1×2, 2×2,
 2×3, 3×3, 3×4 i vlastita do 5 × 6). Na stranicu stane stupaca × redova slika (`poStraniciListica`), isto u PDF-u i HTML ispisu.
 Gumb „Složi” u editoru i dalje slaže nasumično, bez glasa.
