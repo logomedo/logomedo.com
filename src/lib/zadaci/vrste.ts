@@ -4,7 +4,7 @@
 //
 // Čisti TS: koriste ga API (provjera ulaza), editor i prikaz u pregledniku te testovi.
 
-import { brojSlogova, rimujuSe } from "./rima.ts";
+import { brojGlasova, brojSlogova, rimujuSe } from "./rima.ts";
 import { fonemi } from "../fonemi.ts";
 import { prikazRijeci } from "../znakovi.ts";
 
@@ -95,18 +95,32 @@ export const BOJE_KOLA: Record<BojeKola, { naziv: string; polja: string[]; slova
 };
 export const jeBojeKola = (x: unknown): x is BojeKola => typeof x === "string" && x in BOJE_KOLA;
 /**
- * Slogovi (artikulacija, slogovna svjesnost), dva načina iste mehanike „slika + broj slogova”:
+ * Prebrajanje (u kodu „slogovi”), tri načina iste mehanike „slika + broj”:
  * `duljina`: dijete jednom bojom zaokruži dugačke riječi (od `DUGA_OD` slogova), drugom kratke.
  * `analiza`: ispod slike je `krugova` krugova, dijete oboji onoliko koliko riječ ima slogova.
- * `slogova` se pri odabiru slike računa iz riječi (`brojSlogova`), a logoped ga može ispraviti.
+ * `glasovi`: isto, ali dijete broji glasove u riječi.
+ * `slogova` je izbrojeni broj (slogova ili glasova); računa se iz riječi (`brojSlogova`/`brojGlasova`),
+ * a logoped ga može ispraviti. `krugova` je isti ispod svake slike, barem koliko najduža riječ treba.
  */
-export type NacinSlogova = "duljina" | "analiza";
+export type NacinSlogova = "duljina" | "analiza" | "glasovi";
+export const NACINI_SLOGOVA: NacinSlogova[] = ["duljina", "analiza", "glasovi"];
+/** Koliko se broji u riječi za dani način (duljina i analiza: slogovi). */
+export const izbroji = (nacin: NacinSlogova, rijec: string) => (nacin === "glasovi" ? brojGlasova(rijec) : brojSlogova(rijec));
+/** Riječ za izbrojeno: „3 sloga”, „5 glasova”. */
+export function jedinica(nacin: NacinSlogova, n: number): string {
+  const [jedan, dva, pet] = nacin === "glasovi" ? ["glas", "glasa", "glasova"] : ["slog", "sloga", "slogova"];
+  const z = n % 10, d = n % 100;
+  return `${n} ${z === 1 && d !== 11 ? jedan : z >= 2 && z <= 4 && (d < 12 || d > 14) ? dva : pet}`;
+}
+/** Krugova ispod slike: koliko traži najveći broj među slikama, ali barem `najmanje`. */
+export const krugovaZa = (slike: SlikaSlogova[], najmanje = 4) =>
+  Math.max(KRUGOVA_MIN, Math.min(KRUGOVA_MAX, Math.max(najmanje, ...slike.filter((x) => x.rijec_id !== null).map((x) => x.slogova))));
 export interface SlikaSlogova { rijec_id: Id; slogova: number }
 export interface Slogovi { nacin: NacinSlogova; krugova: number; slike: SlikaSlogova[] }
 /** Dugačka riječ ima barem 3 sloga (KRAVA je kratka, KORNJAČA dugačka). */
 export const DUGA_OD = 3;
 export const jeDuga = (slogova: number) => slogova >= DUGA_OD;
-export const SLOGOVA_MAX = 6, KRUGOVA_MIN = 3, KRUGOVA_MAX = 6, SLOGOVI_SLIKA_MAX = 24;
+export const SLOGOVA_MAX = 12, KRUGOVA_MIN = 3, KRUGOVA_MAX = 12, SLOGOVI_SLIKA_MAX = 24;
 /** Boje bojica: iste na ekranu, u legendi ispisa i u PDF-u. */
 export const BOJE_DULJINE = {
   duga: { naziv: "dugačka", boja: "#d62828", bojom: "crvenom" },
@@ -115,6 +129,7 @@ export const BOJE_DULJINE = {
 export const UPUTE_SLOGOVA: Record<NacinSlogova, { ekran: string; ispis: string }> = {
   duljina: { ekran: "Dugačke riječi oboji crvenom, a kratke plavom bojicom.", ispis: "Dugačke riječi zaokruži crvenom bojom, a kratke plavom." },
   analiza: { ekran: "Lupni po bubnju za svaki slog u riječi.", ispis: "Izgovori riječ i pljesni na svaki slog. Oboji onoliko krugova koliko riječ ima slogova." },
+  glasovi: { ekran: "Lupni po bubnju za svaki glas u riječi.", ispis: "Izgovori riječ glas po glas. Oboji onoliko krugova koliko riječ ima glasova." },
 };
 export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija | PrviGlas | Slogovi;
 
@@ -188,7 +203,7 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     uputa: "", ispis: "Imenuj, oboji, zaokruži", odnos: false,
   },
   slogovi: {
-    naziv: "Prebrajanje", opis: "Ispod svake slike su kružići: dijete oboji onoliko koliko prebroji (npr. slogova u riječi). Ili dugačke i kratke riječi zaokruži dvjema bojama.",
+    naziv: "Prebrajanje", opis: "Ispod svake slike su kružići: dijete oboji onoliko koliko prebroji (slogova ili glasova u riječi). Ili dugačke i kratke riječi zaokruži dvjema bojama.",
     uputa: UPUTE_SLOGOVA.duljina.ispis, ispis: "Zaokruži bojama / oboji krugove", odnos: false,
   },
   odabir: {
@@ -343,7 +358,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
     case "slogovi": {
       const k = Number(o.krugova);
       return {
-        nacin: o.nacin === "analiza" ? "analiza" : "duljina",
+        nacin: NACINI_SLOGOVA.includes(o.nacin as NacinSlogova) ? (o.nacin as NacinSlogova) : "duljina",
         krugova: Number.isInteger(k) ? Math.max(KRUGOVA_MIN, Math.min(KRUGOVA_MAX, k)) : 4,
         slike: niz(o.slike, SLOGOVI_SLIKA_MAX, (x) => {
           const n = Number(obj(x).slogova);
@@ -423,8 +438,8 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
       if (!pune.some((x) => jeDuga(x.slogova))) u.push({ gdje: "slike", poruka: "Nema nijedne dugačke riječi." });
       if (pune.every((x) => jeDuga(x.slogova))) u.push({ gdje: "slike", poruka: "Nema nijedne kratke riječi." });
     }
-    if (sl.nacin === "analiza") for (const x of pune) if (x.slogova > sl.krugova) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} ima ${x.slogova} sloga, a krugova je ${sl.krugova}.` });
-    for (const x of pune) { const r = R(x.rijec_id); if (r && brojSlogova(r.rijec) !== x.slogova) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)}: upisano ${x.slogova}, a riječ po pravilu ima ${brojSlogova(r.rijec)} sloga (ako je ispravak namjeran, zanemari).` }); }
+    if (sl.nacin !== "duljina") for (const x of pune) if (x.slogova > sl.krugova) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} ima ${jedinica(sl.nacin, x.slogova)}, a krugova je ${sl.krugova}.` });
+    for (const x of pune) { const r = R(x.rijec_id); const n = r ? izbroji(sl.nacin, r.rijec) : x.slogova; if (n !== x.slogova) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)}: upisano ${x.slogova}, a riječ po pravilu ima ${jedinica(sl.nacin, n)} (ako je ispravak namjeran, zanemari).` }); }
     return u;
   }
   if (v === "percepcija") {
@@ -565,7 +580,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   const n = Math.max(1, Math.min(p.stavki, 12));
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
-  if (v === "slogovi") return slozSlogove(p.nacin === "analiza" ? "analiza" : "duljina", rijeci, p.stavki, 4, rnd);
+  if (v === "slogovi") return slozSlogove(NACINI_SLOGOVA.includes(p.nacin as NacinSlogova) ? (p.nacin as NacinSlogova) : "duljina", rijeci, p.stavki, 4, rnd);
   if (v === "prvi_glas") {
     // Slova za koja katalog ima dovoljno slika, svako jednom; krugova koliko traži `stavki` (do 6).
     const jedne = rijeci.filter((r) => jednaRijec(r.rijec)), sa = jedne.filter((r) => r.slika);
@@ -630,6 +645,8 @@ export const tocnoSlogovi = (nacin: NacinSlogova, slogova: number) => (nacin ===
  * Slike za slogove iz kataloga (sa slikom ako ih ima dovoljno), svaka riječ jednom.
  * `duljina`: pola kratkih (1–2 sloga), pola dugačkih (3+, prednost 4+ radi jasne razlike).
  * `analiza`: podjednako riječi od 1 do `krugova` slogova.
+ * `glasovi`: podjednako riječi od 3 do 7 glasova.
+ * `krugova` je barem zadani, a raste do najduže izabrane riječi.
  */
 export function slozSlogove(nacin: NacinSlogova, rijeci: RijecZadatka[], n: number, krugova = 4, rnd: () => number = Math.random): Slogovi {
   n = Math.max(2, Math.min(SLOGOVI_SLIKA_MAX, n));
@@ -637,7 +654,8 @@ export function slozSlogove(nacin: NacinSlogova, rijeci: RijecZadatka[], n: numb
   const sa = rijeci.filter((r) => r.slika);
   const izvor = sa.length >= n * 2 ? sa : rijeci;
   const skupine = new Map<number, RijecZadatka[]>();
-  for (const r of promijesaj(izvor, rnd)) { const k = Math.min(r.slogova, SLOGOVA_MAX); skupine.set(k, [...(skupine.get(k) ?? []), r]); }
+  const broj = (r: RijecZadatka) => (nacin === "glasovi" ? brojGlasova(r.rijec) : r.slogova);
+  for (const r of promijesaj(izvor, rnd)) { const k = Math.min(broj(r), SLOGOVA_MAX); skupine.set(k, [...(skupine.get(k) ?? []), r]); }
   // Kružno po skupinama: iz svake po jedna, dok ne skupi n.
   const kruzno = (kljucevi: number[], koliko: number) => {
     const g = kljucevi.map((k) => [...(skupine.get(k) ?? [])]);
@@ -650,8 +668,11 @@ export function slozSlogove(nacin: NacinSlogova, rijeci: RijecZadatka[], n: numb
     const kratkih = Math.ceil(n / 2);
     const duge = kruzno([4, 5, 6, 3], n - kratkih);
     izbor = [...kruzno([1, 2], n - duge.length), ...duge];
+  } else if (nacin === "glasovi") {
+    izbor = kruzno([3, 4, 5, 6, 7], n);
   } else {
     izbor = kruzno(Array.from({ length: krugova }, (_, i) => i + 1), n);
   }
-  return { nacin, krugova, slike: promijesaj(izbor, rnd).map((r) => ({ rijec_id: r.id, slogova: r.slogova })) };
+  const slike = promijesaj(izbor, rnd).map((r) => ({ rijec_id: r.id, slogova: broj(r) }));
+  return { nacin, krugova: krugovaZa(slike, krugova), slike };
 }

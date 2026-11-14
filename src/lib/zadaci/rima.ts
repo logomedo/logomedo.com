@@ -41,6 +41,11 @@ export function izvediRimu(rijec: string): string | null {
   return s.slice(od);
 }
 
+/** Broj glasova: LJ, NJ i DŽ su jedan glas (jedno slovo hrvatske abecede); razmaci i crtice se ne broje. */
+export function brojGlasova(rijec: string): number {
+  return (rijec.toLocaleUpperCase("hr").replace(/[^A-ZČĆĐŠŽ]/g, "").match(/LJ|NJ|DŽ|./g) ?? []).length;
+}
+
 export function brojSlogova(rijec: string): number {
   return rijec.toLocaleUpperCase("hr").split(/[^A-ZČĆĐŠŽ]+/).filter(Boolean)
     .reduce((n, d) => n + Math.max(jezgre(d).length, 1), 0);

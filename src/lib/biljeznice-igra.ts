@@ -347,7 +347,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       if (zakljucano) return;
       if (obojeno === x.slogova) { kart.classList.add("tocno"); rijeseno(); } else tresi(kart);
     });
-    return { cvorovi: [q.el, h("div", { class: "slog-analiza" }, kart, h("div", { class: "slog-krugovi" }, ...krugovi), h("div", { class: "slog-dolje" }, bubanj, gotovo))], tekst: e.uputa, gumb: q.gumb };
+    return { cvorovi: [q.el, h("div", { class: "slog-analiza" }, kart, h("div", { class: "slog-krugovi", style: `--n:${e.krugova}` }, ...krugovi), h("div", { class: "slog-dolje" }, bubanj, gotovo))], tekst: e.uputa, gumb: q.gumb };
   }
 
   function ekranPovezi(e: Extract<Ekran, { vrsta: "povezivanje" }>) {

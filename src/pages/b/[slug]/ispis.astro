@@ -121,7 +121,7 @@ const grancica = tema.kutovi ? GRANCICA : "";
                   <figure class="slika">
                     {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
                   </figure>
-                  {s.nacin === "analiza" && <div class="krugovi">{Array.from({ length: s.krugova }, () => <i />)}</div>}
+                  {s.nacin !== "duljina" && <div class="krugovi" style={`--k:${s.krugova <= 4 ? s.krugova : Math.ceil(s.krugova / 2)};grid-template-columns:repeat(var(--k),auto)`}>{Array.from({ length: s.krugova }, () => <i />)}</div>}
                 </div>
               ))}
             </div>
@@ -270,8 +270,8 @@ const grancica = tema.kutovi ? GRANCICA : "";
   .legenda i.duga { width: 30mm; } .legenda i.kratka { width: 11mm; }
   .slogovi .mreza { display: grid; grid-template-columns: repeat(4, 38mm); gap: 7mm 5mm; justify-content: center; }
   .slogovi.analiza .mreza { grid-template-columns: repeat(3, 46mm); gap: 8mm 10mm; }
-  .krugovi { display: flex; justify-content: center; gap: 2.5mm; margin-top: 3mm; }
-  .krugovi i { width: 8mm; height: 8mm; border: 2px solid #000; border-radius: 50%; }
+  .krugovi { display: grid; justify-content: center; gap: 2.5mm; margin-top: 3mm; }
+  .krugovi i { width: min(8mm, calc((36mm - (var(--k) - 1) * 2.5mm) / var(--k))); aspect-ratio: 1; border: 2px solid #000; border-radius: 50%; }
   .povezi { flex: 1; display: flex; justify-content: space-between; padding: 0 8mm; }
   .stupac { display: flex; flex-direction: column; justify-content: space-around; }
   .scena-ispis { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }

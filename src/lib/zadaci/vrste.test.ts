@@ -186,7 +186,7 @@ test("slogovi: analiza ne uzima riječi s više slogova od krugova", () => {
 
 test("slogovi: normalizacija, ocjena prvog pokušaja i uputa", () => {
   const s = normaliziraj("slogovi", { nacin: "analiza", krugova: 99, slike: [{ rijec_id: 205, slogova: 3 }, { rijec_id: null, slogova: 0 }, { rijec_id: 200, slogova: 1 }] }) as Slogovi;
-  assert.equal(s.krugova, 6);
+  assert.equal(s.krugova, 12);
   assert.equal(s.slike[1].slogova, 1);
   // Slika 0: prvo 2 pa 3 (krivo), slika 2: odmah 1 (točno).
   const o = ocijeni("slogovi", s, [{ stavka: 0, odabrano: 2 }, { stavka: 0, odabrano: 3 }, { stavka: 2, odabrano: 1 }]);
@@ -288,4 +288,22 @@ test("slozi: način s gumba predloška (slogovi analiza, percepcija par)", () =>
   assert.equal(p.trazi, "par");
   assert.ok(p.stavke.every((x) => x.tocno.length === 2));
   assert.equal((slozi("percepcija", S, { stavki: 3 }, rnd) as Percepcija).trazi, "razlicitu");
+});
+
+test("prebrajanje glasova: LJ, NJ, DŽ su jedan glas; krugova koliko treba najduža riječ", async () => {
+  const { brojGlasova } = await import("./rima.ts");
+  assert.equal(brojGlasova("učiteljica"), 9);
+  assert.equal(brojGlasova("konj"), 3);
+  assert.equal(brojGlasova("džep"), 3);
+  assert.equal(brojGlasova("sat"), 3);
+  sjeme = 5;
+  const s = slozSlogove("glasovi", SL, 8, 4, rnd);
+  assert.equal(s.nacin, "glasovi");
+  assert.ok(s.slike.every((x) => x.slogova === brojGlasova(SM.get(x.rijec_id!)!.rijec)));
+  assert.equal(s.krugova, Math.max(4, ...s.slike.map((x) => x.slogova)));
+  assert.deepEqual(provjeri("slogovi", s, SM), []);
+  // Analiza s riječju od 5 slogova: krugova raste na 5 umjesto upozorenja.
+  const a = slozSlogove("analiza", [...SL, { id: 299, rijec: "učiteljica", rima: null, slogova: 5, slika: "/s/u.jpg" } as RijecZadatka], 12, 5, rnd);
+  assert.ok(a.krugova >= Math.max(...a.slike.map((x) => x.slogova)));
+  assert.equal(zadanaUputa("slogovi", s), UPUTE_SLOGOVA.glasovi.ispis);
 });

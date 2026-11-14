@@ -221,8 +221,8 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   /* Slogovi, analiza: velika slika, krugovi ispod, Gotovo */
   .slog-analiza { display: flex; flex-direction: column; align-items: center; gap: 2.4vh; }
   .slog-slika { --s: min(40vh, 34vw); cursor: default; }
-  .slog-krugovi { display: flex; gap: 2.2vh; }
-  .slog-krug { width: 9vh; height: 9vh; border-radius: 50%; border: .7vh solid #5a3414; background: #fffdf6; cursor: pointer; transition: background .15s, transform .15s; }
+  .slog-krugovi { display: flex; gap: 2.2vh; --n: 4; }
+  .slog-krug { width: min(9vh, calc(88vw / var(--n) - 2.2vh)); height: auto; aspect-ratio: 1; border-radius: 50%; border: .7vh solid #5a3414; background: #fffdf6; cursor: pointer; transition: background .15s, transform .15s; }
   .slog-krug.on { background: radial-gradient(circle at 35% 30%, #ffe08a, #f2a33a 60%, #d9822b); transform: scale(1.06); }
   .slog-dolje { display: flex; align-items: center; gap: 4vh; }
   .bubanj { width: 16vh; height: 13.3vh; padding: 0; border: 0; background: none; cursor: pointer; }

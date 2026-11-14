@@ -345,15 +345,20 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
         y0 += 14;
       }
       const stupaca = t.krugova ? 3 : 4, redova = Math.max(1, Math.ceil(t.slike.length / stupaca));
-      const nat = natpisa(t.slike), kr = t.krugova ? 12 : 0, g = t.krugova ? 9 : 6;
+      // Krugovi u jednom redu dok stanu (do 4 pune veličine), inače u dva reda.
+      const redKrugova = t.krugova * 10.5 - 2.5 <= 46 ? 1 : 2, poRedu = Math.ceil(t.krugova / redKrugova);
+      const nat = natpisa(t.slike), kr = t.krugova ? (redKrugova === 1 ? 12 : 21) : 0, g = t.krugova ? 9 : 6;
       const s = Math.min((W - (stupaca - 1) * g) / stupaca, (dno - y0 - (redova - 1) * g) / redova - nat - kr, t.krugova ? 46 : 44);
       const x0 = L + (W - (stupaca * s + (stupaca - 1) * g)) / 2;
       for (const [i, sl] of t.slike.entries()) {
         const x = x0 + (i % stupaca) * (s + g), y = y0 + Math.floor(i / stupaca) * (s + nat + kr + g);
         const h = await slikaUOkviru(p, sl, x, y, s);
-        const r = 4, razmak = 2.5, ukupno = t.krugova * 2 * r + (t.krugova - 1) * razmak;
-        for (let k = 0; k < t.krugova; k++)
-          p.page.drawCircle({ x: p.X(x + (s - ukupno) / 2 + r + k * (2 * r + razmak)), y: p.Y(y + h + 3 + r), size: r * MM, color: BIJELO, borderColor: CRNO, borderWidth: 1.4 });
+        const razmak = 2.5, r = Math.min(4, (s - (poRedu - 1) * razmak) / (2 * poRedu));
+        for (let k = 0; k < t.krugova; k++) {
+          const red = Math.floor(k / poRedu), uRedu = Math.min(poRedu, t.krugova - red * poRedu), j = k % poRedu;
+          const ukupno = uRedu * 2 * r + (uRedu - 1) * razmak;
+          p.page.drawCircle({ x: p.X(x + (s - ukupno) / 2 + r + j * (2 * r + razmak)), y: p.Y(y + h + 3 + r + red * (2 * r + 2)), size: r * MM, color: BIJELO, borderColor: CRNO, borderWidth: 1.4 });
+        }
       }
     }
 

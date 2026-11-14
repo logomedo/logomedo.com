@@ -97,7 +97,7 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
     const slike = sg.slike.filter((x) => x.rijec_id !== null).map((x) => sl(x.rijec_id));
     const legenda = sg.nacin === "duljina" ? (["duga", "kratka"] as const).map((k) => ({ naziv: VELIKO(BOJE_DULJINE[k].naziv), boja: BOJE_DULJINE[k].boja, duga: k === "duga" })) : undefined;
     const komad = nastavakBezZaglavlja ? komadiSPrvim(slike, po * redova, po * (redova + 1)) : komadi(slike, po * redova);
-    return komad.map((k) => ({ vrsta: "slogovi", legenda, krugova: sg.nacin === "analiza" ? sg.krugova : 0, slike: k }));
+    return komad.map((k) => ({ vrsta: "slogovi", legenda, krugova: sg.nacin !== "duljina" ? sg.krugova : 0, slike: k }));
   }
   if (vrsta === "povezivanje") {
     const p = s as Povezivanje;
