@@ -1,8 +1,10 @@
 # Zadaci: predlošci, instance, rješavanja
 
-Status (2026-11-14): radni listić po glasu. Na `/admin/predlosci` kartica „Radni listić” ima izbor glasa i pozicije
-(inicijalna, medijalna, finalna, skupine ili bilo gdje; uz svaku broj riječi sa slikom). Listić dobije naslov „Glas L – inicijalna
-pozicija” i sve takve riječi sa slikom abecedno (do 150 kartica, 12 po stranici), pa logoped briše i premješta u editoru.
+Status (2026-11-14): radni listić po glasovima. Na `/admin/predlosci` kartica „Radni listić” ima višestruki izbor glasova
+(riječ ima barem jedan, na odabranoj poziciji ili bilo gdje) i višestruki izbor glasova koji se isključuju (nema ih nigdje u riječi,
+po fonemima: „bez L” ne izbacuje LJ). Ispod piše koliko će slika biti. S odabranim glasovima listić dobije sve takve riječi sa slikom
+abecedno (do 150 kartica, 12 po stranici) i naslov „Glasovi L, R – inicijalna pozicija, bez Š”; samo isključivanje daje 12 nasumičnih.
+Pravilo je u `src/lib/zadaci/listic-glas.ts` (+ test), isto u obrascu i na poslužitelju.
 Gumb „Složi” u editoru i dalje slaže nasumično, bez glasa.
 Slogovi i prvi glas ne uzimaju izraze od više riječi (razmak ili crtica: ČAROBNI ŠTAPIĆ, LUK-STRIJELA, MORSKI PAS, KAMP KUĆICA),
 ni generator ni ručni izbor slike (`jednaRijec` u `vrste.ts`); listić i ostale vrste ih i dalje nude.

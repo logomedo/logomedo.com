@@ -1,11 +1,14 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
-import { glasoviZaListic, nazivPodrucja, podrucja as svaPodrucja } from "../../lib/zadaci/baza";
-import { VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
+import { nazivPodrucja, podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
+import { ABECEDA, VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
 
-const [podrucja, glasovi] = await Promise.all([svaPodrucja(), glasoviZaListic()]);
+const [podrucja, listic] = await Promise.all([svaPodrucja(), zaListic()]);
+// Isključuju se suglasnici (po fonemima, pa „bez L” ne dira LJ).
+const suglasnici = ABECEDA.filter((g) => !"AEIOU".includes(g));
+const listicJson = JSON.stringify(listic.rijeci).replace(/</g, "\\u003c");
 const prazno = Astro.url.searchParams.has("prazno");
-const pozicije = [["", "Bilo gdje"], ["inicijalna", "Inicijalna (početak)"], ["medijalna", "Medijalna (sredina)"], ["finalna", "Finalna (kraj)"], ["skupina", "Skupine"]];
+const pozicije = [["", "Bilo gdje u riječi"], ["inicijalna", "Inicijalna (početak)"], ["medijalna", "Medijalna (sredina)"], ["finalna", "Finalna (kraj)"], ["skupina", "Skupine"]];
 const listovi = podrucja.filter((p) => p.roditelj_id !== null);
 const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas", slogovi: "slogovi" };
 const vrste = Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][];
@@ -30,11 +33,11 @@ const shema: Record<Vrsta, string> = {
     </div>
   </div>
 
-  {prazno && <p class="ploha upozorenje">Za taj glas i poziciju katalog nema nijednu riječ sa slikom.</p>}
+  {prazno && <p class="ploha upozorenje">Za te glasove katalog nema nijednu riječ sa slikom.</p>}
 
   <div class="vrste">
     {vrste.map(([kod, v]) => (
-      <form class="ploha vrsta" method="post" action="/admin/api/zadatak">
+      <form class:list={["ploha vrsta", { listic: kod === "listic" }]} method="post" action="/admin/api/zadatak">
         <input type="hidden" name="vrsta" value={kod} />
         <svg class="shema" viewBox="0 0 88 58" aria-hidden="true" set:html={shema[kod]} />
         <div>
@@ -43,13 +46,23 @@ const shema: Record<Vrsta, string> = {
         </div>
         {kod === "listic" && (
           <div class="glas">
-            <select name="glas" aria-label="Glas" data-broj={JSON.stringify(Object.fromEntries(glasovi.map((g) => [g.id, g.broj])))}>
-              <option value="">Nasumične slike</option>
-              {glasovi.map((g) => <option value={g.id}>Glas {g.oznaka} ({g.broj[""] ?? 0})</option>)}
-            </select>
-            <select name="pozicija" aria-label="Pozicija glasa" disabled>
-              {pozicije.map(([k, n]) => <option value={k} data-naziv={n}>{n}</option>)}
-            </select>
+            <fieldset>
+              <legend>Riječ ima glas <span class="blijedo">(jedan ili više; bez odabira 12 nasumičnih slika)</span></legend>
+              <div class="cipovi">
+                {listic.glasovi.map((g) => <label class="cip"><input type="checkbox" name="glas" value={g.id} /><span>{g.oznaka}</span></label>)}
+              </div>
+            </fieldset>
+            <label class="pozicija">Pozicija
+              <select name="pozicija" disabled>{pozicije.map(([k, n]) => <option value={k}>{n}</option>)}</select>
+            </label>
+            <fieldset>
+              <legend>Bez glasova <span class="blijedo">(nijedna riječ ih nema nigdje)</span></legend>
+              <div class="cipovi">
+                {suglasnici.map((g) => <label class="cip bez"><input type="checkbox" name="bez" value={g} /><span>{g}</span></label>)}
+              </div>
+            </fieldset>
+            <p class="ishod" aria-live="polite"></p>
+            <script type="application/json" id="listic-rijeci" set:html={listicJson}></script>
           </div>
         )}
         <div class="dno">
@@ -64,28 +77,53 @@ const shema: Record<Vrsta, string> = {
 </AdminOkvir>
 
 <script>
-  // Listić po glasu: pozicija se bira tek uz glas, a uz svaku piše koliko riječi sa slikom ima.
-  const glas = document.querySelector('select[name="glas"]') as HTMLSelectElement | null;
-  const poz = document.querySelector('select[name="pozicija"]') as HTMLSelectElement | null;
-  if (glas && poz) {
-    const broj: Record<string, Record<string, number>> = JSON.parse(glas.dataset.broj ?? "{}");
+  // Listić po glasovima: pozicija vrijedi uz odabrane glasove; ispod piše koliko će slika biti (isto pravilo kao poslužitelj).
+  import { naslovListica, odgovara, type RijecGlasova } from "../../lib/zadaci/listic-glas";
+  import { MAX_KARTICA_LISTICA } from "../../lib/zadaci/vrste";
+  const forma = document.querySelector<HTMLFormElement>("form.listic");
+  const podaci = document.getElementById("listic-rijeci");
+  if (forma && podaci) {
+    const rijeci: RijecGlasova[] = JSON.parse(podaci.textContent ?? "[]");
+    const poz = forma.querySelector("select[name=pozicija]") as unknown as HTMLSelectElement;
+    const ishod = forma.querySelector(".ishod") as HTMLElement;
+    const gumb = forma.querySelector("button[type=submit]") as HTMLButtonElement;
+    const odabrani = (ime: string) => [...forma.querySelectorAll<HTMLInputElement>(`input[name=${ime}]:checked`)];
     const osvjezi = () => {
-      poz.disabled = !glas.value;
-      const b = broj[glas.value] ?? {};
-      for (const o of poz.options) {
-        o.textContent = glas.value ? `${o.dataset.naziv} (${b[o.value] ?? 0})` : o.dataset.naziv!;
-        o.disabled = !!glas.value && !b[o.value];
-      }
-      if (poz.selectedOptions[0]?.disabled) poz.value = "";
+      const g = odabrani("glas"), bez = odabrani("bez").map((x) => x.value);
+      poz.disabled = !g.length;
+      const f = { glasovi: g.map((x) => Number(x.value)), pozicija: g.length ? poz.value : "", bez };
+      if (!g.length && !bez.length) { ishod.textContent = "12 nasumičnih slika iz kataloga."; gumb.disabled = false; return; }
+      const n = rijeci.filter((r) => odgovara(r, f)).length;
+      const naslov = naslovListica(g.map((x) => x.nextElementSibling!.textContent!), f.pozicija, bez);
+      ishod.textContent = !n ? "Nijedna riječ sa slikom ne odgovara." : g.length
+        ? `„${naslov}”: ${Math.min(n, MAX_KARTICA_LISTICA)} slika${n > MAX_KARTICA_LISTICA ? ` (od ${n})` : ""}, abecedno.`
+        : `„${naslov}”: 12 nasumičnih od ${n} slika.`;
+      gumb.disabled = !n;
     };
-    glas.addEventListener("change", osvjezi);
+    forma.addEventListener("change", osvjezi);
     osvjezi();
   }
 </script>
 
 <style>
-  .glas { display: flex; flex-direction: column; gap: 6px; }
-  .glas select { height: 32px; }
+  .vrsta.listic { grid-column: 1 / -1; }
+  .glas { display: flex; flex-direction: column; gap: 12px; }
+  .glas fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+  .glas legend { padding: 0; margin-bottom: 6px; font-size: .8rem; font-weight: 650; color: var(--tinta); }
+  .glas legend .blijedo { font-weight: 500; }
+  .cipovi { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cip { margin: 0; cursor: pointer; }
+  .cip input { position: absolute; opacity: 0; pointer-events: none; }
+  .cip span { display: inline-grid; place-items: center; min-width: 38px; height: 34px; padding: 0 9px; border: 1px solid var(--rub-jak); border-radius: 9px;
+    background: var(--povrsina); color: var(--tinta); font-weight: 700; font-size: .92rem; }
+  .cip:hover span { border-color: var(--med); }
+  .cip input:focus-visible + span { outline: 2px solid var(--med); outline-offset: 2px; }
+  .cip input:checked + span { background: var(--med); border-color: var(--med); color: var(--med-tekst); }
+  .cip.bez input:checked + span { background: var(--greska-blago); border-color: var(--greska); color: var(--greska); text-decoration: line-through; }
+  .pozicija { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--tinta); }
+  .pozicija select { flex: 0 1 260px; height: 34px; }
+  .pozicija select:disabled { opacity: .5; }
+  .ishod { margin: 0 !important; color: var(--tinta) !important; font-weight: 600; }
   .upozorenje { margin: 18px 0 0; padding: 12px 16px; border-color: var(--med); }
   .vrste { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 24px; }
   .vrsta { margin: 0; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
