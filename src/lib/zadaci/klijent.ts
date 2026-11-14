@@ -734,15 +734,20 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return h("div", { class: "z-dijete" }, glava, listicMreza(sadrzaj as Listic));
   }
 
-  /** A4 bez rubova i zaglavlja (mm), za raspored listića u HTML ispisu. */
+  /** A4 bez rubova i zaglavlja (mm), za raspored listića u HTML ispisu; ostale stranice nemaju zaglavlje pa su više (kao PDF). */
   const A4_LISTIC: [number, number] = [180, 222];
-  /** Mreža listića; `dio` = kartice jedne A4 stranice (veličinu i dalje određuje cijeli listić, kao u PDF-u). */
-  function listicMreza(s: Listic, a4 = false, dio?: Listic["kartice"]) {
+  const A4_LISTIC_DALJE: [number, number] = [180, 255];
+  /** Mreža listića; `dio` = kartice jedne A4 stranice, `prva` = stranica sa zaglavljem. Veličina i položaj kao u PDF-u (ispis-pdf.ts). */
+  function listicMreza(s: Listic, a4 = false, dio?: Listic["kartice"], prva = true) {
     const pune = s.kartice.filter((k) => k.rijec_id || k.tekst);
-    // Na papiru: mreža i veličina iz rasporedListica (isto kao PDF); prva stranica određuje veličinu.
-    const r = rasporedListica(Math.min(pune.length, poStraniciListica(s.raspored)), s.raspored, ...A4_LISTIC, 7, pune.some((k) => k.tekst) ? 9 : 0);
-    const stil = a4 ? `grid-template-columns:repeat(${r.stupaca},${Math.floor(r.s)}mm);justify-content:center` : s.raspored === "auto" && pune.length <= 6 ? `grid-template-columns:repeat(${r.stupaca},minmax(0,${pune.length <= 2 ? 340 : 240}px));justify-content:center` : undefined;
-    return h("div", { class: "z-listic", style: stil }, ...(dio ?? pune).map((k) =>
+    const kartice = dio ?? pune;
+    const tekst = pune.some((k) => k.tekst) ? 9 : 0;
+    // Na papiru: mreža i veličina iz rasporedListica za kartice te stranice (isto kao PDF).
+    const r = rasporedListica(Math.min(kartice.length, poStraniciListica(s.raspored)), s.raspored, ...(a4 && !prva ? A4_LISTIC_DALJE : A4_LISTIC), 7, tekst);
+    // PDF: „prema broju slika” je mreža okomito centrirana, inače redovi raspoređeni po cijeloj visini.
+    const okomito = s.raspored === "auto" ? "align-content:center" : `grid-template-rows:repeat(${r.redova},minmax(0,1fr));align-items:start`;
+    const stil = a4 ? `grid-template-columns:repeat(${r.stupaca},${Math.floor(r.s)}mm);justify-content:center;flex:1;${okomito}${prva ? "" : ";margin-top:8mm"}` : s.raspored === "auto" && pune.length <= 6 ? `grid-template-columns:repeat(${r.stupaca},minmax(0,${pune.length <= 2 ? 340 : 240}px));justify-content:center` : undefined;
+    return h("div", { class: "z-listic", style: stil }, ...kartice.map((k) =>
       h("figure", {}, slika(k.rijec_id, "", false), h("figcaption", {}, k.tekst))));
   }
 
@@ -790,7 +795,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const dijelovi = pune.length ? Array.from({ length: Math.ceil(pune.length / n) }, (_, i) => pune.slice(i * n, i * n + n)) : [[]];
       return h("div", { class: "a4-okvir" }, ...dijelovi.map((dio, i) => h("article", { class: `a4 a4-${vrsta}` },
         i === 0 ? zaglavljeA4() : null,
-        listicMreza(l, true, dio),
+        listicMreza(l, true, dio, i === 0),
         h("footer", {}, dijelovi.length > 1 ? `logomedo.com · ${i + 1}/${dijelovi.length}` : "logomedo.com"))));
     }
     return h("div", { class: "a4-okvir" }, h("article", { class: `a4 a4-${vrsta}` },
