@@ -1,11 +1,11 @@
 ---
-import AdminOkvir from "../../../components/AdminOkvir.astro";
-import Ikona from "../../../components/Ikona.astro";
-import { nazivPodrucja, podrucja as svaPodrucja, stilovi as sviStilovi, sveRijeci, zadatak as nadji } from "../../../lib/zadaci/baza";
-import { VRSTE } from "../../../lib/zadaci/vrste";
-import { popis as svePozadine } from "../../../lib/pozadine";
-import "../../../lib/scena.css";
-import "../../../lib/kolo-slova.css";
+import AdminOkvir from "../../../../components/AdminOkvir.astro";
+import Ikona from "../../../../components/Ikona.astro";
+import { nazivPodrucja, podrucja as svaPodrucja, stilovi as sviStilovi, sveRijeci, zadatak as nadji } from "../../../../lib/zadaci/baza";
+import { VRSTE } from "../../../../lib/zadaci/vrste";
+import { popis as svePozadine } from "../../../../lib/pozadine";
+import "../../../../lib/scena.css";
+import "../../../../lib/kolo-slova.css";
 import "@fontsource-variable/nunito";
 import "@fontsource/andika/700.css";
 
@@ -38,7 +38,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
 </AdminOkvir>
 
 <script>
-  import { pokreni } from "../../../lib/zadaci/klijent";
+  import { pokreni } from "../../../../lib/zadaci/klijent";
   const p = JSON.parse(document.getElementById("podaci")!.textContent!);
   pokreni(document.getElementById("zadatak")!, p);
 </script>
@@ -58,7 +58,6 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-kartice .gumb.glavni:disabled { opacity: .55; }
   .z-nespremljeno { box-shadow: 0 0 0 3px var(--greska-blago); }
   .z-kvacica { display: inline-flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 550; color: var(--blijedo); margin: 0 8px 0 0; cursor: pointer; }
-  .z-napomena { margin: -8px 0 14px; }
 
   /* Slika: prava slika ili riječ dok slike nema */
   .z-slika { position: relative; aspect-ratio: 1; width: 100%; border-radius: 14px; background: var(--papir-slike); border: 1px solid var(--rub);
@@ -104,13 +103,8 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-krug-slovo select { font-size: 1.1rem; font-weight: 800; min-width: 4.5em; }
   .z-krug-slike { display: flex; flex-wrap: wrap; gap: 10px; }
   .z-krug-slike .z-slot { width: 104px; }
-  .z-kolo-okvir { display: grid; place-items: center; padding: 8px 0 16px; }
-  .z-kolo-okvir .kolo { --kolo: min(62vh, 82vw, 560px); }
-  .z-slog-gumbi { display: flex; gap: 6px; justify-content: center; }
-  .z-krug-mreza { display: grid; grid-template-columns: repeat(var(--stupaca), minmax(0, 132px)); gap: clamp(8px, 1.4vw, 16px); justify-content: center; width: 100%; }
   /* Mobitel: 2 stupca većih slika, kao igra bilježnice (stranica se ionako lista). */
   @media (max-width: 600px) { .z-krug-mreza { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
-  .z-prvi-glas .kolo-znacka { font-size: 1.3em; vertical-align: middle; }
   .z-slogovi-slike { display: flex; flex-wrap: wrap; gap: 14px; }
   .z-slog-slot { width: 120px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .z-slog-slot .z-slot { width: 100%; }
@@ -121,21 +115,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-slog-krugovi[style] { display: grid; }
   .z-slog-krugovi > * { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rub-jak); background: none; padding: 0; }
   .z-slog-krugovi > .on { background: var(--med); border-color: var(--med); }
-  .z-slog-mreza { grid-template-columns: repeat(var(--stupaca), minmax(0, 190px)); }
   .z-slog-zadatak .z-slika { width: 140px; }
   .z-slog-krugovi.velike { gap: 6px; margin-top: 4px; }
   .z-slog-krugovi.velike > * { width: 26px; height: 26px; border-width: 3px; cursor: pointer; }
-  .z-slog-zadatak { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px; border-radius: 20px; border: 3px solid transparent; }
-  .z-slog-zadatak.gotov { border-color: var(--uspjeh); }
-  .z-slog-zadatak.krivo { animation: z-trese .4s; border-color: var(--greska); }
-  .z-bravo-malo { color: var(--uspjeh); font-weight: 800; font-size: 1.3rem; }
-  .z-bojice { display: flex; gap: 14px; justify-content: center; margin-bottom: 16px; }
-  .z-bojica { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 750; padding: 8px 16px; border-radius: 999px; border: 2px solid var(--rub-jak); background: var(--povrsina); color: var(--tinta); cursor: pointer; }
-  .z-bojica i { height: 14px; border-radius: 0 6px 6px 0; background: var(--b); }
-  .z-bojica.duga i { width: 70px; } .z-bojica.kratka i { width: 26px; }
-  .z-bojica.on { border-color: var(--b); box-shadow: 0 0 0 4px color-mix(in srgb, var(--b) 30%, transparent); }
-  .z-bojica.krivo { animation: z-trese .4s; }
-  .z-karta.obojena { border-color: var(--b); box-shadow: 0 0 0 4px color-mix(in srgb, var(--b) 35%, transparent); }
   .z-percepcija-polja { display: flex; gap: 10px; flex-wrap: wrap; }
   .z-percepcija-polja .z-slot { width: 104px; }
   .z-izmjena { font-size: .78rem; padding: 3px 4px; }
@@ -191,13 +173,6 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   input.neispravno { border-color: var(--greska) !important; box-shadow: 0 0 0 3px var(--greska-blago) !important; }
 
   /* Scena: pregled u okviru tableta */
-  .z-scena-pregled { display: flex; flex-direction: column; gap: 12px; align-items: center; }
-  .z-scena-alati { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; align-self: stretch; }
-  .z-scena-rezultat { margin-left: auto; } .z-scena-rezultat .z-bravo { padding: 6px 12px; font-size: .9rem; }
-  .z-tablet { border: 14px solid #1d1914; border-radius: 30px; overflow: hidden; box-shadow: var(--sjena-3); background: #1d1914; }
-  .z-tablet.vodoravno { width: min(100%, 1024px, calc((100vh - 220px) * 4 / 3)); aspect-ratio: 4 / 3; }
-  .z-tablet.uspravno { width: min(100%, 600px, calc((100vh - 220px) * 3 / 4)); aspect-ratio: 3 / 4; }
-  .z-tablet .scena { border-radius: 16px; }
 
   /* Birač riječi */
   .z-birac { width: min(760px, 94vw); max-height: 86vh; border: 1px solid var(--rub); border-radius: 18px; padding: 18px; background: var(--povrsina); color: var(--tinta); box-shadow: var(--sjena-3); }
@@ -214,35 +189,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-izbor.on { border-color: var(--med); background: var(--med-blago); }
   .z-izbor b { font-size: .84rem; letter-spacing: .03em; } .z-izbor small { margin-left: auto; color: var(--med-tamno); font-family: ui-monospace, monospace; font-size: .74rem; }
 
-  /* Dijete rješava: velike plohe za prst */
-  .z-dijete { background: var(--povrsina); border: 1px solid var(--rub); border-radius: 24px; padding: clamp(18px, 3vw, 40px); display: flex; flex-direction: column; gap: 28px; }
-  .z-dijete-glava h2 { margin: 0; font-family: var(--font-slova); font-size: clamp(1.5rem, 3vw, 2.2rem); font-weight: 600; }
-  .z-dijete-glava p { margin: 6px 0 0; font-size: 1.15rem; color: var(--blijedo); }
-  .z-karta { padding: 0; border: 3px solid transparent; border-radius: 20px; background: none; cursor: pointer; transition: transform .15s, border-color .15s; position: relative; }
-  .z-karta:hover { transform: translateY(-2px); }
   .z-karta .z-slika { border-radius: 17px; }
-  .z-karta.krivo { animation: z-trese .4s; border-color: var(--greska); }
-  .z-karta.pogodak, .z-karta.spojen { border-color: var(--uspjeh); }
-  .z-karta.uljez-pogodak { border-color: var(--uspjeh); }
-  .z-karta.uljez-pogodak::after { content: ""; position: absolute; inset: 8%; background:
-    linear-gradient(45deg, transparent 46%, var(--greska) 46% 54%, transparent 54%), linear-gradient(-45deg, transparent 46%, var(--greska) 46% 54%, transparent 54%); }
-  .z-karta.odabran { border-color: var(--med); box-shadow: 0 0 0 6px var(--med-blago); }
   @keyframes z-trese { 0%, 100% { translate: 0 } 20%, 60% { translate: -8px 0 } 40%, 80% { translate: 8px 0 } }
-  .z-zadatak { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-bottom: 28px; border-bottom: 1px dashed var(--rub-jak); }
-  .z-zadatak:last-of-type { border-bottom: 0; }
-  .z-zadatak.gotov { opacity: .55; }
-  .z-zadana { width: min(200px, 40vw); }
   .z-zadana .z-slika { border: 3px solid var(--med); }
-  .z-izbori { display: grid; grid-template-columns: repeat(3, minmax(0, 170px)); gap: clamp(10px, 2vw, 24px); }
-  .z-red-n { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 150px)); gap: clamp(8px, 1.6vw, 20px); justify-content: center; width: 100%; }
-  .z-red4 { display: grid; grid-template-columns: repeat(4, minmax(0, 170px)); gap: clamp(10px, 2vw, 24px); justify-content: center; }
-  .z-povezi { position: relative; display: grid; grid-template-columns: minmax(0, 170px) minmax(0, 170px); justify-content: space-between; max-width: 640px; width: 100%; margin: 0 auto; }
-  .z-stupac { display: flex; flex-direction: column; gap: 18px; position: relative; z-index: 1; }
-  .z-crte { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
-  .z-crte line { stroke: var(--uspjeh); stroke-width: 5; stroke-linecap: round; }
-  .z-tocka { position: absolute; top: 50%; width: 16px; height: 16px; margin-top: -8px; border-radius: 99px; background: var(--tinta); }
-  .z-tocka.desno { right: -24px; } .z-tocka.lijevo { left: -24px; }
-  .z-bravo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 20px; border-radius: 14px; background: var(--uspjeh-blago); color: var(--uspjeh); font-size: 1.1rem; }
   .z-listic { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px; }
   .z-listic figure { margin: 0; display: flex; flex-direction: column; gap: 8px; }
   .z-listic figcaption { text-align: center; font-weight: 700; letter-spacing: .04em; }

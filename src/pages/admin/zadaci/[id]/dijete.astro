@@ -1,0 +1,25 @@
+---
+// Pregled zadatka kako ga dijete vidi: ista igra kao javna bilježnica (/b/<slug>), bez admin okvira.
+// GET: spremljena verzija. POST (iz editora, nova kartica): trenutni nacrt, i nespremljen.
+// Tema: ?tema=proljece (zadano božić). Rješavanje se ne sprema.
+import IgraDjeteta from "../../../../components/IgraDjeteta.astro";
+import { zadatak as nadji } from "../../../../lib/zadaci/baza";
+import { normaliziraj, VRSTE } from "../../../../lib/zadaci/vrste";
+import { rijeciIPozadine } from "../../../../lib/biljeznice";
+import { jeTema } from "../../../../lib/teme";
+
+const z = await nadji(Number(Astro.params.id));
+if (!z) return new Response("Nema tog zadatka", { status: 404 });
+let { naslov, uputa, sadrzaj } = z;
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  try { sadrzaj = normaliziraj(z.vrsta, JSON.parse(String(f.get("sadrzaj") ?? "null"))); } catch { /* ostaje spremljeno */ }
+  naslov = String(f.get("naslov") ?? naslov);
+  uputa = String(f.get("uputa") ?? uputa ?? "");
+}
+const tema = jeTema(Astro.url.searchParams.get("tema")) ? (Astro.url.searchParams.get("tema") as "bozic" | "proljece") : "bozic";
+const zadaci = [{ vrsta: z.vrsta, uputa, sadrzaj }];
+const { rijeci, pozadine } = await rijeciIPozadine(zadaci, z.stil);
+---
+<IgraDjeteta naslov={naslov || VRSTE[z.vrsta].naziv} tema={tema} zadaci={zadaci} rijeci={rijeci} pozadine={pozadine}
+  prazno={z.vrsta === "listic" ? "Radni listić je samo za papir: pogledaj ga u kartici Ispis." : "Zadatak još nema nijedan potpun ekran."} />

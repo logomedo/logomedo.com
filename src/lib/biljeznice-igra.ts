@@ -10,6 +10,8 @@ import { kljucZvuka } from "./zvukovi-tekst.ts";
 
 interface Podaci {
   naslov: string; podnaslov: string | null;
+  /** Poruka kad nema nijednog ekrana (admin pregled listića). */
+  prazno?: string;
   zadaci: ZadatakZaIgru[];
   rijeci: { id: number; rijec: string; slika: string | null; znak?: boolean }[];
   pozadine?: PozadinaPrikaz[];
@@ -454,6 +456,6 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     prikazi();
   } }, "Kreni");
   const uvod = korijen.querySelector(".uvod");
-  if (uvod) dodaj(uvod, sviEkrani.length ? kreni : h("p", {}, "Bilježnica još nema zadataka."));
+  if (uvod) dodaj(uvod, sviEkrani.length ? kreni : h("p", {}, p.prazno ?? "Bilježnica još nema zadataka."));
   osvjeziBrojac();
 }
