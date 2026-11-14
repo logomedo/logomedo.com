@@ -307,3 +307,19 @@ test("prebrajanje glasova: LJ, NJ, DŽ su jedan glas; krugova koliko treba najdu
   assert.ok(a.krugova >= Math.max(...a.slike.map((x) => x.slogova)));
   assert.equal(zadanaUputa("slogovi", s), UPUTE_SLOGOVA.glasovi.ispis);
 });
+
+test("generator po glasovima: riječ s glasom je zadana / lijeva, prebrajanje samo s glasom, prvi glas na odabranim slovima", () => {
+  const sR = (r: RijecZadatka) => /r/.test(r.rijec);
+  for (let i = 0; i < 20; i++) {
+    const o = slozi("odabir", R, { stavki: 4, cilj: sR }, rnd) as Odabir;
+    assert.ok(o.stavke.length > 0 && o.stavke.every((s) => sR(M.get(s.zadana!)!)));
+    const p = slozi("povezivanje", R, { stavki: 4, cilj: sR }, rnd) as Povezivanje;
+    assert.ok(p.parovi.every((x) => sR(M.get(x.lijevo!)!)));
+    const u = slozi("uljez", R, { stavki: 4, cilj: sR }, rnd) as Uljez;
+    assert.ok(u.stavke.every((s) => s.slike.some((id, j) => j !== s.uljez && sR(M.get(id!)!))));
+  }
+  const sl = slozi("slogovi", R, { stavki: 4, cilj: sR }, rnd) as { slike: { rijec_id: number }[] };
+  assert.ok(sl.slike.every((x) => sR(M.get(x.rijec_id)!)));
+  const pg = slozi("prvi_glas", R, { stavki: 4, slova: ["L", "M", "Ž"] }, rnd) as PrviGlas;
+  assert.deepEqual(pg.krugovi.map((k) => k.slovo), ["L", "M"]);
+});

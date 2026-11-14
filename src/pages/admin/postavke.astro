@@ -1,0 +1,52 @@
+---
+// Postavke korisnika (migracija 0029). Stranica sama obrađuje POST (kao /admin/zvukovi).
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import { logopedskiMod, postaviLogopedskiMod } from "../../lib/zadaci/baza";
+
+const email = Astro.locals.admin!.email;
+let spremljeno = false;
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  await postaviLogopedskiMod(email, f.get("logopedski_mod") === "1");
+  spremljeno = true;
+}
+const mod = await logopedskiMod(email);
+---
+<AdminOkvir naslov="Postavke" aktivno="postavke">
+  <div class="naslov">
+    <div>
+      <h1>Postavke</h1>
+      <p class="podnaslov">Vrijede samo za tvoj račun.</p>
+    </div>
+  </div>
+
+  <form method="post" class="ploha postavke">
+    <label class="prekidac">
+      <input type="checkbox" name="logopedski_mod" value="1" checked={mod} />
+      <span class="klizac" aria-hidden="true"></span>
+      <span>
+        <b>Logopedski mod</b>
+        <span class="opis">Na <a href="/admin/predlosci">Novi zadatak</a> nudi „Po glasovima…”: radni listić, prebrajanje, rimu i prvi glas
+          složene od riječi s glasom koji dijete vježba (pozicija u riječi, glasovi koje treba izbjeći). Bez njega se predlošci slažu iz cijelog kataloga.</span>
+      </span>
+    </label>
+    <div class="dno">
+      {spremljeno && <span class="spremljeno" role="status">Spremljeno.</span>}
+      <button class="gumb glavni mali" type="submit">Spremi</button>
+    </div>
+  </form>
+</AdminOkvir>
+
+<style>
+  .postavke { margin-top: 24px; max-width: 640px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .prekidac { display: flex; gap: 14px; align-items: flex-start; cursor: pointer; margin: 0; }
+  .prekidac input { position: absolute; opacity: 0; pointer-events: none; }
+  .klizac { flex: none; position: relative; width: 42px; height: 24px; margin-top: 2px; border-radius: 12px; background: var(--rub-jak); transition: background .15s; }
+  .klizac::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--povrsina); transition: transform .15s; }
+  .prekidac input:checked + .klizac { background: var(--med); }
+  .prekidac input:checked + .klizac::after { transform: translateX(18px); }
+  .prekidac input:focus-visible + .klizac { outline: 2px solid var(--med); outline-offset: 2px; }
+  .opis { display: block; margin-top: 4px; color: var(--blijedo); font-size: .88rem; line-height: 1.45; }
+  .dno { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+  .spremljeno { color: var(--uspjeh); font-weight: 600; font-size: .88rem; }
+</style>

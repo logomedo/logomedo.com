@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { brojSlika, izaberi, naslovListica, odgovara, type RijecGlasova } from "./listic-glas.ts";
+import { brojSlika, izaberi, moguce, naslovListica, odgovara, poPrvomGlasu, type RijecGlasova } from "./listic-glas.ts";
 
 const L = 7, R = 8;
 const rijeci: RijecGlasova[] = [
@@ -42,4 +42,23 @@ test("broj slika: zadano 12, „sve” do najviše, nasumičnih n kad ih ima vi�
   assert.equal(x.length, 12);
   assert.equal(new Set(x).size, 12);
   assert.deepEqual(izaberi(sve.slice(0, 5), 12), [0, 1, 2, 3, 4]);
+});
+
+test("po glasovima: rima broji skupine s glasom, prvi glas po slovima", () => {
+  const G: RijecGlasova[] = [
+    { id: 1, rijec: "krava", rima: "ava", g: [[R, "medijalna"]] },
+    { id: 2, rijec: "glava", rima: "ava", g: [[L, "medijalna"]] },
+    { id: 3, rijec: "trava", rima: "ava", g: [[R, "medijalna"]] },
+    { id: 4, rijec: "sat", rima: "at", g: [] },
+    { id: 5, rijec: "brat", rima: "at", g: [[R, "medijalna"]] },
+    { id: 6, rijec: "lonac", rima: "onac", g: [[L, "inicijalna"]] },
+    { id: 7, rijec: "ljuljačka", rima: "ačka", g: [] },
+  ];
+  assert.equal(moguce("odabir", G, { glasovi: [R], pozicija: "", bez: [] }), 2);
+  assert.equal(moguce("uljez", G, { glasovi: [R], pozicija: "", bez: [] }), 1);
+  assert.equal(moguce("povezivanje", G, { glasovi: [L], pozicija: "inicijalna", bez: [] }), 0);
+  // „bez L” izbacuje GLAVU iz skupine pa za uljeza ostaju samo dvije.
+  assert.equal(moguce("uljez", G, { glasovi: [R], pozicija: "", bez: ["L"] }), 0);
+  assert.equal(moguce("slogovi", G, { glasovi: [R], pozicija: "", bez: [] }), 3);
+  assert.deepEqual(poPrvomGlasu(G, ["L", "LJ", "Ž"]), { L: 1, LJ: 1, Ž: 0 });
 });

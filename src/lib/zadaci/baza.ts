@@ -153,17 +153,31 @@ export async function obrisani(): Promise<ObrisaniRed[]> {
     .all<ObrisaniRed>()).results;
 }
 
-/** Za listić po glasovima: glasovi kataloga i sve riječi sa slikom s pojavama glasova, abecedno. */
+/** Za predloške po glasovima: glasovi kataloga i sve riječi sa slikom s pojavama glasova, abecedno. */
 export async function zaListic(): Promise<{ glasovi: { id: number; oznaka: string }[]; rijeci: RijecGlasova[] }> {
   const [g, r] = await DB().batch([
     DB().prepare("SELECT id, oznaka FROM glasovi ORDER BY redoslijed"),
-    DB().prepare(`SELECT r.id, r.rijec, (SELECT json_group_array(json_array(rg.glas_id, rg.pozicija)) FROM rijec_glas rg WHERE rg.rijec_id = r.id) AS g
+    DB().prepare(`SELECT r.id, r.rijec, r.rima AS rima_rucno, (SELECT json_group_array(json_array(rg.glas_id, rg.pozicija)) FROM rijec_glas rg WHERE rg.rijec_id = r.id) AS g
       FROM rijeci r WHERE r.aktivna = 1 AND r.vrsta = 'rijec'
         AND EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = r.id AND s.status IN ('odobrena', 'kandidat'))
       ORDER BY r.rijec COLLATE NOCASE`),
   ]);
   return {
     glasovi: g.results as { id: number; oznaka: string }[],
-    rijeci: (r.results as { id: number; rijec: string; g: string }[]).map((x) => ({ id: x.id, rijec: x.rijec, g: JSON.parse(x.g) })),
+    rijeci: (r.results as { id: number; rijec: string; rima_rucno: string | null; g: string }[])
+      .map((x) => ({ id: x.id, rijec: x.rijec, rima: x.rima_rucno ?? izvediRimu(x.rijec), g: JSON.parse(x.g) })),
   };
+}
+
+/** Logopedski mod korisnika (/admin/postavke); korisnik kojeg još nema u bazi dobiva zadano (uključeno). */
+export async function logopedskiMod(email: string): Promise<boolean> {
+  const r = await DB().prepare("SELECT logopedski_mod FROM korisnici WHERE email = ?").bind(email.toLowerCase()).first<{ logopedski_mod: number }>();
+  return r ? r.logopedski_mod === 1 : true;
+}
+
+export async function postaviLogopedskiMod(email: string, ukljucen: boolean) {
+  await DB().prepare(
+    `INSERT INTO korisnici (email, uloga, logopedski_mod) VALUES (?, 'admin', ?)
+     ON CONFLICT(email) DO UPDATE SET logopedski_mod = excluded.logopedski_mod`,
+  ).bind(email.toLowerCase(), ukljucen ? 1 : 0).run();
 }

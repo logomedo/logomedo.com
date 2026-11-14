@@ -1,10 +1,10 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
-import { podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
-import { BROJEVI_LISTICA, ZADANO_SLIKA } from "../../lib/zadaci/listic-glas";
+import { logopedskiMod, podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
+import { BROJEVI_LISTICA, jePoGlasovima, ZADANO_SLIKA } from "../../lib/zadaci/listic-glas";
 import { ABECEDA, VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
 
-const [podrucja, listic] = await Promise.all([svaPodrucja(), zaListic()]);
+const [podrucja, listic, mod] = await Promise.all([svaPodrucja(), zaListic(), logopedskiMod(Astro.locals.admin!.email)]);
 // Isključuju se suglasnici (po fonemima, pa „bez L” ne dira LJ).
 const suglasnici = ABECEDA.filter((g) => !"AEIOU".includes(g));
 const listicJson = JSON.stringify(listic.rijeci).replace(/</g, "\\u003c");
@@ -24,7 +24,11 @@ const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
 const podrucjeVrste = (kod: Vrsta) => listovi.find((p) => p.slug === zadano[kod]);
 // Jedna mreža, redom podpodručja (bez naslova po glavnim područjima); vrste bez podpodručja na kraju.
 const poRedu = [...listovi.flatMap((l) => vrste.filter(([kod]) => podrucjeVrste(kod)?.id === l.id)), ...vrste.filter(([kod]) => !podrucjeVrste(kod))];
-const listicPodrucje = podrucjeVrste("listic")?.id ?? "";
+// Naslov dijaloga „Po glasovima…” za svaku vrstu.
+const naslovDijaloga: Record<string, string> = {
+  listic: "Radni listić po glasovima", slogovi: "Prebrajanje po glasovima", odabir: "Uparivanje (rima) po glasovima",
+  povezivanje: "Povezivanje (rima) po glasovima", uljez: "Izbaci uljeza (rima) po glasovima", prvi_glas: "Prvi glas: kolo staje na odabranim glasovima",
+};
 
 // Mala shema rasporeda svake vrste (kvadratići = slike).
 const shema: Record<Vrsta, string> = {
@@ -46,7 +50,7 @@ const shema: Record<Vrsta, string> = {
     </div>
   </div>
 
-  {prazno && <p class="ploha upozorenje">Za te glasove katalog nema nijednu riječ sa slikom.</p>}
+  {prazno && <p class="ploha upozorenje">Za te glasove katalog nema dovoljno riječi sa slikom.</p>}
 
       <div class="vrste">
         {poRedu.map(([kod, v]) => (
@@ -60,34 +64,44 @@ const shema: Record<Vrsta, string> = {
             </div>
             <div class="gumbi">
               {gumbi[kod].map((g) => <button class="gumb glavni mali" type="submit" name={g.nacin ? "nacin" : undefined} value={g.nacin}>{g.tekst}</button>)}
-              {kod === "listic" && <button class="gumb mali" type="button" data-otvori="listic-dijalog">Po glasovima…</button>}
+              {mod && jePoGlasovima(kod) && <button class="gumb mali" type="button" data-po-glasovima={kod} data-podrucje={podrucjeVrste(kod)?.id ?? ""} data-naslov={naslovDijaloga[kod]}>Po glasovima…</button>}
             </div>
           </form>
         ))}
       </div>
 
-  <dialog id="listic-dijalog" class="dijalog">
+  {mod && <dialog id="glas-dijalog" class="dijalog">
     <form class="listic" method="post" action="/admin/api/zadatak">
       <input type="hidden" name="vrsta" value="listic" />
-      <input type="hidden" name="podrucje" value={listicPodrucje} />
-      <h2>Radni listić po glasovima</h2>
+      <input type="hidden" name="podrucje" value="" />
+      <input type="hidden" name="po_glasovima" value="1" />
+      <h2>Po glasovima</h2>
+      <p class="objasnjenje" data-za="odabir povezivanje uljez">Rima ostaje zadatak, a glas određuje zadanu (lijevu) sliku svakog reda. Ostale slike su bilo koje koje se rimuju.</p>
+      <p class="objasnjenje" data-za="prvi_glas">Svaki odabrani glas je jedan krug (najviše 6): kolo stane na njemu, a dijete traži slike koje počinju tim glasom.</p>
       <div class="glas">
         <fieldset>
-          <legend>Riječ ima glas <span class="blijedo">(jedan ili više; bez odabira slike iz cijelog kataloga)</span></legend>
+          <legend><span data-za="listic slogovi odabir povezivanje uljez">Riječ ima glas <span class="blijedo">(jedan ili više; bez odabira iz cijelog kataloga)</span></span><span data-za="prvi_glas">Glasovi na kolu</span></legend>
           <div class="cipovi">
             {listic.glasovi.map((g) => <label class="cip"><input type="checkbox" name="glas" value={g.id} /><span>{g.oznaka}</span></label>)}
           </div>
         </fieldset>
-        <label class="pozicija">Pozicija
+        <label class="pozicija" data-za="listic slogovi odabir povezivanje uljez">Pozicija
           <select name="pozicija" disabled>{pozicije.map(([k, n]) => <option value={k}>{n}</option>)}</select>
         </label>
-        <fieldset>
+        <fieldset data-za="listic slogovi odabir povezivanje uljez">
           <legend>Bez glasova <span class="blijedo">(nijedna riječ ih nema nigdje)</span></legend>
           <div class="cipovi">
             {suglasnici.map((g) => <label class="cip bez"><input type="checkbox" name="bez" value={g} /><span>{g}</span></label>)}
           </div>
         </fieldset>
-        <label class="pozicija">Broj slika
+        <label class="pozicija" data-za="slogovi">Način
+          <select name="nacin">
+            <option value="analiza">Slogovi u riječi</option>
+            <option value="glasovi">Glasovi u riječi</option>
+            <option value="duljina">Dugačke i kratke riječi</option>
+          </select>
+        </label>
+        <label class="pozicija" data-za="listic">Broj slika
           <select name="broj">
             {BROJEVI_LISTICA.map((n) => <option value={n} selected={n === ZADANO_SLIKA}>{n}</option>)}
             <option value="sve">Sve koje odgovaraju</option>
@@ -101,41 +115,81 @@ const shema: Record<Vrsta, string> = {
         <button class="gumb glavni mali" type="submit">Napravi</button>
       </div>
     </form>
-  </dialog>
+  </dialog>}
 </AdminOkvir>
 
 <script>
-  // Listić po glasovima: pozicija vrijedi uz odabrane glasove; ispod piše koliko će slika biti (isto pravilo kao poslužitelj).
-  import { brojSlika, naslovListica, odgovara, type RijecGlasova } from "../../lib/zadaci/listic-glas";
+  // „Po glasovima…”: isti dijalog za sve predloške koji ga imaju; vidljiva su polja te vrste (`data-za`),
+  // a ispod piše koliko će građe biti (isto pravilo kao poslužitelj).
+  import { brojSlika, moguce, naslovListica, odgovara, poPrvomGlasu, type RijecGlasova, type VrstaPoGlasovima } from "../../lib/zadaci/listic-glas";
   import { MAX_KARTICA_LISTICA } from "../../lib/zadaci/vrste";
-  const dijalog = document.getElementById("listic-dijalog") as HTMLDialogElement | null;
-  document.querySelectorAll<HTMLButtonElement>("[data-otvori]").forEach((b) => b.addEventListener("click", () => dijalog?.showModal()));
-  dijalog?.querySelector("[data-zatvori]")?.addEventListener("click", () => dijalog.close());
-  // Klik na zatamnjenu pozadinu zatvara.
-  dijalog?.addEventListener("click", (e) => { if (e.target === dijalog) dijalog.close(); });
-  const forma = document.querySelector<HTMLFormElement>("form.listic");
+  const dijalog = document.getElementById("glas-dijalog") as HTMLDialogElement | null;
+  const forma = dijalog?.querySelector<HTMLFormElement>("form.listic");
   const podaci = document.getElementById("listic-rijeci");
-  if (forma && podaci) {
+  if (dijalog && forma && podaci) {
     const rijeci: RijecGlasova[] = JSON.parse(podaci.textContent ?? "[]");
-    const poz = forma.querySelector("select[name=pozicija]") as unknown as HTMLSelectElement;
+    const polje = (ime: string) => forma.querySelector(`[name=${ime}]`) as unknown as HTMLInputElement | HTMLSelectElement;
+    const poz = polje("pozicija") as HTMLSelectElement;
     const ishod = forma.querySelector(".ishod") as HTMLElement;
     const gumb = forma.querySelector("button[type=submit]") as HTMLButtonElement;
     const odabrani = (ime: string) => [...forma.querySelectorAll<HTMLInputElement>(`input[name=${ime}]:checked`)];
+    let vrsta: VrstaPoGlasovima = "listic";
+    const mnozina = (n: number, jedan: string, dva: string, pet: string) =>
+      `${n} ${n % 10 === 1 && n % 100 !== 11 ? jedan : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? dva : pet}`;
     const osvjezi = () => {
       const g = odabrani("glas"), bez = odabrani("bez").map((x) => x.value);
-      poz.disabled = !g.length;
+      const oznake = g.map((x) => x.nextElementSibling!.textContent!);
+      poz.disabled = !g.length || vrsta === "prvi_glas";
       const f = { glasovi: g.map((x) => Number(x.value)), pozicija: g.length ? poz.value : "", bez };
-      const zeli = brojSlika((forma.querySelector("select[name=broj]") as unknown as HTMLSelectElement).value, MAX_KARTICA_LISTICA);
-      const n = !g.length && !bez.length ? rijeci.length : rijeci.filter((r) => odgovara(r, f)).length;
-      const naslov = naslovListica(g.map((x) => x.nextElementSibling!.textContent!), f.pozicija, bez);
-      const sto = !g.length && !bez.length ? "Iz cijelog kataloga" : `„${naslov}”`;
-      ishod.textContent = !n ? "Nijedna riječ sa slikom ne odgovara."
-        : n > zeli ? `${sto}: ${zeli} nasumičnih od ${n} slika.`
-        : `${sto}: ${n === 1 ? "1 slika" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `sve ${n} slike` : `svih ${n} slika`}, abecedno.`;
-      gumb.disabled = !n;
+      const sto = !g.length && !bez.length ? "Iz cijelog kataloga" : `„${naslovListica(oznake, f.pozicija, bez)}”`;
+      let tekst = "", moze = true;
+      if (vrsta === "prvi_glas") {
+        const n = poPrvomGlasu(rijeci, oznake);
+        const ima = oznake.filter((o) => n[o] > 0);
+        moze = ima.length > 0;
+        tekst = !oznake.length ? "Odaberi barem jedan glas." : !moze ? "Nijedna riječ sa slikom ne počinje tim glasovima."
+          : `${mnozina(Math.min(ima.length, 6), "krug", "kruga", "krugova")}: ${oznake.map((o) => `${o} ${mnozina(n[o], "slika", "slike", "slika")}`).join(", ")}.`
+            + (ima.length > 6 ? " Uzima se prvih 6." : "") + (ima.length < oznake.length ? " Glas bez slika se preskače." : "");
+      } else if (vrsta === "listic") {
+        const n = moguce("listic", rijeci, f), zeli = brojSlika(polje("broj").value, MAX_KARTICA_LISTICA);
+        moze = n > 0;
+        tekst = !n ? "Nijedna riječ sa slikom ne odgovara."
+          : n > zeli ? `${sto}: ${zeli} nasumičnih od ${n} slika.`
+          : `${sto}: ${n === 1 ? "1 slika" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `sve ${n} slike` : `svih ${n} slika`}, abecedno.`;
+      } else if (vrsta === "slogovi") {
+        const n = moguce("slogovi", rijeci, f);
+        moze = n >= 2;
+        tekst = !n ? "Nijedna riječ sa slikom ne odgovara." : n < 2 ? `${sto}: samo 1 riječ, treba barem 2.`
+          : `${sto}: ${mnozina(Math.min(n, 8), "slika", "slike", "slika")}${n > 8 ? ` nasumično od ${n}` : ""}.`;
+      } else {
+        const n = moguce(vrsta, rijeci, f), treba = vrsta === "uljez" ? "3 riječi" : "2 riječi";
+        const zadatak = vrsta === "povezivanje" ? ["par", "para", "parova"] : ["red", "reda", "redova"];
+        moze = n > 0;
+        tekst = !n ? `${sto}: nema nijedne skupine rime (${treba}) s tim glasom.`
+          : `${sto}: ${mnozina(Math.min(n, 4), ...(zadatak as [string, string, string]))}`
+            + (n > 4 ? ` od ${n} mogućih.` : n < 4 ? `, više katalog nema (skupina rime od ${treba} s glasom).` : ".");
+      }
+      ishod.textContent = tekst;
+      gumb.disabled = !moze;
     };
+    document.querySelectorAll<HTMLButtonElement>("[data-po-glasovima]").forEach((b) => b.addEventListener("click", () => {
+      vrsta = b.dataset.poGlasovima as VrstaPoGlasovima;
+      polje("vrsta").value = vrsta;
+      polje("podrucje").value = b.dataset.podrucje ?? "";
+      forma.querySelector("h2")!.textContent = b.dataset.naslov ?? "Po glasovima";
+      forma.querySelectorAll<HTMLElement>("[data-za]").forEach((el) => {
+        const vidi = el.dataset.za!.split(" ").includes(vrsta);
+        el.hidden = !vidi;
+        // Skrivena polja se ne šalju (inače bi npr. „bez” s listića ostao u prvom glasu).
+        el.querySelectorAll<HTMLInputElement>("input, select").forEach((x) => { if (x.name !== "pozicija") x.disabled = !vidi; });
+      });
+      osvjezi();
+      dijalog.showModal();
+    }));
+    dijalog.querySelector("[data-zatvori]")?.addEventListener("click", () => dijalog.close());
+    // Klik na zatamnjenu pozadinu zatvara.
+    dijalog.addEventListener("click", (e) => { if (e.target === dijalog) dijalog.close(); });
     forma.addEventListener("change", osvjezi);
-    osvjezi();
   }
 </script>
 
@@ -162,6 +216,8 @@ const shema: Record<Vrsta, string> = {
   .pozicija { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--tinta); }
   .pozicija select { flex: 0 1 260px; height: 34px; }
   .pozicija select:disabled { opacity: .5; }
+  .objasnjenje { margin: -6px 0 14px; color: var(--blijedo); font-size: .86rem; }
+  .objasnjenje[hidden], .glas [hidden] { display: none; }
   .ishod { margin: 0 !important; color: var(--tinta) !important; font-weight: 600; }
   .upozorenje { margin: 18px 0 0; padding: 12px 16px; border-color: var(--med); }
   .vrste { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }

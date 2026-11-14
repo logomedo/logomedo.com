@@ -5,6 +5,11 @@ Status (2026-11-14): radni listić po glasovima. Na `/admin/predlosci` kartica �
 po fonemima: „bez L” ne izbacuje LJ). Ispod piše koliko će slika biti. S odabranim glasovima listić dobije sve takve riječi sa slikom
 abecedno (do 150 kartica, 12 po stranici) i naslov „Glasovi L, R – inicijalna pozicija, bez Š”; samo isključivanje daje 12 nasumičnih.
 Pravilo je u `src/lib/zadaci/listic-glas.ts` (+ test), isto u obrascu i na poslužitelju.
+Logopedski mod (`/admin/postavke`, `korisnici.logopedski_mod`, migracija 0029, zadano uključen): samo s njim predlošci imaju
+„Po glasovima…”, i to Radni listić, Prebrajanje, Uparivanje, Povezivanje, Izbaci uljeza i Prvi glas (jedan dijalog, polja po vrsti).
+Prebrajanje uzima samo riječi s glasom; rima traži skupinu rime s riječi s glasom i stavlja je kao zadanu (lijevu) sliku, ostale
+su slobodne (`Postavke.cilj` u `slozi`); „bez” vrijedi za sve slike. Prvi glas: odabrani glasovi su krugovi (do 6), bez pozicije.
+Scena i Vizualna percepcija gumb nemaju (scenu slaže logoped, percepcija se ne izgovara). Dijalog broji građu funkcijom `moguce`.
 Veličina slika listića: „Prema broju slika” (`auto`) ili fiksna mreža stupaca × redova (`raspored: "2x3"`; gumbi 1×1, 1×2, 2×2,
 2×3, 3×3, 3×4 i vlastita do 5 × 6). Na stranicu stane stupaca × redova slika (`poStraniciListica`), isto u PDF-u i HTML ispisu.
 Gumb „Složi” u editoru i dalje slaže nasumično, bez glasa.
