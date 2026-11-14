@@ -82,7 +82,7 @@ flowchart LR
 | Vrste: normalizacija, provjere, ocjena, generator | `src/lib/zadaci/vrste.ts` (+ test) |
 | Ključ rime, slogovi | `src/lib/zadaci/rima.ts` (+ test) |
 | Upiti, verzije | `src/lib/zadaci/baza.ts` |
-| Editor, „Dijete rješava”, A4 ispis (DOM u pregledniku) | `src/lib/zadaci/klijent.ts`, `src/pages/admin/zadaci/[id].astro` |
+| Editor i A4 ispis (DOM u pregledniku); pregled za dijete je igra bilježnice | `src/lib/zadaci/klijent.ts`, `src/pages/admin/zadaci/[id]/index.astro`, `[id]/dijete.astro`, `src/components/IgraDjeteta.astro` |
 | PDF za ispis (u pregledniku, pdf-lib + fontkit) | `src/lib/pdf/`: `model.ts` (stranice), `ispis-pdf.ts` (crtanje, + test), `svg.ts` (bor i grančice kao vektor), `preglednik.ts` (fontovi, slike, preuzimanje); slike s CDN-a kroz `/cdn/<ključ>` (`src/pages/cdn/[...kljuc].ts`) |
 | API | `POST /admin/api/zadatak` (novi), `POST /admin/api/zadatak/:id` (JSON spremi, form obriši), `POST /admin/api/rijeci` (nova riječ) |
 
@@ -464,11 +464,55 @@ Redoslijed: bubanj → sinteza → orijentacija.
      stupac, za prvu/zadnju bira se jedna slika. Bilježi se odabrani položaj (zamjena reda i
      stupca, prvog i zadnjeg je logopedu korisna informacija).
 
+### Prebrajanje: glasovi i broj krugova (14. 11. 2026.)
+
+Vrsta `slogovi` se u UI-ju zove **Prebrajanje** (i podpodručje, migracija 0028; kod i slug ostaju
+`slogovi`). Kružići ispod slike nisu samo slogovi: Matija je tražio i glasove, a kasnije riječi
+u rečenici.
+
+- Treći `nacin: "glasovi"`: `slogova` je broj glasova (`brojGlasova` u `rima.ts`: LJ, NJ, DŽ su
+  jedan glas, razmaci i crtice se ne broje). Uputa „Izgovori riječ glas po glas…”, ekran „Lupni po
+  bubnju za svaki glas u riječi.” Generator uzima podjednako riječi od 3 do 7 glasova.
+- `KRUGOVA_MAX` i `SLOGOVA_MAX` 6 → 12. `krugova` je barem koliko treba najduža riječ
+  (`krugovaZa`): generator ga postavi, editor ga sam povisi pri odabiru slike ili „+”, gumb
+  „Prema riječima”. Povod: zadatak 79, UČITELJICA ima 5 slogova, a krugova je bilo 4.
+- Više od 4 kruga ide u dva ujednačena reda (7 → 4 + 3) u editoru, HTML ispisu i PDF-u
+  (`ispis-pdf.ts`: polumjer se smanji da stane u širinu slike); u igri se krugovi smanje
+  prema `--n` (prije je pravilo za uspravni ekran držalo fiksnih 14vw i 7 krugova je izlazilo
+  van ekrana).
+- Predložak ima tri gumba: Slogovi u riječi, Glasovi u riječi, Dugačke i kratke riječi.
+- Otvoreno: prebrajanje riječi u rečenici (treba rečenica uz sliku, katalog je nema).
+  PDF s više od 4 kruga i igra u bilježnici nisu vizualno provjereni.
+
+### Predlošci i pregled za dijete (14. 11. 2026.)
+
+- `/admin/predlosci`: jedna mreža jednakih kartica (Matija nije htio naslove po glavnim
+  područjima), bez izbornika podpodručja: podpodručje je samo oznaka i ne mijenja sadržaj, pa
+  ga gumb postavi sam (mijenja se u uređivaču). Svaka vrsta ima 1..N gumba koji odmah naprave
+  zadatak (`nacin` ide generatoru: percepcija `razlicitu`/`par`, prebrajanje tri načina).
+  Listić po glasovima je u `<dialog>`.
+- „Dijete rješava” više nije kartica u editoru nego stranica `/admin/zadaci/<id>/dijete`
+  (nova kartica preglednika): ista igra kao bilježnica (`components/IgraDjeteta.astro`,
+  izdvojeno iz `/b/[slug]`). Editor je otvara POST-om trenutnog nacrta, pa se vide i nespremljene
+  izmjene; GET pokazuje spremljenu verziju, `?tema=proljece`. Stari pregled unutar admina
+  (scena u okviru tableta, ocjena prvog pokušaja) je uklonjen. Listić u igri nema ekran.
+- Igra govori **samo odobrene ElevenLabs snimke**; glas preglednika je uklonjen (Matija: „jako
+  loš”). Bez snimke nema zvučnika, tekst se samo čita. Stranica zadatka ima „Generiraj zvukove”
+  (tekstovi spremljene verzije + kraj zimske teme).
+- Provjera mobitela: Brave prozor se ne da smanjiti, admin zabranjuje iframe; radi Chrome
+  DevTools MCP (`new_page` s `isolatedContext`, kolačić sesije kroz `document.cookie` na
+  `/admin/login`, `emulate` viewport `390x844x2,mobile,touch`).
+
 ### Deploy dok paralelna sesija radi u istoj mapi (2. 11. 2026.)
 
 `npm run deploy` builda **radnu mapu**, ne commit. Kad druga sesija ima necommitane izmjene
 (tog dana runner na Vertex: `generiranje.ts`, `api/runner/*`), deploy bi njezin nedovršeni kod
 poslao na produkciju. Deploy iz čistog worktreeja zadnjeg commita:
+
+14. 11. 2026. su dvije sesije deployale u razmaku od 4 s i druga je pregazila prvu (buildovi u
+isti `dist/`). Nakon deploya provjeri da je tvoja verzija zadnja
+(`wrangler deployments list | grep "Version(s)" | tail -1`); ako nije, `git fetch && git rebase
+origin/main` i deploy ponovno.
 
 ```bash
 W=$(mktemp -d)/wt; git worktree add --detach "$W" HEAD && ln -s "$PWD/node_modules" "$W/node_modules"
