@@ -1,9 +1,11 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
-import { nazivPodrucja, podrucja as svaPodrucja } from "../../lib/zadaci/baza";
+import { glasoviZaListic, nazivPodrucja, podrucja as svaPodrucja } from "../../lib/zadaci/baza";
 import { VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
 
-const podrucja = await svaPodrucja();
+const [podrucja, glasovi] = await Promise.all([svaPodrucja(), glasoviZaListic()]);
+const prazno = Astro.url.searchParams.has("prazno");
+const pozicije = [["", "Bilo gdje"], ["inicijalna", "Inicijalna (početak)"], ["medijalna", "Medijalna (sredina)"], ["finalna", "Finalna (kraj)"], ["skupina", "Skupine"]];
 const listovi = podrucja.filter((p) => p.roditelj_id !== null);
 const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas", slogovi: "slogovi" };
 const vrste = Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][];
@@ -28,6 +30,8 @@ const shema: Record<Vrsta, string> = {
     </div>
   </div>
 
+  {prazno && <p class="ploha upozorenje">Za taj glas i poziciju katalog nema nijednu riječ sa slikom.</p>}
+
   <div class="vrste">
     {vrste.map(([kod, v]) => (
       <form class="ploha vrsta" method="post" action="/admin/api/zadatak">
@@ -37,6 +41,17 @@ const shema: Record<Vrsta, string> = {
           <b>{v.naziv}</b>
           <p>{v.opis}</p>
         </div>
+        {kod === "listic" && (
+          <div class="glas">
+            <select name="glas" aria-label="Glas" data-broj={JSON.stringify(Object.fromEntries(glasovi.map((g) => [g.id, g.broj])))}>
+              <option value="">Nasumične slike</option>
+              {glasovi.map((g) => <option value={g.id}>Glas {g.oznaka} ({g.broj[""] ?? 0})</option>)}
+            </select>
+            <select name="pozicija" aria-label="Pozicija glasa" disabled>
+              {pozicije.map(([k, n]) => <option value={k} data-naziv={n}>{n}</option>)}
+            </select>
+          </div>
+        )}
         <div class="dno">
           <select name="podrucje" aria-label="Podpodručje">
             {listovi.map((p) => <option value={p.id} selected={p.slug === zadano[kod]}>{nazivPodrucja(podrucja, p.id)}</option>)}
@@ -48,7 +63,30 @@ const shema: Record<Vrsta, string> = {
   </div>
 </AdminOkvir>
 
+<script>
+  // Listić po glasu: pozicija se bira tek uz glas, a uz svaku piše koliko riječi sa slikom ima.
+  const glas = document.querySelector('select[name="glas"]') as HTMLSelectElement | null;
+  const poz = document.querySelector('select[name="pozicija"]') as HTMLSelectElement | null;
+  if (glas && poz) {
+    const broj: Record<string, Record<string, number>> = JSON.parse(glas.dataset.broj ?? "{}");
+    const osvjezi = () => {
+      poz.disabled = !glas.value;
+      const b = broj[glas.value] ?? {};
+      for (const o of poz.options) {
+        o.textContent = glas.value ? `${o.dataset.naziv} (${b[o.value] ?? 0})` : o.dataset.naziv!;
+        o.disabled = !!glas.value && !b[o.value];
+      }
+      if (poz.selectedOptions[0]?.disabled) poz.value = "";
+    };
+    glas.addEventListener("change", osvjezi);
+    osvjezi();
+  }
+</script>
+
 <style>
+  .glas { display: flex; flex-direction: column; gap: 6px; }
+  .glas select { height: 32px; }
+  .upozorenje { margin: 18px 0 0; padding: 12px 16px; border-color: var(--med); }
   .vrste { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-top: 24px; }
   .vrsta { margin: 0; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
   .vrsta p { margin: 4px 0 0; color: var(--blijedo); font-size: .86rem; }

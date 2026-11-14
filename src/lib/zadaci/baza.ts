@@ -151,3 +151,26 @@ export async function obrisani(): Promise<ObrisaniRed[]> {
   return (await DB().prepare("SELECT id, vrsta, naslov, obrisan_at FROM zadaci WHERE obrisan_at IS NOT NULL ORDER BY obrisan_at DESC LIMIT 200")
     .all<ObrisaniRed>()).results;
 }
+
+/** Glasovi za listić po glasu, s brojem riječi sa slikom po poziciji (`""` = bilo gdje u riječi). */
+export async function glasoviZaListic(): Promise<{ id: number; oznaka: string; broj: Record<string, number> }[]> {
+  const SA_SLIKOM = `FROM rijec_glas rg JOIN rijeci r ON r.id = rg.rijec_id AND r.aktivna = 1 AND r.vrsta = 'rijec'
+    WHERE EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = r.id AND s.status IN ('odobrena', 'kandidat'))`;
+  const [g, b] = await DB().batch([
+    DB().prepare("SELECT id, oznaka FROM glasovi ORDER BY redoslijed"),
+    DB().prepare(`SELECT rg.glas_id, rg.pozicija, COUNT(*) AS n ${SA_SLIKOM} GROUP BY rg.glas_id, rg.pozicija
+      UNION ALL SELECT rg.glas_id, '' AS pozicija, COUNT(DISTINCT rg.rijec_id) AS n ${SA_SLIKOM} GROUP BY rg.glas_id`),
+  ]);
+  const broj = new Map<number, Record<string, number>>();
+  for (const x of b.results as { glas_id: number; pozicija: string; n: number }[]) broj.set(x.glas_id, { ...broj.get(x.glas_id), [x.pozicija]: x.n });
+  return (g.results as { id: number; oznaka: string }[]).map((x) => ({ ...x, broj: broj.get(x.id) ?? {} }));
+}
+
+/** Id-jevi riječi s glasom na poziciji (prazna pozicija = bilo gdje). */
+export async function rijeciSGlasom(glasId: number, pozicija: string): Promise<{ oznaka: string; ids: Set<number> } | null> {
+  const g = await DB().prepare("SELECT oznaka FROM glasovi WHERE id = ?").bind(glasId).first<{ oznaka: string }>();
+  if (!g) return null;
+  const { results } = await DB().prepare("SELECT DISTINCT rijec_id FROM rijec_glas WHERE glas_id = ?1 AND (?2 = '' OR pozicija = ?2)")
+    .bind(glasId, pozicija).all<{ rijec_id: number }>();
+  return { oznaka: g.oznaka, ids: new Set(results.map((r) => r.rijec_id)) };
+}

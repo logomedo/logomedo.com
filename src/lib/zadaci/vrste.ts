@@ -206,6 +206,8 @@ export const U_REDU = 4;
 export const MAX_GUMBA = 10;
 /** Najviše redova u odabiru, uljezu i percepciji (PDF ih lomi po 3 na A4). Server reže višak, pa ga ni editor ne nudi. */
 export const MAX_REDOVA = 30;
+/** Listić po glasu može imati sve riječi glasa na jednoj poziciji (L u sredini: 128 u studenom 2026.). */
+export const MAX_KARTICA_LISTICA = 150;
 
 export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
   const n = Array.from({ length: stavki });
@@ -261,7 +263,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
   const o = obj(ulaz);
   switch (v) {
     case "listic":
-      return { kartice: niz(o.kartice, 60, (k) => ({ rijec_id: id(obj(k).rijec_id), tekst: String(obj(k).tekst ?? "").slice(0, 200) })), raspored: o.raspored === "auto" ? "auto" : "3x4" };
+      return { kartice: niz(o.kartice, MAX_KARTICA_LISTICA, (k) => ({ rijec_id: id(obj(k).rijec_id), tekst: String(obj(k).tekst ?? "").slice(0, 200) })), raspored: o.raspored === "auto" ? "auto" : "3x4" };
     case "odabir":
       return {
         odnos: "rima",

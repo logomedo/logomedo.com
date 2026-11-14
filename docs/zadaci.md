@@ -1,5 +1,9 @@
 # Zadaci: predlošci, instance, rješavanja
 
+Status (2026-11-14): radni listić po glasu. Na `/admin/predlosci` kartica „Radni listić” ima izbor glasa i pozicije
+(inicijalna, medijalna, finalna, skupine ili bilo gdje; uz svaku broj riječi sa slikom). Listić dobije naslov „Glas L – inicijalna
+pozicija” i sve takve riječi sa slikom abecedno (do 150 kartica, 12 po stranici), pa logoped briše i premješta u editoru.
+Gumb „Složi” u editoru i dalje slaže nasumično, bez glasa.
 Status (2026-11-07): vrsta `prvi_glas` (kolo slova, izdvajanje prvog glasa) i teme boja kola na produkciji
 (migracija 0022, deploy 827268e0; Time Travel bookmark prije migracije `00000316-00000000-0000511c-2e2ec4f124f229bf0fb1ae028f8363fc`).
 Provjereno u Braveu na produkciji: zadatak 43 (editor, „Dijete rješava”, Ispis, PDF složen bez preuzimanja) i probna javna
