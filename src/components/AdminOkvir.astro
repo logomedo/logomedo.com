@@ -1,10 +1,11 @@
 ---
-// Okvir admina: bočna traka (Katalog, Zadaci, Bilježnice, Pregled, Red, Aktivnost, Ključevi) i glavni dio.
+// Okvir admina: bočna traka po skupinama (Odobravanje, Sadržaj, Vježbe; dolje alati i postavke) i glavni dio.
 // Bez sesije baca (500) umjesto da prikaže stranicu, osim na prijavi (`javno`):
 // druga obrana ako middleware neku admin putanju ne prepozna.
 import Tema from "./Tema.astro";
 import Marka from "./Marka.astro";
 import Ikona from "./Ikona.astro";
+import type { ComponentProps } from "astro/types";
 import { env } from "cloudflare:workers";
 
 interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi"; puno?: boolean }
@@ -21,18 +22,28 @@ if (admin) {
        (SELECT COUNT(*) FROM zvukovi WHERE status = 'kandidat') AS zvukova`,
   ).first<typeof brojevi>()) ?? brojevi;
 }
-const stavke = [
-  { kod: "katalog", href: "/admin", tekst: "Katalog", ikona: "katalog", broj: 0 },
-  { kod: "predlosci", href: "/admin/predlosci", tekst: "Predlošci zadataka", ikona: "predlosci", broj: 0 },
-  { kod: "zadaci", href: "/admin/zadaci", tekst: "Gotovi zadaci", ikona: "zadaci", broj: 0 },
-  { kod: "biljeznice", href: "/admin/biljeznice", tekst: "Bilježnice", ikona: "biljeznica", broj: 0 },
-  { kod: "pregled", href: "/admin/pregled", tekst: "Pregled", ikona: "pregled", broj: brojevi.kandidata },
-  { kod: "red", href: "/admin/red", tekst: "Red", ikona: "red", broj: brojevi.uRedu + brojevi.gresaka },
-  { kod: "zvukovi", href: "/admin/zvukovi", tekst: "Zvukovi", ikona: "zvuk", broj: brojevi.zvukova },
+type Stavka = { kod: NonNullable<Props["aktivno"]>; href: string; tekst: string; ikona: ComponentProps<typeof Ikona>["ime"]; broj: number; greska?: boolean };
+// Izbornik po poslu: što čeka odluku, od čega se slaže, što se slaže; dolje alati i postavke.
+const skupine: { naslov: string; boja: string; stavke: Stavka[] }[] = [
+  { naslov: "Odobravanje", boja: "var(--med)", stavke: [
+    { kod: "pregled", href: "/admin/pregled", tekst: "Slike", ikona: "pregled", broj: brojevi.kandidata },
+    { kod: "zvukovi", href: "/admin/zvukovi", tekst: "Izgovor", ikona: "zvuk", broj: brojevi.zvukova },
+  ] },
+  { naslov: "Sadržaj", boja: "var(--info)", stavke: [
+    { kod: "katalog", href: "/admin", tekst: "Katalog", ikona: "katalog", broj: 0 },
+  ] },
+  { naslov: "Vježbe", boja: "var(--uspjeh)", stavke: [
+    { kod: "predlosci", href: "/admin/predlosci", tekst: "Novi zadatak", ikona: "predlosci", broj: 0 },
+    { kod: "zadaci", href: "/admin/zadaci", tekst: "Zadaci", ikona: "zadaci", broj: 0 },
+    { kod: "biljeznice", href: "/admin/biljeznice", tekst: "Bilježnice", ikona: "biljeznica", broj: 0 },
+  ] },
+];
+const sustav: Stavka[] = [
+  { kod: "red", href: "/admin/red", tekst: brojevi.gresaka ? "Red (greške)" : "Red generiranja", ikona: "red", broj: brojevi.uRedu + brojevi.gresaka, greska: brojevi.gresaka > 0 },
   { kod: "prompt", href: "/admin/prompt", tekst: "Prompt", ikona: "iskra", broj: 0 },
   { kod: "aktivnost", href: "/admin/aktivnost", tekst: "Aktivnost", ikona: "sat", broj: 0 },
   { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },
-] as const;
+];
 ---
 <!doctype html>
 <html lang="hr">
@@ -53,14 +64,28 @@ const stavke = [
             aria-label="Traži riječ u katalogu" aria-controls="trazi-rezultati" aria-expanded="false" />
           <ul id="trazi-rezultati" role="listbox" hidden></ul>
         </div>
-        <nav>
-          {stavke.map((s) => (
-            <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod }]}>
-              <Ikona ime={s.ikona} />
-              <span>{s.tekst}</span>
-              {s.broj > 0 && <span class="broj">{s.broj}</span>}
-            </a>
+        <nav aria-label="Izbornik">
+          {skupine.map((g) => (
+            <section class="skupina" aria-label={g.naslov}>
+              <h2 class="skupina-naslov"><span style={`background:${g.boja}`}></span>{g.naslov}</h2>
+              {g.stavke.map((s) => (
+                <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod }]} aria-current={aktivno === s.kod ? "page" : undefined}>
+                  <Ikona ime={s.ikona} />
+                  <span>{s.tekst}</span>
+                  {s.broj > 0 && <span class="broj">{s.broj}</span>}
+                </a>
+              ))}
+            </section>
           ))}
+          <section class="skupina sustav" aria-label="Alati i postavke">
+            {sustav.map((s) => (
+              <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod }]} aria-current={aktivno === s.kod ? "page" : undefined}>
+                <Ikona ime={s.ikona} />
+                <span>{s.tekst}</span>
+                {s.broj > 0 && <span class:list={["broj", { greska: s.greska }]}>{s.broj}</span>}
+              </a>
+            ))}
+          </section>
         </nav>
         <div class="dno">
           <div class="tko" title={admin.email}>
@@ -162,13 +187,21 @@ const stavke = [
       #trazi-rezultati .nista { padding: 8px 10px; color: var(--blijedo); font-size: .84rem; }
       .tocka { flex: none; width: 8px; height: 8px; border-radius: 999px; background: var(--rub-jak); }
       .tocka.da { background: var(--uspjeh); } .tocka.kand { background: var(--med); }
-      .traka nav { display: flex; flex-direction: column; gap: 2px; }
+      .traka nav { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+      .skupina { display: flex; flex-direction: column; gap: 2px; padding: 6px 6px 6px; border-radius: 14px; background: var(--povrsina-2); border: 1px solid var(--rub); }
+      .skupina-naslov { display: flex; align-items: center; gap: 8px; margin: 0; padding: 4px 8px 5px; font-size: .68rem; font-weight: 700;
+        letter-spacing: .08em; text-transform: uppercase; color: var(--blijedo); }
+      .skupina-naslov span { width: 8px; height: 8px; border-radius: 3px; }
+      .skupina.sustav { margin-top: auto; background: none; border: 0; padding: 0; }
+      .skupina.sustav .stavka { padding: 7px 10px; font-size: .9rem; }
       .stavka { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 10px; text-decoration: none;
         color: var(--blijedo); font-weight: 550; transition: background .15s, color .15s; }
-      .stavka:hover { background: var(--povrsina-2); color: var(--tinta); }
-      .stavka.aktivno { background: var(--med-blago); color: var(--med-tamno); }
+      .stavka:hover { background: var(--povrsina); color: var(--tinta); }
+      .stavka.aktivno { background: var(--povrsina); color: var(--med-tamno); font-weight: 650; box-shadow: var(--sjena-1), inset 3px 0 0 var(--med); }
+      .skupina.sustav .stavka:hover, .skupina.sustav .stavka.aktivno { background: var(--povrsina-2); }
       .stavka .broj { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--med); color: var(--med-tekst);
         font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+      .stavka .broj.greska { background: var(--greska); color: #fff; }
       .traka .dno { margin-top: auto; display: flex; align-items: center; gap: 8px; padding: 12px 6px 0; border-top: 1px solid var(--rub); }
       .tko { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
       .avatar { flex: none; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font-weight: 700; font-size: .8rem;
@@ -187,7 +220,8 @@ const stavke = [
         .traka { position: sticky; z-index: 10; height: auto; flex-direction: row; align-items: center; gap: 10px; padding: 10px 14px;
           border-right: 0; border-bottom: 1px solid var(--rub); overflow-x: auto; }
         .traka .vrh { padding: 0; } .traka .vrh .ime, .traka .vrh .dodatak { display: none; }
-        .traka nav { flex-direction: row; }
+        .traka nav { flex-direction: row; flex: none; gap: 4px; }
+        .skupina, .skupina.sustav { flex-direction: row; padding: 2px; margin: 0; } .skupina-naslov { display: none; }
         .trazilica { flex: 1 0 150px; padding: 0; } #trazi-rezultati { min-width: 240px; }
         .stavka span:not(.broj) { display: none; }
         .traka .dno { margin: 0 0 0 auto; border: 0; padding: 0; } .tko { display: none; }
