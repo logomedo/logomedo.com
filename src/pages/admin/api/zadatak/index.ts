@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { korisnikId, stvori, sveRijeci, zaListic } from "../../../../lib/zadaci/baza";
-import { naslovListica, odgovara, POZICIJE_LISTICA } from "../../../../lib/zadaci/listic-glas";
+import { brojSlika, izaberi, naslovListica, odgovara, POZICIJE_LISTICA } from "../../../../lib/zadaci/listic-glas";
 import { ABECEDA, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type Sadrzaj } from "../../../../lib/zadaci/vrste";
 
 const kartica = (r: { id: number; rijec: string }) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") });
@@ -14,18 +14,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let sadrzaj: Sadrzaj;
   let naslov = "";
 
-  // Listić po glasovima: riječi sa slikom s barem jednim odabranim glasom na poziciji, bez isključenih glasova.
+  // Listić: riječi sa slikom s barem jednim odabranim glasom na poziciji (bez odabira: sve), bez isključenih glasova.
   const glasovi = f.getAll("glas").map(Number).filter((n) => n > 0);
   const pozicija = String(f.get("pozicija") ?? "");
   const bez = f.getAll("bez").map(String).filter((x) => ABECEDA.includes(x));
-  if (vrsta === "listic" && (glasovi.length || bez.length) && pozicija in POZICIJE_LISTICA) {
+  if (vrsta === "listic" && pozicija in POZICIJE_LISTICA) {
     const k = await zaListic();
     const izbor = k.rijeci.filter((r) => odgovara(r, { glasovi, pozicija, bez }));
     if (!izbor.length) return new Response(null, { status: 303, headers: { location: "/admin/predlosci?prazno=1" } });
     const oznake = k.glasovi.filter((g) => glasovi.includes(g.id)).map((g) => g.oznaka);
     naslov = naslovListica(oznake, pozicija, bez);
-    // S odabranim glasovima sve riječi abecedno (logoped izbacuje); samo „bez” daje 12 nasumičnih.
-    const kartice = glasovi.length ? izbor.slice(0, MAX_KARTICA_LISTICA) : izbor.map((r) => [Math.random(), r] as const).sort((a, b) => a[0] - b[0]).slice(0, 12).map(([, r]) => r);
+    // Odabrani broj slika (zadano 12): kad riječi ima više, nasumično; „sve” daje sve abecedno.
+    const kartice = izaberi(izbor, brojSlika(f.get("broj") as string | null, MAX_KARTICA_LISTICA));
     sadrzaj = { kartice: kartice.map(kartica), raspored: "auto" };
   } else {
     sadrzaj = slozi(vrsta, zaGenerator(await sveRijeci()), { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : 4, maxSlogova: 3 });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { naslovListica, odgovara, type RijecGlasova } from "./listic-glas.ts";
+import { brojSlika, izaberi, naslovListica, odgovara, type RijecGlasova } from "./listic-glas.ts";
 
 const L = 7, R = 8;
 const rijeci: RijecGlasova[] = [
@@ -30,4 +30,16 @@ test("naslov listića", () => {
   assert.equal(naslovListica(["L"], "inicijalna", []), "Glas L – inicijalna pozicija");
   assert.equal(naslovListica(["L", "R"], "", ["Š"]), "Glasovi L, R, bez Š");
   assert.equal(naslovListica([], "", ["R", "L"]), "Bez R, L");
+});
+
+test("broj slika: zadano 12, „sve” do najviše, nasumičnih n kad ih ima više", () => {
+  assert.equal(brojSlika(null, 150), 12);
+  assert.equal(brojSlika("8", 150), 8);
+  assert.equal(brojSlika("sve", 150), 150);
+  assert.equal(brojSlika("500", 150), 150);
+  const sve = Array.from({ length: 30 }, (_, i) => i);
+  const x = izaberi(sve, 12);
+  assert.equal(x.length, 12);
+  assert.equal(new Set(x).size, 12);
+  assert.deepEqual(izaberi(sve.slice(0, 5), 12), [0, 1, 2, 3, 4]);
 });

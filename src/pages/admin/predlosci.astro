@@ -1,6 +1,7 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import { nazivPodrucja, podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
+import { BROJEVI_LISTICA, ZADANO_SLIKA } from "../../lib/zadaci/listic-glas";
 import { ABECEDA, VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
 
 const [podrucja, listic] = await Promise.all([svaPodrucja(), zaListic()]);
@@ -47,7 +48,7 @@ const shema: Record<Vrsta, string> = {
         {kod === "listic" && (
           <div class="glas">
             <fieldset>
-              <legend>Riječ ima glas <span class="blijedo">(jedan ili više; bez odabira 12 nasumičnih slika)</span></legend>
+              <legend>Riječ ima glas <span class="blijedo">(jedan ili više; bez odabira slike iz cijelog kataloga)</span></legend>
               <div class="cipovi">
                 {listic.glasovi.map((g) => <label class="cip"><input type="checkbox" name="glas" value={g.id} /><span>{g.oznaka}</span></label>)}
               </div>
@@ -61,6 +62,12 @@ const shema: Record<Vrsta, string> = {
                 {suglasnici.map((g) => <label class="cip bez"><input type="checkbox" name="bez" value={g} /><span>{g}</span></label>)}
               </div>
             </fieldset>
+            <label class="pozicija">Broj slika
+              <select name="broj">
+                {BROJEVI_LISTICA.map((n) => <option value={n} selected={n === ZADANO_SLIKA}>{n}</option>)}
+                <option value="sve">Sve koje odgovaraju</option>
+              </select>
+            </label>
             <p class="ishod" aria-live="polite"></p>
             <script type="application/json" id="listic-rijeci" set:html={listicJson}></script>
           </div>
@@ -78,7 +85,7 @@ const shema: Record<Vrsta, string> = {
 
 <script>
   // Listić po glasovima: pozicija vrijedi uz odabrane glasove; ispod piše koliko će slika biti (isto pravilo kao poslužitelj).
-  import { naslovListica, odgovara, type RijecGlasova } from "../../lib/zadaci/listic-glas";
+  import { brojSlika, naslovListica, odgovara, type RijecGlasova } from "../../lib/zadaci/listic-glas";
   import { MAX_KARTICA_LISTICA } from "../../lib/zadaci/vrste";
   const forma = document.querySelector<HTMLFormElement>("form.listic");
   const podaci = document.getElementById("listic-rijeci");
@@ -92,12 +99,13 @@ const shema: Record<Vrsta, string> = {
       const g = odabrani("glas"), bez = odabrani("bez").map((x) => x.value);
       poz.disabled = !g.length;
       const f = { glasovi: g.map((x) => Number(x.value)), pozicija: g.length ? poz.value : "", bez };
-      if (!g.length && !bez.length) { ishod.textContent = "12 nasumičnih slika iz kataloga."; gumb.disabled = false; return; }
-      const n = rijeci.filter((r) => odgovara(r, f)).length;
+      const zeli = brojSlika((forma.querySelector("select[name=broj]") as unknown as HTMLSelectElement).value, MAX_KARTICA_LISTICA);
+      const n = !g.length && !bez.length ? rijeci.length : rijeci.filter((r) => odgovara(r, f)).length;
       const naslov = naslovListica(g.map((x) => x.nextElementSibling!.textContent!), f.pozicija, bez);
-      ishod.textContent = !n ? "Nijedna riječ sa slikom ne odgovara." : g.length
-        ? `„${naslov}”: ${Math.min(n, MAX_KARTICA_LISTICA)} slika${n > MAX_KARTICA_LISTICA ? ` (od ${n})` : ""}, abecedno.`
-        : `„${naslov}”: 12 nasumičnih od ${n} slika.`;
+      const sto = !g.length && !bez.length ? "Iz cijelog kataloga" : `„${naslov}”`;
+      ishod.textContent = !n ? "Nijedna riječ sa slikom ne odgovara."
+        : n > zeli ? `${sto}: ${zeli} nasumičnih od ${n} slika.`
+        : `${sto}: ${n === 1 ? "1 slika" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `sve ${n} slike` : `svih ${n} slika`}, abecedno.`;
       gumb.disabled = !n;
     };
     forma.addEventListener("change", osvjezi);

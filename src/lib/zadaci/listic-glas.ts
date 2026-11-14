@@ -30,3 +30,22 @@ export function naslovListica(oznake: string[], pozicija: string, bez: string[])
   if (bez.length) dijelovi.push(`${oznake.length ? "bez" : "Bez"} ${bez.join(", ")}`);
   return dijelovi.join(", ");
 }
+
+/** Izbor broja slika za listić; „sve” = sve riječi koje odgovaraju (do najviše kartica listića). */
+export const BROJEVI_LISTICA = [6, 8, 9, 12, 15, 16, 20, 24, 30, 36] as const;
+export const ZADANO_SLIKA = 12;
+
+/** Koliko slika: broj iz obrasca ili sve (`0`), najviše `max`. */
+export function brojSlika(ulaz: string | null, max: number): number {
+  if (ulaz === "sve") return max;
+  const n = Number(ulaz);
+  return Number.isInteger(n) && n > 0 ? Math.min(n, max) : ZADANO_SLIKA;
+}
+
+/** `n` riječi: kad ih ima više, nasumičnih `n` (redom kako su izvučene); inače sve, abecedno kako su došle. */
+export function izaberi<T>(sve: T[], n: number, rnd: () => number = Math.random): T[] {
+  if (sve.length <= n) return sve;
+  const b = [...sve];
+  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+  return b.slice(0, n);
+}
