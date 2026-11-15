@@ -195,13 +195,13 @@ uputom novog odnosa; vlastitu uputu ostavlja. Stari zadaci bez polja su `rima`. 
 bilježnice) ide iz odnosa (`zadanaUputa`). Građa na produkciji 15. 11. 2026. (riječi sa slikom do 3 sloga):
 skupina 3+ za uljeza ima rima 46, prvi glas 27, prvi slog 53, zadnji glas 25.
 
-Po glasovima (isti dan, na Anitin prigovor da gumbi i „Po glasovima…” rade isto): u logopedskom modu gumb
+Po glasovima (isti dan, nakon isprobavanja: gumbi i „Po glasovima…” rade isto): u logopedskom modu gumb
 odnosa otvara dijalog glasova s tim odnosom, a zasebnog „Po glasovima…” na te tri kartice nema. Redovi se slažu
 **po jedan za svaki odabrani glas**, redom (`poCiljevima` u `odnosi.ts`, isto u brojanju dijaloga i na
 poslužitelju); najmanje 4 (jedan glas daje 4 reda tog glasa), povezivanje do 8 parova. Prije je uvijek bilo 4
 reda iz bilo kojeg odabranog glasa, pa je za 6 glasova davalo „4 para od 6 mogućih”.
 
-Sljedeće (Anita): odnosi po značenju (koja životinja što jede, suprotnosti). Oni nemaju ključ iz pisanja, nego
+Sljedeće (traženo 15. 11.): odnosi po značenju (koja životinja što jede, suprotnosti). Oni nemaju ključ iz pisanja, nego
 trebaju parove u katalogu (nova tablica parova riječi), pa ih `uOdnosu` neće računati iz ključa.
 
 Svaka slika je `rijec_id` iz kataloga (slika se bira po stilu pri prikazu). Od 10. 11. 2026. to može biti i
