@@ -15,7 +15,7 @@ function zadnja(rijec: string): string {
 }
 
 /** Indeksi jezgri slogova. */
-function jezgre(s: string): number[] {
+export function jezgre(s: string): number[] {
   const out: number[] = [];
   for (let i = 0; i < s.length; i++) {
     const c = s[i];

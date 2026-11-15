@@ -4,9 +4,10 @@
 //   Ispis  – A4 stranica za papir: „Preuzmi PDF" (pdf-lib u pregledniku) ili window.print
 // Sve se crta iz `stanje`; svaka promjena zove `osvjezi()`.
 
-import { brojSlogova, izvediRimu, rimujuSe } from "./rima.ts";
+import { brojSlogova, izvediRimu } from "./rima.ts";
+import { jeZadanaUputa, ODNOSI, ODNOSI_POPIS, oznakaKljuca, uOdnosu, type Odnos } from "./odnosi.ts";
 import {
-  provjeri, rijeciU, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
+  odnosOd, provjeri, rijeciU, zadanaUputa, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   BOJE_DULJINE, DUGA_OD, izbroji, jedinica, krugovaZa, KRUGOVA_MIN, KRUGOVA_MAX, SLOGOVA_MAX, SLOGOVI_SLIKA_MAX, UPUTE_SLOGOVA, jeDuga, slozSlogove, type NacinSlogova, type Slogovi,
   LISTIC_PO_STRANICI, MREZA_MAX, MREZE_LISTICA, mrezaListica, poStraniciListica, rasporedListica, type RasporedListica,
   ABECEDA, BOJE_KOLA, jednaRijec, SLIKA_MIN, SLIKA_MAX, prviGlas, slozKrug, tocneSlike, type Krug, type PrviGlas,
@@ -52,7 +53,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   const vrsta = z.vrsta;
   const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
   let sadrzaj: Sadrzaj = structuredClone(z.sadrzaj);
-  let naslov = z.naslov, uputa = z.uputa ?? VRSTE[vrsta].uputa, podrucje = z.podrucje_id, stil = z.stil;
+  let naslov = z.naslov, uputa = z.uputa ?? zadanaUputa(vrsta, z.sadrzaj), podrucje = z.podrucje_id, stil = z.stil;
   let okvir: Okvir = normalizirajOkvir(z.okvir);
   // Dijete rješava je zasebna stranica (/admin/zadaci/<id>/dijete), otvara se u novoj kartici.
   let pogled: "uredi" | "okvir" | "ispis" = (location.hash.slice(1) as any) || "uredi";
@@ -67,6 +68,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     for (const r of p.rijeci) if (r.slike) r.slika = slikaUStilu(r.slike, stil);
   }
   const R = (id: number | null) => (id === null ? null : rijeci.get(id) ?? null);
+  /** Odnos uparivanja, povezivanja i uljeza (rima, isti prvi glas…); ostale vrste prikazuju rimu. */
+  const odnos = (): Odnos => (VRSTE[vrsta].odnos ? odnosOd(sadrzaj) : "rima");
+  const oznakaRijeci = (r: RijecZadatka) => oznakaKljuca(odnos(), r);
   const naslovStranice = document.title;
   /** Stanje spremanja vidljivo u svim pogledima (i na Ispisu, gdje se preuzima PDF). */
   function stanjeSpremanja() {
@@ -115,7 +119,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       zamijeni(filtri,
         ...([[false, "Riječi"], [true, "Znakovi"]] as const).map(([z, t]) =>
           h("button", { type: "button", class: `z-cip z-vrsta${znakovi === z ? " on" : ""}`, onclick: () => { znakovi = z; koliko = KORAK; crtaj(); } }, t)),
-        ...(u && !znakovi ? ([["sve", "Sve"], ["rima", `Rimuje se s ${VELIKO(u.rijec)}`], ["ne-rima", `Ne rimuje se s ${VELIKO(u.rijec)}`]] as const).map(([k, t]) =>
+        ...(u && !znakovi ? ([["sve", "Sve"], ["rima", ODNOSI[odnos()].filtarDa(VELIKO(u.rijec))], ["ne-rima", ODNOSI[odnos()].filtarNe(VELIKO(u.rijec))]] as const).map(([k, t]) =>
           h("button", { type: "button", class: `z-cip${filtar === k ? " on" : ""}`, onclick: () => { filtar = k; koliko = KORAK; crtaj(); } }, t)) : []),
         znakovi ? null : h("button", { type: "button", class: `z-cip${samoSlika ? " on" : ""}`, onclick: () => { samoSlika = !samoSlika; koliko = KORAK; crtaj(); } }, "Samo sa slikom"),
       );
@@ -133,13 +137,13 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const svi = p.rijeci.filter((r) => !r.znak && (!samoJedne || jednaRijec(r.rijec)) &&
         (!q || (rima ? r.rima?.endsWith(rima) : r.rijec.toLocaleLowerCase("hr").includes(q))) &&
         (!samoSlika || r.slika) &&
-        (!u || filtar === "sve" || (filtar === "rima" ? rimujuSe(u, r) : !rimujuSe(u, r) && r.id !== u.id)));
+        (!u || filtar === "sve" || (filtar === "rima" ? uOdnosu(odnos(), u, r) : !uOdnosu(odnos(), u, r) && r.id !== u.id)));
       const pozicija = lista.scrollTop;
       zamijeni(lista, 
         ...svi.slice(0, koliko).map((r) => h("button", {
           type: "button", class: `z-izbor${r.id === trenutna ? " on" : ""}`,
           onclick: () => { dlg.close(); gotovo(r.id); },
-        }, slika(r.id, "mala", false), h("b", {}, VELIKO(r.rijec)), h("small", {}, r.rima ? `-${r.rima.toLocaleLowerCase("hr")}` : "bez rime"))),
+        }, slika(r.id, "mala", false), h("b", {}, VELIKO(r.rijec)), h("small", {}, oznakaRijeci(r)))),
         svi.length > koliko ? h("div", { class: "z-jos" },
           h("button", { type: "button", class: "gumb", onclick: () => { koliko += KORAK; crtaj(); } }, `Učitaj još (${Math.min(KORAK, svi.length - koliko)})`),
           h("span", { class: "blijedo" }, `još ${svi.length - koliko} riječi`)) : null,
@@ -161,7 +165,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     trazi.oninput = () => { koliko = KORAK; lista.scrollTop = 0; crtaj(); };
     zamijeni(dlg, 
       h("div", { class: "z-birac-vrh" },
-        h("b", {}, u && !u.znak ? `Uz ${VELIKO(u.rijec)} (-${(u.rima ?? "?").toLocaleLowerCase("hr")})` : "Odaberi sliku ili znak"),
+        h("b", {}, u && !u.znak ? `Uz ${VELIKO(u.rijec)} (${oznakaRijeci(u)})` : "Odaberi sliku ili znak"),
         trenutna !== null ? h("button", { type: "button", class: "gumb mali tihi", onclick: () => { dlg.close(); gotovo(null); } }, "Isprazni") : null,
         h("button", { type: "button", class: "gumb mali tihi", onclick: () => dlg.close() }, "Zatvori")),
       trazi, filtri, lista);
@@ -178,7 +182,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         r ? slika(id, "", false) : h("div", { class: "z-slika prazna" }, h("span", {}, "+"))),
       h("div", { class: "z-slot-dno" },
         h("span", { class: "z-rijec" }, r ? VELIKO(r.rijec) : "prazno"),
-        r?.rima ? h("span", { class: "z-rima" }, `-${r.rima.toLocaleLowerCase("hr")}`) : null),
+        r && !r.znak && (r.rima || odnos() !== "rima") ? h("span", { class: "z-rima" }, oznakaRijeci(r)) : null),
       o.naTocno ? h("button", { type: "button", class: `z-tocno${o.tocno ? " on" : ""}`, title: o.oznakaTocno, onclick: () => { o.naTocno!(); oznaci(); osvjezi(); } },
         o.tocno ? `✓ ${o.oznakaTocno}` : o.oznakaTocno) : null,
     );
@@ -419,6 +423,22 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("button", { type: "button", class: "gumb mali tihi", onclick: () => { s.slike = promijesaj(s.slike); oznaci(); osvjezi(); } }, "Promiješaj redoslijed")));
   }
 
+  /** Što povezuje slike: promjena odnosa zadržava slike (upozorenja pokažu što ne odgovara) i zadanu uputu mijenja novom. */
+  function prekidacOdnosa(s: Odabir | Povezivanje | Uljez): HTMLElement {
+    const v = vrsta as "odabir" | "povezivanje" | "uljez";
+    const promijeni = (o: Odnos) => {
+      if (o === s.odnos) return;
+      if (jeZadanaUputa(uputa)) uputa = ODNOSI[o].uputa[v];
+      s.odnos = o;
+      oznaci(); osvjezi();
+    };
+    return h("div", { class: "ploha z-scena-dio" },
+      h("div", { class: "z-dio-glava" }, h("b", {}, "Što povezuje slike")),
+      h("div", { class: "z-prekidac" },
+        ...ODNOSI_POPIS.map((o) => h("button", { type: "button", class: `z-tocno${s.odnos === o ? " on" : ""}`, onclick: () => promijeni(o) }, ODNOSI[o].naziv))),
+      h("p", { class: "sitno blijedo" }, "Slike ostaju; što više ne odgovara, piše u upozorenjima. „Složi automatski” slaže nove po ovom odnosu."));
+  }
+
   function uredi(): HTMLElement {
     if (vrsta === "scena") return urediScenu();
     if (vrsta === "slogovi") return urediSlogove();
@@ -426,20 +446,20 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     if (vrsta === "percepcija") return urediPercepciju();
     if (vrsta === "odabir") {
       const s = sadrzaj as Odabir;
-      return h("div", { class: "z-uredi" },
+      return h("div", { class: "z-uredi" }, prekidacOdnosa(s),
         ...s.stavke.map((x, i) => h("div", { class: "ploha z-red-uredi" },
           h("div", { class: "z-red-broj" }, String(i + 1)),
           h("div", { class: "z-odabir-zadana" }, h("small", {}, "Zadana"), slot(x.zadana, (n) => (x.zadana = n))),
           h("div", { class: "z-strelica" }, "→"),
           h("div", { class: "z-ponudeno" }, ...x.ponudeno.map((pid, j) => slot(pid, (n) => (x.ponudeno[j] = n), {
-            uzor: x.zadana, nacin: j === x.tocno ? "rima" : "ne-rima", tocno: j === x.tocno, naTocno: () => (x.tocno = j), oznakaTocno: "rimuje se",
+            uzor: x.zadana, nacin: j === x.tocno ? "rima" : "ne-rima", tocno: j === x.tocno, naTocno: () => (x.tocno = j), oznakaTocno: ODNOSI[s.odnos].oznakaTocno,
           }))),
           redGumbi(s.stavke, i))),
         h("button", { type: "button", class: "gumb", disabled: s.stavke.length >= MAX_REDOVA, title: s.stavke.length >= MAX_REDOVA ? `Najviše ${MAX_REDOVA} redova` : undefined, onclick: () => { s.stavke.push({ zadana: null, ponudeno: Array(PONUDENIH).fill(null), tocno: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
     }
     if (vrsta === "uljez") {
       const s = sadrzaj as Uljez;
-      return h("div", { class: "z-uredi" },
+      return h("div", { class: "z-uredi" }, prekidacOdnosa(s),
         ...s.stavke.map((x, i) => {
           const uzor = x.slike.find((id, j) => j !== x.uljez && id !== null) ?? null;
           return h("div", { class: "ploha z-red-uredi" },
@@ -459,8 +479,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         s.desno_redoslijed = s.desno_redoslijed.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x));
         oznaci(); osvjezi();
       };
-      return h("div", { class: "z-uredi" },
-        h("p", { class: "blijedo sitno" }, "Upiši parove koji se rimuju. Desni stupac se na ekranu i papiru prikazuje promiješan (redoslijed vidiš u Ispisu)."),
+      return h("div", { class: "z-uredi" }, prekidacOdnosa(s),
+        h("p", { class: "blijedo sitno" }, `Upiši parove koji ${ODNOSI[s.odnos].mnozina}. Desni stupac se na ekranu i papiru prikazuje promiješan (redoslijed vidiš u Ispisu).`),
         ...s.parovi.map((x, i) => h("div", { class: "ploha z-red-uredi" },
           h("div", { class: "z-red-broj" }, String(i + 1)),
           slot(x.lijevo, (n) => (x.lijevo = n)),
@@ -786,7 +806,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("button", { type: "button", class: "gumb", onclick: () => {
           if (rijeciU(vrsta, sadrzaj).length && !confirm("Zamijeniti sadržaj novim prijedlogom?")) return;
           const prije = sadrzaj;
-          sadrzaj = vrsta === "slogovi" ? slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), postavke.stavki, (prije as Slogovi).krugova) : slozi(vrsta, zaGenerator(p.rijeci), postavke);
+          sadrzaj = vrsta === "slogovi" ? slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), postavke.stavki, (prije as Slogovi).krugova) : slozi(vrsta, zaGenerator(p.rijeci), { ...postavke, nacin: VRSTE[vrsta].odnos ? odnosOd(prije) : undefined });
           // Prvi glas zadržava odabir slova na kolu; slova krugova biraju se samo s kola.
           if (vrsta === "prvi_glas") {
             const kolo = (prije as PrviGlas).kolo, s = sadrzaj as PrviGlas;

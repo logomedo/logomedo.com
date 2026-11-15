@@ -2,6 +2,7 @@
 // poslužitelju (slaganje), pa broj na gumbu odgovara listiću.
 import { fonemi } from "../fonemi.ts";
 import { brojSlogova } from "./rima.ts";
+import { kljuc, type Odnos } from "./odnosi.ts";
 
 /** Riječ sa slikom i pojavama glasova iz kataloga (`rijec_glas`: id glasa, pozicija). */
 export interface RijecGlasova { id: number; rijec: string; rima?: string | null; g: [number, string][] }
@@ -57,18 +58,20 @@ export function izaberi<T>(sve: T[], n: number, rnd: () => number = Math.random)
 export const PO_GLASOVIMA = ["listic", "slogovi", "odabir", "povezivanje", "uljez", "prvi_glas"] as const;
 export type VrstaPoGlasovima = (typeof PO_GLASOVIMA)[number];
 export const jePoGlasovima = (v: string): v is VrstaPoGlasovima => (PO_GLASOVIMA as readonly string[]).includes(v);
-/** Rima zadaci uzimaju riječi do 3 sloga (isto kao poslužitelj: `maxSlogova`). */
+/** Zadaci odnosa (rima, prvi glas…) uzimaju riječi do 3 sloga (isto kao poslužitelj: `maxSlogova`). */
 export const RIMA_MAX_SLOGOVA = 3;
 
 /**
  * Koliko građe ima predložak za filtar: listić i prebrajanje broje riječi s glasom; uparivanje i povezivanje
- * skupine rime (2+ riječi) u kojima je barem jedna s glasom, uljez takve skupine od 3+. `bez` vrijedi za sve riječi.
+ * skupine odnosa (iste rime, istog prvog glasa…; 2+ riječi) u kojima je barem jedna s glasom, uljez takve
+ * skupine od 3+. `bez` vrijedi za sve riječi.
  */
-export function moguce(vrsta: Exclude<VrstaPoGlasovima, "prvi_glas">, rijeci: RijecGlasova[], f: FiltarListica): number {
+export function moguce(vrsta: Exclude<VrstaPoGlasovima, "prvi_glas">, rijeci: RijecGlasova[], f: FiltarListica, odnos: Odnos = "rima"): number {
   if (vrsta === "listic" || vrsta === "slogovi") return rijeci.filter((r) => odgovara(r, f)).length;
-  const sve = rijeci.filter((r) => r.rima && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez }));
+  const K = (r: RijecGlasova) => kljuc(odnos, r);
+  const sve = rijeci.filter((r) => K(r) && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez }));
   const skupine = new Map<string, RijecGlasova[]>();
-  for (const r of sve) skupine.set(r.rima!, [...(skupine.get(r.rima!) ?? []), r]);
+  for (const r of sve) skupine.set(K(r)!, [...(skupine.get(K(r)!) ?? []), r]);
   const najmanje = vrsta === "uljez" ? 3 : 2;
   return [...skupine.values()].filter((g) => g.length >= najmanje && g.some((r) => odgovara(r, f))).length;
 }

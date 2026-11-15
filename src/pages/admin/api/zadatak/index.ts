@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { korisnikId, logopedskiMod, stvori, sveRijeci, zaListic } from "../../../../lib/zadaci/baza";
 import { brojSlika, izaberi, jePoGlasovima, moguce, naslovListica, odgovara, POZICIJE_LISTICA, RIMA_MAX_SLOGOVA } from "../../../../lib/zadaci/listic-glas";
+import { jeOdnos } from "../../../../lib/zadaci/odnosi";
 import { ABECEDA, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type Sadrzaj } from "../../../../lib/zadaci/vrste";
 
 const kartica = (r: { id: number; rijec: string }) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") });
@@ -15,7 +16,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let naslov = "";
 
   // Po glasovima (samo u logopedskom modu): riječi sa slikom s barem jednim odabranim glasom na poziciji,
-  // bez isključenih glasova. Listić i prebrajanje uzimaju samo njih; rima ih stavlja na zadanu sliku.
+  // bez isključenih glasova. Listić i prebrajanje uzimaju samo njih; odnos (rima, prvi glas…) ih stavlja na zadanu sliku.
   const glasovi = f.getAll("glas").map(Number).filter((n) => n > 0);
   const pozicija = String(f.get("pozicija") ?? "");
   const bez = f.getAll("bez").map(String).filter((x) => ABECEDA.includes(x));
@@ -44,7 +45,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const saSlikom = new Map(k.rijeci.map((r) => [r.id, r]));
       const rijeci = zaGenerator(await sveRijeci()).filter((r) => { const g = saSlikom.get(r.id); return g && odgovara(g, { glasovi: [], pozicija: "", bez }); });
       const cilj = glasovi.length ? (r: { id: number }) => odgovara(saSlikom.get(r.id)!, filtar) : undefined;
-      if (!moguce(vrsta, k.rijeci, filtar)) return prazno();
+      if (!moguce(vrsta, k.rijeci, filtar, jeOdnos(nacin) ? nacin : "rima")) return prazno();
       sadrzaj = slozi(vrsta, rijeci, { ...zadano, cilj });
       naslov = naslovListica(oznake, filtar.pozicija, bez);
     }

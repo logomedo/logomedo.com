@@ -27,8 +27,8 @@ type Stranica =
   | { vrsta: "slogovi"; uputa: string; nacin: Slogovi["nacin"]; krugova: number; slike: number[] };
 const stranice: Stranica[] = [];
 for (const z of p.zadaci) {
-  if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: VRSTE.odabir.uputa, stavke: k });
-  if (z.vrsta === "uljez") for (const k of komadi((z.sadrzaj as Uljez).stavke, 4)) stranice.push({ vrsta: "uljez", uputa: VRSTE.uljez.uputa, stavke: k });
+  if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: zadanaUputa("odabir", z.sadrzaj), stavke: k });
+  if (z.vrsta === "uljez") for (const k of komadi((z.sadrzaj as Uljez).stavke, 4)) stranice.push({ vrsta: "uljez", uputa: zadanaUputa("uljez", z.sadrzaj), stavke: k });
   if (z.vrsta === "percepcija") for (const k of komadi((z.sadrzaj as Percepcija).stavke, 4)) stranice.push({ vrsta: "percepcija", uputa: zadanaUputa("percepcija", z.sadrzaj), stavke: k });
   if (z.vrsta === "slogovi") {
     const sg = z.sadrzaj as Slogovi;
@@ -42,7 +42,7 @@ for (const z of p.zadaci) {
     stranice.push({ vrsta: "scena", uputa: `${z.uputa?.trim() || VRSTE.scena.uputa} ${VRSTE.scena.ispis}.`,
       pozadina: (poz?.uspravno ?? poz?.vodoravno)?.url ?? null, gumbi: sc.gumbi.flatMap((g) => (g.rijec_id ? [g.rijec_id] : [])) });
   }
-  if (z.vrsta === "povezivanje") stranice.push({ vrsta: "povezivanje", uputa: VRSTE.povezivanje.uputa, s: z.sadrzaj as Povezivanje });
+  if (z.vrsta === "povezivanje") stranice.push({ vrsta: "povezivanje", uputa: zadanaUputa("povezivanje", z.sadrzaj), s: z.sadrzaj as Povezivanje });
 }
 const n = brojEkrana(p.zadaci);
 

@@ -1,15 +1,16 @@
 // Vrste zadataka (docs/zadaci.md). Vrsta je mehanika (odaberi, poveži, pronađi uljeza,
-// listić, vizualna percepcija), a odnos (zasad samo rima) je parametar sadržaja. Točan odgovor je spremljen u
+// listić, vizualna percepcija), a odnos (rima, isti prvi glas/slog, isti zadnji glas: odnosi.ts) je parametar sadržaja. Točan odgovor je spremljen u
 // sadržaju; odnos služi generatoru i upozorenjima u editoru, ne ocjenjivanju.
 //
 // Čisti TS: koriste ga API (provjera ulaza), editor i prikaz u pregledniku te testovi.
 
-import { brojGlasova, brojSlogova, rimujuSe } from "./rima.ts";
+import { brojGlasova, brojSlogova } from "./rima.ts";
+import { jeOdnos, kljuc, ODNOSI, uOdnosu, type Odnos } from "./odnosi.ts";
 import { fonemi } from "../fonemi.ts";
 import { prikazRijeci } from "../znakovi.ts";
 
 export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena" | "percepcija" | "prvi_glas" | "slogovi";
-export type Odnos = "rima";
+export type { Odnos };
 type Id = number | null;
 
 /**
@@ -207,15 +208,15 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     uputa: UPUTE_SLOGOVA.duljina.ispis, ispis: "Zaokruži bojama / oboji krugove", odnos: false,
   },
   odabir: {
-    naziv: "Uparivanje", opis: "Zadana je jedna slika, ispod su tri. Jedna se rimuje sa zadanom: dijete je odabire.",
+    naziv: "Uparivanje", opis: "Zadana je jedna slika, ispod su tri. Jedna ide uz zadanu (rimuje se, počinje ili završava istim glasom, počinje istim slogom): dijete je odabire.",
     uputa: "Koja se slika rimuje s prvom? Zaokruži je.", ispis: "Zaokruži", odnos: true,
   },
   povezivanje: {
-    naziv: "Povezivanje", opis: "Dva stupca slika. Svaka slika lijevo ima par desno s kojim se rimuje: dijete ih povezuje.",
+    naziv: "Povezivanje", opis: "Dva stupca slika. Svaka slika lijevo ima par desno (rima, isti prvi glas ili slog, isti zadnji glas): dijete ih povezuje.",
     uputa: "Poveži slike koje se rimuju.", ispis: "Poveži crtom", odnos: true,
   },
   uljez: {
-    naziv: "Izbaci uljeza", opis: "Četiri slike u redu: tri se rimuju, jedna ne. Dijete pronalazi uljeza.",
+    naziv: "Izbaci uljeza", opis: "Četiri slike u redu: tri idu zajedno (rima, isti prvi glas ili slog, isti zadnji glas), jedna ne. Dijete pronalazi uljeza.",
     uputa: "Koja se slika ne rimuje s ostalima? Prekriži je.", ispis: "Prekriži", odnos: true,
   },
   scena: {
@@ -236,8 +237,11 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
 export function zadanaUputa(v: Vrsta, s?: Sadrzaj): string {
   if (v === "percepcija" && s) return UPUTE_PERCEPCIJE[(s as Percepcija).trazi].ispis;
   if (v === "slogovi" && s) return UPUTE_SLOGOVA[(s as Slogovi).nacin].ispis;
+  if ((v === "odabir" || v === "povezivanje" || v === "uljez") && s) return ODNOSI[odnosOd(s)].uputa[v];
   return VRSTE[v].uputa;
 }
+/** Odnos sadržaja uparivanja, povezivanja ili uljeza (stari zadaci i ostalo: rima). */
+export const odnosOd = (s: unknown): Odnos => { const o = (s as { odnos?: unknown } | null)?.odnos; return jeOdnos(o) ? o : "rima"; };
 export const jeVrsta = (v: unknown): v is Vrsta => typeof v === "string" && v in VRSTE;
 
 export const PONUDENIH = 3;
@@ -306,7 +310,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
       return { kartice: niz(o.kartice, MAX_KARTICA_LISTICA, (k) => ({ rijec_id: id(obj(k).rijec_id), tekst: String(obj(k).tekst ?? "").slice(0, 200) })), raspored: o.raspored === "auto" ? "auto" : mrezaListica(String(o.raspored)) ? (String(o.raspored) as RasporedListica) : "3x4" };
     case "odabir":
       return {
-        odnos: "rima",
+        odnos: odnosOd(o),
         stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
           return { zadana: id(x.zadana), ponudeno: tocnoN(niz(x.ponudeno, PONUDENIH, id), PONUDENIH, () => null), tocno: ind(x.tocno, PONUDENIH) };
@@ -316,11 +320,11 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
       const parovi = niz(o.parovi, 8, (p) => ({ lijevo: id(obj(p).lijevo), desno: id(obj(p).desno) }));
       const r = niz(o.desno_redoslijed, 8, (x) => Number(x));
       const ok = r.length === parovi.length && [...r].sort((a, b) => a - b).every((x, i) => x === i);
-      return { odnos: "rima", parovi, desno_redoslijed: ok ? r : parovi.map((_, i) => i) };
+      return { odnos: odnosOd(o), parovi, desno_redoslijed: ok ? r : parovi.map((_, i) => i) };
     }
     case "uljez":
       return {
-        odnos: "rima",
+        odnos: odnosOd(o),
         stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
           return { slike: tocnoN(niz(x.slike, U_REDU, id), U_REDU, () => null), uljez: ind(x.uljez, U_REDU) };
@@ -391,9 +395,10 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
   const u: Upozorenje[] = [];
   const R = (x: Id) => (x === null ? null : rijeci.get(x) ?? null);
   const ime = (x: Id) => { const r = R(x); return r ? prikazRijeci(r) : "?"; };
-  // Red sa znakom (slovo, brojka) nije zadatak rime: provjere rime ga preskaču.
+  // Red sa znakom (slovo, brojka) nije zadatak odnosa: provjere odnosa ga preskaču.
   const imaZnak = (ids: Id[]) => ids.some((x) => R(x)?.znak);
-  const rim = (a: Id, b: Id) => { const x = R(a), y = R(b); return !!x && !!y && rimujuSe(x, y); };
+  const odnos = odnosOd(s), O = ODNOSI[odnos];
+  const rim = (a: Id, b: Id) => { const x = R(a), y = R(b); return !!x && !!y && uOdnosu(odnos, x, y); };
   if (v === "listic") {
     const l = s as Listic;
     if (!l.kartice.some((k) => k.rijec_id)) u.push({ gdje: "listić", poruka: "Listić nema nijednu sliku." });
@@ -467,8 +472,8 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
       const g = `Red ${i + 1}`;
       if (x.zadana === null || x.ponudeno.some((p) => p === null)) { u.push({ gdje: g, poruka: "Nisu popunjene sve slike." }); return; }
       if (imaZnak([x.zadana, ...x.ponudeno])) return;
-      if (!rim(x.zadana, x.ponudeno[x.tocno])) u.push({ gdje: g, poruka: `Točan odgovor ${ime(x.ponudeno[x.tocno])} se ne rimuje s ${ime(x.zadana)}.` });
-      x.ponudeno.forEach((p, j) => { if (j !== x.tocno && rim(x.zadana, p)) u.push({ gdje: g, poruka: `${ime(p)} se također rimuje s ${ime(x.zadana)}: dva točna odgovora.` }); });
+      if (!rim(x.zadana, x.ponudeno[x.tocno])) u.push({ gdje: g, poruka: `Točan odgovor: ${O.ne(ime(x.ponudeno[x.tocno]), ime(x.zadana))}.` });
+      x.ponudeno.forEach((p, j) => { if (j !== x.tocno && rim(x.zadana, p)) u.push({ gdje: g, poruka: `I ${O.da(ime(p), ime(x.zadana))}: dva točna odgovora.` }); });
     });
   }
   if (v === "povezivanje") {
@@ -485,8 +490,8 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
         }
         return;
       }
-      if (!rim(x.lijevo, x.desno)) u.push({ gdje: g, poruka: `${ime(x.lijevo)} i ${ime(x.desno)} se ne rimuju.` });
-      p.forEach((y, j) => { if (j !== i && rim(x.lijevo, y.desno)) u.push({ gdje: g, poruka: `${ime(x.lijevo)} se rimuje i s ${ime(y.desno)} (par ${j + 1}).` }); });
+      if (!rim(x.lijevo, x.desno)) u.push({ gdje: g, poruka: `${O.ne(ime(x.lijevo), ime(x.desno))}.` });
+      p.forEach((y, j) => { if (j !== i && rim(x.lijevo, y.desno)) u.push({ gdje: g, poruka: `${O.da(ime(x.lijevo), ime(y.desno))} (par ${j + 1}).` }); });
     });
     if (p.length < 3) u.push({ gdje: "zadatak", poruka: "Povezivanje treba barem 3 para." });
   }
@@ -496,8 +501,8 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
       if (x.slike.some((p) => p === null)) { u.push({ gdje: g, poruka: "Nisu popunjene sve slike." }); return; }
       if (imaZnak(x.slike)) return;
       const ostale = x.slike.filter((_, j) => j !== x.uljez);
-      if (!rim(ostale[0], ostale[1]) || !rim(ostale[1], ostale[2])) u.push({ gdje: g, poruka: "Tri slike koje nisu uljez se ne rimuju sve međusobno." });
-      if (ostale.some((o) => rim(o, x.slike[x.uljez]))) u.push({ gdje: g, poruka: `Uljez ${ime(x.slike[x.uljez])} se rimuje s ostalima.` });
+      if (!rim(ostale[0], ostale[1]) || !rim(ostale[1], ostale[2])) u.push({ gdje: g, poruka: `Tri slike koje nisu uljez ${O.neSve}.` });
+      if (ostale.some((o) => rim(o, x.slike[x.uljez]))) u.push({ gdje: g, poruka: `Uljez ${ime(x.slike[x.uljez])} ${O.daOstale}.` });
     });
   }
   return u;
@@ -560,10 +565,11 @@ export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: nu
   return { tocnih: 0, ukupno: 0 };
 }
 
-// ---- Generator: složi zadatak iz kataloga po skupinama rime ----
+// ---- Generator: složi zadatak iz kataloga po skupinama odnosa (rima, prvi glas…) ----
 
 /**
- * `nacin`: inačica vrste s gumba predloška (slogovi: duljina | analiza, percepcija: razlicitu | par).
+ * `nacin`: inačica vrste s gumba predloška (slogovi: duljina | analiza, percepcija: razlicitu | par,
+ * uparivanje, povezivanje i uljez: odnos iz odnosi.ts, zadano rima).
  * Po glasovima (logopedski mod): `cilj` je riječ s odabranim glasom. Prebrajanje uzima samo njih; kod rime
  * skupina mora imati takvu riječ i ona je zadana (lijeva) slika, ostale su slobodne. `slova` su krugovi prvog glasa.
  */
@@ -576,14 +582,16 @@ function promijesaj<T>(a: T[], rnd: () => number): T[] {
 }
 
 export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => number = Math.random): Sadrzaj {
-  const dobre = rijeci.filter((r) => r.rima && (!p.maxSlogova || r.slogova <= p.maxSlogova) && (!p.samoSaSlikom || r.slika));
+  const odnos: Odnos = jeOdnos(p.nacin) ? p.nacin : "rima";
+  const K = (r: RijecZadatka) => kljuc(odnos, r);
+  const dobre = rijeci.filter((r) => K(r) && (!p.maxSlogova || r.slogova <= p.maxSlogova) && (!p.samoSaSlikom || r.slika));
   const skupine = new Map<string, RijecZadatka[]>();
-  for (const r of dobre) skupine.set(r.rima!, [...(skupine.get(r.rima!) ?? []), r]);
+  for (const r of dobre) skupine.set(K(r)!, [...(skupine.get(K(r)!) ?? []), r]);
   const cilj = p.cilj;
   const vecih = (n: number) => promijesaj([...skupine.entries()].filter(([, g]) => g.length >= n && (!cilj || g.some(cilj))), rnd);
   // Riječi skupine s glasom prve (zadana, lijeva), redom kako su izmiješane.
   const ciljPrvi = (g: RijecZadatka[]) => (cilj ? [...g.filter(cilj), ...g.filter((r) => !cilj(r))] : g);
-  const izvan = (rima: string, n: number) => promijesaj(dobre.filter((r) => r.rima !== rima), rnd).slice(0, n);
+  const izvan = (k: string, n: number) => promijesaj(dobre.filter((r) => K(r) !== k), rnd).slice(0, n);
   const n = Math.max(1, Math.min(p.stavki, 12));
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
@@ -613,14 +621,14 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
       const ponudeno = promijesaj([tocan, ...izvan(rima, PONUDENIH - 1)], rnd);
       return { zadana: zadana.id, ponudeno: ponudeno.map((r) => r.id), tocno: ponudeno.indexOf(tocan) };
     });
-    return { odnos: "rima", stavke };
+    return { odnos, stavke };
   }
   if (v === "povezivanje") {
     const parovi = vecih(2).slice(0, Math.min(n, 6)).map(([, g]) => { const [a, b] = ciljPrvi(promijesaj(g, rnd)); return { lijevo: a.id, desno: b.id }; });
     let red = promijesaj(parovi.map((_, i) => i), rnd);
     // Desni stupac ne smije biti u istom redoslijedu kao lijevi.
     if (red.length > 1 && red.every((x, i) => x === i)) red = [...red.slice(1), red[0]];
-    return { odnos: "rima", parovi, desno_redoslijed: red };
+    return { odnos, parovi, desno_redoslijed: red };
   }
   const stavke = vecih(3).slice(0, n).map(([rima, g]) => {
     const tri = ciljPrvi(promijesaj(g, rnd)).slice(0, 3);
@@ -628,7 +636,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     const slike = promijesaj([...tri, uljez], rnd);
     return { slike: slike.map((r) => r.id), uljez: slike.indexOf(uljez) };
   });
-  return { odnos: "rima", stavke };
+  return { odnos, stavke };
 }
 
 /**

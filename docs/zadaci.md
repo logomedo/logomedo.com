@@ -89,6 +89,7 @@ flowchart LR
 | Tablice | `migrations/0004_zadaci.sql` |
 | Vrste: normalizacija, provjere, ocjena, generator | `src/lib/zadaci/vrste.ts` (+ test) |
 | Ključ rime, slogovi | `src/lib/zadaci/rima.ts` (+ test) |
+| Odnosi (rima, prvi glas/slog, zadnji glas) | `src/lib/zadaci/odnosi.ts` (+ test) |
 | Upiti, verzije | `src/lib/zadaci/baza.ts` |
 | Editor i A4 ispis (DOM u pregledniku); pregled za dijete je igra bilježnice | `src/lib/zadaci/klijent.ts`, `src/pages/admin/zadaci/[id]/index.astro`, `[id]/dijete.astro`, `src/components/IgraDjeteta.astro` |
 | PDF za ispis (u pregledniku, pdf-lib + fontkit) | `src/lib/pdf/`: `model.ts` (stranice), `ispis-pdf.ts` (crtanje, + test), `svg.ts` (bor i grančice kao vektor), `preglednik.ts` (fontovi, slike, preuzimanje); slike s CDN-a kroz `/cdn/<ključ>` (`src/pages/cdn/[...kljuc].ts`) |
@@ -169,38 +170,61 @@ tri nova modula. Zato:
 
 - sadržaj instance **eksplicitno** sadrži točan odgovor (koju sliku, koji par), ne računa se pri
   rješavanju; logoped ima zadnju riječ, a automatsko prepoznavanje rime je samo pomoć pri izradi
-- `odnos` (`rima`, ...) je polje sadržaja: služi generatoru, filtriranju i opisu, ne ocjenjivanju
+- `odnos` je polje sadržaja: služi generatoru, filtriranju, uputi i opisu, ne ocjenjivanju
 - jedna instanca ima **više stavki** (redaka), kao listić: 4–6 redaka je jedna stranica ispisa
 - rješavanje bilježi **što je dijete odabralo**, ne samo točno/netočno: koji distraktor zbunjuje
   je logopedu korisna informacija
 
+### Odnosi (15. 11. 2026.)
+
+`odabir`, `povezivanje` i `uljez` nose `odnos` (`src/lib/zadaci/odnosi.ts`, + test). Svaki odnos je **ključ
+riječi**; dvije riječi su u odnosu ako imaju isti ključ:
+
+| `odnos` | Gumb | Ključ | Podpodručje predloška |
+|---|---|---|---|
+| `rima` | Rima | ključ rime (`rima.ts`, ručni ili iz pravopisa) | Prepoznavanje rime |
+| `pocetni_glas` | Isti prvi glas | prvi fonem (LJ, NJ, DŽ su jedan) | Prvi glas u riječi |
+| `pocetni_slog` | Isti prvi slog | jednosložna riječ cijela (LAV), inače do prvog samoglasnika, otvoreni slog (MA-ČKA, RIJE-KA, KR-TICA) | Slogovi |
+| `zavrsni_glas` | Isti zadnji glas | zadnji fonem | (nema, prazno) |
+
+Glas i slog uzimaju samo jednu riječ (izraz ČAROBNI ŠTAPIĆ nema ključ); rima gleda zadnju riječ izraza.
+Prvi slog kao otvoreni slog je odluka: MAČKA je MA-, ne MAČ-, pa MAČKA i MAJMUN idu zajedno, a LAV i LAMA ne.
+Odnos bira gumb predloška (`nacin` u `POST /admin/api/zadatak`), izbornik „Odnos” u „Po glasovima…” i prekidač
+„Što povezuje slike” u editoru. Prekidač ne dira slike (upozorenja pokažu što ne odgovara), a zadanu uputu zamijeni
+uputom novog odnosa; vlastitu uputu ostavlja. Stari zadaci bez polja su `rima`. Uputa za papir (PDF, ispis
+bilježnice) ide iz odnosa (`zadanaUputa`). Građa na produkciji 15. 11. 2026. (riječi sa slikom do 3 sloga):
+skupina 3+ za uljeza ima rima 46, prvi glas 27, prvi slog 53, zadnji glas 25.
+
+Sljedeće (Anita): odnosi po značenju (koja životinja što jede, suprotnosti). Oni nemaju ključ iz pisanja, nego
+trebaju parove u katalogu (nova tablica parova riječi), pa ih `uOdnosu` neće računati iz ključa.
+
 Svaka slika je `rijec_id` iz kataloga (slika se bira po stilu pri prikazu). Od 10. 11. 2026. to može biti i
 **znak** (slovo, brojka) iz kataloga znakova: isti `rijec_id`, crta se kao znak (docs/katalog.md, „Znakovi”).
 
-### `odabir`: zadana slika, odaberi onu koja se rimuje
+### `odabir`: zadana slika, odaberi onu koja ide uz nju
 
-Gore jedna slika, ispod tri; jedna se rimuje sa zadanom.
+Gore jedna slika, ispod tri; jedna je u odnosu sa zadanom (rimuje se, isti prvi glas…).
 
 ```ts
-{ odnos: 'rima', stavke: [{ zadana: rijec_id, ponudeno: [rijec_id, rijec_id, rijec_id], tocno: 0..2 }] }
+{ odnos: 'rima' | 'pocetni_glas' | 'pocetni_slog' | 'zavrsni_glas', stavke: [{ zadana: rijec_id, ponudeno: [rijec_id, rijec_id, rijec_id], tocno: 0..2 }] }
 odgovori: [{ stavka, odabrano: 0..2, ms }]
 ```
-Ispis: zaokruži. Distraktori se ne smiju rimovati sa zadanom (provjera u editoru).
+Ispis: zaokruži. Distraktori ne smiju biti u odnosu sa zadanom (provjera u editoru).
 Na papiru (od 14. 11. 2026.): zadana slika s debelim okvirom, puna strelica, a tri ponuđene u zajedničkoj
 svijetlosivoj podlozi (#f1eee8), da se vidi da se bira jedna od njih. Prije su između stajale četiri crtice, što je
 logopedici bilo nejasno. Isto u PDF-u (`ispis-pdf.ts`), HTML ispisu editora i `/b/<slug>/ispis`; u HTML-u
 podloga i strelica trebaju `print-color-adjust: exact`, inače ih preglednik ne ispiše.
 
-### `povezivanje`: dva stupca, poveži parove koji se rimuju
+### `povezivanje`: dva stupca, poveži parove (rima ili drugi odnos)
 
 ```ts
 { odnos: 'rima', parovi: [{ lijevo: rijec_id, desno: rijec_id }], desno_redoslijed: [indeks_para, ...] }
 // lijevi stupac ide redom parova; desni po desno_redoslijed (spremljen, isti na ekranu i papiru)
 odgovori: [{ lijevo: i, desno: k, ms }]   // svaki pokušani spoj, i krivi; k = mjesto u desnom stupcu
 ```
-Ispis: crte između stupaca. 3–5 parova. Nijedna slika iz `lijevo` ne smije se rimovati s dvije iz `desno`.
+Ispis: crte između stupaca. 3–5 parova. Nijedna slika iz `lijevo` ne smije biti u odnosu s dvije iz `desno`.
 
-### `uljez`: četiri u redu, tri se rimuju, jedna ne
+### `uljez`: četiri u redu, tri su u odnosu, jedna ne
 
 ```ts
 { odnos: 'rima', stavke: [{ slike: [rijec_id ×4], uljez: 0..3 }] }
