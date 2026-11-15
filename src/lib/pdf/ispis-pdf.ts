@@ -10,6 +10,7 @@ import { rasporedListica, type Izmjena } from "../zadaci/vrste.ts";
 import fontkit from "@pdf-lib/fontkit";
 import { TEME } from "../teme.ts";
 import { GRANCICA } from "../ukrasi.ts";
+import { podrucje, RUB_KARTICE, slojevi } from "../okviri.ts";
 import type { DokumentPdf, SlikaPdf, StranicaPdf } from "./model.ts";
 import { nacrtajSvg, omjer } from "./svg.ts";
 
@@ -24,6 +25,7 @@ const TINTA = rgb(0x1d / 255, 0x19 / 255, 0x14 / 255);
 const BLIJEDO = rgb(0x9a / 255, 0x90 / 255, 0x7f / 255);
 const BEZ = rgb(0x5c / 255, 0x53 / 255, 0x45 / 255);
 const BIJELO = rgb(1, 1, 1);
+const hex = (h: string) => { const c = parseInt(h.slice(1), 16); return rgb((c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255); };
 const CRNO = rgb(0, 0, 0);
 /** Podloga ponuđenih slika u uparivanju: dovoljno svijetla da se na crno-bijelom pisaču vidi kao blaga siva. */
 const LADICA = rgb(0xf1 / 255, 0xee / 255, 0xe8 / 255);
@@ -156,6 +158,14 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     return img;
   };
 
+  // Okvir zadatka (okviri.ts): uzorak, bijela kartica i ukrasi ispod svega na stranici.
+  const okvir = slojevi(dok.okvir);
+  const nacrtajOkvir = async (p: Platno) => {
+    for (const r of okvir.uzorak)
+      p.page.drawRectangle({ x: p.X(r.x), y: p.Y(r.y + r.h), width: r.w * MM, height: r.h * MM, color: hex(r.boja), opacity: r.prozirnost });
+    if (okvir.kartica) { const k = okvir.kartica; p.okvir(k.x, k.y, k.w, k.h, k.r, 1, BIJELO, hex(RUB_KARTICE)); }
+    for (const sl of okvir.slike) { const img = await ugradi(sl.url); if (img) p.slika(img, sl.x, sl.y, sl.w, sl.h); }
+  };
   const nova = () => {
     const p = new Platno(pdf.addPage([A4.w * MM, A4.h * MM]), sF);
     if (dok.ukrasi) {
@@ -220,19 +230,28 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
   // ---------- Stranice zadataka ----------
   for (const s of dok.stranice) {
     const p = nova();
-    const L = dok.ukrasi ? 20 : 15, D = A4.w - L;
-    let y = dok.ukrasi ? 22 : 16;
-    if (s.naslov) y += p.tekst(s.naslov, L, y, 22, { naslov: true, poravnanje: "l", sirina: D - L }) + 1;
+    // Bilježnica (grančice) ima svoje mjere; samostalan zadatak prostor iz okvira (bez okvira: 15 mm).
+    const o = podrucje(dok.okvir);
+    if (dok.okvir) await nacrtajOkvir(p);
+    const L = dok.ukrasi ? 20 : o.L, D = A4.w - L;
+    let y = dok.ukrasi ? 22 : o.vrh;
+    // Ukrasi u gornjim kutovima ili mašna: zaglavlje u sredini, uže od kutova.
+    const sredina = !dok.ukrasi && o.sredina, uze = 140;
+    if (s.naslov) y += sredina
+      ? p.tekst(s.naslov, A4.w / 2, y, 22, { naslov: true, sirina: uze }) + 1
+      : p.tekst(s.naslov, L, y, 22, { naslov: true, poravnanje: "l", sirina: D - L }) + 1;
     if (s.uputa) {
       y += dok.ukrasi
         ? p.tekst(s.uputa, A4.w / 2, y, 17, { naslov: true, sirina: D - L - 24 })
+        : sredina ? p.tekst(s.uputa, A4.w / 2, y + 1, 13, { sirina: uze }) + 1
         : p.tekst(s.uputa, L, y + 1, 13, { poravnanje: "l", sirina: D - L }) + 1;
     }
-    if (s.ime) { imeCrta(p, L, y + 4, 70, 11, false); y += 10; }
+    if (s.ime) { sredina ? imeCrta(p, A4.w / 2, y + 4, 70, 11, true) : imeCrta(p, L, y + 4, 70, 11, false); y += 10; }
     y += 8;
-    const dno = A4.h - (dok.ukrasi ? 22 : 18);
+    const dno = dok.ukrasi ? A4.h - 22 : o.dno;
     await tijelo(p, s, L, D, y, dno);
-    podnozje(p, dok.ukrasi ? "c" : "d");
+    if (dok.okvir) p.tekst(dok.podnozje, A4.w / 2, o.podnozjeY, 8, { boja: BLIJEDO });
+    else podnozje(p, dok.ukrasi ? "c" : "d");
   }
 
   async function tijelo(p: Platno, s: StranicaPdf, L: number, D: number, vrh: number, dno: number) {

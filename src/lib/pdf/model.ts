@@ -3,8 +3,9 @@
 // listić 12 kartica (3 × 4, kao stari LogoMedo).
 
 import type { Tema } from "../teme.ts";
+import { imaOkvir, podrucje, slojevi, type Okvir } from "../okviri.ts";
 import { TEME } from "../teme.ts";
-import { poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
+import { rasporedListica, poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
 /** `znak`: slovo ili brojka iz kataloga znakova, crta se kao znak u okviru (s izmjenom), ne kao riječ. */
@@ -40,6 +41,8 @@ export interface DokumentPdf {
   podnozje: string;
   /** Grančice jele u kutovima (bilježnica). */
   ukrasi?: boolean;
+  /** Okvir samostalnog zadatka (rub, mašna, ukrasi u kutovima); samo kad ne smanjuje slike (`okvirDopusten`). */
+  okvir?: Okvir;
   /** Naslovnica bilježnice s borom za bojanje. */
   naslovnica?: { naslov: string; uputa: string; lampica: number; tema?: Tema };
   stranice: StranicaPdf[];
@@ -113,14 +116,76 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
 }
 
 /** Samostalan zadatak (admin): naslov, uputa i ime na prvoj stranici. */
-export function dokumentZadatka(z: { vrsta: Vrsta; naslov: string; uputa: string; sadrzaj: Sadrzaj }, rijeci: RijecPdf[], sRijecima: boolean, pozadine: PozadinaPdf[] = []): DokumentPdf {
+export function dokumentZadatka(z: { vrsta: Vrsta; naslov: string; uputa: string; sadrzaj: Sadrzaj; okvir?: Okvir | null }, rijeci: RijecPdf[], sRijecima: boolean, pozadine: PozadinaPdf[] = []): DokumentPdf {
   const tijela = tijelaZadatka(z.vrsta, z.sadrzaj, new Map(rijeci.map((r) => [r.id, r])), sRijecima, pozadine, true);
   const naslov = z.naslov || VRSTE[z.vrsta].naziv;
-  return {
+  const dok: DokumentPdf = {
     naslov, podnozje: "logomedo.com",
     stranice: (tijela.length ? tijela : [{ vrsta: "listic", kartice: [] } as TijeloPdf])
       .map((tijelo, i) => (i === 0 ? { naslov, uputa: z.uputa || undefined, ime: true, tijelo } : { tijelo })),
   };
+  // Okvir koji bi smanjio slike ne ide na papir, čak i ako je spremljen.
+  if (imaOkvir(z.okvir) && okvirDopusten(dok, z.okvir).dopusten) dok.okvir = z.okvir;
+  return dok;
+}
+
+// ---- Okvir i kvaliteta ispisa ----
+
+/** Slika manja od ovoga (mm) je na papiru premala za dijete; okvir je ne smije dodatno smanjiti. */
+export const NAJMANJA_SLIKA = 30;
+
+/**
+ * Procjena najmanje slike na stranici (mm) u prostoru W × H, po istim formulama kao ispis-pdf.ts
+ * (tijelo). 0 = zadatak ne stane (fiksne mjere: uparivanje, uljez). Zaglavlje se procjenjuje (`zaglavlje`).
+ */
+export function najmanjaSlika(t: TijeloPdf, W: number, H: number): number {
+  const nat = (sl: (SlikaPdf | null)[]) => (sl.some((x) => x?.natpis) ? 7 : 0);
+  if (t.vrsta === "odabir") {
+    const n = nat(t.redovi.flatMap((r) => [r.zadana, ...r.ponudeno]));
+    return W < 168 || t.redovi.length * (38 + n) > H ? 0 : 30;
+  }
+  if (t.vrsta === "uljez") return W < 4 * 37 || t.redovi.length * (37 + nat(t.redovi.flat())) > H ? 0 : 37;
+  if (t.vrsta === "percepcija") {
+    if (t.redovi.length * 37 > H) return 0;
+    return Math.min(37, ...t.redovi.map((r) => (W - (r.length - 1) * 5) / Math.max(1, r.length)));
+  }
+  if (t.vrsta === "prvi_glas") {
+    const st = t.slike.length > 12 ? 5 : 4, red = Math.max(1, Math.ceil(t.slike.length / st));
+    return Math.min((W - (st - 1) * 6) / st, (H - 40 - (red - 1) * 6) / red, 38);
+  }
+  if (t.vrsta === "povezivanje") {
+    const n = Math.max(t.lijevo.length, t.desno.length, 1);
+    return Math.min(40, (H - 6 * (n - 1)) / n - nat([...t.lijevo, ...t.desno]));
+  }
+  if (t.vrsta === "scena") {
+    const po = Math.min(5, Math.max(1, t.gumbi.length));
+    return Math.min(32, (W - (po - 1) * 5) / po);
+  }
+  if (t.vrsta === "slogovi") {
+    const st = t.krugova ? 3 : 4, red = Math.max(1, Math.ceil(t.slike.length / st));
+    const redKrugova = t.krugova * 10.5 - 2.5 <= 46 ? 1 : 2, kr = t.krugova ? (redKrugova === 1 ? 12 : 21) : 0, g = t.krugova ? 9 : 6;
+    return Math.min((W - (st - 1) * g) / st, (H - (t.legenda ? 14 : 0) - (red - 1) * g) / red - nat(t.slike) - kr, t.krugova ? 46 : 44);
+  }
+  const g = 7, tekst = t.kartice.some((k) => k.tekst) ? 9 : 0;
+  const r = rasporedListica(t.kartice.length, t.raspored, W, H, g, tekst);
+  return Math.min(r.s, (W - (r.stupaca - 1) * g) / r.stupaca);
+}
+
+/** Visina zaglavlja (naslov, uputa, ime) u mm, procjena kao u ispis-pdf.ts: ~45 znakova upute u redu. */
+const zaglavlje = (s: StranicaPdf) =>
+  (s.naslov ? 10 : 0) + (s.uputa ? 1 + 6 * Math.ceil(s.uputa.length / 45) : 0) + (s.ime ? 10 : 0) + 8;
+
+/**
+ * Smije li zadatak imati okvir: na svakoj stranici sve stane, a najmanja slika ostaje barem
+ * `NAJMANJA_SLIKA` mm, ili, ako je već bez okvira manja, okvir je ne smanjuje.
+ */
+export function okvirDopusten(dok: DokumentPdf, okvir: Okvir): { dopusten: boolean; bez: number; s: number } {
+  const mjera = (o: Okvir | null) => {
+    const p = podrucje(o);
+    return Math.min(...dok.stranice.map((s) => najmanjaSlika(s.tijelo, p.D - p.L, p.dno - p.vrh - zaglavlje(s))));
+  };
+  const bez = mjera(null), s = mjera(okvir);
+  return { dopusten: s > 0 && s >= Math.min(NAJMANJA_SLIKA, bez) - 0.05, bez, s };
 }
 
 /** Bilježnica: naslovnica s borom, pa zadaci; svaka stranica nosi uputu svoje vrste. */
@@ -155,6 +220,7 @@ export function slikeDokumenta(d: DokumentPdf): string[] {
     if (t.vrsta === "listic") t.kartice.forEach((k) => dodaj(k.slika));
     if (t.vrsta === "scena") { if (t.pozadina) out.add(t.pozadina); t.gumbi.forEach(dodaj); }
   }
+  for (const sl of slojevi(d.okvir).slike) out.add(sl.url);
   return [...out];
 }
 

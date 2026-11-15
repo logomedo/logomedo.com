@@ -14,9 +14,10 @@ import {
 } from "./vrste.ts";
 import { usporediZnakove } from "../znakovi.ts";
 import { slikaZa, vidljiviGumbi, type PozadinaPrikaz } from "../scena-prikaz.ts";
+import { A4 as A4_MM, GOTOVI, imaOkvir, isti, KUTOVI, MASNE, normalizirajOkvir, okvirSvg, podrucje as podrucjeOkvira, RUBOVI, UKRASI, type Kutovi, type Okvir } from "../okviri.ts";
 
 export interface Podaci {
-  zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; stil: string; sadrzaj: Sadrzaj };
+  zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; stil: string; sadrzaj: Sadrzaj; okvir: Okvir };
 
   rijeci: RijecZadatka[];
   podrucja: { id: number; naziv: string }[];
@@ -52,6 +53,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
   let sadrzaj: Sadrzaj = structuredClone(z.sadrzaj);
   let naslov = z.naslov, uputa = z.uputa ?? VRSTE[vrsta].uputa, podrucje = z.podrucje_id, stil = z.stil;
+  let okvir: Okvir = normalizirajOkvir(z.okvir);
   // Dijete rješava je zasebna stranica (/admin/zadaci/<id>/dijete), otvara se u novoj kartici.
   let pogled: "uredi" | "ispis" = (location.hash.slice(1) as any) || "uredi";
   if (!["uredi", "ispis"].includes(pogled)) pogled = "uredi";
@@ -472,7 +474,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const s = sadrzaj as Listic;
     const pune = s.kartice.filter((k) => k.rijec_id || k.tekst).length;
     const raspored = s.raspored ?? "3x4";
-    const r = rasporedListica(Math.min(pune, poStraniciListica(raspored)), raspored, ...A4_LISTIC);
+    const r = rasporedListica(Math.min(pune, poStraniciListica(raspored)), raspored, ...prostorListica(true));
     const postavi = (k: RasporedListica) => { s.raspored = k; oznaci(); osvjezi(); };
     // Vlastita mreža: zadnja upisana (ili trenutna kad nije među ponuđenima).
     const m = mrezaListica(raspored);
@@ -510,16 +512,21 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return r;
   }
 
-  /** A4 bez rubova i zaglavlja (mm), za raspored listića u HTML ispisu; ostale stranice nemaju zaglavlje pa su više (kao PDF). */
-  const A4_LISTIC: [number, number] = [180, 222];
-  const A4_LISTIC_DALJE: [number, number] = [180, 255];
+  /**
+   * A4 bez rubova i zaglavlja (mm), za raspored listića u HTML ispisu; ostale stranice nemaju zaglavlje pa su više (kao PDF).
+   * Bez okvira 180 × 222 (prva) i 180 × 255; okvir (ako se ispisuje) smanjuje prostor kao u PDF-u.
+   */
+  const prostorListica = (prva: boolean): [number, number] => {
+    const o = podrucjeOkvira(okvirZaIspis());
+    return [o.D - o.L, o.dno - o.vrh - (prva ? 41 : 8)];
+  };
   /** Mreža listića; `dio` = kartice jedne A4 stranice, `prva` = stranica sa zaglavljem. Veličina i položaj kao u PDF-u (ispis-pdf.ts). */
   function listicMreza(s: Listic, a4 = false, dio?: Listic["kartice"], prva = true) {
     const pune = s.kartice.filter((k) => k.rijec_id || k.tekst);
     const kartice = dio ?? pune;
     const tekst = pune.some((k) => k.tekst) ? 9 : 0;
     // Na papiru: mreža i veličina iz rasporedListica za kartice te stranice (isto kao PDF).
-    const r = rasporedListica(Math.min(kartice.length, poStraniciListica(s.raspored)), s.raspored, ...(a4 && !prva ? A4_LISTIC_DALJE : A4_LISTIC), 7, tekst);
+    const r = rasporedListica(Math.min(kartice.length, poStraniciListica(s.raspored)), s.raspored, ...prostorListica(!a4 || prva), 7, tekst);
     // PDF: „prema broju slika” je mreža okomito centrirana, inače redovi raspoređeni po cijeloj visini.
     const okomito = s.raspored === "auto" ? "align-content:center" : `grid-template-rows:repeat(${r.redova},minmax(0,1fr));align-items:start`;
     const stil = a4 ? `grid-template-columns:repeat(${r.stupaca},${Math.floor(r.s)}mm);justify-content:center;flex:1;${okomito}${prva ? "" : ";margin-top:8mm"}` : s.raspored === "auto" && pune.length <= 6 ? `grid-template-columns:repeat(${r.stupaca},minmax(0,${pune.length <= 2 ? 340 : 240}px));justify-content:center` : undefined;
@@ -569,15 +576,34 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const pune = l.kartice.filter((k) => k.rijec_id || k.tekst);
       const n = poStraniciListica(l.raspored);
       const dijelovi = pune.length ? Array.from({ length: Math.ceil(pune.length / n) }, (_, i) => pune.slice(i * n, i * n + n)) : [[]];
-      return h("div", { class: "a4-okvir" }, ...dijelovi.map((dio, i) => h("article", { class: `a4 a4-${vrsta}` },
+      return h("div", { class: "a4-okvir" }, ...dijelovi.map((dio, i) => h("article", a4Atributi(),
+        okvirSloj(),
         i === 0 ? zaglavljeA4() : null,
         listicMreza(l, true, dio, i === 0),
         h("footer", {}, dijelovi.length > 1 ? `logomedo.com · ${i + 1}/${dijelovi.length}` : "logomedo.com"))));
     }
-    return h("div", { class: "a4-okvir" }, h("article", { class: `a4 a4-${vrsta}` },
+    return h("div", { class: "a4-okvir" }, h("article", a4Atributi(),
+      okvirSloj(),
       zaglavljeA4(),
       tijelo,
       h("footer", {}, "logomedo.com")));
+  }
+
+  /** Okvir na papiru samo kad ne smanjuje slike (isto pravilo kao PDF, `okvirDopusten`). */
+  function okvirZaIspis(): Okvir | null { return imaOkvir(okvir) && okvirStanje.dopusten ? okvir : null; }
+  /** Stranica s okvirom: unutarnji prostor kao u PDF-u (okviri.ts `podrucje`). */
+  function a4Atributi() {
+    const o = okvirZaIspis();
+    if (!o) return { class: `a4 a4-${vrsta}` };
+    const g = podrucjeOkvira(o);
+    return { class: `a4 a4-${vrsta} a4-s-okvirom${g.sredina ? " a4-sredina" : ""}`, style: `padding:${g.vrh}mm ${A4_MM.w - g.D}mm ${A4_MM.h - g.dno - 6}mm ${g.L}mm` };
+  }
+  function okvirSloj() {
+    const svg = okvirSvg(okvirZaIspis());
+    if (!svg) return null;
+    const d = h("div", { class: "a4-okvir-pozadina" });
+    d.innerHTML = svg;
+    return d;
   }
 
   function zaglavljeA4() {
@@ -591,7 +617,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     gumb.disabled = true; gumb.textContent = "Pripremam PDF…";
     try {
       const [{ dokumentZadatka }, pdf] = await Promise.all([import("../pdf/model.ts"), import("../pdf/preglednik.ts")]);
-      const dok = dokumentZadatka({ vrsta, naslov, uputa: vrsta === "scena" ? `${uputa} ${VRSTE.scena.ispis}.` : uputa, sadrzaj }, p.rijeci, sRijecima, pozadine);
+      const dok = dokumentZadatka({ vrsta, naslov, uputa: vrsta === "scena" ? `${uputa} ${VRSTE.scena.ispis}.` : uputa, sadrzaj, okvir }, p.rijeci, sRijecima, pozadine);
       await pdf.preuzmiPdf(dok, pdf.imePdfa(dok.naslov), (g, u) => { gumb.textContent = u ? `Slike ${g}/${u}…` : "Pripremam PDF…"; });
       gumb.textContent = tekst;
     } catch (err) {
@@ -610,7 +636,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     spremiGumb.disabled = true; spremiGumb.textContent = "Spremam…";
     const o = await fetch(`/admin/api/zadatak/${z.id}`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ naslov, uputa, podrucje_id: podrucje, stil, sadrzaj }),
+      body: JSON.stringify({ naslov, uputa, podrucje_id: podrucje, stil, sadrzaj, okvir }),
     });
     const j: any = await o.json().catch(() => ({}));
     if (!o.ok) { spremiGumb.disabled = false; spremiGumb.textContent = "Spremi (greška)"; alert(j.error ?? `Greška ${o.status}`); return; }
@@ -633,6 +659,64 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return u;
   }
   let plocaEl: HTMLElement | null = null;
+  // ---------- Okvir radnog listića (okviri.ts) ----------
+  // Pravilo kvalitete je u pdf/model.ts (učitava se dinamički, kao PDF); dok se ne učita, okvir je dopušten.
+  let okvirStanje = { dopusten: true, bez: 0, s: 0 };
+  let obavijestOkvira = "";
+  let model: typeof import("../pdf/model.ts") | null = null;
+  const ucitajModel = () => import("../pdf/model.ts").then((m) => { model = m; return m; });
+  /** Ocjena okvira za trenutni sadržaj (sinkrono kad je model učitan). */
+  function ocijeniOkvir(o: Okvir) {
+    if (!model || !imaOkvir(o)) return { dopusten: true, bez: 0, s: 0 };
+    const dok = model.dokumentZadatka({ vrsta, naslov, uputa, sadrzaj }, p.rijeci, sRijecima, pozadine);
+    return model.okvirDopusten(dok, o);
+  }
+  const cm = (mm: number) => `${(mm / 10).toFixed(1).replace(".", ",")} cm`;
+  function zastoNe(o: Okvir) {
+    const r = ocijeniOkvir(o);
+    if (r.dopusten) return "";
+    return r.s <= 0
+      ? "S okvirom zadatak ne stane na stranicu, pa se za ovaj zadatak taj okvir ne može odabrati."
+      : `S tim okvirom slike bi bile ${cm(r.s)} umjesto ${cm(r.bez)}, a manje od ${cm(model!.NAJMANJA_SLIKA)} su na papiru presitne. Za ovaj zadatak taj okvir se ne može odabrati: smanji broj slika, odaberi okvir bez ukrasa u kutovima ili bez okvira.`;
+  }
+  /** Novi okvir iz ploče: nedopušten se ne prihvaća, nego iskoči obavijest. */
+  function postaviOkvir(o: Okvir) {
+    const zasto = zastoNe(o);
+    if (zasto) { obavijestOkvira = zasto; osvjeziPlocu(); return; }
+    okvir = o; obavijestOkvira = ""; oznaci(); osvjeziOkvir();
+  }
+  function osvjeziOkvir() { okvirStanje = ocijeniOkvir(okvir); osvjeziPlocu(); if (pogled === "ispis") osvjezi(); }
+  ucitajModel().then(() => osvjeziOkvir()).catch(() => {});
+
+  function okvirPloca(): HTMLElement {
+    const gotov = GOTOVI.find((g) => isti(g.okvir, okvir))?.kod ?? (imaOkvir(okvir) ? "vlastiti" : "bez");
+    const sel = (vrijednost: string, opcije: [string, string, string?][], na: (v: string) => void, naslov?: string) =>
+      h("select", { title: naslov, onchange: (e: Event) => na((e.target as HTMLSelectElement).value) },
+        ...opcije.map(([k, t, ne]) => h("option", { value: k, selected: k === vrijednost, disabled: !!ne && k !== vrijednost, title: ne }, ne && k !== vrijednost ? `${t} (ne može)` : t)));
+    const ne = (o: Okvir) => (zastoNe(o) ? "ne može" : undefined);
+    const s = (izmjena: Partial<Okvir>) => ({ ...okvir, ...izmjena, kutovi: [...(izmjena.kutovi ?? okvir.kutovi)] as Kutovi });
+    return h("details", { class: "ploha z-okvir", open: imaOkvir(okvir) || !!obavijestOkvira },
+      h("summary", {}, "Okvir za ispis", imaOkvir(okvir) ? h("span", { class: "blijedo" }, ` · ${GOTOVI.find((g) => g.kod === gotov)?.naziv ?? "vlastiti"}`) : null),
+      obavijestOkvira ? h("div", { class: "z-obavijest", role: "alert" }, h("b", {}, "Okvir se ne može odabrati"), h("p", {}, obavijestOkvira),
+        h("button", { type: "button", class: "gumb mali", onclick: () => { obavijestOkvira = ""; osvjeziPlocu(); } }, "U redu")) : null,
+      imaOkvir(okvir) && !okvirStanje.dopusten ? h("p", { class: "z-obavijest" }, "Uz sadašnji sadržaj okvir bi smanjio slike, pa se ne ispisuje (ni u PDF-u). ", zastoNe(okvir)) : null,
+      h("label", {}, "Gotovi okvir"),
+      sel(gotov, [["bez", "Bez okvira"], ...GOTOVI.map((g) => [g.kod, g.naziv, ne(g.okvir)] as [string, string, string?]), ...(gotov === "vlastiti" ? [["vlastiti", "Vlastiti"] as [string, string]] : [])],
+        (v) => postaviOkvir(v === "bez" ? normalizirajOkvir(null) : structuredClone(GOTOVI.find((g) => g.kod === v)?.okvir ?? okvir))),
+      h("label", {}, "Rub"),
+      sel(okvir.rub, Object.entries(RUBOVI).map(([k, t]) => [k, t, ne(s({ rub: k as Okvir["rub"] }))]), (v) => postaviOkvir(s({ rub: v as Okvir["rub"] }))),
+      h("label", {}, "Mašna gore"),
+      sel(okvir.masna ?? "", [["", "Bez mašne"], ...Object.entries(MASNE).map(([k, t]) => [k, t, ne(s({ masna: k as Okvir["masna"] }))] as [string, string, string?])], (v) => postaviOkvir(s({ masna: (v || null) as Okvir["masna"] }))),
+      ...KUTOVI.flatMap((kut, i) => [
+        h("label", {}, kut),
+        sel(okvir.kutovi[i] ?? "", [["", "—"], ...Object.entries(UKRASI).map(([k, t]) => {
+          const kutovi = [...okvir.kutovi] as Kutovi; kutovi[i] = k as Kutovi[number];
+          return [k, t, ne(s({ kutovi }))] as [string, string, string?];
+        })], (v) => { const kutovi = [...okvir.kutovi] as Kutovi; kutovi[i] = (v || null) as Kutovi[number]; postaviOkvir(s({ kutovi })); }),
+      ]),
+      h("p", { class: "sitno blijedo" }, "Okvir je samo na papiru (PDF i Ispis). Ukrasi u gornjim kutovima i mašna stavljaju naslov u sredinu."));
+  }
+
   function osvjeziPlocu() { const stara = plocaEl; if (stara) (stara as any).replaceWith(ploca()); }
 
   function ploca(): HTMLElement {
@@ -652,6 +736,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         p.stilovi.length > 1 ? h("select", { title: "Riječ bez slike u ovom stilu uzima sliku drugog stila.", onchange: (e: Event) => { postaviStil((e.target as HTMLSelectElement).value); oznaci(); osvjezi(); } },
           ...p.stilovi.map((x) => h("option", { value: x.kod, selected: x.kod === stil }, x.naziv))) : null,
         z.rjesavanja > 0 ? h("p", { class: "sitno blijedo" }, `Verzija ${z.aktivna_verzija} je rješavana ${z.rjesavanja}×: spremanje otvara novu verziju.`) : null),
+      okvirPloca(),
       upozorenja.length
         ? h("div", { class: "ploha z-upozorenja" }, h("b", {}, `Upozorenja (${upozorenja.length})`),
           h("ul", {}, ...upozorenja.map((u) => h("li", {}, h("span", { class: "blijedo" }, `${u.gdje}: `), u.poruka))))

@@ -3,16 +3,19 @@
 import { env } from "cloudflare:workers";
 import { brojSlogova, izvediRimu } from "./rima";
 import type { RijecGlasova } from "./listic-glas";
+import { imaOkvir, normalizirajOkvir, type Okvir } from "../okviri";
 import { normaliziraj, slikaUStilu, type RijecZadatka, type SlikeRijeci, type Sadrzaj, type Vrsta } from "./vrste";
 
 const DB = () => env.DB;
+/** Okvir u bazu: JSON, ili NULL kad ga nema. */
+const okvirZaBazu = (x: unknown) => { const o = normalizirajOkvir(x); return imaOkvir(o) ? JSON.stringify(o) : null; };
 
 export interface Podrucje { id: number; roditelj_id: number | null; naziv: string; slug: string }
 export interface ZadatakRed {
   id: number; vrsta: Vrsta; podrucje_id: number | null; naslov: string; uputa: string | null; vidljivost: string;
-  aktivna_verzija: number; autor: string; updated_at: string; rjesavanja: number; stil: string;
+  aktivna_verzija: number; autor: string; updated_at: string; rjesavanja: number; stil: string; okvir: string | null;
 }
-export interface Zadatak extends ZadatakRed { sadrzaj: Sadrzaj }
+export interface Zadatak extends Omit<ZadatakRed, "okvir"> { sadrzaj: Sadrzaj; okvir: Okvir }
 
 export async function podrucja(): Promise<Podrucje[]> {
   return (await DB().prepare("SELECT id, roditelj_id, naziv, slug FROM podrucja ORDER BY redoslijed, id").all<Podrucje>()).results;
@@ -83,7 +86,7 @@ export async function rijeciPoId(ids: number[], stil = "ilustracija"): Promise<R
   return sRijecima(results, stil);
 }
 
-const SQL_ZADATAK = `SELECT z.id, z.vrsta, z.podrucje_id, z.naslov, z.uputa, z.vidljivost, z.aktivna_verzija, z.updated_at, z.stil,
+const SQL_ZADATAK = `SELECT z.id, z.vrsta, z.podrucje_id, z.naslov, z.uputa, z.vidljivost, z.aktivna_verzija, z.updated_at, z.stil, z.okvir,
     k.email AS autor, (SELECT COUNT(*) FROM rjesavanja r WHERE r.zadatak_id = z.id) AS rjesavanja
   FROM zadaci z JOIN korisnici k ON k.id = z.autor_id`;
 
@@ -96,7 +99,7 @@ export async function zadatak(id: number): Promise<Zadatak | null> {
   if (!z) return null;
   const v = await DB().prepare("SELECT sadrzaj FROM zadatak_verzije WHERE zadatak_id = ? AND verzija = ?")
     .bind(id, z.aktivna_verzija).first<{ sadrzaj: string }>();
-  return { ...z, sadrzaj: normaliziraj(z.vrsta, JSON.parse(v?.sadrzaj ?? "{}")) };
+  return { ...z, sadrzaj: normaliziraj(z.vrsta, JSON.parse(v?.sadrzaj ?? "{}")), okvir: normalizirajOkvir(z.okvir) };
 }
 
 export async function stvori(autorId: number, vrsta: Vrsta, podrucjeId: number | null, naslov: string, uputa: string, sadrzaj: Sadrzaj): Promise<number> {
@@ -107,7 +110,7 @@ export async function stvori(autorId: number, vrsta: Vrsta, podrucjeId: number |
   return z!.id;
 }
 
-export interface Izmjena { naslov: string; uputa: string; podrucje_id: number | null; stil: string; sadrzaj: unknown }
+export interface Izmjena { naslov: string; uputa: string; podrucje_id: number | null; stil: string; sadrzaj: unknown; okvir?: unknown }
 
 /** Spremi; vraća verziju u koju je spremljeno. */
 export async function spremi(id: number, x: Izmjena): Promise<number | null> {
@@ -125,8 +128,8 @@ export async function spremi(id: number, x: Izmjena): Promise<number | null> {
     ).bind(id, verzija, sadrzaj),
     DB().prepare(
       `UPDATE zadaci SET naslov = ?, uputa = ?, podrucje_id = ?, aktivna_verzija = ?, updated_at = datetime('now'),
-         stil = COALESCE((SELECT kod FROM stilovi WHERE kod = ?), stil) WHERE id = ?`,
-    ).bind(x.naslov.slice(0, 200), x.uputa.slice(0, 400) || null, x.podrucje_id, verzija, x.stil, id),
+         stil = COALESCE((SELECT kod FROM stilovi WHERE kod = ?), stil), okvir = ? WHERE id = ?`,
+    ).bind(x.naslov.slice(0, 200), x.uputa.slice(0, 400) || null, x.podrucje_id, verzija, x.stil, okvirZaBazu(x.okvir), id),
   ]);
   return verzija;
 }

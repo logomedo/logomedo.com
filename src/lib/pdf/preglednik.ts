@@ -7,6 +7,7 @@
 
 import { napraviPdf, type FontoviPdf } from "./ispis-pdf.ts";
 import { SIVA, slikeDokumenta, velikeSlike, type DokumentPdf } from "./model.ts";
+import { jeUkrasUrl } from "../okviri.ts";
 
 const NAJVISE_PX = 800;
 /** Pozadina scene je ~180 mm široka: 1800 px je ~250 dpi. */
@@ -51,7 +52,9 @@ async function smanji(url: string, najvise = NAJVISE_PX): Promise<Uint8Array | n
     const c = document.createElement("canvas");
     c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
     const g = c.getContext("2d")!;
-    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); // PNG s prozirnošću → bijela podloga
+    // PNG s prozirnošću → bijela podloga; ukrasi okvira ostaju prozirni (leže na uzorku ruba).
+    const proziran = jeUkrasUrl(url);
+    if (!proziran) { g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); }
     g.drawImage(bmp, 0, 0, c.width, c.height);
     bmp.close();
     if (siva) {
@@ -61,7 +64,7 @@ async function smanji(url: string, najvise = NAJVISE_PX): Promise<Uint8Array | n
       for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
       g.putImageData(px, 0, 0);
     }
-    const blob = await new Promise<Blob | null>((ok) => c.toBlob(ok, "image/jpeg", 0.88));
+    const blob = await new Promise<Blob | null>((ok) => (proziran ? c.toBlob(ok, "image/png") : c.toBlob(ok, "image/jpeg", 0.88)));
     return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
   } catch {
     return null; // slika koja ne stigne ostaje prazan okvir, PDF se svejedno složi
