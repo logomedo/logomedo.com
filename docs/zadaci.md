@@ -205,7 +205,7 @@ Odabir se sprema u sadržaj (`po_glasovima: { glasovi, oznake, pozicija, bez }`,
 glasovima). Editor tada pri biranju slike bez uzora (zadana, lijeva, nova u uljezu) uključi filtar tih glasova
 (gumb „Glasovi S, Z – inicijalna pozicija”, može se isključiti; uz uzor vrijedi filtar odnosa), a „Složi
 automatski” slaže po njima. Pojave glasova editor dobiva iz `rijec_glas` (`glasoviRijeci()` u `baza.ts`).
-Zadaci složeni prije 15. 11. 2026. navečer to polje nemaju.
+Zadaci složeni prije 15. 11. 2026. navečer to polje nemaju. Odnos u dijalogu sam postavi poziciju glasa: prvi glas i prvi slog inicijalna, zadnji glas finalna, rima bilo gdje (može se promijeniti).
 
 Sljedeće (traženo 15. 11.): odnosi po značenju (koja životinja što jede, suprotnosti). Oni nemaju ključ iz pisanja, nego
 trebaju parove u katalogu (nova tablica parova riječi), pa ih `uOdnosu` neće računati iz ključa.

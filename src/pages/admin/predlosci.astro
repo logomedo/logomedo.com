@@ -201,7 +201,7 @@ const shema: Record<Vrsta, string> = {
       polje("vrsta").value = vrsta;
       polje("podrucje").value = b.dataset.podrucje ?? "";
       forma.querySelector("h2")!.textContent = b.dataset.naslov ?? "Po glasovima";
-      if (b.dataset.odnos) (forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value = b.dataset.odnos;
+      if (b.dataset.odnos) { (forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value = b.dataset.odnos; pozicijaOdnosa(); }
       forma.querySelectorAll<HTMLElement>("[data-za]").forEach((el) => {
         const vidi = el.dataset.za!.split(" ").includes(vrsta);
         el.hidden = !vidi;
@@ -214,6 +214,14 @@ const shema: Record<Vrsta, string> = {
     dijalog.querySelector("[data-zatvori]")?.addEventListener("click", () => dijalog.close());
     // Klik na zatamnjenu pozadinu zatvara.
     dijalog.addEventListener("click", (e) => { if (e.target === dijalog) dijalog.close(); });
+    // Odnos određuje gdje glas ima smisla: prvi glas i slog na početku, zadnji glas na kraju, rima bilo gdje.
+    // Ide prije osvježavanja forme (događaj s izbornika stigne do forme poslije).
+    const POZICIJA_ODNOSA: Record<Odnos, string> = { rima: "", pocetni_glas: "inicijalna", pocetni_slog: "inicijalna", zavrsni_glas: "finalna" };
+    function pozicijaOdnosa() {
+      const o = (forma!.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value as Odnos;
+      poz.value = POZICIJA_ODNOSA[o] ?? "";
+    }
+    forma.querySelector("select[data-odnos]")?.addEventListener("change", pozicijaOdnosa);
     forma.addEventListener("change", osvjezi);
   }
 </script>
