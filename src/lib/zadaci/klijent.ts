@@ -55,8 +55,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   let naslov = z.naslov, uputa = z.uputa ?? VRSTE[vrsta].uputa, podrucje = z.podrucje_id, stil = z.stil;
   let okvir: Okvir = normalizirajOkvir(z.okvir);
   // Dijete rješava je zasebna stranica (/admin/zadaci/<id>/dijete), otvara se u novoj kartici.
-  let pogled: "uredi" | "ispis" = (location.hash.slice(1) as any) || "uredi";
-  if (!["uredi", "ispis"].includes(pogled)) pogled = "uredi";
+  let pogled: "uredi" | "okvir" | "ispis" = (location.hash.slice(1) as any) || "uredi";
+  if (!["uredi", "okvir", "ispis"].includes(pogled)) pogled = "uredi";
   let promijenjeno = false;
   let sRijecima = false;
   const postavke = { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : 4, maxSlogova: 3, samoSaSlikom: false };
@@ -685,13 +685,11 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     if (zasto) { obavijestOkvira = zasto; osvjeziPlocu(); return; }
     okvir = o; obavijestOkvira = ""; oznaci(); osvjeziOkvir();
   }
-  function osvjeziOkvir() { okvirStanje = ocijeniOkvir(okvir); osvjeziPlocu(); if (pogled === "ispis") osvjezi(); }
+  function osvjeziOkvir() { okvirStanje = ocijeniOkvir(okvir); osvjeziPlocu(); if (pogled !== "uredi") osvjezi(); }
   ucitajModel().then(() => osvjeziOkvir()).catch(() => {});
 
   /** Kratki nazivi rubova za pločice (puni su u RUBOVI). */
   const KRATKO_RUB: Record<Okvir["rub"], string> = { bez: "Bez ruba", "kocke-crvene": "Crvene kockice", "kocke-zelene": "Zelene kockice", "pruge-zelene": "Zelene pruge", "prugice-crvene": "Crvene prugice" };
-  /** Kut kojem se bira ukras (klik na kut u pregledu okvira). */
-  let aktivniKut = -1;
   /** Mala A4 stranica s okvirom (isti SVG kao Ispis i PDF). */
   function minijatura(o: Okvir, klasa = "") {
     const d = h("span", { class: `z-mini ${klasa}`.trim() });
@@ -709,24 +707,13 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         "aria-pressed": odabrano ? "true" : "false", onclick: () => postaviOkvir(o) }, sadrzaj, h("span", {}, naziv));
     };
     const slika = (url: string) => h("img", { src: url, alt: "", loading: "lazy" });
-    const kutoviPregled = KUTOVI.map((kut, i) => h("button", {
-      type: "button", class: `z-kut z-kut-${i}${aktivniKut === i ? " on" : ""}`, title: `${kut}: ${okvir.kutovi[i] ? UKRASI[okvir.kutovi[i]!] : "bez ukrasa"}`,
-      onclick: () => { aktivniKut = aktivniKut === i ? -1 : i; osvjeziPlocu(); },
-    }, okvir.kutovi[i] ? null : "+"));
-    const pregled = h("div", { class: "z-okvir-pregled" }, minijatura(okvir, "velika"), ...kutoviPregled);
     const zaKut = (i: number, u: Kutovi[number]) => { const kutovi = [...okvir.kutovi] as Kutovi; kutovi[i] = u; return s({ kutovi }); };
-    return h("details", { class: "ploha z-okvir", open: imaOkvir(okvir) || !!obavijestOkvira },
-      h("summary", {}, "Okvir za ispis", imaOkvir(okvir) ? h("span", { class: "blijedo" }, ` · ${GOTOVI.find((g) => g.kod === gotov)?.naziv ?? "vlastiti"}`) : null),
+    return plocaEl = h("div", { class: "ploha z-okvir" },
+      h("h3", {}, "Okvir za ispis", imaOkvir(okvir) ? h("span", { class: "blijedo" }, ` · ${GOTOVI.find((g) => g.kod === gotov)?.naziv ?? "vlastiti"}`) : null),
       obavijestOkvira ? h("div", { class: "z-obavijest", role: "alert" }, h("b", {}, "Okvir se ne može odabrati"), h("p", {}, obavijestOkvira),
         h("button", { type: "button", class: "gumb mali", onclick: () => { obavijestOkvira = ""; osvjeziPlocu(); } }, "U redu")) : null,
       imaOkvir(okvir) && !okvirStanje.dopusten ? h("p", { class: "z-obavijest" }, "Uz sadašnji sadržaj okvir bi smanjio slike, pa se ne ispisuje (ni u PDF-u). ", zastoNe(okvir)) : null,
-      pregled,
-      h("p", { class: "sitno blijedo z-sredina" }, "Klikni kut na stranici za ukras u kutu."),
-      aktivniKut >= 0 ? h("div", { class: "z-izbor-kuta" },
-        h("b", {}, KUTOVI[aktivniKut]),
-        h("div", { class: "z-plocice ukrasi" },
-          plocica(zaKut(aktivniKut, null), h("i", { class: "z-prazno" }, "—"), "Bez ukrasa", !okvir.kutovi[aktivniKut]),
-          ...(Object.keys(UKRASI) as NonNullable<Kutovi[number]>[]).map((u) => plocica(zaKut(aktivniKut, u), slika(urlUkrasa(u)), UKRASI[u], okvir.kutovi[aktivniKut] === u)))) : null,
+
       h("label", {}, "Gotovi okvir"),
       h("div", { class: "z-plocice stranice" },
         plocica(normalizirajOkvir(null), minijatura(normalizirajOkvir(null)), "Bez okvira", gotov === "bez"),
@@ -741,10 +728,16 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       okvir.masna ? h("label", { class: "z-kvacica", title: zastoNe(normalizirajOkvir({ ...okvir, velikaMasna: !okvir.velikaMasna })) || undefined },
         h("input", { type: "checkbox", checked: !!okvir.velikaMasna, onchange: () => postaviOkvir(normalizirajOkvir({ ...okvir, velikaMasna: !okvir.velikaMasna })) }),
         " Velika mašna (zadatak počinje niže)") : null,
+      h("label", {}, "Ukrasi u kutovima"),
+      ...KUTOVI.map((kut, i) => h("div", { class: "z-izbor-kuta" },
+        h("b", {}, kut),
+        h("div", { class: "z-plocice ukrasi" },
+          plocica(zaKut(i, null), h("i", { class: "z-prazno" }, "—"), "Bez ukrasa", !okvir.kutovi[i]),
+          ...(Object.keys(UKRASI) as NonNullable<Kutovi[number]>[]).map((u) => plocica(zaKut(i, u), slika(urlUkrasa(u)), UKRASI[u], okvir.kutovi[i] === u))))),
       h("p", { class: "sitno blijedo" }, "Okvir je samo na papiru (PDF i Ispis). Ukrasi u gornjim kutovima i mašna stavljaju naslov u sredinu. Blijedi izbori ne mogu uz ovaj zadatak (slike bi bile premale)."));
   }
 
-  function osvjeziPlocu() { const stara = plocaEl; if (stara) (stara as any).replaceWith(ploca()); }
+  function osvjeziPlocu() { const stara = plocaEl; if (stara) (stara as any).replaceWith(pogled === "okvir" ? okvirPloca() : ploca()); }
 
   function ploca(): HTMLElement {
     const upozorenja = upozorenjaSvih();
@@ -763,7 +756,12 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         p.stilovi.length > 1 ? h("select", { title: "Riječ bez slike u ovom stilu uzima sliku drugog stila.", onchange: (e: Event) => { postaviStil((e.target as HTMLSelectElement).value); oznaci(); osvjezi(); } },
           ...p.stilovi.map((x) => h("option", { value: x.kod, selected: x.kod === stil }, x.naziv))) : null,
         z.rjesavanja > 0 ? h("p", { class: "sitno blijedo" }, `Verzija ${z.aktivna_verzija} je rješavana ${z.rjesavanja}×: spremanje otvara novu verziju.`) : null),
-      okvirPloca(),
+      h("div", { class: "ploha z-okvir-sazetak" },
+        h("b", {}, "Okvir za ispis"),
+        h("div", { class: "z-okvir-sazetak-red" }, minijatura(okvir),
+          h("span", {}, imaOkvir(okvir) ? GOTOVI.find((g) => isti(g.okvir, okvir))?.naziv ?? "Vlastiti" : "Bez okvira",
+            imaOkvir(okvir) && !okvirStanje.dopusten ? h("small", { class: "z-greska-tekst" }, " (ne ispisuje se: slike bi bile premale)") : null)),
+        h("button", { type: "button", class: "gumb mali", onclick: () => { pogled = "okvir"; history.replaceState(null, "", "#okvir"); osvjezi(); } }, "Odaberi okvir")),
       upozorenja.length
         ? h("div", { class: "ploha z-upozorenja" }, h("b", {}, `Upozorenja (${upozorenja.length})`),
           h("ul", {}, ...upozorenja.map((u) => h("li", {}, h("span", { class: "blijedo" }, `${u.gdje}: `), u.poruka))))
@@ -808,7 +806,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   function osvjezi() {
     zamijeni(kartice, 
-      ...([["uredi", "Uredi"], ["ispis", "Ispis"]] as const).map(([k, t]) =>
+      ...([["uredi", "Uredi"], ["okvir", "Okvir"], ["ispis", "Ispis"]] as const).map(([k, t]) =>
         h("button", { type: "button", class: `z-kartica${pogled === k ? " on" : ""}`, onclick: () => { pogled = k; history.replaceState(null, "", `#${k}`); osvjezi(); } }, t)),
       h("button", { type: "button", class: "z-kartica", title: "Otvara se u novoj kartici, s trenutnim (i nespremljenim) izmjenama", onclick: dijeteRjesava }, "Dijete rješava ↗"),
       h("span", { class: "z-razmak" }),
@@ -818,6 +816,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       stanjeEl, spremiGumb,
     );
     if (pogled === "uredi") zamijeni(tijelo, h("div", { class: "z-raspored" }, uredi(), ploca()));
+    // Okvir: lijevo prava stranica (kao Ispis), desno izbor sa sličicama; svi kutovi su stalno otvoreni.
+    else if (pogled === "okvir") zamijeni(tijelo, h("div", { class: "z-okvir-pogled" }, ispis(), okvirPloca()));
     else zamijeni(tijelo, ispis());
   }
   osvjezi();
