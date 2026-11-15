@@ -172,6 +172,14 @@ export async function zaListic(): Promise<{ glasovi: { id: number; oznaka: strin
   };
 }
 
+/** Pojave glasova po riječi (`rijec_glas`): id riječi → [id glasa, pozicija][]. Za birač slika „po glasovima”. */
+export async function glasoviRijeci(): Promise<Record<number, [number, string][]>> {
+  const r = await DB().prepare("SELECT rijec_id, glas_id, pozicija FROM rijec_glas").all<{ rijec_id: number; glas_id: number; pozicija: string }>();
+  const out: Record<number, [number, string][]> = {};
+  for (const x of r.results) (out[x.rijec_id] ??= []).push([x.glas_id, x.pozicija]);
+  return out;
+}
+
 /** Logopedski mod korisnika (/admin/postavke); korisnik kojeg još nema u bazi dobiva zadano (uključeno). */
 export async function logopedskiMod(email: string): Promise<boolean> {
   const r = await DB().prepare("SELECT logopedski_mod FROM korisnici WHERE email = ?").bind(email.toLowerCase()).first<{ logopedski_mod: number }>();

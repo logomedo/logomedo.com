@@ -56,10 +56,15 @@ export function rasporedListica(n: number, raspored: RasporedListica | undefined
   }
   return naj;
 }
-export interface Odabir { odnos: Odnos; stavke: { zadana: Id; ponudeno: Id[]; tocno: number }[] }
+/**
+ * Glasovi odabrani pri izradi (predložak „po glasovima”): editor ih nudi prve pri biranju slike i po njima
+ * slaže „Složi automatski”. `glasovi` su id-jevi glasova, `oznake` njihova slova (za natpis), `bez` isključeni glasovi.
+ */
+export interface GlasoviZadatka { glasovi: number[]; oznake: string[]; pozicija: string; bez: string[] }
+export interface Odabir { odnos: Odnos; po_glasovima?: GlasoviZadatka; stavke: { zadana: Id; ponudeno: Id[]; tocno: number }[] }
 /** `desno_redoslijed[k]` = indeks para čija je desna slika na k-tom mjestu desnog stupca. */
-export interface Povezivanje { odnos: Odnos; parovi: { lijevo: Id; desno: Id }[]; desno_redoslijed: number[] }
-export interface Uljez { odnos: Odnos; stavke: { slike: Id[]; uljez: number }[] }
+export interface Povezivanje { odnos: Odnos; po_glasovima?: GlasoviZadatka; parovi: { lijevo: Id; desno: Id }[]; desno_redoslijed: number[] }
+export interface Uljez { odnos: Odnos; po_glasovima?: GlasoviZadatka; stavke: { slike: Id[]; uljez: number }[] }
 /**
  * Scena: pozadina situacije (uspravna i/ili vodoravna slika), pitanje je `uputa` zadatka, a
  * gumbi su slike iz kataloga. Dijete bira sve s `tocno: true`; ostali su ometači.
@@ -302,6 +307,18 @@ const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, u
 const ind = (x: unknown, n: number) => (Number.isInteger(x) && (x as number) >= 0 && (x as number) < n ? (x as number) : 0);
 const tocnoN = <T>(a: T[], n: number, f: () => T) => [...a.slice(0, n), ...Array.from({ length: Math.max(0, n - a.length) }, f)];
 
+const POZICIJE_GLASA = ["", "inicijalna", "medijalna", "finalna", "skupina"];
+/** Odabrani glasovi zadatka, ili ništa (nema ih ili su neispravni). */
+function glasoviZadatka(x: unknown): { po_glasovima?: GlasoviZadatka } {
+  const o = obj(x);
+  const glasovi = niz(o.glasovi, 40, (g) => Number(g)).filter((g) => Number.isInteger(g) && g > 0);
+  const oznake = niz(o.oznake, 40, (g) => String(g).slice(0, 4));
+  const bez = niz(o.bez, 40, (g) => String(g)).filter((g) => ABECEDA.includes(g));
+  if (!glasovi.length && !bez.length) return {};
+  const pozicija = POZICIJE_GLASA.includes(String(o.pozicija)) && glasovi.length ? String(o.pozicija) : "";
+  return { po_glasovima: { glasovi, oznake: oznake.length === glasovi.length ? oznake : glasovi.map(String), pozicija, bez } };
+}
+
 /** Iz bilo čega napravi ispravan sadržaj vrste; nepoznato odbacuje. */
 export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
   const o = obj(ulaz);
@@ -310,7 +327,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
       return { kartice: niz(o.kartice, MAX_KARTICA_LISTICA, (k) => ({ rijec_id: id(obj(k).rijec_id), tekst: String(obj(k).tekst ?? "").slice(0, 200) })), raspored: o.raspored === "auto" ? "auto" : mrezaListica(String(o.raspored)) ? (String(o.raspored) as RasporedListica) : "3x4" };
     case "odabir":
       return {
-        odnos: odnosOd(o),
+        odnos: odnosOd(o), ...glasoviZadatka(o.po_glasovima),
         stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
           return { zadana: id(x.zadana), ponudeno: tocnoN(niz(x.ponudeno, PONUDENIH, id), PONUDENIH, () => null), tocno: ind(x.tocno, PONUDENIH) };
@@ -320,11 +337,11 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
       const parovi = niz(o.parovi, 8, (p) => ({ lijevo: id(obj(p).lijevo), desno: id(obj(p).desno) }));
       const r = niz(o.desno_redoslijed, 8, (x) => Number(x));
       const ok = r.length === parovi.length && [...r].sort((a, b) => a - b).every((x, i) => x === i);
-      return { odnos: odnosOd(o), parovi, desno_redoslijed: ok ? r : parovi.map((_, i) => i) };
+      return { odnos: odnosOd(o), ...glasoviZadatka(o.po_glasovima), parovi, desno_redoslijed: ok ? r : parovi.map((_, i) => i) };
     }
     case "uljez":
       return {
-        odnos: odnosOd(o),
+        odnos: odnosOd(o), ...glasoviZadatka(o.po_glasovima),
         stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
           return { slike: tocnoN(niz(x.slike, U_REDU, id), U_REDU, () => null), uljez: ind(x.uljez, U_REDU) };

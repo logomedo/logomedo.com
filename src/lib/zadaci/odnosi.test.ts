@@ -79,3 +79,10 @@ test("poCiljevima: glas bez skupine se preskače, ostali idu u krug", () => {
   const r = poCiljevima(sk, ["s", "l", "ž"].map((c) => (x: string) => x.startsWith(c)), 4);
   assert.deepEqual(r.map((x) => x.cilj), [0, 1, 0]);
 });
+
+test("odabrani glasovi ostaju u sadržaju (editor ih nudi pri biranju slike)", () => {
+  const pg = { glasovi: [3, 5], oznake: ["S", "Z"], pozicija: "inicijalna", bez: ["R"] };
+  assert.deepEqual((normaliziraj("povezivanje", { odnos: "rima", po_glasovima: pg, parovi: [] }) as Povezivanje).po_glasovima, pg);
+  assert.equal((normaliziraj("uljez", { po_glasovima: { glasovi: [], bez: [] }, stavke: [] }) as Uljez).po_glasovima, undefined);
+  assert.equal((normaliziraj("odabir", { po_glasovima: { glasovi: [3], oznake: ["S"], pozicija: "svugdje", bez: [] }, stavke: [] }) as Odabir).po_glasovima?.pozicija, "");
+});

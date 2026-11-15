@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { korisnikId, logopedskiMod, stvori, sveRijeci, zaListic } from "../../../../lib/zadaci/baza";
 import { brojSlika, ciljeviGlasova, izaberi, jePoGlasovima, moguce, naslovListica, odgovara, POZICIJE_LISTICA, rasporedOdnosa, redovaZaGlasove, RIMA_MAX_SLOGOVA } from "../../../../lib/zadaci/listic-glas";
 import { jeOdnos } from "../../../../lib/zadaci/odnosi";
-import { ABECEDA, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type Sadrzaj } from "../../../../lib/zadaci/vrste";
+import { ABECEDA, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type Odabir, type Sadrzaj } from "../../../../lib/zadaci/vrste";
 
 const kartica = (r: { id: number; rijec: string }) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") });
 
@@ -53,6 +53,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
         if (!rasporedOdnosa(vrsta, k.rijeci, filtar, jeOdnos(nacin) ? nacin : "rima").redova) return prazno();
         const ciljevi = ciljeviGlasova(filtar).map((c) => (r: { id: number }) => c(saSlikom.get(r.id)!));
         sadrzaj = slozi(vrsta, rijeci, glasovi.length ? { ...zadano, stavki: redovaZaGlasove(vrsta, glasovi.length), ciljevi } : zadano);
+        // Editor pamti odabir: birač slika nudi prvo riječi s tim glasovima, „Složi” slaže po njima.
+        (sadrzaj as Odabir).po_glasovima = { glasovi, oznake, pozicija: filtar.pozicija, bez };
       }
       naslov = naslovListica(oznake, filtar.pozicija, bez);
     }

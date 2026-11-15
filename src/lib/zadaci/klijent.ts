@@ -5,13 +5,14 @@
 // Sve se crta iz `stanje`; svaka promjena zove `osvjezi()`.
 
 import { brojSlogova, izvediRimu } from "./rima.ts";
+import { ciljeviGlasova, naslovListica, odgovara, redovaZaGlasove, type RijecGlasova, type VrstaOdnosa } from "./listic-glas.ts";
 import { jeZadanaUputa, ODNOSI, ODNOSI_POPIS, oznakaKljuca, uOdnosu, type Odnos } from "./odnosi.ts";
 import {
   odnosOd, provjeri, rijeciU, zadanaUputa, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   BOJE_DULJINE, DUGA_OD, izbroji, jedinica, krugovaZa, KRUGOVA_MIN, KRUGOVA_MAX, SLOGOVA_MAX, SLOGOVI_SLIKA_MAX, UPUTE_SLOGOVA, jeDuga, slozSlogove, type NacinSlogova, type Slogovi,
   LISTIC_PO_STRANICI, MREZA_MAX, MREZE_LISTICA, mrezaListica, poStraniciListica, rasporedListica, type RasporedListica,
   ABECEDA, BOJE_KOLA, jednaRijec, SLIKA_MIN, SLIKA_MAX, prviGlas, slozKrug, tocneSlike, type Krug, type PrviGlas,
-  type Izmjena, type Listic, type Odabir, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta, zaGenerator,
+  type GlasoviZadatka, type Izmjena, type Listic, type Odabir, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta, zaGenerator,
 } from "./vrste.ts";
 import { usporediZnakove } from "../znakovi.ts";
 import { slikaZa, vidljiviGumbi, type PozadinaPrikaz } from "../scena-prikaz.ts";
@@ -21,6 +22,8 @@ export interface Podaci {
   zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; stil: string; sadrzaj: Sadrzaj; okvir: Okvir };
 
   rijeci: RijecZadatka[];
+  /** Samo kad je zadatak složen po glasovima: id riječi → [id glasa, pozicija][]. */
+  glasoviRijeci?: Record<number, [number, string][]>;
   podrucja: { id: number; naziv: string }[];
   stilovi: { kod: string; naziv: string }[];
   /** Samo za vrstu `scena`: sve pozadine za izbor. */
@@ -60,7 +63,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   if (!["uredi", "okvir", "ispis"].includes(pogled)) pogled = "uredi";
   let promijenjeno = false;
   let sRijecima = false;
-  const postavke = { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : 4, maxSlogova: 3, samoSaSlikom: false };
+  const glasovaZadatka = VRSTE[vrsta].odnos ? (sadrzaj as Odabir).po_glasovima?.glasovi.length ?? 0 : 0;
+  const postavke = { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : glasovaZadatka ? redovaZaGlasove(vrsta as VrstaOdnosa, glasovaZadatka) : 4, maxSlogova: 3, samoSaSlikom: false };
 
   /** Slike svih riječi u stilu zadatka (riječ bez slike u njemu uzima drugi stil). */
   function postaviStil(kod: string) {
@@ -71,6 +75,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   /** Odnos uparivanja, povezivanja i uljeza (rima, isti prvi glas…); ostale vrste prikazuju rimu. */
   const odnos = (): Odnos => (VRSTE[vrsta].odnos ? odnosOd(sadrzaj) : "rima");
   const oznakaRijeci = (r: RijecZadatka) => oznakaKljuca(odnos(), r);
+  /** Glasovi odabrani pri izradi (predložak po glasovima), ako ih zadatak ima. */
+  const poGlasovima = (): GlasoviZadatka | undefined => (VRSTE[vrsta].odnos ? (sadrzaj as Odabir).po_glasovima : undefined);
+  const sGlasovima = (r: RijecZadatka): RijecGlasova => ({ id: r.id, rijec: r.rijec, rima: r.rima, g: p.glasoviRijeci?.[r.id] ?? [] });
   const naslovStranice = document.title;
   /** Stanje spremanja vidljivo u svim pogledima (i na Ispisu, gdje se preuzima PDF). */
   function stanjeSpremanja() {
@@ -110,6 +117,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const KORAK = 120;
     let koliko = KORAK; // „Učitaj još” povećava; nova pretraga ili filtar vraća na prvih KORAK
     const u = R(uzor);
+    // Po glasovima zadatka: uključeno kad slika nema uzora (zadana, lijeva, prva u uljezu); uz uzor vrijedi odnos.
+    const pg = poGlasovima();
+    let poGlasu = !!pg && !u;
     const trazi = h("input", { type: "text", placeholder: "Traži riječ ili rimu (npr. -ava)…", autofocus: true });
     const lista = h("div", { class: "z-lista" });
     const filtri = h("div", { class: "z-filtri" });
@@ -122,6 +132,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         ...(u && !znakovi ? ([["sve", "Sve"], ["rima", ODNOSI[odnos()].filtarDa(VELIKO(u.rijec))], ["ne-rima", ODNOSI[odnos()].filtarNe(VELIKO(u.rijec))]] as const).map(([k, t]) =>
           h("button", { type: "button", class: `z-cip${filtar === k ? " on" : ""}`, onclick: () => { filtar = k; koliko = KORAK; crtaj(); } }, t)) : []),
         znakovi ? null : h("button", { type: "button", class: `z-cip${samoSlika ? " on" : ""}`, onclick: () => { samoSlika = !samoSlika; koliko = KORAK; crtaj(); } }, "Samo sa slikom"),
+        pg && !znakovi ? h("button", { type: "button", class: `z-cip${poGlasu ? " on" : ""}`, onclick: () => { poGlasu = !poGlasu; koliko = KORAK; crtaj(); } }, naslovListica(pg.oznake, pg.pozicija, pg.bez)) : null,
       );
       if (znakovi) {
         // Znak se traži točno (b nije B), a mreža ide redom: velika, mala, brojke.
@@ -137,6 +148,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const svi = p.rijeci.filter((r) => !r.znak && (!samoJedne || jednaRijec(r.rijec)) &&
         (!q || (rima ? r.rima?.endsWith(rima) : r.rijec.toLocaleLowerCase("hr").includes(q))) &&
         (!samoSlika || r.slika) &&
+        (!poGlasu || odgovara(sGlasovima(r), pg!)) &&
         (!u || filtar === "sve" || (filtar === "rima" ? uOdnosu(odnos(), u, r) : !uOdnosu(odnos(), u, r) && r.id !== u.id)));
       const pozicija = lista.scrollTop;
       zamijeni(lista, 
@@ -806,7 +818,15 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("button", { type: "button", class: "gumb", onclick: () => {
           if (rijeciU(vrsta, sadrzaj).length && !confirm("Zamijeniti sadržaj novim prijedlogom?")) return;
           const prije = sadrzaj;
-          sadrzaj = vrsta === "slogovi" ? slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), postavke.stavki, (prije as Slogovi).krugova) : slozi(vrsta, zaGenerator(p.rijeci), { ...postavke, nacin: VRSTE[vrsta].odnos ? odnosOd(prije) : undefined });
+          const pg = poGlasovima();
+          if (vrsta === "slogovi") sadrzaj = slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), postavke.stavki, (prije as Slogovi).krugova);
+          else if (pg) {
+            // Po glasovima zadatka: bez isključenih glasova, red po red redom po odabranim glasovima.
+            const ciljevi = ciljeviGlasova(pg).map((c) => (r: RijecZadatka) => c(sGlasovima(r)));
+            const izvor = zaGenerator(p.rijeci).filter((r) => odgovara(sGlasovima(r), { glasovi: [], pozicija: "", bez: pg.bez }));
+            sadrzaj = slozi(vrsta, izvor, { ...postavke, nacin: odnosOd(prije), ciljevi: ciljevi.length ? ciljevi : undefined });
+            (sadrzaj as Odabir).po_glasovima = pg;
+          } else sadrzaj = slozi(vrsta, zaGenerator(p.rijeci), { ...postavke, nacin: VRSTE[vrsta].odnos ? odnosOd(prije) : undefined });
           // Prvi glas zadržava odabir slova na kolu; slova krugova biraju se samo s kola.
           if (vrsta === "prvi_glas") {
             const kolo = (prije as PrviGlas).kolo, s = sadrzaj as PrviGlas;

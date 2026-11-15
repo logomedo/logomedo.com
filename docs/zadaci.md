@@ -201,6 +201,12 @@ odnosa otvara dijalog glasova s tim odnosom, a zasebnog „Po glasovima…” na
 poslužitelju); najmanje 4 (jedan glas daje 4 reda tog glasa), povezivanje do 8 parova. Prije je uvijek bilo 4
 reda iz bilo kojeg odabranog glasa, pa je za 6 glasova davalo „4 para od 6 mogućih”.
 
+Odabir se sprema u sadržaj (`po_glasovima: { glasovi, oznake, pozicija, bez }`, samo za zadatke složene po
+glasovima). Editor tada pri biranju slike bez uzora (zadana, lijeva, nova u uljezu) uključi filtar tih glasova
+(gumb „Glasovi S, Z – inicijalna pozicija”, može se isključiti; uz uzor vrijedi filtar odnosa), a „Složi
+automatski” slaže po njima. Pojave glasova editor dobiva iz `rijec_glas` (`glasoviRijeci()` u `baza.ts`).
+Zadaci složeni prije 15. 11. 2026. navečer to polje nemaju.
+
 Sljedeće (traženo 15. 11.): odnosi po značenju (koja životinja što jede, suprotnosti). Oni nemaju ključ iz pisanja, nego
 trebaju parove u katalogu (nova tablica parova riječi), pa ih `uOdnosu` neće računati iz ključa.
 
