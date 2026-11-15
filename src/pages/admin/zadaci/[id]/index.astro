@@ -275,6 +275,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-okvir-sazetak-red { display: flex; align-items: center; gap: 12px; }
   .z-okvir-sazetak-red .z-mini { width: 54px; flex: none; }
   .z-greska-tekst { color: var(--greska); }
+  .z-zoom { display: inline-flex; gap: 4px; align-items: center; }
+  .z-zoom-posto { min-width: 92px; font-variant-numeric: tabular-nums; }
+  .z-okvir-pogled > .a4-okvir { min-width: 0; padding: 16px; }
   .z-plocice.stranice, .z-plocice.rubovi { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
   .z-plocice.stranice .z-mini, .z-plocice.rubovi .z-mini { width: 70%; }
   .z-plocice.ukrasi { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); margin-top: 4px; }

@@ -804,6 +804,21 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     dodaj(globalThis.document.body, f); f.submit(); f.remove();
   }
 
+  // ---------- Zoom lista (Okvir, Ispis) ----------
+  // null = „stane”: list (210 mm ≈ 794 px) se smanji na širinu svog stupca; inače zadano mjerilo.
+  let mjerilo: number | null = null, trenutno = 1;
+  const zoomTekst = h("span", {}, "Stane");
+  function primijeniMjerilo() {
+    const okvirEl = tijelo.querySelector<HTMLElement>(".a4-okvir");
+    if (!okvirEl) return;
+    const stane = Math.min(1, (okvirEl.clientWidth - 56) / 794);
+    trenutno = mjerilo ?? Math.max(0.25, stane);
+    okvirEl.querySelectorAll<HTMLElement>(".a4").forEach((a) => (a.style.zoom = String(trenutno)));
+    zoomTekst.textContent = `${mjerilo === null ? "Stane · " : ""}${Math.round(trenutno * 100)} %`;
+  }
+  function zoom(d: number) { mjerilo = Math.min(2, Math.max(0.25, Math.round((trenutno + d) * 10) / 10)); primijeniMjerilo(); }
+  addEventListener("resize", () => { if (pogled !== "uredi") primijeniMjerilo(); });
+
   function osvjezi() {
     zamijeni(kartice, 
       ...([["uredi", "Uredi"], ["okvir", "Okvir"], ["ispis", "Ispis"]] as const).map(([k, t]) =>
@@ -811,6 +826,10 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       h("button", { type: "button", class: "z-kartica", title: "Otvara se u novoj kartici, s trenutnim (i nespremljenim) izmjenama", onclick: dijeteRjesava }, "Dijete rješava ↗"),
       h("span", { class: "z-razmak" }),
       pogled !== "uredi" ? h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: sRijecima, onchange: (e: Event) => { sRijecima = (e.target as HTMLInputElement).checked; osvjezi(); } }), " Riječi ispod slika") : null,
+      pogled !== "uredi" ? h("span", { class: "z-zoom", role: "group", "aria-label": "Veličina lista" },
+        h("button", { type: "button", class: "gumb mali", title: "Smanji list", onclick: () => zoom(-0.1) }, "−"),
+        h("button", { type: "button", class: "gumb mali z-zoom-posto", title: "Klikni: list stane u širinu", onclick: () => { mjerilo = null; primijeniMjerilo(); } }, zoomTekst),
+        h("button", { type: "button", class: "gumb mali", title: "Povećaj list", onclick: () => zoom(0.1) }, "+")) : null,
       pogled === "ispis" ? h("button", { type: "button", class: "gumb glavni mali", onclick: preuzmiPdf }, "Preuzmi PDF") : null,
       pogled !== "uredi" ? h("button", { type: "button", class: "gumb mali", onclick: () => document.documentElement.requestFullscreen?.() }, "Cijeli zaslon") : null,
       stanjeEl, spremiGumb,
@@ -818,6 +837,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     if (pogled === "uredi") zamijeni(tijelo, h("div", { class: "z-raspored" }, uredi(), ploca()));
     // Okvir: lijevo prava stranica (kao Ispis), desno izbor sa sličicama; svi kutovi su stalno otvoreni.
     else if (pogled === "okvir") zamijeni(tijelo, h("div", { class: "z-okvir-pogled" }, ispis(), okvirPloca()));
+    if (pogled !== "uredi") requestAnimationFrame(primijeniMjerilo);
     else zamijeni(tijelo, ispis());
   }
   osvjezi();
