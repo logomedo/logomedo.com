@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { kljuc, oznakaKljuca, prviSlog, uOdnosu } from "./odnosi.ts";
+import { kljuc, oznakaKljuca, poCiljevima, prviSlog, uOdnosu } from "./odnosi.ts";
 import { normaliziraj, provjeri, slozi, zadanaUputa, type Odabir, type Povezivanje, type RijecZadatka, type Uljez } from "./vrste.ts";
 import { brojSlogova, izvediRimu } from "./rima.ts";
 
@@ -62,4 +62,20 @@ test("uputa i provjera prate odnos; nepoznat odnos je rima", () => {
   assert.ok(u.some((p) => p.includes("dva točna odgovora")));
   assert.equal((normaliziraj("odabir", { odnos: "smeće", stavke: [] }) as Odabir).odnos, "rima");
   assert.equal((normaliziraj("uljez", { odnos: "zavrsni_glas", stavke: [] }) as Uljez).odnos, "zavrsni_glas");
+});
+
+test("po glasovima: jedan red (par) za svaki glas, redom kojim su glasovi odabrani", () => {
+  const prvi = (sl: string) => (x: RijecZadatka) => x.rijec.toLocaleUpperCase("hr").startsWith(sl);
+  const ciljevi = ["S", "L", "P"].map(prvi);
+  const p = slozi("povezivanje", R, { stavki: 3, nacin: "pocetni_glas", ciljevi }, rnd) as Povezivanje;
+  assert.deepEqual(p.parovi.map((x) => M.get(x.lijevo!)!.rijec[0].toUpperCase()), ["S", "L", "P"]);
+  assert.deepEqual(provjeri("povezivanje", p, M).filter((u) => u.gdje !== "zadatak"), []);
+  const o = slozi("odabir", R, { stavki: 4, nacin: "rima", ciljevi: [prvi("M")] }, rnd) as Odabir;
+  assert.ok(o.stavke.every((x) => M.get(x.zadana!)!.rijec.startsWith("m")));
+});
+
+test("poCiljevima: glas bez skupine se preskače, ostali idu u krug", () => {
+  const sk = [["sa", "so"], ["la", "lo"], ["si", "su"]];
+  const r = poCiljevima(sk, ["s", "l", "ž"].map((c) => (x: string) => x.startsWith(c)), 4);
+  assert.deepEqual(r.map((x) => x.cilj), [0, 1, 0]);
 });

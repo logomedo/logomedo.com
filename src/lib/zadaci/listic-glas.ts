@@ -2,7 +2,8 @@
 // poslužitelju (slaganje), pa broj na gumbu odgovara listiću.
 import { fonemi } from "../fonemi.ts";
 import { brojSlogova } from "./rima.ts";
-import { kljuc, type Odnos } from "./odnosi.ts";
+import { kljuc, poCiljevima, type Odnos } from "./odnosi.ts";
+import { MAX_PAROVA, MAX_REDOVA } from "./vrste.ts";
 
 /** Riječ sa slikom i pojavama glasova iz kataloga (`rijec_glas`: id glasa, pozicija). */
 export interface RijecGlasova { id: number; rijec: string; rima?: string | null; g: [number, string][] }
@@ -74,6 +75,29 @@ export function moguce(vrsta: Exclude<VrstaPoGlasovima, "prvi_glas">, rijeci: Ri
   for (const r of sve) skupine.set(K(r)!, [...(skupine.get(K(r)!) ?? []), r]);
   const najmanje = vrsta === "uljez" ? 3 : 2;
   return [...skupine.values()].filter((g) => g.length >= najmanje && g.some((r) => odgovara(r, f))).length;
+}
+
+export type VrstaOdnosa = "odabir" | "povezivanje" | "uljez";
+/** Koliko redova (parova) po glasovima: po jedan za svaki odabrani glas, a barem 4 (s jednim glasom 4 reda tog glasa). */
+export const redovaZaGlasove = (vrsta: VrstaOdnosa, glasova: number) =>
+  Math.min(Math.max(glasova, 4), vrsta === "povezivanje" ? MAX_PAROVA : MAX_REDOVA);
+
+/** Uvjet „riječ ima ovaj glas na poziciji” za svaki odabrani glas (redom kojim su odabrani). */
+export const ciljeviGlasova = (f: FiltarListica) =>
+  f.glasovi.map((g) => (r: RijecGlasova) => odgovara(r, { glasovi: [g], pozicija: f.pozicija, bez: [] }));
+
+/**
+ * Uparivanje, povezivanje, uljez po glasovima: koliko redova će biti i koji odabrani glasovi nemaju nijedan
+ * (nema skupine odnosa s tim glasom). Bez odabranih glasova: 4 nasumične skupine.
+ */
+export function rasporedOdnosa(vrsta: VrstaOdnosa, rijeci: RijecGlasova[], f: FiltarListica, odnos: Odnos): { redova: number; mogucih: number; prazni: number[] } {
+  const K = (r: RijecGlasova) => kljuc(odnos, r);
+  const skupine = new Map<string, RijecGlasova[]>();
+  for (const r of rijeci) if (K(r) && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez })) skupine.set(K(r)!, [...(skupine.get(K(r)!) ?? []), r]);
+  const velike = [...skupine.values()].filter((g) => g.length >= (vrsta === "uljez" ? 3 : 2));
+  if (!f.glasovi.length) return { redova: Math.min(velike.length, 4), mogucih: velike.length, prazni: [] };
+  const r = poCiljevima(velike, ciljeviGlasova(f), redovaZaGlasove(vrsta, f.glasovi.length));
+  return { redova: r.length, mogucih: r.length, prazni: f.glasovi.filter((_, i) => !r.some((x) => x.cilj === i)) };
 }
 
 /** Prvi glas: koliko riječi počinje svakim slovom (slova kao u abecedi kola: LJ, DŽ…). */

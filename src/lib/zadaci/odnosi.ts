@@ -104,5 +104,25 @@ export const ODNOSI: Record<Odnos, {
   },
 };
 
+/**
+ * Skupine po odabranim glasovima: redom kroz glasove (C, S, Z, C, S, Z…), svakom glasu prva neiskorištena skupina
+ * u kojoj je riječ s tim glasom, dok ne bude `n` skupina ili nijedan glas više nema novu. `cilj` je indeks glasa.
+ * Istim pravilom broji dijalog „Po glasovima…” i slaže poslužitelj (on skupine prije izmiješa).
+ */
+export function poCiljevima<T>(skupine: T[][], ciljevi: ((r: T) => boolean)[], n: number): { skupina: T[]; cilj: number }[] {
+  const out: { skupina: T[]; cilj: number }[] = [];
+  const uzete = new Set<number>();
+  while (out.length < n) {
+    let dodano = false;
+    for (let c = 0; c < ciljevi.length && out.length < n; c++) {
+      const i = skupine.findIndex((g, j) => !uzete.has(j) && g.some(ciljevi[c]));
+      if (i < 0) continue;
+      uzete.add(i); out.push({ skupina: skupine[i], cilj: c }); dodano = true;
+    }
+    if (!dodano) break;
+  }
+  return out;
+}
+
 /** Je li uputa jedna od zadanih (pa je smije zamijeniti promjena odnosa). */
 export const jeZadanaUputa = (t: string) => !t.trim() || ODNOSI_POPIS.some((o) => Object.values(ODNOSI[o].uputa).includes(t));

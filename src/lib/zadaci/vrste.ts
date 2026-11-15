@@ -5,7 +5,7 @@
 // Čisti TS: koriste ga API (provjera ulaza), editor i prikaz u pregledniku te testovi.
 
 import { brojGlasova, brojSlogova } from "./rima.ts";
-import { jeOdnos, kljuc, ODNOSI, uOdnosu, type Odnos } from "./odnosi.ts";
+import { jeOdnos, kljuc, ODNOSI, poCiljevima, uOdnosu, type Odnos } from "./odnosi.ts";
 import { fonemi } from "../fonemi.ts";
 import { prikazRijeci } from "../znakovi.ts";
 
@@ -573,7 +573,13 @@ export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: nu
  * Po glasovima (logopedski mod): `cilj` je riječ s odabranim glasom. Prebrajanje uzima samo njih; kod rime
  * skupina mora imati takvu riječ i ona je zadana (lijeva) slika, ostale su slobodne. `slova` su krugovi prvog glasa.
  */
-export interface Postavke { stavki: number; maxSlogova?: number; samoSaSlikom?: boolean; nacin?: string; cilj?: (r: RijecZadatka) => boolean; slova?: string[] }
+export interface Postavke {
+  stavki: number; maxSlogova?: number; samoSaSlikom?: boolean; nacin?: string; cilj?: (r: RijecZadatka) => boolean; slova?: string[];
+  /** Uparivanje, povezivanje, uljez po glasovima: jedan uvjet po odabranom glasu; redovi idu redom po glasovima (`poCiljevima`). */
+  ciljevi?: ((r: RijecZadatka) => boolean)[];
+}
+/** Povezivanje po glasovima: do 8 parova (koliko editor dopušta), inače generator slaže do 6. */
+export const MAX_PAROVA = 8;
 
 function promijesaj<T>(a: T[], rnd: () => number): T[] {
   const b = [...a];
@@ -592,7 +598,16 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   // Riječi skupine s glasom prve (zadana, lijeva), redom kako su izmiješane.
   const ciljPrvi = (g: RijecZadatka[]) => (cilj ? [...g.filter(cilj), ...g.filter((r) => !cilj(r))] : g);
   const izvan = (k: string, n: number) => promijesaj(dobre.filter((r) => K(r) !== k), rnd).slice(0, n);
-  const n = Math.max(1, Math.min(p.stavki, 12));
+  const n = Math.max(1, Math.min(p.stavki, p.ciljevi?.length ? MAX_REDOVA : 12));
+  // Skupine za redove: po odabranim glasovima (zadana slika ima glas tog reda) ili nasumične.
+  const izbor = (min: number, koliko: number): [string, RijecZadatka[]][] => {
+    const c = p.ciljevi;
+    if (!c?.length) return vecih(min).slice(0, koliko).map(([k, g]) => [k, ciljPrvi(promijesaj(g, rnd))]);
+    return poCiljevima(vecih(min).map(([, g]) => g), c, koliko).map(({ skupina, cilj }) => {
+      const g = promijesaj(skupina, rnd);
+      return [K(g[0])!, [...g.filter(c[cilj]), ...g.filter((r) => !c[cilj](r))]];
+    });
+  };
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
   if (v === "slogovi") return slozSlogove(NACINI_SLOGOVA.includes(p.nacin as NacinSlogova) ? (p.nacin as NacinSlogova) : "duljina", cilj ? rijeci.filter(cilj) : rijeci, p.stavki, 4, rnd);
@@ -616,22 +631,22 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     return { kartice: promijesaj(dobre, rnd).slice(0, Math.max(1, Math.min(p.stavki, 12))).map((r) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") })), raspored: "auto" };
   }
   if (v === "odabir") {
-    const stavke = vecih(2).slice(0, n).map(([rima, g]) => {
-      const [zadana, tocan] = ciljPrvi(promijesaj(g, rnd));
+    const stavke = izbor(2, n).map(([rima, g]) => {
+      const [zadana, tocan] = g;
       const ponudeno = promijesaj([tocan, ...izvan(rima, PONUDENIH - 1)], rnd);
       return { zadana: zadana.id, ponudeno: ponudeno.map((r) => r.id), tocno: ponudeno.indexOf(tocan) };
     });
     return { odnos, stavke };
   }
   if (v === "povezivanje") {
-    const parovi = vecih(2).slice(0, Math.min(n, 6)).map(([, g]) => { const [a, b] = ciljPrvi(promijesaj(g, rnd)); return { lijevo: a.id, desno: b.id }; });
+    const parovi = izbor(2, Math.min(n, p.ciljevi?.length ? MAX_PAROVA : 6)).map(([, [a, b]]) => ({ lijevo: a.id, desno: b.id }));
     let red = promijesaj(parovi.map((_, i) => i), rnd);
     // Desni stupac ne smije biti u istom redoslijedu kao lijevi.
     if (red.length > 1 && red.every((x, i) => x === i)) red = [...red.slice(1), red[0]];
     return { odnos, parovi, desno_redoslijed: red };
   }
-  const stavke = vecih(3).slice(0, n).map(([rima, g]) => {
-    const tri = ciljPrvi(promijesaj(g, rnd)).slice(0, 3);
+  const stavke = izbor(3, n).map(([rima, g]) => {
+    const tri = g.slice(0, 3);
     const uljez = izvan(rima, 1)[0];
     const slike = promijesaj([...tri, uljez], rnd);
     return { slike: slike.map((r) => r.id), uljez: slike.indexOf(uljez) };

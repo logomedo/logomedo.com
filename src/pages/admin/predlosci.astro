@@ -68,9 +68,12 @@ const shema: Record<Vrsta, string> = {
               <p>{v.opis}</p>
             </div>
             <div class="gumbi">
-              {gumbi[kod].map((g) => <button class="gumb glavni mali" type="submit" name={g.nacin ? "nacin" : undefined} value={g.nacin}
-                data-podrucje-gumba={VRSTE[kod].odnos && g.nacin ? idPodrucjaOdnosa(g.nacin) : undefined}>{g.tekst}</button>)}
-              {mod && jePoGlasovima(kod) && <button class="gumb mali" type="button" data-po-glasovima={kod} data-podrucje={podrucjeVrste(kod)?.id ?? ""} data-naslov={naslovDijaloga[kod]}>Po glasovima…</button>}
+              {gumbi[kod].map((g) => mod && VRSTE[kod].odnos
+                // Logopedski mod: odnos otvara izbor glasova (bez odabira glasa složi se iz cijelog kataloga).
+                ? <button class="gumb glavni mali" type="button" data-po-glasovima={kod} data-odnos={g.nacin} data-naslov={`${v.naziv}: ${g.tekst.toLocaleLowerCase("hr")}`}>{g.tekst}</button>
+                : <button class="gumb glavni mali" type="submit" name={g.nacin ? "nacin" : undefined} value={g.nacin}
+                  data-podrucje-gumba={VRSTE[kod].odnos && g.nacin ? idPodrucjaOdnosa(g.nacin) : undefined}>{g.tekst}</button>)}
+              {mod && jePoGlasovima(kod) && !VRSTE[kod].odnos && <button class="gumb mali" type="button" data-po-glasovima={kod} data-podrucje={podrucjeVrste(kod)?.id ?? ""} data-naslov={naslovDijaloga[kod]}>Po glasovima…</button>}
             </div>
           </form>
         ))}
@@ -82,7 +85,7 @@ const shema: Record<Vrsta, string> = {
       <input type="hidden" name="podrucje" value="" />
       <input type="hidden" name="po_glasovima" value="1" />
       <h2>Po glasovima</h2>
-      <p class="objasnjenje" data-za="odabir povezivanje uljez">Odnos (rima, isti prvi glas…) ostaje zadatak, a glas određuje zadanu (lijevu) sliku svakog reda. Ostale slike su bilo koje u tom odnosu.</p>
+      <p class="objasnjenje" data-za="odabir povezivanje uljez">Za svaki odabrani glas jedan red (par): zadana (lijeva) slika ima taj glas, ostale su bilo koje u tom odnosu. Bez odabira glasa: 4 nasumična iz cijelog kataloga.</p>
       <p class="objasnjenje" data-za="prvi_glas">Svaki odabrani glas je jedan krug (najviše 6): kolo stane na njemu, a dijete traži slike koje počinju tim glasom.</p>
       <div class="glas">
         <label class="pozicija" data-za="odabir povezivanje uljez">Odnos
@@ -130,7 +133,7 @@ const shema: Record<Vrsta, string> = {
 <script>
   // „Po glasovima…”: isti dijalog za sve predloške koji ga imaju; vidljiva su polja te vrste (`data-za`),
   // a ispod piše koliko će građe biti (isto pravilo kao poslužitelj).
-  import { brojSlika, moguce, naslovListica, odgovara, poPrvomGlasu, type RijecGlasova, type VrstaPoGlasovima } from "../../lib/zadaci/listic-glas";
+  import { brojSlika, moguce, naslovListica, poPrvomGlasu, rasporedOdnosa, type RijecGlasova, type VrstaPoGlasovima } from "../../lib/zadaci/listic-glas";
   import { MAX_KARTICA_LISTICA } from "../../lib/zadaci/vrste";
   import { ODNOSI, type Odnos } from "../../lib/zadaci/odnosi";
   // Gumb odnosa (Isti prvi glas…) šalje i podpodručje tog odnosa.
@@ -179,13 +182,16 @@ const shema: Record<Vrsta, string> = {
         const izbor = forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement;
         const odnos = izbor.value as Odnos;
         polje("podrucje").value = izbor.selectedOptions[0]?.dataset.podrucje ?? "";
-        const n = moguce(vrsta, rijeci, f, odnos), treba = vrsta === "uljez" ? "3 riječi" : "2 riječi";
-        const skupina = ODNOSI[odnos].skupina;
-        const zadatak = vrsta === "povezivanje" ? ["par", "para", "parova"] : ["red", "reda", "redova"];
-        moze = n > 0;
-        tekst = !n ? `${sto}: nema nijedne skupine ${skupina} od ${treba} s tim glasom.`
-          : `${sto}: ${mnozina(Math.min(n, 4), ...(zadatak as [string, string, string]))}`
-            + (n > 4 ? ` od ${n} mogućih.` : n < 4 ? `, više katalog nema (skupina ${skupina} od ${treba} s glasom).` : ".");
+        const { redova, mogucih, prazni } = rasporedOdnosa(vrsta, rijeci, f, odnos);
+        const [jedan, dva, pet] = vrsta === "povezivanje" ? ["par", "para", "parova"] : ["red", "reda", "redova"];
+        const skupina = ODNOSI[odnos].skupina, treba = vrsta === "uljez" ? "3 riječi" : "2 riječi";
+        const bezGlasa = prazni.map((id) => oznake[g.findIndex((x) => Number(x.value) === id)]);
+        moze = redova > 0;
+        tekst = !redova ? `${sto}: nema nijedne skupine ${skupina} od ${treba} s tim glasom.`
+          : !g.length ? `${sto}: ${mnozina(redova, jedan, dva, pet)}${mogucih > redova ? ` od ${mogucih} mogućih` : ""}.`
+          : `${sto}: ${mnozina(redova, jedan, dva, pet)}` + (g.length > 1 && !prazni.length ? (redova === g.length ? ", po jedan za svaki glas" : ", redom po glasovima") : "") + "."
+            + (bezGlasa.length ? ` Za ${bezGlasa.join(", ")} nema skupine ${skupina} od ${treba}.` : "")
+            + (vrsta === "povezivanje" && g.length > 8 ? " Najviše 8 parova." : "");
       }
       ishod.textContent = tekst;
       gumb.disabled = !moze;
@@ -195,6 +201,7 @@ const shema: Record<Vrsta, string> = {
       polje("vrsta").value = vrsta;
       polje("podrucje").value = b.dataset.podrucje ?? "";
       forma.querySelector("h2")!.textContent = b.dataset.naslov ?? "Po glasovima";
+      if (b.dataset.odnos) (forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value = b.dataset.odnos;
       forma.querySelectorAll<HTMLElement>("[data-za]").forEach((el) => {
         const vidi = el.dataset.za!.split(" ").includes(vrsta);
         el.hidden = !vidi;
