@@ -251,6 +251,32 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-okvir label { font-size: .8rem; font-weight: 600; margin-top: 4px; }
   .z-obavijest { margin: 6px 0; padding: 10px 12px; border: 1px solid var(--greska); border-radius: 10px; background: var(--greska-blago); color: var(--tinta); font-size: .86rem; }
   .z-obavijest p { margin: 4px 0 8px; }
+  /* Vizualni izbor okvira: mala stranica (isti SVG kao Ispis), pločice sa sličicama. */
+  .z-mini { display: block; aspect-ratio: 210 / 297; width: 100%; background: #fff; border: 1px solid var(--rub-jak); border-radius: 3px; overflow: hidden; }
+  .z-mini svg { display: block; width: 100%; height: 100%; }
+  .z-okvir-pregled { position: relative; width: 150px; margin: 6px auto 0; }
+  .z-okvir-pregled .z-mini { box-shadow: var(--sjena-2); }
+  .z-kut { position: absolute; width: 26%; aspect-ratio: 1; border: 1.5px dashed transparent; border-radius: 8px; background: none; cursor: pointer;
+    color: var(--blijedo); font-size: 1.1rem; font-weight: 700; display: grid; place-items: center; padding: 0; }
+  .z-kut:hover, .z-kut.on { border-color: var(--med); background: rgb(255 255 255 / .25); }
+  .z-kut.on { border-style: solid; }
+  .z-kut-0 { left: 0; top: 0; } .z-kut-1 { right: 0; top: 0; } .z-kut-2 { left: 0; bottom: 0; } .z-kut-3 { right: 0; bottom: 0; }
+  .z-kut-0, .z-kut-1 { margin-top: -2%; } .z-kut-2, .z-kut-3 { margin-bottom: -2%; }
+  .z-sredina { text-align: center; margin: 2px 0 0; }
+  .z-izbor-kuta { margin-top: 6px; padding: 10px; border: 1px solid var(--med); border-radius: 12px; }
+  .z-izbor-kuta > b { font-size: .8rem; }
+  .z-plocice { display: grid; gap: 6px; }
+  .z-plocice.stranice, .z-plocice.rubovi { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+  .z-plocice.stranice .z-mini, .z-plocice.rubovi .z-mini { width: 70%; }
+  .z-plocice.ukrasi { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); margin-top: 4px; }
+  .z-plocica { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px; border: 1.5px solid var(--rub); border-radius: 10px;
+    background: var(--povrsina); color: var(--tinta); cursor: pointer; font: inherit; font-size: .68rem; line-height: 1.15; text-align: center; min-width: 0; }
+  .z-plocica:hover { border-color: var(--med); }
+  .z-plocica.on { border-color: var(--med); background: var(--med-blago); font-weight: 650; }
+  .z-plocica.ne { opacity: .38; }
+  .z-plocica img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+  .z-plocica span { overflow-wrap: normal; hyphens: manual; }
+  .z-prazno { display: grid; place-items: center; width: 100%; aspect-ratio: 1; font-style: normal; color: var(--blijedo); font-size: 1.2rem; }
   .a4 .z-slika { border: 1.5px solid #000; border-radius: 4mm; background: #fff; }
   .a4 .z-slika .z-bez { color: #5c5345; font-size: calc(12pt * var(--m, 1)); }
   .a4-red { display: flex; align-items: center; gap: 6mm; }

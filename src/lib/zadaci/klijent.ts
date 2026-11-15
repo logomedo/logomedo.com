@@ -14,7 +14,7 @@ import {
 } from "./vrste.ts";
 import { usporediZnakove } from "../znakovi.ts";
 import { slikaZa, vidljiviGumbi, type PozadinaPrikaz } from "../scena-prikaz.ts";
-import { A4 as A4_MM, GOTOVI, imaOkvir, isti, KUTOVI, MASNE, normalizirajOkvir, okvirSvg, podrucje as podrucjeOkvira, RUBOVI, UKRASI, type Kutovi, type Okvir } from "../okviri.ts";
+import { A4 as A4_MM, GOTOVI, imaOkvir, isti, KUTOVI, MASNE, normalizirajOkvir, okvirSvg, podrucje as podrucjeOkvira, RUBOVI, UKRASI, urlUkrasa, type Kutovi, type Okvir } from "../okviri.ts";
 
 export interface Podaci {
   zadatak: { id: number; vrsta: Vrsta; naslov: string; uputa: string | null; podrucje_id: number | null; aktivna_verzija: number; rjesavanja: number; stil: string; sadrzaj: Sadrzaj; okvir: Okvir };
@@ -688,37 +688,60 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   function osvjeziOkvir() { okvirStanje = ocijeniOkvir(okvir); osvjeziPlocu(); if (pogled === "ispis") osvjezi(); }
   ucitajModel().then(() => osvjeziOkvir()).catch(() => {});
 
+  /** Kratki nazivi rubova za pločice (puni su u RUBOVI). */
+  const KRATKO_RUB: Record<Okvir["rub"], string> = { bez: "Bez ruba", "kocke-crvene": "Crvene kockice", "kocke-zelene": "Zelene kockice", "pruge-zelene": "Zelene pruge", "prugice-crvene": "Crvene prugice" };
+  /** Kut kojem se bira ukras (klik na kut u pregledu okvira). */
+  let aktivniKut = -1;
+  /** Mala A4 stranica s okvirom (isti SVG kao Ispis i PDF). */
+  function minijatura(o: Okvir, klasa = "") {
+    const d = h("span", { class: `z-mini ${klasa}`.trim() });
+    d.innerHTML = okvirSvg(o);
+    return d;
+  }
+
   function okvirPloca(): HTMLElement {
     const gotov = GOTOVI.find((g) => isti(g.okvir, okvir))?.kod ?? (imaOkvir(okvir) ? "vlastiti" : "bez");
-    const sel = (vrijednost: string, opcije: [string, string, string?][], na: (v: string) => void, naslov?: string) =>
-      h("select", { title: naslov, onchange: (e: Event) => na((e.target as HTMLSelectElement).value) },
-        ...opcije.map(([k, t, ne]) => h("option", { value: k, selected: k === vrijednost, disabled: !!ne && k !== vrijednost, title: ne }, ne && k !== vrijednost ? `${t} (ne može)` : t)));
-    const ne = (o: Okvir) => (zastoNe(o) ? "ne može" : undefined);
-    const s = (izmjena: Partial<Okvir>) => ({ ...okvir, ...izmjena, kutovi: [...(izmjena.kutovi ?? okvir.kutovi)] as Kutovi });
+    const s = (izmjena: Partial<Okvir>) => normalizirajOkvir({ ...okvir, ...izmjena, kutovi: [...(izmjena.kutovi ?? okvir.kutovi)] });
+    /** Pločica izbora: sličica + naziv. Nedopušten izbor je blijed, a klik pokaže zašto (postaviOkvir). */
+    const plocica = (o: Okvir, sadrzaj: Node, naziv: string, odabrano: boolean, klasa = "") => {
+      const zasto = odabrano ? "" : zastoNe(o);
+      return h("button", { type: "button", class: `z-plocica ${klasa}${odabrano ? " on" : ""}${zasto ? " ne" : ""}`, title: zasto ? `${naziv}: ne može (klikni za razlog)` : naziv,
+        "aria-pressed": odabrano ? "true" : "false", onclick: () => postaviOkvir(o) }, sadrzaj, h("span", {}, naziv));
+    };
+    const slika = (url: string) => h("img", { src: url, alt: "", loading: "lazy" });
+    const kutoviPregled = KUTOVI.map((kut, i) => h("button", {
+      type: "button", class: `z-kut z-kut-${i}${aktivniKut === i ? " on" : ""}`, title: `${kut}: ${okvir.kutovi[i] ? UKRASI[okvir.kutovi[i]!] : "bez ukrasa"}`,
+      onclick: () => { aktivniKut = aktivniKut === i ? -1 : i; osvjeziPlocu(); },
+    }, okvir.kutovi[i] ? null : "+"));
+    const pregled = h("div", { class: "z-okvir-pregled" }, minijatura(okvir, "velika"), ...kutoviPregled);
+    const zaKut = (i: number, u: Kutovi[number]) => { const kutovi = [...okvir.kutovi] as Kutovi; kutovi[i] = u; return s({ kutovi }); };
     return h("details", { class: "ploha z-okvir", open: imaOkvir(okvir) || !!obavijestOkvira },
       h("summary", {}, "Okvir za ispis", imaOkvir(okvir) ? h("span", { class: "blijedo" }, ` · ${GOTOVI.find((g) => g.kod === gotov)?.naziv ?? "vlastiti"}`) : null),
       obavijestOkvira ? h("div", { class: "z-obavijest", role: "alert" }, h("b", {}, "Okvir se ne može odabrati"), h("p", {}, obavijestOkvira),
         h("button", { type: "button", class: "gumb mali", onclick: () => { obavijestOkvira = ""; osvjeziPlocu(); } }, "U redu")) : null,
       imaOkvir(okvir) && !okvirStanje.dopusten ? h("p", { class: "z-obavijest" }, "Uz sadašnji sadržaj okvir bi smanjio slike, pa se ne ispisuje (ni u PDF-u). ", zastoNe(okvir)) : null,
+      pregled,
+      h("p", { class: "sitno blijedo z-sredina" }, "Klikni kut na stranici za ukras u kutu."),
+      aktivniKut >= 0 ? h("div", { class: "z-izbor-kuta" },
+        h("b", {}, KUTOVI[aktivniKut]),
+        h("div", { class: "z-plocice ukrasi" },
+          plocica(zaKut(aktivniKut, null), h("i", { class: "z-prazno" }, "—"), "Bez ukrasa", !okvir.kutovi[aktivniKut]),
+          ...(Object.keys(UKRASI) as NonNullable<Kutovi[number]>[]).map((u) => plocica(zaKut(aktivniKut, u), slika(urlUkrasa(u)), UKRASI[u], okvir.kutovi[aktivniKut] === u)))) : null,
       h("label", {}, "Gotovi okvir"),
-      sel(gotov, [["bez", "Bez okvira"], ...GOTOVI.map((g) => [g.kod, g.naziv, ne(g.okvir)] as [string, string, string?]), ...(gotov === "vlastiti" ? [["vlastiti", "Vlastiti"] as [string, string]] : [])],
-        (v) => postaviOkvir(v === "bez" ? normalizirajOkvir(null) : structuredClone(GOTOVI.find((g) => g.kod === v)?.okvir ?? okvir))),
+      h("div", { class: "z-plocice stranice" },
+        plocica(normalizirajOkvir(null), minijatura(normalizirajOkvir(null)), "Bez okvira", gotov === "bez"),
+        ...GOTOVI.map((g) => plocica(structuredClone(g.okvir), minijatura(g.okvir), g.naziv, gotov === g.kod))),
       h("label", {}, "Rub"),
-      sel(okvir.rub, Object.entries(RUBOVI).map(([k, t]) => [k, t, ne(s({ rub: k as Okvir["rub"] }))]), (v) => postaviOkvir(s({ rub: v as Okvir["rub"] }))),
+      h("div", { class: "z-plocice rubovi" }, ...(Object.keys(RUBOVI) as Okvir["rub"][]).map((r) =>
+        plocica(s({ rub: r }), minijatura({ rub: r, masna: null, kutovi: [null, null, null, null] }), KRATKO_RUB[r], okvir.rub === r))),
       h("label", {}, "Mašna gore"),
-      sel(okvir.masna ?? "", [["", "Bez mašne"], ...Object.entries(MASNE).map(([k, t]) => [k, t, ne(s({ masna: k as Okvir["masna"] }))] as [string, string, string?])],
-        (v) => postaviOkvir(normalizirajOkvir(s({ masna: (v || null) as Okvir["masna"] })))),
+      h("div", { class: "z-plocice ukrasi" },
+        plocica(s({ masna: null }), h("i", { class: "z-prazno" }, "—"), "Bez mašne", !okvir.masna),
+        ...(Object.keys(MASNE) as NonNullable<Okvir["masna"]>[]).map((m) => plocica(s({ masna: m }), slika(urlUkrasa(`masna-${m}`)), MASNE[m], okvir.masna === m))),
       okvir.masna ? h("label", { class: "z-kvacica", title: zastoNe(normalizirajOkvir({ ...okvir, velikaMasna: !okvir.velikaMasna })) || undefined },
         h("input", { type: "checkbox", checked: !!okvir.velikaMasna, onchange: () => postaviOkvir(normalizirajOkvir({ ...okvir, velikaMasna: !okvir.velikaMasna })) }),
         " Velika mašna (zadatak počinje niže)") : null,
-      ...KUTOVI.flatMap((kut, i) => [
-        h("label", {}, kut),
-        sel(okvir.kutovi[i] ?? "", [["", "—"], ...Object.entries(UKRASI).map(([k, t]) => {
-          const kutovi = [...okvir.kutovi] as Kutovi; kutovi[i] = k as Kutovi[number];
-          return [k, t, ne(s({ kutovi }))] as [string, string, string?];
-        })], (v) => { const kutovi = [...okvir.kutovi] as Kutovi; kutovi[i] = (v || null) as Kutovi[number]; postaviOkvir(s({ kutovi })); }),
-      ]),
-      h("p", { class: "sitno blijedo" }, "Okvir je samo na papiru (PDF i Ispis). Ukrasi u gornjim kutovima i mašna stavljaju naslov u sredinu."));
+      h("p", { class: "sitno blijedo" }, "Okvir je samo na papiru (PDF i Ispis). Ukrasi u gornjim kutovima i mašna stavljaju naslov u sredinu. Blijedi izbori ne mogu uz ovaj zadatak (slike bi bile premale)."));
   }
 
   function osvjeziPlocu() { const stara = plocaEl; if (stara) (stara as any).replaceWith(ploca()); }

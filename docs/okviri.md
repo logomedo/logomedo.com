@@ -1,6 +1,6 @@
 # Okviri radnih listića
 
-Status (2026-11-15): na produkciji. Okvir se bira po zadatku u editoru (`/admin/zadaci/<id>`, bočna ploča „Okvir za ispis”)
+Status (2026-11-15): na produkciji. Okvir se bira po zadatku u editoru (`/admin/zadaci/<id>`, bočna ploča „Okvir za ispis”: mala stranica s okvirom, klik na kut bira ukras, gotovi okviri, rubovi i mašne kao sličice; blijede ne mogu uz taj zadatak)
 i vrijedi samo za papir: PDF i pogled Ispis. Igra na ekranu ga nema.
 
 ## Dijelovi
