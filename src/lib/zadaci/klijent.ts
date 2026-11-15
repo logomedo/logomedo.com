@@ -685,7 +685,16 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     if (zasto) { obavijestOkvira = zasto; osvjeziPlocu(); return; }
     okvir = o; obavijestOkvira = ""; oznaci(); osvjeziOkvir();
   }
-  function osvjeziOkvir() { okvirStanje = ocijeniOkvir(okvir); osvjeziPlocu(); if (pogled !== "uredi") osvjezi(); }
+  function osvjeziOkvir() { okvirStanje = ocijeniOkvir(okvir); if (pogled === "uredi") osvjeziPlocu(); else osvjezi(); }
+  /** Ponovno crtanje ne smije skočiti na vrh: pamti se pomak stranice i ploče s opcijama. */
+  function bezSkoka(crtaj: () => void) {
+    const ploha = () => document.querySelector<HTMLElement>(".z-okvir-pogled > .ploha, .z-ploca");
+    const y = scrollY, p = ploha()?.scrollTop ?? 0;
+    crtaj();
+    const nova = ploha();
+    if (nova) nova.scrollTop = p;
+    scrollTo({ top: y, behavior: "instant" as ScrollBehavior });
+  }
   ucitajModel().then(() => osvjeziOkvir()).catch(() => {});
 
   /** Kratki nazivi rubova za pločice (puni su u RUBOVI). */
@@ -737,7 +746,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       h("p", { class: "sitno blijedo" }, "Okvir je samo na papiru (PDF i Ispis). Ukrasi u gornjim kutovima i mašna stavljaju naslov u sredinu. Blijedi izbori ne mogu uz ovaj zadatak (slike bi bile premale)."));
   }
 
-  function osvjeziPlocu() { const stara = plocaEl; if (stara) (stara as any).replaceWith(pogled === "okvir" ? okvirPloca() : ploca()); }
+  function osvjeziPlocu() { const stara = plocaEl; if (stara) bezSkoka(() => (stara as any).replaceWith(pogled === "okvir" ? okvirPloca() : ploca())); }
 
   function ploca(): HTMLElement {
     const upozorenja = upozorenjaSvih();
@@ -834,11 +843,14 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       pogled !== "uredi" ? h("button", { type: "button", class: "gumb mali", onclick: () => document.documentElement.requestFullscreen?.() }, "Cijeli zaslon") : null,
       stanjeEl, spremiGumb,
     );
-    if (pogled === "uredi") zamijeni(tijelo, h("div", { class: "z-raspored" }, uredi(), ploca()));
-    // Okvir: lijevo prava stranica (kao Ispis), desno izbor sa sličicama; svi kutovi su stalno otvoreni.
-    else if (pogled === "okvir") zamijeni(tijelo, h("div", { class: "z-okvir-pogled" }, ispis(), okvirPloca()));
-    if (pogled !== "uredi") requestAnimationFrame(primijeniMjerilo);
-    else zamijeni(tijelo, ispis());
+    bezSkoka(() => {
+      if (pogled === "uredi") zamijeni(tijelo, h("div", { class: "z-raspored" }, uredi(), ploca()));
+      // Okvir: lijevo prava stranica (kao Ispis), desno izbor sa sličicama; svi kutovi su stalno otvoreni.
+      else if (pogled === "okvir") zamijeni(tijelo, h("div", { class: "z-okvir-pogled" }, ispis(), okvirPloca()));
+      else zamijeni(tijelo, ispis());
+      // Mjerilo odmah (prije vraćanja pomaka), da visina lista ne skoči nakon crtanja.
+      if (pogled !== "uredi") primijeniMjerilo();
+    });
   }
   osvjezi();
 }
