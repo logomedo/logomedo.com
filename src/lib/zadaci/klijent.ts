@@ -461,7 +461,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return h("div", { class: "z-uredi" }, prekidacOdnosa(s),
         ...s.stavke.map((x, i) => h("div", { class: "ploha z-red-uredi" },
           h("div", { class: "z-red-broj" }, String(i + 1)),
-          h("div", { class: "z-odabir-zadana" }, h("small", {}, "Zadana"), slot(x.zadana, (n) => (x.zadana = n))),
+          h("div", { class: "z-odabir-zadana" }, h("small", {}, "Zadana"), slot(x.zadana, (n) => (x.zadana = n), { uzor: x.ponudeno[x.tocno], nacin: "rima" })),
           h("div", { class: "z-strelica" }, "→"),
           h("div", { class: "z-ponudeno" }, ...x.ponudeno.map((pid, j) => slot(pid, (n) => (x.ponudeno[j] = n), {
             uzor: x.zadana, nacin: j === x.tocno ? "rima" : "ne-rima", tocno: j === x.tocno, naTocno: () => (x.tocno = j), oznakaTocno: ODNOSI[s.odnos].oznakaTocno,
@@ -495,7 +495,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("p", { class: "blijedo sitno" }, `Upiši parove koji ${ODNOSI[s.odnos].mnozina}. Desni stupac se na ekranu i papiru prikazuje promiješan (redoslijed vidiš u Ispisu).`),
         ...s.parovi.map((x, i) => h("div", { class: "ploha z-red-uredi" },
           h("div", { class: "z-red-broj" }, String(i + 1)),
-          slot(x.lijevo, (n) => (x.lijevo = n)),
+          // Obje strane se ravnaju jedna po drugoj: koja je prva odabrana, druga nudi riječi u odnosu s njom.
+          slot(x.lijevo, (n) => (x.lijevo = n), { uzor: x.desno, nacin: "rima" }),
           h("div", { class: "z-strelica" }, "⟷"),
           slot(x.desno, (n) => (x.desno = n), { uzor: x.lijevo, nacin: "rima" }),
           h("div", { class: "z-red-gumbi" }, h("button", { type: "button", class: "gumb mali tihi opasno", title: "Makni par", onclick: () => makni(i) }, "×")))),

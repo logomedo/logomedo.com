@@ -340,7 +340,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     let odabran: number | null = null;
     const svg = document.createElementNS(SVG, "svg");
     svg.classList.add("crte");
-    const platno = h("div", { class: "povezi" });
+    // Broj parova određuje veličinu kartica (CSS --n), da i 6–8 parova stane u visinu ekrana.
+    const platno = h("div", { class: "povezi", style: `--n:${Math.max(4, s.parovi.length)}` });
 
     const lijevi: HTMLElement[] = s.parovi.map((par, i) => kartica(par.lijevo, () => {
       if (spojevi.some((x) => x.l === i)) return;

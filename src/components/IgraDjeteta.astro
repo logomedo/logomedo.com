@@ -246,7 +246,8 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .gumb-gotovo { font: inherit; font-weight: 900; font-size: 4vh; padding: 1vh 5vh; border: 0; border-radius: 99px; background: var(--zeleno); color: #fff; box-shadow: 0 5px 0 #1d6b33; cursor: pointer; }
   .povezi { position: relative; display: flex; justify-content: space-between; width: min(100%, 92vh); }
   .stupac { display: flex; flex-direction: column; gap: 1.4vh; position: relative; z-index: 1; }
-  .povezi .kartica { --s: min(15.5vh, 11vw); width: auto; }
+  /* Kartica je visoka oko 0,9 × --s + 2vh; stupac od --n kartica mora stati u ~70vh ispod pitanja. */
+  .povezi .kartica { --s: min(15.5vh, 11vw, calc((70vh - (var(--n, 4) - 1) * 1.4vh) / var(--n, 4) / .9 - 2vh)); width: auto; }
   .povezi .kartica .glava { min-height: 0; }
   .povezi .kartica .unutra { flex-direction: row; padding: .6vh 1vh; }
   .povezi .slika { width: calc(var(--s) * .9); }
@@ -271,7 +272,7 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
     .red.percepcija .kartica, .red.percepcija.n5 .kartica, .red.percepcija.n6 .kartica { --s: 28vw; }
     .red.percepcija.n4 .kartica { --s: 38vw; }
     .povezi { width: 100%; }
-    .povezi .kartica { --s: 19vw; }
+    .povezi .kartica { --s: min(19vw, calc((70vh - (var(--n, 4) - 1) * 1.4vh) / var(--n, 4) / .9 - 2vh)); }
     .kolo-okvir .kolo { --kolo: 88vw; }
     /* 12 slika kao 3 × 4 (veće kartice), 13–15 kao 4 × 4 da stane u visinu */
     .red.prvi-glas { grid-template-columns: repeat(3, auto); gap: 3vw; }
