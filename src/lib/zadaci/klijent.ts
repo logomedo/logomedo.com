@@ -706,7 +706,11 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       h("label", {}, "Rub"),
       sel(okvir.rub, Object.entries(RUBOVI).map(([k, t]) => [k, t, ne(s({ rub: k as Okvir["rub"] }))]), (v) => postaviOkvir(s({ rub: v as Okvir["rub"] }))),
       h("label", {}, "Mašna gore"),
-      sel(okvir.masna ?? "", [["", "Bez mašne"], ...Object.entries(MASNE).map(([k, t]) => [k, t, ne(s({ masna: k as Okvir["masna"] }))] as [string, string, string?])], (v) => postaviOkvir(s({ masna: (v || null) as Okvir["masna"] }))),
+      sel(okvir.masna ?? "", [["", "Bez mašne"], ...Object.entries(MASNE).map(([k, t]) => [k, t, ne(s({ masna: k as Okvir["masna"] }))] as [string, string, string?])],
+        (v) => postaviOkvir(normalizirajOkvir(s({ masna: (v || null) as Okvir["masna"] })))),
+      okvir.masna ? h("label", { class: "z-kvacica", title: zastoNe(normalizirajOkvir({ ...okvir, velikaMasna: !okvir.velikaMasna })) || undefined },
+        h("input", { type: "checkbox", checked: !!okvir.velikaMasna, onchange: () => postaviOkvir(normalizirajOkvir({ ...okvir, velikaMasna: !okvir.velikaMasna })) }),
+        " Velika mašna (zadatak počinje niže)") : null,
       ...KUTOVI.flatMap((kut, i) => [
         h("label", {}, kut),
         sel(okvir.kutovi[i] ?? "", [["", "—"], ...Object.entries(UKRASI).map(([k, t]) => {

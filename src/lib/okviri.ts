@@ -10,7 +10,8 @@ export type Masna = "crvena" | "zelena";
 export type Ukras = "medo" | "konjic" | "medenjak" | "grancica" | "drvce" | "praporci" | "snjegovic" | "auto" | "vrtuljak" | "imela";
 /** Kutovi redom: gore lijevo, gore desno, dolje lijevo, dolje desno. */
 export type Kutovi = [Ukras | null, Ukras | null, Ukras | null, Ukras | null];
-export interface Okvir { rub: Rub; masna: Masna | null; kutovi: Kutovi }
+/** `velikaMasna`: mašna 56 mm umjesto 38 mm (spušta zaglavlje ~12 mm); samo uz mašnu. */
+export interface Okvir { rub: Rub; masna: Masna | null; velikaMasna?: true; kutovi: Kutovi }
 
 export const RUBOVI: Record<Rub, string> = {
   bez: "Bez ruba", "kocke-crvene": "Kockice crveno-bijele", "kocke-zelene": "Kockice zeleno-bijele",
@@ -44,6 +45,7 @@ export function normalizirajOkvir(x: unknown): Okvir {
     rub: jeRub(o.rub) ? o.rub : "bez",
     masna: jeMasna(o.masna) ? o.masna : null,
     kutovi: [0, 1, 2, 3].map((i) => (jeUkras(k[i]) ? k[i] : null)) as Kutovi,
+    ...(o.velikaMasna === true && jeMasna(o.masna) ? { velikaMasna: true as const } : {}),
   };
 }
 export const imaOkvir = (o: Okvir | null | undefined): o is Okvir => !!o && (o.rub !== "bez" || !!o.masna || o.kutovi.some(Boolean));
@@ -58,7 +60,8 @@ export const jeUkrasUrl = (url: string) => url.startsWith("/okviri/");
 export const A4 = { w: 210, h: 297 } as const;
 /** Uzorak ide do 5 mm od ruba papira (kućni pisači ne ispisuju do ruba); bijela kartica od 14 mm. */
 const VANI = 5, KARTICA = 14;
-const KUT = 28, MASNA = { x: 86, y: 3, w: 38, h: 26 };
+const KUT = 28, MASNA = { x: 86, y: 3, w: 38, h: 26 }, VELIKA_MASNA = { x: 77, y: 2, w: 56, h: 38 };
+const masna = (o: Okvir) => (o.velikaMasna ? VELIKA_MASNA : MASNA);
 
 /**
  * Prostor za zadatak (mm): lijevo/desno, vrh zaglavlja, dno sadržaja i podnožje. `sredina`: zaglavlje
@@ -70,7 +73,7 @@ export function podrucje(o: Okvir | null | undefined): Podrucje {
   const gore = !!o.kutovi[0] || !!o.kutovi[1], dolje = !!o.kutovi[2] || !!o.kutovi[3];
   return {
     L: 20, D: A4.w - 20,
-    vrh: o.masna ? MASNA.y + MASNA.h + 2 : gore ? 24 : 21,
+    vrh: o.masna ? masna(o).y + masna(o).h + 2 : gore ? 24 : 21,
     dno: A4.h - (dolje ? 35 : 22),
     podnozjeY: A4.h - 19,
     sredina: !!o.masna || gore,
@@ -85,7 +88,7 @@ export interface Slojevi { uzorak: Pravokutnik[]; kartica: { x: number; y: numbe
 const UZORCI: Record<Exclude<Rub, "bez">, { boja: string; prozirnost: number; sirina: number; korak: number; kocke: boolean }> = {
   "kocke-crvene": { boja: "#d9483b", prozirnost: 0.32, sirina: 5, korak: 10, kocke: true },
   "kocke-zelene": { boja: "#4f8a5b", prozirnost: 0.32, sirina: 5, korak: 10, kocke: true },
-  "pruge-zelene": { boja: "#a9c9a4", prozirnost: 1, sirina: 6, korak: 12, kocke: false },
+  "pruge-zelene": { boja: "#8fbc93", prozirnost: 1, sirina: 2.5, korak: 5, kocke: false },
   "prugice-crvene": { boja: "#e8857c", prozirnost: 1, sirina: 2.5, korak: 5, kocke: false },
 };
 
@@ -113,7 +116,7 @@ export function slojevi(o: Okvir | null | undefined): Slojevi {
   }
   const mjesta = [[6, 6], [A4.w - 6 - KUT, 6], [6, A4.h - 6 - KUT], [A4.w - 6 - KUT, A4.h - 6 - KUT]] as const;
   o.kutovi.forEach((k, i) => { if (k) out.slike.push({ url: urlUkrasa(k), x: mjesta[i][0], y: mjesta[i][1], w: KUT, h: KUT }); });
-  if (o.masna) out.slike.push({ url: urlUkrasa(`masna-${o.masna}`), ...MASNA });
+  if (o.masna) out.slike.push({ url: urlUkrasa(`masna-${o.masna}`), ...masna(o) });
   return out;
 }
 

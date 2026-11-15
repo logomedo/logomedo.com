@@ -9,7 +9,8 @@ Okvir je JSON u `zadaci.okvir` (migracija 0030; NULL = bez okvira), kod je `src/
 
 - **rub**: bez, kockice crveno-bijele, kockice zeleno-bijele, pruge zeleno-bijele, prugice crveno-bijele.
   Kombinirane crveno-zelene kockice su namjerno izostavljene (Anita: ne sviđaju joj se).
-- **mašna** gore u sredini: crvena ili zelena.
+- **mašna** gore u sredini: crvena ili zelena, samo vrpca (bez iglica, ponovno generirane 15. 11.). „Velika mašna”
+  (`velikaMasna`) je 56 × 38 mm umjesto 38 × 26 i spušta zaglavlje za ~12 mm; pravilo kvalitete je odbije gdje bi to smanjilo slike.
 - **kutovi** (gore lijevo, gore desno, dolje lijevo, dolje desno): medvjedić, konjić za ljuljanje, medenjak, grančica jele,
   okićeno drvce, zlatni praporci, snjegović, auto s borom i poklonima, božićni vrtuljak, imela.
 - **Gotovi okviri** (`GOTOVI`): Jednostavni, Kockice, Pruge (iz Anitine skice). „Vlastiti” je bilo koja druga kombinacija.
@@ -20,7 +21,8 @@ Okvir je JSON u `zadaci.okvir` (migracija 0030; NULL = bez okvira), kod je `src/
 Isti slojevi idu u PDF (`ispis-pdf.ts`, `drawRectangle` s prozirnošću) i u HTML pregled (`okvirSvg`), pa izgledaju jednako.
 
 - Uzorak počinje 5 mm od ruba papira: kućni pisači ne ispisuju do ruba. Boje su svijetle (kockice 32 % prozirnosti), da rub
-  ne troši puno tinte. Kockice su okomite i vodoravne pruge preko kojih se sjecišta zatamne.
+  ne troši puno tinte. Kockice su okomite i vodoravne pruge preko kojih se sjecišta zatamne. Pruge i prugice su iste širine (2,5 mm, korak 5 mm):
+  šire zelene pruge (6 mm) izgledale su kao ploha, ne kao izmjena.
 - Ukrasi su PNG s prozirnošću u `public/okviri/` (480 px, kvadrat). `preglednik.ts` ih pri slaganju PDF-a ne pretvara u JPEG
   (`jeUkrasUrl`), jer leže na uzorku. Mašna 38 × 26 mm, ukras u kutu 28 mm.
 - `podrucje(okvir)` je prostor za zadatak: 20 mm sa strana (bez okvira 15), vrh ispod mašne, dno iznad donjih ukrasa.

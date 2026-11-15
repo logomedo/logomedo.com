@@ -15,8 +15,8 @@ refs=("$STIL"/*.jpg)
 
 OPCE="Soft watercolor children's book illustration, a single small decorative sticker-like object for the corner of a printed worksheet. Centered, the whole object visible with some empty space around it. Plain pure white background, nothing else: no ground, no shadow, no frame or border, no text, no letters, no people."
 declare -A P
-P[masna-crvena]="$OPCE A big red satin Christmas bow with two ribbon tails, seen from the front, with a small sprig of fir needles behind it."
-P[masna-zelena]="$OPCE A big green satin Christmas bow with two ribbon tails, seen from the front, with a small sprig of fir needles behind it."
+P[masna-crvena]="$OPCE A big red satin Christmas bow with two ribbon tails, seen from the front. Only the ribbon bow: NO fir needles, NO branches, NO leaves, NO holly, NO berries."
+P[masna-zelena]="$OPCE A big green satin Christmas bow with two ribbon tails, seen from the front. Only the ribbon bow: NO fir needles, NO branches, NO leaves, NO holly, NO berries."
 P[medo]="$OPCE A cute sitting brown teddy bear wearing a red knitted scarf."
 P[konjic]="$OPCE A wooden rocking horse toy, cream colored with a red saddle and red rockers, seen from the side."
 P[medenjak]="$OPCE A gingerbread man cookie with white icing details and two red buttons."

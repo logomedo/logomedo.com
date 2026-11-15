@@ -56,3 +56,12 @@ test("okvir: PDF s okvirom i ukrasima (PNG s prozirnošću) se složi", async ()
   const pdf = await PDFDocument.load(await napraviPdf(d, slike, fontovi));
   assert.equal(pdf.getPageCount(), 1);
 });
+
+test("okvir: velika mašna spušta zaglavlje i postoji samo uz mašnu", () => {
+  const mala: Okvir = { rub: "bez", masna: "crvena", kutovi: [null, null, null, null] };
+  const velika = normalizirajOkvir({ ...mala, velikaMasna: true });
+  assert.equal(velika.velikaMasna, true);
+  assert.ok(podrucje(velika).vrh > podrucje(mala).vrh + 10);
+  assert.equal(normalizirajOkvir({ ...mala, masna: null, velikaMasna: true }).velikaMasna, undefined);
+  assert.ok(slojevi(velika).slike[0].w > slojevi(mala).slike[0].w);
+});
