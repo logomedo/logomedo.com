@@ -9,7 +9,7 @@ import { oznakaKljuca, type NoviPasskey } from "./passkey";
 
 export const POZIV_SATI = 72;
 
-export type RazlogOdbijanja = "email" | "superadmin" | "aktivan_logoped" | "nema_korisnika" | "nije_logoped" | "drugi_email";
+export type RazlogOdbijanja = "email" | "superadmin" | "aktivan_logoped" | "nema_korisnika" | "nije_logoped" | "drugi_email" | "neaktivan";
 
 /** Poruke za superadmina na /admin/korisnici (pozvani ih nikad ne vidi). */
 export const PORUKE_ODBIJANJA: Record<RazlogOdbijanja, string> = {
@@ -19,6 +19,7 @@ export const PORUKE_ODBIJANJA: Record<RazlogOdbijanja, string> = {
   nema_korisnika: "Nema tog korisnika.",
   nije_logoped: "Pozivnica za novi passkey je samo za logopeda.",
   drugi_email: "E-mail ne odgovara korisniku.",
+  neaktivan: "Logoped je deaktiviran: novi passkey ga ne vraća. Za ponovni ulazak pošalji mu „Novu pozivnicu”.",
 };
 
 export class PozivOdbijen extends Error {
@@ -43,7 +44,8 @@ const sati = (d: Date, h: number) => new Date(d.getTime() + h * 3600_000);
 
 /**
  * Nova pozivnica. Bez `korisnikId`: novi logoped (ili ponovni ulazak deaktiviranog). S `korisnikId`:
- * novi passkey postojećem logopedu (izgubljen uređaj), e-mail mora biti njegov. Prijašnja otvorena
+ * novi passkey postojećem aktivnom logopedu (izgubljen uređaj), e-mail mora biti njegov; deaktiviranog
+ * vraća samo pozivnica bez `korisnikId` (iskorištenje postavlja `aktivan=1`). Prijašnja otvorena
  * pozivnica za isti e-mail prestaje vrijediti: vrijedi samo zadnji link. Baca `PozivOdbijen`.
  */
 export async function izdaj(
@@ -57,11 +59,12 @@ export async function izdaj(
   let ime = (p.ime ?? "").trim().slice(0, 80) || null;
   let korisnikId: number | null = null;
   if (p.korisnikId != null) {
-    const k = await env.DB.prepare("SELECT id, email, ime, uloga FROM korisnici WHERE id = ?")
-      .bind(p.korisnikId).first<{ id: number; email: string; ime: string | null; uloga: string }>();
+    const k = await env.DB.prepare("SELECT id, email, ime, uloga, aktivan FROM korisnici WHERE id = ?")
+      .bind(p.korisnikId).first<{ id: number; email: string; ime: string | null; uloga: string; aktivan: number }>();
     if (!k) throw new PozivOdbijen("nema_korisnika");
     if (k.uloga !== "logoped") throw new PozivOdbijen("nije_logoped");
     if (normalizirajEmail(k.email) !== email) throw new PozivOdbijen("drugi_email");
+    if (k.aktivan !== 1) throw new PozivOdbijen("neaktivan");
     korisnikId = k.id;
     ime ??= k.ime;
   } else {

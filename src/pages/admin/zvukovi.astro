@@ -61,7 +61,7 @@ if (Astro.request.method === "POST") {
 const [brojevi, skupine, greske, glas] = await Promise.all([
   brojeviIzgovora(),
   tab === "greske" ? Promise.resolve([]) : skupineIzgovora(tab),
-  tab === "greske" ? greskeIzgovora() : Promise.resolve([]),
+  tab === "greske" ? greskeIzgovora(email) : Promise.resolve([]),
   postavka("zvuk_glas"),
 ]);
 const imeGlasa = glas

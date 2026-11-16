@@ -88,6 +88,14 @@ test("izdaj s korisnikId: nepostojeći, nije logoped, drugi e-mail → odbijeno"
   await odbijeno(izdaj({ email: "d@primjer.hr", korisnikId: id }, SA), "drugi_email");
 });
 
+test("izdaj s korisnikId: deaktivirani logoped → neaktivan (novi passkey ga ne reaktivira); opća pozivnica ga vraća", async () => {
+  const id = await korisnik(LOGOPED, "logoped", 0, "Ana");
+  await odbijeno(izdaj({ email: LOGOPED, korisnikId: id }, SA), "neaktivan");
+  assert.equal((await db().prepare("SELECT COUNT(*) AS n FROM pozivi").first<{ n: number }>())?.n, 0);
+  const p = await izdaj({ email: LOGOPED }, SA);
+  assert.equal((await provjeri(p.token))?.email, LOGOPED);
+});
+
 test("iskoristi: novi logoped (aktivan) + passkey, zapisi s e-mailom pozvanog; drugi put → null", async () => {
   const { token, id } = await izdaj({ email: LOGOPED, ime: "Ana" }, SA);
   const p = await iskoristi(token, kljuc("k1"), "iPhone");

@@ -7,16 +7,16 @@ import Marka from "./Marka.astro";
 import Ikona from "./Ikona.astro";
 import type { ComponentProps } from "astro/types";
 import { env } from "cloudflare:workers";
-import { smije } from "../lib/admin/ovlasti";
 import { smijeNa } from "../lib/admin/rute";
-import { preostalo, type StanjeKvote, type VrstaKvote } from "../lib/kvota";
+import { kvotaIzAdrese, porukaZaKorisnika, preostalo, type StanjeKvote, type VrstaKvote } from "../lib/kvota";
 
 interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "postavke"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
-/** Odbijen zahtjev zbog AI kvote (middleware, lib/kvota.ts: 303 natrag s `?kvota=`). */
-const kvota = admin ? Astro.url.searchParams.get("kvota")?.slice(0, 300) : null;
+/** Odbijen zahtjev zbog AI kvote (middleware, lib/kvota.ts: 303 natrag s `?kvota=<vrsta>`): tekst se gradi ovdje, ne čita iz adrese. */
+const kvotaUAdresi = admin ? kvotaIzAdrese(Astro.url.searchParams) : null;
+const kvota = admin && kvotaUAdresi ? await porukaZaKorisnika(admin.email, kvotaUAdresi) : null;
 
 let brojevi = { kandidata: 0, uRedu: 0, gresaka: 0, zvukova: 0 };
 if (admin) {
@@ -53,9 +53,7 @@ const sustav: Stavka[] = ([
   { kod: "prompt", href: "/admin/prompt", tekst: "Prompt", ikona: "iskra", broj: 0 },
   { kod: "aktivnost", href: "/admin/aktivnost", tekst: "Aktivnost", ikona: "sat", broj: 0 },
   { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },
-  ...(admin && smije(admin.uloga, "korisnici")
-    ? [{ kod: "korisnici", href: "/admin/korisnici", tekst: "Korisnici", ikona: "korisnici", broj: 0 } satisfies Stavka]
-    : []),
+  { kod: "korisnici", href: "/admin/korisnici", tekst: "Korisnici", ikona: "korisnici", broj: 0 },
   { kod: "postavke", href: "/admin/postavke", tekst: "Postavke", ikona: "postavke", broj: 0 },
 ] satisfies Stavka[]).filter(vidljivo);
 for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);

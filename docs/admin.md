@@ -53,8 +53,9 @@ odmah dobiva sesiju. Nova pozivnica za isti e-mail poništava staru. Otvorene po
 tablici ispod i mogu se opozvati. Za e-mail iz `ADMIN_EMAILS` pozivnica se ne izdaje.
 
 **Novi passkey** (izgubljen ili novi uređaj): u retku korisnika „Novi passkey” daje pozivnicu za
-isti račun; stari ključevi ostaju. Dodatni ključ logoped može dodati i sam na `/admin/passkeys`
-unutar 10 min od prijave pozivnicom.
+isti račun; stari ključevi ostaju. Samo za aktivnog logopeda: deaktiviranog vraća „Aktiviraj” ili
+opća „Nova pozivnica”. Dodatni ključ logoped može dodati i sam na `/admin/passkeys` unutar 10 min
+od prijave pozivnicom.
 
 **Deaktivacija:** „Deaktiviraj” odmah briše sve njegove sesije i opoziva otvorene pozivnice;
 passkeyi ostaju, pa „Aktiviraj” vraća pristup bez nove pozivnice.
@@ -62,8 +63,9 @@ passkeyi ostaju, pa „Aktiviraj” vraća pristup bez nove pozivnice.
 **Limit:** u retku korisnika polja „slike” i „izgovori” (AI limit za 7 dana) → „Spremi”. Zadano je
 50 slika i 200 izgovora. Jedan posao u redu = jedan kredit (slika riječi ili situacije = slika;
 izgovor = izgovor). Zahtjev koji traži više od preostalog odbija se cijeli, s porukom koliko je
-ostalo i kad se prvi krediti vraćaju. Naplaćuje se i „Pokušaj ponovo” za neuspjele poslove;
-„Pogurni red” i probe glasova ne.
+ostalo i kad se prvi krediti vraćaju. Naplaćuje se i „Pokušaj ponovo” za neuspjele poslove
+(logoped na `/admin/zvukovi` vidi i vraća samo izgovore koje je sam zatražio); „Pogurni red” i
+probe glasova ne.
 
 **Potrošnja:** `/admin/korisnici`, stupci „Potrošeno (7 dana)” i „Doprinos” (dodane riječi,
 odobrene slike i izgovori). Logoped svoje preostalo vidi u bočnoj traci. Svaki upis je redak u

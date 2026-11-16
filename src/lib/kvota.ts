@@ -196,10 +196,31 @@ export async function provjeri(email: string, vrsta: VrstaKvote, n: number): Pro
   throw new KvotaPrekoracena({ ...o, poruka: porukaKvote(o) });
 }
 
+/** Kvota iz adrese nakon 303 (`?kvota=slike|zvukovi`, uz `kvota_n=<traženo>`); sve ostalo je null. */
+export function kvotaIzAdrese(p: URLSearchParams): { vrsta: VrstaKvote; trazeno: number | null } | null {
+  const vrsta = p.get("kvota");
+  if (vrsta !== "slike" && vrsta !== "zvukovi") return null;
+  const n = p.get("kvota_n") ?? "";
+  return { vrsta, trazeno: /^[1-9]\d{0,5}$/.test(n) ? Number(n) : null };
+}
+
+/**
+ * Poruka za banner AdminOkvira, sastavljena na serveru za trenutno stanje korisnika (ne iz adrese, pa
+ * link ne može podmetnuti tekst). Null kad korisnik kvotu nema (superadmin).
+ */
+export async function porukaZaKorisnika(email: string, k: { vrsta: VrstaKvote; trazeno: number | null }): Promise<string | null> {
+  const p = await platitelj(email);
+  if (!p) return KvotaPrekoracena.zabrana(k.vrsta).poruka;
+  if (p.uloga !== "logoped") return null;
+  const s = (await preostalo(p.korisnikId))[k.vrsta];
+  return porukaKvote({ ...k, preostalo: s.preostalo, limit: s.limit, oslobadaSe: await kadSeOslobada(p.korisnikId, k.vrsta) });
+}
+
 /**
  * Odgovor na `KvotaPrekoracena` (middleware). JSON (429) za `/api/*`, za `fetch` s JSON tijelom na
  * `/admin/api/*` i za `x-ajax`; obrazac (form POST) dobiva 303 natrag (Referer na istom originu,
- * inače /admin) s `?kvota=<poruka>`, koju prikazuje AdminOkvir.
+ * inače /admin) sa strukturiranim `?kvota=<vrsta>&kvota_n=<traženo>` (`kvotaIzAdrese`); poruku
+ * AdminOkvir sastavlja sam (`porukaZaKorisnika`), tekst nikad ne ide kroz adresu.
  */
 export function odgovorNaKvotu(e: KvotaPrekoracena, request: Request, url: URL): Response {
   const vrsta = request.headers.get("content-type") ?? "";
@@ -216,6 +237,14 @@ export function odgovorNaKvotu(e: KvotaPrekoracena, request: Request, url: URL):
     if (r.origin === url.origin && (r.pathname === "/admin" || r.pathname.startsWith("/admin/"))) cilj = r;
   } catch {}
   cilj.hash = "";
-  cilj.searchParams.set("kvota", e.poruka);
+  postaviKvotuUAdresu(cilj, e.vrsta, e.trazeno);
   return new Response(null, { status: 303, headers: { location: cilj.pathname + cilj.search } });
+}
+
+/** `?kvota=<vrsta>&kvota_n=<n>` na `u` (prijašnje vrijednosti se zamjenjuju). */
+export function postaviKvotuUAdresu(u: URL, vrsta: VrstaKvote, trazeno: number | null): URL {
+  u.searchParams.set("kvota", vrsta);
+  if (trazeno !== null && Number.isInteger(trazeno) && trazeno > 0) u.searchParams.set("kvota_n", String(trazeno));
+  else u.searchParams.delete("kvota_n");
+  return u;
 }

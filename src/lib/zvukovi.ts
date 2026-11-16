@@ -7,7 +7,7 @@ import { ekrani, uputaZa, type ZadatakZaIgru } from "./biljeznice-ekrani";
 import { UPUTE_PRVOG_GLASA } from "./zadaci/vrste";
 import { izgovorZa, kljucZvuka, naciniZa, prolazi, slicnost } from "./zvukovi-tekst";
 import { javniUrl, ocistiCache } from "./generiranje";
-import { batchSKvotom, type Kolicina } from "./kvota";
+import { batchSKvotom, platitelj, type Kolicina } from "./kvota";
 
 /** TTS poziva po poslu: STT razlika = još jedan pokušaj, zadnji ide čovjeku s oznakom „razlika”. */
 export const MAX_POKUSAJA = 3;
@@ -87,9 +87,9 @@ function novPosao(kljuc: string, izgovor: string, email: string, varijante = fal
 }
 
 /** Batch [kvota, ...upisi]; vraća id-ove upisanih poslova. */
-async function upisiPoslove(email: string, kolicina: Kolicina, izvor: string, upisi: D1PreparedStatement[], prije: D1PreparedStatement[] = []): Promise<number[]> {
-  const rez = await batchSKvotom(email, "zvukovi", kolicina, izvor, [...prije, ...upisi]);
-  return rez.slice(prije.length).flatMap((r) => (r.results as { id: number }[]).map((x) => x.id));
+async function upisiPoslove(email: string, kolicina: Kolicina, izvor: string, upisi: D1PreparedStatement[]): Promise<number[]> {
+  const rez = await batchSKvotom(email, "zvukovi", kolicina, izvor, upisi);
+  return rez.flatMap((r) => (r.results as { id: number }[]).map((x) => x.id));
 }
 
 async function posalji(ids: number[]) {
@@ -109,13 +109,24 @@ export async function posaljiZaglavljene(): Promise<number> {
 }
 
 /**
+ * Uvjet nad `zvuk_generiranja` za neuspjele poslove koje korisnik smije vidjeti i vratiti: superadmin
+ * sve, ostali (logoped) samo one koje je sam zatražio (`zatrazio`). Bez `?N` (ide u kvotu).
+ */
+async function svojeGreske(email: string): Promise<{ sql: string; args: unknown[] }> {
+  const p = await platitelj(email);
+  if (p?.uloga === "superadmin") return { sql: "status = 'greska'", args: [] };
+  return { sql: "status = 'greska' AND lower(zatrazio) = ?", args: [email.trim().toLowerCase()] };
+}
+
+/**
  * /admin/zvukovi „Pokušaj ponovo”: neuspjeli poslovi natrag u red (`pokusaji = 0`, novi ElevenLabs
- * pozivi), naplaćeno onome tko klikne, za točno one vraćene.
+ * pozivi), naplaćeno onome tko klikne, za točno one vraćene. Logoped vraća samo svoje (`svojeGreske`).
  */
 export async function greskeURed(email: string): Promise<number> {
-  const [r] = await batchSKvotom(email, "zvukovi", { sql: "SELECT COUNT(*) FROM zvuk_generiranja WHERE status = 'greska'", args: [] },
+  const u = await svojeGreske(email);
+  const [r] = await batchSKvotom(email, "zvukovi", { sql: `SELECT COUNT(*) FROM zvuk_generiranja WHERE ${u.sql}`, args: u.args },
     "ponovo neuspjeli izgovori", [
-      env.DB.prepare("UPDATE zvuk_generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska' RETURNING id"),
+      env.DB.prepare(`UPDATE zvuk_generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE ${u.sql} RETURNING id`).bind(...u.args),
     ]);
   const ids = (r.results as { id: number }[]).map((x) => x.id);
   await posalji(ids);
@@ -265,10 +276,12 @@ export async function skupineIzgovora(tab: TabIzgovora): Promise<Skupina[]> {
 }
 
 export interface GreskaPosla { id: number; kljuc: string; izgovor: string; greska: string | null; pokusaji: number; created_at: string }
-export async function greskeIzgovora(): Promise<GreskaPosla[]> {
+/** Neuspjeli poslovi koje `email` vidi (i koje bi „Pokušaj ponovo” vratio): superadmin sve, logoped svoje. */
+export async function greskeIzgovora(email: string): Promise<GreskaPosla[]> {
+  const u = await svojeGreske(email);
   const { results } = await env.DB.prepare(
-    "SELECT id, kljuc, izgovor, greska, pokusaji, created_at FROM zvuk_generiranja WHERE status = 'greska' ORDER BY id DESC LIMIT 200",
-  ).all<GreskaPosla>();
+    `SELECT id, kljuc, izgovor, greska, pokusaji, created_at FROM zvuk_generiranja WHERE ${u.sql} ORDER BY id DESC LIMIT 200`,
+  ).bind(...u.args).all<GreskaPosla>();
   return results;
 }
 

@@ -119,11 +119,13 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
                 <td class="akcije">
                   {logoped && (
                     <>
-                      <form method="post">
-                        <input type="hidden" name="akcija" value="novi_passkey" /><input type="hidden" name="id" value={k.id} />
-                        <input type="hidden" name="email" value={k.email} />
-                        <button class="gumb mali tihi" type="submit" title="Pozivnica za novi uređaj (izgubljen passkey)"><Ikona ime="kljuc" /> Novi passkey</button>
-                      </form>
+                      {k.aktivan === 1 && (
+                        <form method="post">
+                          <input type="hidden" name="akcija" value="novi_passkey" /><input type="hidden" name="id" value={k.id} />
+                          <input type="hidden" name="email" value={k.email} />
+                          <button class="gumb mali tihi" type="submit" title="Pozivnica za novi uređaj (izgubljen passkey)"><Ikona ime="kljuc" /> Novi passkey</button>
+                        </form>
+                      )}
                       <form method="post">
                         <input type="hidden" name="akcija" value={k.aktivan ? "deaktiviraj" : "aktiviraj"} /><input type="hidden" name="id" value={k.id} />
                         <button class:list={["gumb mali tihi", { opasno: k.aktivan }]} type="submit">{k.aktivan ? "Deaktiviraj" : "Aktiviraj"}</button>

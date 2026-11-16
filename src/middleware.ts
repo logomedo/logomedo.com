@@ -3,7 +3,7 @@
 // Razlika od omm: uloge (docs/rbac/). Sesija nosi ulogu; rute iz lib/admin/rute.ts smije samo
 // superadmin (logoped: 403), a vlasništvo zadataka, bilježnica i aktivnosti provjerava lib/admin/vlasnistvo.ts.
 // Druga razlika: `KvotaPrekoracena` (AI kvota, lib/kvota.ts) iz stranice ili rute hvata se ovdje (`sKvotom`):
-// JSON 429 za API i fetch, inače 303 natrag s `?kvota=` (prikazuje AdminOkvir).
+// JSON 429 za API i fetch, inače 303 natrag s `?kvota=<vrsta>` (poruku sastavlja AdminOkvir).
 import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSession } from "./lib/admin/sesija";

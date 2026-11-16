@@ -143,9 +143,12 @@ case "$ODG" in 303*dodano=1*) ;; *) pao "prva slika: $ODG";; esac
 ODG=$(curl "${LO[@]}" -o /dev/null -w '%{http_code} %{redirect_url}' -H "Referer: $BASE/admin/rijec/$R2" \
   --data-urlencode stil=bojanka --data-urlencode rijec="$RID2" --data-urlencode next="/admin/rijec/$R2" "$BASE/admin/api/generiraj")
 case "$ODG" in 303*kvota=*) ;; *) pao "druga slika nije odbijena: $ODG";; esac
-PORUKA=$(node -e 'const u=new URL(process.argv[1]); console.log(u.searchParams.get("kvota"))' "${ODG#* }")
-case "$PORUKA" in "Ostalo ti je 0 od 1 slika"*) ok "druga slika odbijena: $PORUKA";; *) pao "poruka kvote: $PORUKA";; esac
-S=$(kod -b "$KOLACIC=$LT" "${ODG#* }"); [ "$S" = 200 ] && grep -q 'class="kvota-poruka"' "$TMP/odg" || pao "banner kvote: $S"
+# U adresi je samo vrsta i traženi broj; tekst poruke gradi AdminOkvir na serveru.
+PORUKA=$(node -e 'const u=new URL(process.argv[1]); console.log(u.searchParams.get("kvota") + " " + u.searchParams.get("kvota_n"))' "${ODG#* }")
+[ "$PORUKA" = "slike 1" ] && ok "druga slika odbijena (?kvota=slike&kvota_n=1)" || pao "kvota u adresi: $PORUKA"
+S=$(kod -b "$KOLACIC=$LT" "${ODG#* }"); [ "$S" = 200 ] && grep -q 'class="kvota-poruka"[^>]*>Ostalo ti je 0 od 1 slika' "$TMP/odg" || pao "banner kvote: $S"
+# Podmetnuti tekst u ?kvota= se ne prikazuje.
+S=$(kod -b "$KOLACIC=$LT" "$BASE/admin?kvota=Hakirano"); [ "$S" = 200 ] && ! grep -q 'class="kvota-poruka"' "$TMP/odg" || pao "lažni banner kvote: $S"
 N=$(d1 "SELECT (SELECT COUNT(*) FROM generiranja WHERE rijec_id IN ($RID1,$RID2) AND status='ceka') * 10 + (SELECT COUNT(*) FROM ai_potrosnja WHERE korisnik_id=$ID) AS n" | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$')
 [ "$N" = 11 ] || pao "poslova*10 + redaka potrošnje: $N (treba 11)"
 ok "jedan posao (ceka) i jedan redak ai_potrosnja"

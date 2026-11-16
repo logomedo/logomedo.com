@@ -9,7 +9,7 @@ import { aktivnaSistemska, postavka, redPauziran } from "./postavke";
 import { blokIspravaka, spojiPrompt, type Ispravak } from "./prompt";
 import { pojave, slug as uSlug } from "./fonemi";
 import { dimenzije } from "./dimenzije";
-import { batchSKvotom, provjeri } from "./kvota";
+import { batchSKvotom, KvotaPrekoracena, platitelj, provjeri } from "./kvota";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
@@ -26,9 +26,26 @@ export function sloziPrompt(stil: Stil, r: { rijec: string; opis_za_sliku: strin
 }
 
 /**
+ * Koliko bi poslova `dodajURed` upisao za jednu riječ u stilovima `kodovi` (postojeći stil bez posla
+ * koji čeka ili radi; isti uvjet kao u `dodajURed`). `rijecId` null = riječ još ne postoji.
+ */
+export async function stilovaZaRed(rijecId: number | null, kodovi: string[]): Promise<number> {
+  if (!kodovi.length) return 0;
+  const r = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM stilovi st WHERE st.kod IN (SELECT value FROM json_each(?))
+       AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = ? AND q.stil_id = st.id AND q.status IN ('ceka','radi'))`,
+  ).bind(JSON.stringify([...new Set(kodovi)]), rijecId ?? -1).first<{ n: number }>();
+  return r?.n ?? 0;
+}
+
+/** Najviše poslova u jednom batchu superadmina (`dodajURed`). */
+export const KOMAD = 50;
+
+/**
  * Dodaje posao za svaku riječ koja ga već nema u redu. Vraća broj dodanih. `grupa`: dio veće radnje u dnevniku.
- * Cijeli zahtjev je jedan batch s jednom naredbom kvote (lib/kvota.ts) za ukupni broj: prekoračenje
- * odbija sve (`KvotaPrekoracena`), ne samo dio.
+ * Logoped: cijeli zahtjev je jedan batch s jednom naredbom kvote (lib/kvota.ts) za ukupni broj, pa
+ * prekoračenje odbija sve (`KvotaPrekoracena`), ne samo dio; veličinu ograničava njegov limit.
+ * Superadmin (bez limita, potrošnja bezuvjetna): komadi po `KOMAD` poslova, svaki sa svojim retkom potrošnje.
  */
 export async function dodajURed(stil: Stil, rijecIds: number[], email: string, napomena?: string, grupa = novaGrupa()): Promise<number> {
   rijecIds = [...new Set(rijecIds)];
@@ -50,8 +67,8 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
   }
   if (!rijeci.length) return 0;
   // Upisi su bezuvjetni, pa je naplaćeno točno onoliko koliko je upisano.
-  await batchSKvotom(email, "slike", rijeci.length, rijeci.length === 1 ? `riječ ${rijeci[0].id}` : `${rijeci.length} riječi`, [
-    ...rijeci.map((r) =>
+  const upisi = (dio: typeof rijeci) => batchSKvotom(email, "slike", dio.length, dio.length === 1 ? `riječ ${dio[0].id}` : `${dio.length} riječi`, [
+    ...dio.map((r) =>
       // Riječ s odbijenom slikom u ovom stilu ide ispred backfilla (prioritet 1, migracija 0015).
       db.prepare(`INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija, prioritet)
                     VALUES (?1, ?2, ?3, ?4, (SELECT predlozak_verzija FROM stilovi WHERE id = ?2), ?5)`)
@@ -59,8 +76,15 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
           r.odbijena ? 1 : 0)),
     // Batch je transakcija, pa su zadnjih n poslova upravo ovi.
     zapisNastalih({ tko: email, radnja: "generiranje.zatrazeno", tablica: "generiranja", grupa },
-      { sql: "x.id IN (SELECT id FROM generiranja ORDER BY id DESC LIMIT ?)", args: [rijeci.length] }),
+      { sql: "x.id IN (SELECT id FROM generiranja ORDER BY id DESC LIMIT ?)", args: [dio.length] }),
   ]);
+  // Superadmin nema limit koji bi ograničio batch (bilježnica, /admin/glas/[slug]: stotine upisa s
+  // cijelim promptom), pa ide u komadima; logoped (i bez prava, koji dobiva `KvotaPrekoracena`) atomski.
+  if ((await platitelj(email))?.uloga === "superadmin") {
+    for (let i = 0; i < rijeci.length; i += KOMAD) await upisi(rijeci.slice(i, i + KOMAD));
+  } else {
+    await upisi(rijeci);
+  }
   await zazvoni();
   return rijeci.length;
 }
@@ -294,12 +318,26 @@ export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" 
   if (akcija === "odbij" && ponovi && (await trebaNova(slikaId))) await provjeri(email, "slike", 1);
   const grupa = novaGrupa();
   const ishod = await odluci(slikaId, akcija, email, razlog, grupa, akcija === "odbij" ? d.dorada : undefined);
-  let generira = false;
+  let posao: { generira: boolean; upozorenje?: string } = { generira: false };
   if (ishod.ok && akcija === "odbij") {
     if (d.trajno && d.dorada?.trim()) await trajniOpis(slikaId, d.dorada, email, grupa);
-    if (ponovi) generira = await ponoviZa(slikaId, email, grupa);
+    if (ponovi) posao = await ponoviNakonOdluke(slikaId, email, grupa);
   }
-  return { ...ishod, generira };
+  return { ...ishod, ...posao };
+}
+
+/**
+ * `ponoviZa` kad je odluka već spremljena. `provjeri` prije odluke nije atomska (odluka 404), pa kvota
+ * može nestati u međuvremenu: tada odluka ostaje, posla nema, a poruka kvote ide kao `upozorenje`
+ * (uspjeh, ne 429), da pregled ide dalje i da ponovni pokušaj ne dobije 409.
+ */
+async function ponoviNakonOdluke(slikaId: number, email: string, grupa: ReturnType<typeof novaGrupa>): Promise<{ generira: boolean; upozorenje?: string }> {
+  try {
+    return { generira: await ponoviZa(slikaId, email, grupa) };
+  } catch (e) {
+    if (e instanceof KvotaPrekoracena) return { generira: false, upozorenje: e.poruka };
+    throw e;
+  }
 }
 
 /** Hoće li `ponoviZa` dodati posao kad se ova slika makne (nema druge odobrene, kandidata ni posla). */
@@ -407,8 +445,8 @@ export async function premjesti(slikaId: number, cilj: string, email: string, o:
   if (o.trajno && o.dorada?.trim()) await trajniOpis(s.id, o.dorada, email, grupa);
 
   const odobrena = (await odluci(kopija, "odobri", email, undefined, grupa)).ok;
-  const generira = o.ponovi ? await ponoviZa(s.id, email, grupa) : false;
-  return { ok: true as const, kopija, rijec: rijec, slug: r.slug, nova, odobrena, generira };
+  const posao = o.ponovi ? await ponoviNakonOdluke(s.id, email, grupa) : { generira: false };
+  return { ok: true as const, kopija, rijec: rijec, slug: r.slug, nova, odobrena, ...posao };
 }
 
 /** Javni URL odobrene slike (bucket logomedo-javno na cdn.logomedo.com). */

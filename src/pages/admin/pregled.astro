@@ -156,7 +156,7 @@ const results = await kandidati(glas);
     const j: any = await r.json().catch(() => ({}));
     if (r.status === 409 && j.vec) return { vec: j.vec as Odluka };
     if (!r.ok) throw new Error(j.poruka ?? `HTTP ${r.status}`);   // 429: AI kvota (lib/kvota.ts)
-    return { vec: null, generira: !!j.generira };
+    return { vec: null, generira: !!j.generira, upozorenje: typeof j.upozorenje === "string" ? j.upozorenje : "" };
   }
 
   const v = (id: string) => $<HTMLInputElement>(id).value;
@@ -175,6 +175,8 @@ const results = await kandidati(glas);
         if (akcija === "odobri") for (const x of red) if (x.slug === k.slug) { x.odobrena_id = k.id; x.odobrenih = (x.odobrenih ?? 0) + 1; }
         if (akcija === "odbij" && kv("trajno") && v("dorada").trim()) for (const x of red) if (x.slug === k.slug) x.opis_za_sliku = v("dorada").trim();
         povijest.push(k);
+        // Odluka je spremljena, ali nova slika nije u redu (kvota je u međuvremenu potrošena).
+        if (o.upozorenje) poruka(`Odbijeno, ali nova slika se ne crta: ${o.upozorenje}`);
       }
       dalje();
     } catch (e) { poruka((e as Error).message); }
@@ -199,7 +201,8 @@ const results = await kandidati(glas);
       else {
         const R = String(j.rijec).toLocaleUpperCase("hr");
         poruka(`Slika je sada uz ${R}${j.nova ? " (nova riječ u katalogu)" : ""}, ${j.odobrena ? "odobrena" : "kao kandidat"}.`
-          + (j.generira ? ` Za ${k.rijec.toLocaleUpperCase("hr")} se crta nova.` : ""), "info");
+          + (j.generira ? ` Za ${k.rijec.toLocaleUpperCase("hr")} se crta nova.` : "")
+          + (j.upozorenje ? ` Nova za ${k.rijec.toLocaleUpperCase("hr")} se ne crta: ${j.upozorenje}` : ""), j.upozorenje ? "greska" : "info");
         indeks = null;
         dalje();
       }

@@ -5,11 +5,12 @@ import assert from "node:assert/strict";
 import { napraviD1 } from "./test/d1.ts";
 import { env } from "./test/cloudflare-workers.ts";
 import {
-  batchSKvotom, kadSeOslobada, kadTekst, KvotaPrekoracena, odgovorNaKvotu, platitelj, porukaKvote, preostalo, provjeri,
+  batchSKvotom, kadSeOslobada, kadTekst, kvotaIzAdrese, KvotaPrekoracena, odgovorNaKvotu, platitelj, porukaKvote, porukaZaKorisnika,
+  postaviKvotuUAdresu, preostalo, provjeri,
 } from "./kvota.ts";
-import { dodajURed, neuspjeleURed } from "./generiranje.ts";
+import { dodajURed, KOMAD, neuspjeleURed, odluciIPonovi, premjesti, stilovaZaRed } from "./generiranje.ts";
 import { stil } from "./katalog.ts";
-import { dodajZvukove, greskeURed, odbijZvukove, ponoviZvuk } from "./zvukovi.ts";
+import { dodajZvukove, greskeIzgovora, greskeURed, odbijZvukove, ponoviZvuk } from "./zvukovi.ts";
 import { ponovi, zatrazi } from "./pozadine-generiranje.ts";
 import * as aktivnost from "./aktivnost.ts";
 
@@ -69,6 +70,36 @@ test("dodajURed: više od 50 riječi je jedan batch, pa prekoračenje ne propuš
   await assert.rejects(dodajURed(s, await rijeci(61), ANA), odbijena);
   assert.equal(await poslova(), 0);
   assert.equal(await dodajURed(s, await rijeci(60), ANA), 60);
+});
+
+test("dodajURed superadmina: komadi po KOMAD, svaki sa svojim retkom potrošnje; logoped jedan redak", async () => {
+  const p = (await platitelj(SA))!;
+  const s = await stil("bojanka");
+  const velicine: number[] = [];
+  const izvorni = db().batch.bind(db());
+  db().batch = (async (u: D1PreparedStatement[]) => { velicine.push(u.length); return izvorni(u); }) as D1Database["batch"];
+  assert.equal(await dodajURed(s, await rijeci(2 * KOMAD + 20), SA), 2 * KOMAD + 20);
+  // Svaki batch: potrošnja + upisi + zapis u aktivnost.
+  assert.deepEqual(velicine, [KOMAD + 2, KOMAD + 2, 22]);
+  assert.deepEqual((await db().prepare("SELECT kolicina FROM ai_potrosnja WHERE korisnik_id = ? ORDER BY id").bind(p.korisnikId)
+    .all<{ kolicina: number }>()).results.map((r) => r.kolicina), [KOMAD, KOMAD, 20]);
+  assert.equal(await broj("SELECT COUNT(*) AS n FROM aktivnost WHERE radnja = 'generiranje.zatrazeno'"), 2 * KOMAD + 20);
+  velicine.length = 0;
+  await limit(ana, 2 * KOMAD);
+  assert.equal(await dodajURed(s, await rijeci(KOMAD + 5), ANA), KOMAD + 5);
+  assert.deepEqual(velicine, [KOMAD + 7]);
+  assert.equal(await broj("SELECT COUNT(*) AS n FROM ai_potrosnja WHERE korisnik_id = ?", ana), 1);
+});
+
+test("stilovaZaRed (nova riječ): broji samo stilove koji stvarno ulaze u red, kao dodajURed", async () => {
+  await db().prepare("INSERT OR IGNORE INTO stilovi (kod, naziv, predlozak) VALUES ('ilustracija', 'Ilustracija', 'draw {rijec}')").run();
+  const [r] = await rijeci(1);
+  assert.equal(await stilovaZaRed(null, ["bojanka", "ilustracija", "nema"]), 2);
+  assert.equal(await dodajURed(await stil("bojanka"), [r], SA), 1);
+  // Bojanka već čeka: provjera kvote smije tražiti samo ilustraciju.
+  assert.equal(await stilovaZaRed(r, ["bojanka", "ilustracija", "bojanka"]), 1);
+  assert.equal(await stilovaZaRed(r, ["bojanka"]), 0);
+  assert.equal(await stilovaZaRed(r, []), 0);
 });
 
 test("dva batcha zaredom kad je ostalo 1: prolazi samo jedan", async () => {
@@ -210,15 +241,26 @@ test("odbijZvukove s ponovnim snimanjem: bez kredita se ne odbija ni snimka; nap
   assert.equal(await odbijZvukove([c], ANA, { ponovo: false }), 1);
 });
 
-test("greskeURed (izgovori i slike): naplaćuje broj vraćenih onome tko klikne", async () => {
+test("greskeURed (izgovori i slike): naplaćuje broj vraćenih onome tko klikne; logoped vraća samo svoje", async () => {
   await limit(ana, 1, 1);
-  await db().prepare("INSERT INTO zvuk_generiranja (kljuc, izgovor, zatrazio, status) VALUES ('a', 'A.', 'x', 'greska'), ('b', 'B.', 'x', 'greska')").run();
-  await assert.rejects(greskeURed(ANA), odbijena);
-  assert.equal(await broj("SELECT COUNT(*) AS n FROM zvuk_generiranja WHERE status = 'greska'"), 2);
-  assert.equal(await greskeURed(SA), 2);
-  assert.equal(poslano.length, 2);
+  await db().prepare(`INSERT INTO zvuk_generiranja (kljuc, izgovor, zatrazio, status) VALUES
+    ('a', 'A.', 'x@primjer.hr', 'greska'), ('b', 'B.', 'x@primjer.hr', 'greska'), ('c', 'C.', ?, 'greska'), ('d', 'D.', ?, 'greska')`)
+    .bind(ANA, ANA.toUpperCase()).run();
+  assert.deepEqual((await greskeIzgovora(ANA)).map((g) => g.kljuc).sort(), ["c", "d"]);
+  assert.equal((await greskeIzgovora(SA)).length, 4);
+  await assert.rejects(greskeURed(ANA), odbijena);   // 2 svoja, ostao 1 kredit
+  assert.equal(await broj("SELECT COUNT(*) AS n FROM zvuk_generiranja WHERE status = 'greska'"), 4);
+  await limit(ana, 1, 2);
+  assert.equal(await greskeURed(ANA), 2);
+  assert.equal(await potroseno(ana, "zvukovi"), 2);
+  assert.deepEqual(
+    (await db().prepare("SELECT kljuc FROM zvuk_generiranja WHERE status = 'greska' ORDER BY kljuc").all<{ kljuc: string }>()).results.map((r) => r.kljuc),
+    ["a", "b"],                                      // tuđi neuspjeli ostaju
+  );
+  assert.equal(await greskeURed(ANA), 0);   // nema svojih grešaka: nema ni naplate ni odbijanja
+  assert.equal(await greskeURed(SA), 2);   // superadmin vraća sve
+  assert.equal(poslano.length, 4);
   assert.equal(await potroseno((await platitelj(SA))!.korisnikId, "zvukovi"), 2);
-  assert.equal(await greskeURed(ANA), 0);   // nema grešaka: nema ni naplate ni odbijanja
 
   const [r] = await rijeci(1);
   const s = await stil("bojanka");
@@ -227,7 +269,83 @@ test("greskeURed (izgovori i slike): naplaćuje broj vraćenih onome tko klikne"
   assert.equal(await potroseno(ana), 1);
 });
 
-test("odgovorNaKvotu: JSON za API i fetch, 303 natrag s ?kvota= za obrazac", async () => {
+/** Kandidat za riječ; `utrka`: prvi batch s novim poslom prije sebe potroši kvotu (kao da je drugi zahtjev bio brži). */
+async function kandidatIUtrka(korisnik: number): Promise<number> {
+  // R2 (privatni i javni bucket) u memoriji: odluka usklađuje javni bucket, premještanje kopira sliku.
+  const r2 = new Map<string, ArrayBuffer>();
+  const bucket = {
+    head: async (k: string) => (r2.has(`j:${k}`) ? {} : null),
+    put: async (k: string, v: ArrayBuffer) => { r2.set(`j:${k}`, v); },
+    delete: async (k: string) => { r2.delete(`j:${k}`); },
+  };
+  env.JAVNO = bucket;
+  env.SLIKE = {
+    get: async (k: string) => (r2.has(k) ? { body: r2.get(k)!, arrayBuffer: async () => r2.get(k)! } : null),
+    put: async (k: string, v: ArrayBuffer) => { r2.set(k, v); },
+  };
+  env.CDN_URL = "https://cdn.primjer.hr";
+  const [r] = await rijeci(1);
+  const s = await stil("bojanka");
+  const kljuc = `bojanka/r${r}/1.png`;
+  r2.set(kljuc, new ArrayBuffer(1));
+  const id = (await db().prepare(`INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, izvor) VALUES (?, ?, ?, 'h', 'image/png', 1, 'agy') RETURNING id`)
+    .bind(r, s.id, kljuc).first<number>("id"))!;
+  const izvorni = db().batch.bind(db());
+  let jednom = true;
+  db().batch = (async (u: (D1PreparedStatement & { sql?: string })[]) => {
+    if (jednom && u.some((x) => x.sql?.includes("INSERT INTO generiranja"))) {
+      jednom = false;
+      await db().prepare("INSERT INTO ai_potrosnja (korisnik_id, vrsta, kolicina, izvor) VALUES (?, 'slike', 1, 'drugi zahtjev')").bind(korisnik).run();
+    }
+    return izvorni(u);
+  }) as D1Database["batch"];
+  return id;
+}
+
+test("odluciIPonovi: kvota nestane između provjere i posla → odluka ostaje, uspjeh s upozorenjem, bez posla", async () => {
+  await limit(ana, 1);
+  const id = await kandidatIUtrka(ana);
+  const o = await odluciIPonovi(id, "odbij", ANA, "krivo", true);
+  assert.equal(o.ok, true);
+  assert.equal(o.generira, false);
+  assert.match(String(o.upozorenje), /^Ostalo ti je 0 od 1 slika/);
+  assert.equal(await broj("SELECT COUNT(*) AS n FROM slike WHERE id = ? AND status = 'odbijena'", id), 1);
+  assert.equal(await poslova(), 0);
+  assert.equal(await potroseno(ana), 1);   // samo „drugi zahtjev”
+  // Bez kredita već prije odluke: 429 kao dosad, odluka se ne sprema.
+  const [r2] = await rijeci(1);
+  const drugi = (await db().prepare(`INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, izvor) VALUES (?, 1, 'bojanka/x/2.png', 'h', 'image/png', 1, 'agy') RETURNING id`)
+    .bind(r2).first<number>("id"))!;
+  await assert.rejects(odluciIPonovi(drugi, "odbij", ANA, "krivo", true), odbijena);
+  assert.equal(await broj("SELECT COUNT(*) AS n FROM slike WHERE id = ? AND status = 'kandidat'", drugi), 1);
+});
+
+test("premjesti s ponovi: kvota nestane prije posla → kopija i odbijanje ostaju, upozorenje", async () => {
+  await limit(ana, 1);
+  const id = await kandidatIUtrka(ana);
+  const o = await premjesti(id, "mačić", ANA, { ponovi: true });
+  assert.equal(o.ok, true);
+  assert.ok("upozorenje" in o && /^Ostalo ti je 0 od 1 slika/.test(String(o.upozorenje)));
+  assert.equal(await broj("SELECT COUNT(*) AS n FROM slike WHERE id = ? AND status = 'odbijena'", id), 1);
+  assert.equal(await poslova(), 0);
+});
+
+test("kvotaIzAdrese / postaviKvotuUAdresu: samo poznata vrsta i cijeli broj; tekst iz adrese se ne koristi", async () => {
+  const p = (q: string) => kvotaIzAdrese(new URLSearchParams(q));
+  assert.deepEqual(p("kvota=slike&kvota_n=3"), { vrsta: "slike", trazeno: 3 });
+  assert.deepEqual(p("kvota=zvukovi"), { vrsta: "zvukovi", trazeno: null });
+  for (const n of ["0", "-1", "1.5", "1e3", "abc", "9999999", "03"]) assert.deepEqual(p(`kvota=slike&kvota_n=${n}`), { vrsta: "slike", trazeno: null });
+  for (const q of ["", "kvota=", "kvota=Hakirano%20je", "kvota=SLIKE", "kvota=slike%20", "x=slike"]) assert.equal(p(q), null);
+  const u = postaviKvotuUAdresu(new URL("https://logomedo.com/admin/rijec/mama?kvota=Lazno&kvota_n=9&stil=bojanka"), "zvukovi", null);
+  assert.equal(u.search, "?kvota=zvukovi&stil=bojanka");
+  // Poruka se gradi iz stanja korisnika: logoped dobiva brojke, superadmin ništa, nepoznat zabranu.
+  await limit(ana, 1);
+  assert.match(String(await porukaZaKorisnika(ANA, { vrsta: "slike", trazeno: 2 })), /^Ostalo ti je 1 od 1 slika \(ovo traži 2\)\.$/);
+  assert.equal(await porukaZaKorisnika(SA, { vrsta: "slike", trazeno: 2 }), null);
+  assert.equal(await porukaZaKorisnika("nitko@primjer.hr", { vrsta: "slike", trazeno: 1 }), KvotaPrekoracena.zabrana("slike").poruka);
+});
+
+test("odgovorNaKvotu: JSON za API i fetch, 303 natrag s ?kvota=<vrsta>&kvota_n= za obrazac (bez teksta)", async () => {
   const e = new KvotaPrekoracena({ vrsta: "slike", trazeno: 2, preostalo: 1, limit: 50, oslobadaSe: null, poruka: "Ostalo ti je 1 od 50 slika." });
   const zahtjev = (put: string, h: Record<string, string>) => {
     const url = new URL(`https://logomedo.com${put}`);
@@ -242,9 +360,9 @@ test("odgovorNaKvotu: JSON za API i fetch, 303 natrag s ?kvota= za obrazac", asy
     "content-type": "multipart/form-data; boundary=x", referer: "https://logomedo.com/admin/rijec/mama?stil=bojanka#slike",
   }));
   assert.equal(r.status, 303);
-  assert.equal(r.headers.get("location"), `/admin/rijec/mama?stil=bojanka&kvota=${new URLSearchParams({ x: e.poruka }).toString().slice(2)}`);
+  assert.equal(r.headers.get("location"), "/admin/rijec/mama?stil=bojanka&kvota=slike&kvota_n=2");
   r = odgovorNaKvotu(e, ...zahtjev("/admin/situacije", { "content-type": "application/x-www-form-urlencoded", referer: "https://zlo.example/admin" }));
-  assert.ok(r.headers.get("location")!.startsWith("/admin?kvota="));
+  assert.equal(r.headers.get("location"), "/admin?kvota=slike&kvota_n=2");
 });
 
 test("aktivnost.vrati: posao vraćen u red se naplaćuje; bez kredita se ne vraća ništa", async () => {
