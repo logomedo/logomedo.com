@@ -54,3 +54,50 @@ s `playwright-cli` i virtualnim WebAuthn autentifikatorom (CDP `WebAuthn.addVirt
 (bez `| tail`), pa `npm run deploy`. Nikad obrnuto (docs/admin.md, zamka 8. 11. 2026.).
 
 **13. Javnost.** Plan je u javnom repou; ne sadrži e-mailove, imena testera, tokene ni linkove.
+
+## S1 (16. 11. 2026.)
+
+**100. Šav za testove: `module.registerHooks`, bez izmjene produkcijskog koda.** `npm test` je
+`node --import ./src/lib/test/registracija.ts --test …`; sinkroni resolve hook preusmjerava
+`cloudflare:workers` na `src/lib/test/cloudflare-workers.ts` (promjenjivi `env`, testovi postave
+`env.DB = napraviD1()` i `env.ADMIN_EMAILS`) i relativne importe bez ekstenzije (`./sesija`, Vite stil)
+pokuša s `.ts`. Odbačeno: modul `src/lib/db.ts` s `DB()` (40 datoteka importa `env` izravno, pa bi
+šav pokrio samo dio koda). Revizija: Node bez `registerHooks` ili prelazak na vitest/workerd.
+
+**101. Harness `src/lib/test/d1.ts`** (`napraviD1({ doMigracije? })`, `procitajMigraciju`): `node:sqlite`
+u memoriji, migracije sortirane po punom imenu. **Mjerenje: svih 32 postojećih (0001–0031, obje
+`0030_*`) i 0032 prolaze, bez zaobilaznica.** `batch` u transakciji s rollbackom, `undefined` u
+`bind` baca kao D1. Revizija: prva migracija koju node:sqlite ne podnese (zapisati, ne preskočiti tiho).
+
+**102. Ovlasti** (`src/lib/admin/ovlasti.ts`): `katalog`, `zadaci`, `ai` (obje uloge);
+`ai.bez_limita`, `sve.zadaci`, `aktivnost.tudja`, `korisnici`, `administracija` (samo superadmin).
+`odrediUlogu(email, adminEmails, redak)` je jedino mjesto pravila iz odluke 2; test drži skup ključeva
+fiksnim pa nova ovlast ne prolazi bez testa. (potvrditi imena)
+
+**103. `getSession`:** jedan upit `admin_sessions LEFT JOIN korisnici ON k.email = lower(s.email)`.
+`Session` dobiva `uloga` i `korisnikId` (superadmin bez retka: `null`). Uloga se određuje pri svakom
+zahtjevu, pa deaktivacija ili micanje iz `ADMIN_EMAILS` gasi postojeću sesiju odmah. Usporedba
+e-maila je bez obzira na velika slova (prije: točna, ali e-mailovi su ionako mala slova).
+`ulogaZa(email)` je isti put za `verifyLogin`; `/admin/sso` ostaje samo `ADMIN_EMAILS`.
+
+**104. `korisnikId()` i `postaviLogopedskiMod()`:** redak `uloga='admin'` nastaje samo za e-mail
+iz `ADMIN_EMAILS`. Za ostale `korisnikId` vraća postojeći id ili baca (logoped redak nastaje
+isključivo iz pozivnice, S2), a `postaviLogopedskiMod` radi samo `UPDATE`. Posljedica za S3: poziv
+iz rute za korisnika bez retka treba biti 403, ne 500.
+
+**105. 0032 deaktivira postojeće retke `uloga='logoped'`** (`aktivan=0`, `deaktiviran_at`). Stupac
+`uloga` ima zadano `'logoped'`, pa bi eventualni stari retci inače odjednom dobili pristup čim
+imaju passkey ili sesiju. Logoped postaje aktivan samo pozivnicom (S2 mora pri iskorištenju postaviti
+`aktivan=1, deaktiviran_at=NULL`). Prije `db:migrate` u S5: `SELECT uloga, aktivan, COUNT(*) FROM
+korisnici GROUP BY 1,2` (samo čitanje). (potvrditi)
+
+**106. Superadmin s retkom `aktivan=0` ili `uloga='logoped'` ostaje superadmin** (odluka 2: redak se
+za njega ne čita). Deaktivacija superadmina na `/admin/korisnici` (S2) zato nema smisla: sakriti je.
+
+**107. Do S3 aktivni logoped vidi cijeli admin.** S1 daje sesiju, ograničenja ruta dolaze u S3.
+Nije rizik jer ništa ne ide na produkciju prije S5, a logoped redak lokalno nastaje tek iz pozivnice
+(S2). Lokalna provjera S1 (curl s kolačićem): superadmin 200 na `/admin`, `/admin/pregled`,
+`/admin/zvukovi`; aktivni logoped 200; deaktivirani logoped i `admin` redak izvan `ADMIN_EMAILS` 302 na prijavu.
+
+**108. `src/lib/app/sesija.ts` zadržava svoj `Uloga = "admin"`** (odluka 1, `/api/v1` samo
+superadmin). Dva pojma „Uloga” žive odvojeno do revizije odluke 1. (potvrditi)

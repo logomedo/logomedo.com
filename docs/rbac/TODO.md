@@ -10,13 +10,13 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F0 — Temelj: uloge u bazi i sesiji (ništa vidljivo, ništa na produkciji)
 
-- [ ] Test-harness `src/lib/test/d1.ts`: `node:sqlite` primijeni sve `migrations/*.sql` redom i vrati objekt s D1 API-jem (`prepare/bind/first/all/run`, `batch`) → S1
-- [ ] Mjerenje: prolaze li sve migracije 0001–0031 u `node:sqlite` (broj, iznimke zapisati u odluku) → S1
-- [ ] `migrations/0032_korisnici_uloge.sql`: `korisnici.aktivan`, `deaktiviran_at`, `limit_slike_7d`, `limit_zvukovi_7d`; tablice `pozivi` i `ai_potrosnja`; `rijeci.dodao` → S1
-- [ ] `src/lib/admin/ovlasti.ts`: tip `Uloga = 'superadmin' | 'logoped'`, popis ovlasti, `smije(uloga, ovlast)`; jedinični testovi matrice → S1
-- [ ] `getSession` vraća `uloga` i `korisnikId` (JOIN na `korisnici`); logoped = `uloga='logoped' AND aktivan=1`; superadmin samo iz `ADMIN_EMAILS` → S1
-- [ ] `verifyLogin` propušta aktivnog logopeda; `/admin/sso` i dalje samo superadmin → S1
-- [ ] `korisnikId()` više ne upisuje `'admin'` za nepoznate e-mailove bez provjere (odluka u S1) → S1
+- [x] Test-harness `src/lib/test/d1.ts`: `node:sqlite` primijeni sve `migrations/*.sql` redom i vrati objekt s D1 API-jem (`prepare/bind/first/all/run`, `batch`) → S1
+- [x] Mjerenje: prolaze li sve migracije 0001–0031 u `node:sqlite` (broj, iznimke zapisati u odluku) → S1 (33/33, odluka 101)
+- [x] `migrations/0032_korisnici_uloge.sql`: `korisnici.aktivan`, `deaktiviran_at`, `limit_slike_7d`, `limit_zvukovi_7d`; tablice `pozivi` i `ai_potrosnja`; `rijeci.dodao` → S1
+- [x] `src/lib/admin/ovlasti.ts`: tip `Uloga = 'superadmin' | 'logoped'`, popis ovlasti, `smije(uloga, ovlast)`; jedinični testovi matrice → S1
+- [x] `getSession` vraća `uloga` i `korisnikId` (JOIN na `korisnici`); logoped = `uloga='logoped' AND aktivan=1`; superadmin samo iz `ADMIN_EMAILS` → S1
+- [x] `verifyLogin` propušta aktivnog logopeda; `/admin/sso` i dalje samo superadmin → S1
+- [x] `korisnikId()` više ne upisuje `'admin'` za nepoznate e-mailove bez provjere (odluka u S1) → S1
 
 ## F1 — Pozivnica i upravljanje korisnicima
 

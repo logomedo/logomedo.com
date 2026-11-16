@@ -70,4 +70,5 @@ lokalni runner ili queue stvarno rade; e2e kvote provjerava upis u red, ne gener
 
 ## Gdje smo
 
-S0 (16. 11. 2026.): plan, koda nema. Sljedeće: S1.
+S0 (16. 11. 2026.): plan, koda nema.
+S1 (16. 11. 2026.): harness, 0032, ovlasti, uloga u sesiji i passkey prijavi (d10369e, 153 testa). Sljedeće: S2.
