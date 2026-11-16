@@ -75,3 +75,45 @@ regForm?.addEventListener("submit", async (ev) => {
     show("Upis nije uspio: " + (e as Error).message);
   }
 });
+
+// Pozivnica (/admin/poziv#<token>): token iz fragmenta (ne ide na server ni u Referer osim u tijelu
+// POST-a). Opcije se dohvate odmah (ime pozvanog), a passkey nastaje na klik, da preglednik
+// vidi korisnikovu gestu izravno prije navigator.credentials.create.
+const poziv = document.getElementById("poziv") as HTMLElement | null;
+if (poziv) {
+  const token = location.hash.slice(1);
+  const gumb = document.getElementById("poziv-passkey") as HTMLButtonElement;
+  const imeEl = document.getElementById("poziv-ime")!;
+  const emailEl = document.getElementById("poziv-email")!;
+  let opcije: any = null;
+  const ucitaj = async () => {
+    const d = await post("/admin/poziv/options", { token });
+    opcije = d.options;
+    imeEl.textContent = d.ime || d.email;
+    emailEl.textContent = d.email;
+    poziv.dataset.stanje = "spremno";
+    gumb.disabled = false;
+  };
+  if (!token) {
+    poziv.dataset.stanje = "greska";
+    show("Link nije potpun: otvori cijeli link iz poruke.");
+  } else {
+    ucitaj().catch((e) => { poziv.dataset.stanje = "greska"; show((e as Error).message); });
+  }
+  gumb.addEventListener("click", async () => {
+    if (!opcije) return;
+    gumb.disabled = true;
+    try {
+      const cred = await navigator.credentials.create({ publicKey: creationOptions(opcije) });
+      const label = (document.getElementById("poziv-oznaka") as HTMLInputElement | null)?.value ?? "";
+      const res = await post("/admin/poziv/verify", { token, response: credToJSON(cred), label });
+      poziv.dataset.stanje = "gotovo";
+      location.href = res.next;
+    } catch (e) {
+      show("Passkey nije upisan: " + (e as Error).message);
+      // Izazov je potrošen ili je istekao: nove opcije za sljedeći pokušaj.
+      opcije = null;
+      ucitaj().catch((e2) => { poziv.dataset.stanje = "greska"; show((e2 as Error).message); });
+    }
+  });
+}

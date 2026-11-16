@@ -1,0 +1,33 @@
+---
+// Javna stranica pozivnice (docs/rbac/, odluka 4). Token je u #fragmentu i čita ga samo klijent
+// (src/lib/admin/klijent.ts): /admin/poziv/options daje ime i opcije, /admin/poziv/verify upiše
+// passkey i otvori sesiju. Stranica sama ne zna ništa o pozivnici.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Marka from "../../components/Marka.astro";
+import Ikona from "../../components/Ikona.astro";
+---
+<AdminOkvir naslov="Pozivnica" javno>
+  <div class="prijava">
+    <div id="poziv" class="ploha okvir" data-stanje="ucitavanje">
+      <Marka href="/" dodatak="admin" />
+      <h1>Dobrodošli, <span id="poziv-ime">…</span></h1>
+      <p class="blijedo">Pozvani ste u LogoMedo admin kao <b id="poziv-email"></b>. Prijava je passkeyem: otiskom prsta,
+        licem ili PIN-om uređaja, bez lozinke.</p>
+      <input id="poziv-oznaka" type="text" name="label" placeholder="Naziv uređaja, npr. iPhone (nije obavezno)" maxlength="80" />
+      <button id="poziv-passkey" class="gumb glavni puno" type="button" disabled><Ikona ime="kljuc" /> Napravi passkey</button>
+      <p id="msg" hidden></p>
+      <p class="sitno blijedo">Link vrijedi 72 sata i samo jednom. Ako ne radi, zatražite novi.</p>
+    </div>
+  </div>
+</AdminOkvir>
+<script>import "../../lib/admin/klijent";</script>
+<style>
+  .prijava { min-height: calc(100vh - 120px); display: grid; place-items: center; }
+  .okvir { width: min(420px, 100%); padding: 32px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--sjena-2); }
+  h1 { margin: 18px 0 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.6rem; }
+  p { margin: 0 0 8px; }
+  .puno { width: 100%; min-height: 46px; }
+  #msg { color: var(--greska); }
+  [data-stanje="greska"] #poziv-passkey, [data-stanje="greska"] #poziv-oznaka { display: none; }
+  .sitno { font-size: .8rem; margin-top: 8px; }
+</style>

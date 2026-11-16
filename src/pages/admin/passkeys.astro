@@ -1,20 +1,19 @@
 ---
-import { env } from "cloudflare:workers";
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import { kad } from "../../lib/katalog";
+import { mojiKljucevi, obrisiKljuc } from "../../lib/admin/passkey";
 
 if (!Astro.locals.admin) return new Response(null, { status: 401 });
-const { email, method, createdAt } = Astro.locals.admin;
+const { email, createdAt } = Astro.locals.admin;
 if (Astro.request.method === "POST") {
   const forma = await Astro.request.formData();
-  await env.DB.prepare("DELETE FROM admin_passkeys WHERE id = ? AND email = ?").bind(String(forma.get("id")), email).run();
+  await obrisiKljuc(String(forma.get("id")), email);
   return Astro.redirect("/admin/passkeys", 303);
 }
-const { results: kljucevi } = await env.DB.prepare(
-  "SELECT id, label, created_at, last_used_at FROM admin_passkeys WHERE email = ? ORDER BY created_at",
-).bind(email).all<{ id: string; label: string; created_at: string; last_used_at: string | null }>();
-const svjeza = method === "access" && Date.now() - Date.parse(createdAt) < 10 * 60_000;
+const kljucevi = await mojiKljucevi(email);
+// Isto pravilo kao registerRefusal: svaka prijava mlađa od 10 min (kod, passkey ili pozivnica).
+const svjeza = Date.now() - Date.parse(createdAt) < 10 * 60_000;
 ---
 <AdminOkvir naslov="Ključevi" aktivno="kljucevi">
   <div class="naslov"><div><h1>Ključevi</h1><p class="podnaslov">Passkeyi za <b>{email}</b></p></div></div>
@@ -36,7 +35,7 @@ const svjeza = method === "access" && Date.now() - Date.parse(createdAt) < 10 * 
     </div>
     <form id="passkey-register" class="ploha dodaj">
       <h2>Dodaj passkey</h2>
-      <p class="blijedo sitno">{svjeza ? "Prijava je svježa, možeš dodati ključ." : "Dodavanje traži prijavu kodom na e-mail mlađu od 10 minuta."}</p>
+      <p class="blijedo sitno">{svjeza ? "Prijava je svježa, možeš dodati ključ." : "Dodavanje traži prijavu mlađu od 10 minuta: odjavi se i prijavi ponovno."}</p>
       <input type="text" name="label" placeholder="Oznaka, npr. MacBook" maxlength="80" />
       <button class="gumb glavni" type="submit"><Ikona ime="kljuc" /> Dodaj</button>
       <p id="msg" hidden></p>

@@ -1,0 +1,206 @@
+---
+// Korisnici i pozivnice (docs/rbac/, S2). Samo superadmin (ovlast `korisnici`), i GET i POST.
+// Stranica sama obrađuje POST (`akcija`), kao /admin/postavke. Link pozivnice prikaže se jednom,
+// u odgovoru na POST (#poziv-link), i nigdje se ne sprema.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { kad } from "../../lib/katalog";
+import { smije } from "../../lib/admin/ovlasti";
+import { LIMIT_MAX, popisKorisnika, postaviAktivan, postaviLimite, procitajLimit } from "../../lib/admin/korisnici";
+import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice } from "../../lib/admin/pozivi";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+const PORUKE_OK: Record<string, string> = {
+  deaktiviran: "Korisnik deaktiviran; njegove sesije i otvorene pozivnice su ugašene.",
+  aktiviran: "Korisnik aktiviran.",
+  limiti: "Limiti spremljeni.",
+  opozvana: "Pozivnica opozvana.",
+};
+let poruka: string | null = PORUKE_OK[Astro.url.searchParams.get("ok") ?? ""] ?? null;
+let greska: string | null = null;
+let link: { url: string; email: string; istjece: string } | null = null;
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const akcija = String(f.get("akcija") ?? "");
+  const id = Number(f.get("id"));
+  const natrag = (ok: string) => Astro.redirect(`/admin/korisnici?ok=${ok}`, 303);
+  try {
+    if (akcija === "poziv" || akcija === "novi_passkey") {
+      const p = akcija === "poziv"
+        ? await izdaj({ email: String(f.get("email") ?? ""), ime: String(f.get("ime") ?? "") }, s.email)
+        : await izdaj({ email: String(f.get("email") ?? ""), korisnikId: id }, s.email);
+      link = { url: `${Astro.url.origin}/admin/poziv#${p.token}`, email: p.email, istjece: p.istjece };
+    } else if (akcija === "opozovi") {
+      if (await opozovi(Number(f.get("poziv_id")), s.email)) return natrag("opozvana");
+      greska = "Pozivnica je već iskorištena ili opozvana.";
+    } else if (akcija === "deaktiviraj" || akcija === "aktiviraj") {
+      const r = await postaviAktivan(id, akcija === "aktiviraj", s.email);
+      if (r.ok) return natrag(akcija === "aktiviraj" ? "aktiviran" : "deaktiviran");
+      greska = r.greska;
+    } else if (akcija === "limiti") {
+      const r = await postaviLimite(id, procitajLimit(f.get("limit_slike_7d")), procitajLimit(f.get("limit_zvukovi_7d")), s.email);
+      if (r.ok) return natrag("limiti");
+      greska = r.greska;
+    } else {
+      greska = "Nepoznata radnja.";
+    }
+  } catch (e) {
+    if (!(e instanceof PozivOdbijen)) throw e;
+    greska = PORUKE_ODBIJANJA[e.razlog];
+  }
+  poruka = null;
+  if (greska) Astro.response.status = 400;
+}
+
+const [korisnici, pozivnice] = await Promise.all([popisKorisnika(), otvorenePozivnice()]);
+const ulogaTekst = (k: (typeof korisnici)[number]) =>
+  k.uloga ?? (k.ulogaRetka === "logoped" ? "logoped, deaktiviran" : "bez pristupa");
+---
+<AdminOkvir naslov="Korisnici" aktivno="korisnici">
+  <div class="naslov">
+    <div>
+      <h1>Korisnici</h1>
+      <p class="podnaslov">Superadmini su iz <code>ADMIN_EMAILS</code> i ovdje se ne mijenjaju. Logoped ulazi samo pozivnicom
+        (link vrijedi 72 h, jednom). Deaktivacija odmah gasi njegove sesije; ključevi ostaju za ponovnu aktivaciju.</p>
+    </div>
+  </div>
+
+  {poruka && <p class="poruka ok" role="status">{poruka}</p>}
+  {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
+  {link && (
+    <section class="ploha link" id="poziv-rezultat">
+      <h2>Pozivnica za {link.email}</h2>
+      <p class="blijedo sitno">Pošalji link osobno (poruka, ne javni kanal). Vidi se samo sada; vrijedi do {kad(link.istjece)}.
+        Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
+      <div class="red-linka">
+        <input id="poziv-link" type="text" readonly value={link.url} />
+        <button id="kopiraj-link" class="gumb glavni mali" type="button">Kopiraj</button>
+      </div>
+    </section>
+  )}
+
+  <div class="raspored">
+    <div class="ploha">
+      <table id="korisnici">
+        <thead><tr><th>Korisnik</th><th>Uloga</th><th>Ključevi</th><th>Zadnja prijava</th><th>AI limit (7 dana)</th><th></th></tr></thead>
+        <tbody>
+          {korisnici.map((k) => {
+            const logoped = k.uloga !== "superadmin" && k.ulogaRetka === "logoped" && k.id !== null;
+            return (
+              <tr data-email={k.email} data-uloga={k.uloga ?? "nema"}>
+                <td><b>{k.ime ?? "—"}</b><div class="blijedo sitno">{k.email}</div></td>
+                <td>
+                  <span class:list={["oznaka", { med: k.uloga === "superadmin", uspjeh: k.uloga === "logoped", greska: !k.uloga }]}>{ulogaTekst(k)}</span>
+                  {k.deaktiviran_at && !k.uloga && <div class="blijedo sitno">od {kad(k.deaktiviran_at)}</div>}
+                </td>
+                <td>{k.kljuceva}</td>
+                <td class="blijedo">{kad(k.zadnja_prijava)}</td>
+                <td>
+                  {logoped ? (
+                    <form method="post" class="limiti">
+                      <input type="hidden" name="akcija" value="limiti" /><input type="hidden" name="id" value={k.id} />
+                      <label>slike <input type="number" name="limit_slike_7d" min="0" max={LIMIT_MAX} step="1" required value={k.limit_slike_7d} /></label>
+                      <label>izgovori <input type="number" name="limit_zvukovi_7d" min="0" max={LIMIT_MAX} step="1" required value={k.limit_zvukovi_7d} /></label>
+                      <button class="gumb mali tihi" type="submit">Spremi</button>
+                    </form>
+                  ) : <span class="blijedo">{k.uloga === "superadmin" ? "bez limita" : "—"}</span>}
+                </td>
+                <td class="akcije">
+                  {logoped && (
+                    <>
+                      <form method="post">
+                        <input type="hidden" name="akcija" value="novi_passkey" /><input type="hidden" name="id" value={k.id} />
+                        <input type="hidden" name="email" value={k.email} />
+                        <button class="gumb mali tihi" type="submit" title="Pozivnica za novi uređaj (izgubljen passkey)"><Ikona ime="kljuc" /> Novi passkey</button>
+                      </form>
+                      <form method="post">
+                        <input type="hidden" name="akcija" value={k.aktivan ? "deaktiviraj" : "aktiviraj"} /><input type="hidden" name="id" value={k.id} />
+                        <button class:list={["gumb mali tihi", { opasno: k.aktivan }]} type="submit">{k.aktivan ? "Deaktiviraj" : "Aktiviraj"}</button>
+                      </form>
+                    </>
+                  )}
+                  {!k.uloga && k.ulogaRetka !== "logoped" && (
+                    <form method="post">
+                      <input type="hidden" name="akcija" value="poziv" /><input type="hidden" name="email" value={k.email} />
+                      <input type="hidden" name="ime" value={k.ime ?? ""} />
+                      <button class="gumb mali tihi" type="submit">Pozovi kao logopeda</button>
+                    </form>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+
+      <h2 class="podnaslov-tablice">Otvorene pozivnice</h2>
+      {pozivnice.length ? (
+        <table id="pozivnice">
+          <thead><tr><th>Za</th><th>Vrsta</th><th>Izdao</th><th>Vrijedi do</th><th></th></tr></thead>
+          <tbody>
+            {pozivnice.map((p) => (
+              <tr data-poziv-id={p.id} data-email={p.email}>
+                <td><b>{p.ime ?? "—"}</b><div class="blijedo sitno">{p.email}</div></td>
+                <td>{p.korisnik_id ? "novi passkey" : "novi logoped"}</td>
+                <td class="blijedo sitno">{p.stvorio}</td>
+                <td class="blijedo">{kad(p.istjece)}</td>
+                <td>
+                  <form method="post">
+                    <input type="hidden" name="akcija" value="opozovi" /><input type="hidden" name="poziv_id" value={p.id} />
+                    <button class="gumb mali tihi opasno" type="submit">Opozovi</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : <p class="blijedo sitno prazne">Nema otvorenih pozivnica.</p>}
+    </div>
+
+    <form method="post" class="ploha dodaj" id="nova-pozivnica">
+      <h2>Nova pozivnica</h2>
+      <p class="blijedo sitno">Za novog logopeda ili za povratak deaktiviranog. Link se prikaže jednom; pošalji ga osobno.</p>
+      <input type="hidden" name="akcija" value="poziv" />
+      <input type="text" name="ime" placeholder="Ime i prezime" maxlength="80" autocomplete="off" />
+      <input type="email" name="email" placeholder="E-mail" required maxlength="254" autocomplete="off" />
+      <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi link</button>
+    </form>
+  </div>
+</AdminOkvir>
+<script>
+  const gumb = document.getElementById("kopiraj-link");
+  gumb?.addEventListener("click", async () => {
+    const polje = document.getElementById("poziv-link") as HTMLInputElement;
+    polje.select();
+    try {
+      await navigator.clipboard.writeText(polje.value);
+      gumb.textContent = "Kopirano";
+    } catch {
+      gumb.textContent = "Označeno: Ctrl+C";
+    }
+  });
+</script>
+<style>
+  .raspored { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; margin-top: 16px; }
+  @media (max-width: 1000px) { .raspored { grid-template-columns: 1fr; } }
+  .ploha { overflow-x: auto; }
+  .dodaj { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .dodaj h2, .link h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; }
+  .sitno { font-size: .82rem; margin: 0; }
+  form { margin: 0; }
+  .akcije { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .limiti { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .limiti label { display: inline-flex; gap: 4px; align-items: center; font-size: .8rem; color: var(--blijedo); margin: 0; }
+  .limiti input { width: 76px; }
+  .podnaslov-tablice { margin: 24px 16px 8px; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
+  .prazne { padding: 0 16px 16px; }
+  .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }
+  .poruka.ok { color: var(--uspjeh); }
+  .poruka.greska { color: var(--greska); }
+  .link { margin-top: 16px; padding: 20px; display: flex; flex-direction: column; gap: 10px; border-color: var(--med); }
+  .red-linka { display: flex; gap: 8px; }
+  .red-linka input { flex: 1; min-width: 0; font-family: ui-monospace, "SF Mono", monospace; font-size: .82rem; }
+</style>

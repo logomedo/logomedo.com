@@ -50,7 +50,8 @@ export async function sha256Hex(message: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function randomToken(): string {
+/** 32 nasumična bajta, base64url (kolačić sesije, token pozivnice). */
+export function randomToken(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
@@ -123,7 +124,10 @@ export async function deleteSession(cookieHeader: string | null): Promise<void> 
   if (token) await env.DB.prepare("DELETE FROM admin_sessions WHERE token_hash = ?").bind(await sha256Hex(token)).run();
 }
 
-export async function storeChallenge(challenge: string, purpose: "login" | "register", email: string | null) {
+/** `poziv`: registracija passkeya iz pozivnice (javna stranica /admin/poziv), `email` je e-mail pozivnice. */
+export type ChallengePurpose = "login" | "register" | "poziv";
+
+export async function storeChallenge(challenge: string, purpose: ChallengePurpose, email: string | null) {
   const now = new Date();
   await env.DB.batch([
     env.DB.prepare("DELETE FROM admin_challenges WHERE expires_at < ?").bind(now.toISOString()),
@@ -133,7 +137,7 @@ export async function storeChallenge(challenge: string, purpose: "login" | "regi
 }
 
 /** Jednokratno: izazov se briše pri prvoj provjeri, bez obzira na ishod. */
-export async function consumeChallenge(challenge: string, purpose: "login" | "register"): Promise<{ email: string | null } | null> {
+export async function consumeChallenge(challenge: string, purpose: ChallengePurpose): Promise<{ email: string | null } | null> {
   const row = await env.DB.prepare(
     "DELETE FROM admin_challenges WHERE challenge = ? RETURNING purpose, email, expires_at",
   )

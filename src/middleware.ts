@@ -12,6 +12,10 @@ const JAVNO = new Set([
   "/admin/passkey/login/options",
   "/admin/passkey/login/verify",
   "/admin/logout",
+  // Pozivnica (docs/rbac/): dokaz je token iz linka, ne sesija. CSRF (Origin) i dalje vrijedi.
+  "/admin/poziv",
+  "/admin/poziv/options",
+  "/admin/poziv/verify",
 ]);
 
 const jeAdmin = (p: string) => p === "/admin" || p.startsWith("/admin/");

@@ -79,3 +79,17 @@ test("verifyLogin: superadmin s lažnim odgovorom → null bez iznimke", async (
   assert.equal(await verifyLogin(URL_ADMIN, odgovor), null);
   assert.ok(procitano.size > 1);
 });
+
+// /admin/passkeys: svatko vidi i briše samo svoje ključeve (S2, logoped).
+import { mojiKljucevi, obrisiKljuc } from "./passkey.ts";
+
+test("mojiKljucevi/obrisiKljuc: samo ključevi e-maila iz sesije; tuđi id se ne briše", async () => {
+  await kljuc("moj", "b@primjer.hr");
+  await kljuc("tudji", SA);
+  assert.deepEqual((await mojiKljucevi("b@primjer.hr")).map((k) => k.id), ["moj"]);
+  assert.equal(await obrisiKljuc("tudji", "b@primjer.hr"), false);
+  assert.ok(await stanjeKljuca("tudji"));
+  assert.equal(await obrisiKljuc("moj", "b@primjer.hr"), true);
+  assert.deepEqual(await mojiKljucevi("b@primjer.hr"), []);
+  assert.deepEqual((await mojiKljucevi(SA)).map((k) => k.id), ["tudji"]);
+});

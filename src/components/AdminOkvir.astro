@@ -7,8 +7,9 @@ import Marka from "./Marka.astro";
 import Ikona from "./Ikona.astro";
 import type { ComponentProps } from "astro/types";
 import { env } from "cloudflare:workers";
+import { smije } from "../lib/admin/ovlasti";
 
-interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "postavke"; puno?: boolean }
+interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "postavke"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
@@ -43,6 +44,9 @@ const sustav: Stavka[] = [
   { kod: "prompt", href: "/admin/prompt", tekst: "Prompt", ikona: "iskra", broj: 0 },
   { kod: "aktivnost", href: "/admin/aktivnost", tekst: "Aktivnost", ikona: "sat", broj: 0 },
   { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },
+  ...(admin && smije(admin.uloga, "korisnici")
+    ? [{ kod: "korisnici", href: "/admin/korisnici", tekst: "Korisnici", ikona: "korisnici", broj: 0 } satisfies Stavka]
+    : []),
   { kod: "postavke", href: "/admin/postavke", tekst: "Postavke", ikona: "postavke", broj: 0 },
 ];
 ---

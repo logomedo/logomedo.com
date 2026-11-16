@@ -1,7 +1,7 @@
 // Smoke test harnessa: migracije u node:sqlite, D1 podskup i šav za `cloudflare:workers`.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { migracije, napraviD1 } from "./d1.ts";
+import { migracije, napraviD1, procitajMigraciju } from "./d1.ts";
 import { env } from "./cloudflare-workers.ts";
 
 const stupci = async (db: D1Database, tablica: string) =>
@@ -11,14 +11,14 @@ test("sve migracije se primijene, redom kao wrangler", async () => {
   const imena = migracije();
   assert.ok(imena.length >= 33);
   assert.ok(imena.indexOf("0030_okvir_zadatka.sql") < imena.indexOf("0030_zvuk_nacini_probe.sql"));
-  assert.equal(imena.at(-1), "0032_korisnici_uloge.sql");
+  assert.equal(imena.at(-1), "0033_pozivi_aktivnost.sql");
   const db = napraviD1();
   const t = await db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table'").first<number>("n");
   assert.ok(t! > 10);
 });
 
 test("0032: stupci i tablice", async () => {
-  const db = napraviD1();
+  const db = napraviD1({ doMigracije: "0032" });
   const k = await stupci(db, "korisnici");
   for (const s of ["aktivan", "deaktiviran_at", "limit_slike_7d", "limit_zvukovi_7d", "logopedski_mod"]) assert.ok(k.includes(s), s);
   assert.deepEqual(await stupci(db, "pozivi"), [
@@ -32,6 +32,31 @@ test("0032: stupci i tablice", async () => {
   await assert.rejects(
     db.prepare("INSERT INTO ai_potrosnja (korisnik_id, vrsta, kolicina) VALUES (1, 'video', 1)").run(),
   );
+});
+
+test("0033: pozivi s id i passkey_id; aktivnost prepisana s istim podacima i novim tablicama", async () => {
+  const db = napraviD1({ doMigracije: "0032" });
+  await db.prepare("INSERT INTO pozivi (token_hash, email, stvorio, created_at, istjece) VALUES ('h', 'b@primjer.hr', 'a@primjer.hr', 'x', 'y')").run();
+  await db.prepare("INSERT INTO aktivnost (tko, radnja, tablica, redak_id, grupa, prije, poslije) VALUES ('a', 'rijec.nova', 'rijeci', 7, 'g', NULL, '{}')").run();
+  await db.prepare("INSERT INTO aktivnost (tko, radnja, tablica, redak_id, grupa, prije, poslije, vraca_id) VALUES ('a', 'slika.odobrena', 'slike', 3, 'g2', '{}', '{\"rijec_id\":7}', 1)").run();
+  await assert.rejects(db.prepare("INSERT INTO aktivnost (tko, radnja, tablica, grupa) VALUES ('a', 'x', 'korisnici', 'g')").run());
+  await db.exec(procitajMigraciju("0033_pozivi_aktivnost.sql"));
+  assert.deepEqual(await stupci(db, "pozivi"), [
+    "id", "token_hash", "email", "ime", "korisnik_id", "stvorio", "created_at", "istjece", "iskoristena_at", "passkey_id", "opozvana_at",
+  ]);
+  assert.deepEqual(await db.prepare("SELECT id, token_hash FROM pozivi").first(), { id: 1, token_hash: "h" });
+  assert.deepEqual((await db.prepare("SELECT id, tablica, redak_id, vraca_id, rijec_id FROM aktivnost ORDER BY id").all()).results, [
+    { id: 1, tablica: "rijeci", redak_id: 7, vraca_id: null, rijec_id: 7 },
+    { id: 2, tablica: "slike", redak_id: 3, vraca_id: 1, rijec_id: 7 },
+  ]);
+  for (const t of ["korisnici", "pozivi"]) {
+    await db.prepare("INSERT INTO aktivnost (tko, radnja, tablica, grupa, vraca_id) VALUES ('a', 'x', ?, 'g', 1)").bind(t).run();
+  }
+  await assert.rejects(db.prepare("INSERT INTO aktivnost (tko, radnja, tablica, grupa) VALUES ('a', 'x', 'nesto', 'g')").run());
+  await assert.rejects(db.prepare("INSERT INTO aktivnost (tko, radnja, tablica, grupa, vraca_id) VALUES ('a', 'x', 'rijeci', 'g', 999)").run(), "strani ključ na sebe");
+  const idx = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name IN ('aktivnost', 'pozivi') AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>()).results;
+  assert.deepEqual(idx.map((i) => i.name), ["aktivnost_grupa", "aktivnost_redak", "aktivnost_rijec", "aktivnost_tko", "pozivi_email"]);
+  assert.ok(!(await db.prepare("SELECT sql FROM sqlite_master WHERE name = 'aktivnost'").first<string>("sql"))!.includes("aktivnost_nova"));
 });
 
 test("RETURNING kroz first/all/run, meta, bind", async () => {

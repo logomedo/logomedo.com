@@ -23,7 +23,7 @@ const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
 </section>
 
 <script>
-  import { grupiraj, oznakaRadnje, razlike, relativno, tkoKratko, datum, type StavkaPrikaz as S } from "../lib/aktivnost-prikaz";
+  import { grupiraj, jeVrativo, oznakaRadnje, razlike, relativno, tkoKratko, datum, type StavkaPrikaz as S } from "../lib/aktivnost-prikaz";
 
   const esc = (t: unknown) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
   const skrati = (t: string, n = 160) => (t.length > n ? t.slice(0, n) + "…" : t);
@@ -72,7 +72,8 @@ const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
       const rz = razlike(s.prije, s.poslije);
       const slika = s.tablica === "slike"
         ? `<a class="mini" href="/admin/slika/${s.redak_id}" target="_blank" rel="noopener"><img src="/admin/slika/${s.redak_id}" alt="" loading="lazy" /></a>` : "";
-      const naziv = s.tablica === "slike" ? `slika #${s.redak_id}` : s.tablica === "generiranja" ? `posao #${s.redak_id}` : "";
+      const naziv = s.tablica === "slike" ? `slika #${s.redak_id}` : s.tablica === "generiranja" ? `posao #${s.redak_id}`
+        : s.tablica === "korisnici" ? `korisnik #${s.redak_id}` : s.tablica === "pozivi" ? `pozivnica #${s.redak_id}` : "";
       return `<li class="izmjena">${slika}<div>
         <div class="sitno">${meta(s)} ${naziv ? `<span class="mono blijedo">${naziv}</span>` : ""}
           ${s.prije === null ? '<span class="oznaka info">novo</span>' : s.poslije === null ? '<span class="oznaka greska">uklonjeno</span>' : ""}</div>
@@ -96,10 +97,10 @@ const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
           <div class="opis-grupe"><b>${esc(naslov)}</b>${vraca}${vise}<div class="sitno blijedo">${esc(tkoKratko(s.tko))} ·
             <time datetime="${datum(s.at).toISOString()}" title="${esc(datum(s.at).toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" }))}">${esc(relativno(s.at))}</time>
             · <span class="mono">#${s.id}</span>${kasnije ? ' · <span class="oznaka" title="Isti redak je poslije ove izmjene opet mijenjan">kasnije mijenjano</span>' : ""}</div></div>
-          <div class="akcije">
+          ${g.some((x) => jeVrativo(x.tablica)) ? `<div class="akcije">
             <button type="button" class="gumb tihi" data-smjer="ponisti" title="Vrati stanje prije ove izmjene (kao novu izmjenu)">Poništi</button>
             <button type="button" class="gumb tihi" data-smjer="vrati" title="Vrati stanje odmah nakon ove izmjene (kao novu izmjenu)">Vrati na ovo</button>
-          </div>
+          </div>` : ""}
         </div>
         <ul class="izmjene">${vidljive.map(stavkaHtml).join("")}</ul>
         ${ostale.length ? `<details><summary class="sitno">još ${ostale.length}</summary><ul class="izmjene">${ostale.map(stavkaHtml).join("")}</ul></details>` : ""}

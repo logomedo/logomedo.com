@@ -6,9 +6,9 @@
 import { env } from "cloudflare:workers";
 import { uskladiJavno } from "./generiranje";
 import { zazvoni } from "./runner-zvono";
-import type { StavkaPrikaz } from "./aktivnost-prikaz";
+import { jeVrativo, type StavkaPrikaz } from "./aktivnost-prikaz";
 
-export type Tablica = "rijeci" | "slike" | "generiranja" | "biljeznice";
+export type Tablica = "rijeci" | "slike" | "generiranja" | "biljeznice" | "korisnici" | "pozivi";
 
 /**
  * JSON snimak retka kao izraz nad aliasom `x`. Samo ono što admin mijenja: bez vremena i
@@ -23,6 +23,12 @@ const SNIMAK: Record<Tablica, string> = {
   generiranja: `json_object('rijec_id', x.rijec_id, 'stil_id', x.stil_id, 'prompt', x.prompt, 'status', x.status)`,
   biljeznice: `json_object('naslov', x.naslov, 'podnaslov', x.podnaslov, 'slug', x.slug, 'javna', x.javna, 'tema', x.tema,
     'zadaci', (SELECT json_group_array(bz.zadatak_id ORDER BY bz.redoslijed) FROM biljeznica_zadaci bz WHERE bz.biljeznica_id = x.id))`,
+  // Korisnici i pozivnice (docs/rbac/, S2): samo zapis, ne poništavaju se (vidi vrati()).
+  korisnici: `json_object('email', x.email, 'ime', x.ime, 'uloga', x.uloga, 'aktivan', x.aktivan,
+    'limit_slike_7d', x.limit_slike_7d, 'limit_zvukovi_7d', x.limit_zvukovi_7d)`,
+  // Bez token_hash: ni hash tokena ne ide u dnevnik.
+  pozivi: `json_object('email', x.email, 'ime', x.ime, 'korisnik_id', x.korisnik_id, 'istjece', x.istjece,
+    'iskoristena_at', x.iskoristena_at, 'opozvana_at', x.opozvana_at)`,
 };
 
 /** SQL koji daje id retka (`?` ili podupit) s parametrima. Podupit služi za retke koji tek nastaju. */
@@ -127,7 +133,7 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string): Promise
   const db = env.DB;
   const izvor = await db.prepare("SELECT grupa FROM aktivnost WHERE id = ?").bind(zapisId).first<{ grupa: string }>();
   if (!izvor) return { ok: false, greska: "Nema tog zapisa." };
-  const { results: redovi } = await db.prepare(
+  let { results: redovi } = await db.prepare(
     `SELECT id, tablica, redak_id, prije, poslije FROM aktivnost WHERE grupa = ? ORDER BY id ${smjer === "ponisti" ? "DESC" : "ASC"}`,
   ).bind(izvor.grupa).all<Redak>();
 
@@ -136,6 +142,8 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string): Promise
   const cilj = (r: Redak) => { const t = smjer === "ponisti" ? r.prije : r.poslije; return t ? (JSON.parse(t) as Snimak) : null; };
   const radnja = smjer === "ponisti" ? "ponisteno" : "vraceno";
 
+  // Zapisi o korisnicima i pozivnicama se ne vraćaju (pozivnica se ne „odtroši”, deaktivacija ne vraća sesije).
+  redovi = redovi.filter((r) => jeVrativo(r.tablica));
   const naredbe: D1PreparedStatement[] = [];
   const slike: number[] = [];
   for (const r of redovi.filter((r) => r.tablica !== "generiranja")) {

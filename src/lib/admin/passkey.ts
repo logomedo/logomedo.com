@@ -22,7 +22,8 @@ interface PasskeyRow { id: string; email: string; public_key: string; counter: n
 const ctx = (url: URL) => ({ rpID: url.hostname, origin: url.origin });
 const transports = (t: string | null) => (t ? (t.split(",") as AuthenticatorTransport[]) : undefined);
 
-export async function registrationOptions(url: URL, email: string) {
+/** `purpose = "poziv"`: upis iz pozivnice (javna stranica), izazov nosi e-mail pozivnice. */
+export async function registrationOptions(url: URL, email: string, purpose: "register" | "poziv" = "register") {
   const existing = await env.DB.prepare("SELECT id, transports FROM admin_passkeys WHERE email = ?")
     .bind(email)
     .all<{ id: string; transports: string | null }>();
@@ -36,27 +37,47 @@ export async function registrationOptions(url: URL, email: string) {
     excludeCredentials: existing.results.map((k) => ({ id: k.id, transports: transports(k.transports) })),
     authenticatorSelection: { residentKey: "required", userVerification: "required" },
   });
-  await storeChallenge(options.challenge, "register", email);
+  await storeChallenge(options.challenge, purpose, email);
   return options;
 }
 
-export async function verifyRegistration(url: URL, email: string, response: RegistrationResponseJSON, label: string): Promise<boolean> {
+/** Provjereni novi ključ, spreman za upis u `admin_passkeys`. */
+export interface NoviPasskey { id: string; publicKey: string; counter: number; transports: string | null }
+
+/** Oznaka ključa kako se upisuje (najviše 80 znakova, prazna → „passkey”). */
+export const oznakaKljuca = (label: string) => label.trim().slice(0, 80) || "passkey";
+
+/**
+ * WebAuthn provjera upisa, bez upisa u bazu (pozivnica ga stavlja u svoj batch). Izazov se troši
+ * pri provjeri i mora imati istu namjenu i isti e-mail.
+ */
+export async function provjeriRegistraciju(
+  url: URL, email: string, response: RegistrationResponseJSON, purpose: "register" | "poziv" = "register",
+): Promise<NoviPasskey | null> {
   const { rpID, origin } = ctx(url);
   const result = await verifyRegistrationResponse({
     response,
-    expectedChallenge: async (c) => (await consumeChallenge(c, "register"))?.email === email,
+    expectedChallenge: async (c) => (await consumeChallenge(c, purpose))?.email === email,
     expectedOrigin: origin,
     expectedRPID: rpID,
     requireUserVerification: true,
   }).catch(() => null);
-  if (!result?.verified) return false;
+  if (!result?.verified) return null;
   const { credential } = result.registrationInfo;
+  return {
+    id: credential.id, publicKey: isoBase64URL.fromBuffer(credential.publicKey), counter: credential.counter,
+    transports: credential.transports?.join(",") ?? null,
+  };
+}
+
+export async function verifyRegistration(url: URL, email: string, response: RegistrationResponseJSON, label: string): Promise<boolean> {
+  const k = await provjeriRegistraciju(url, email, response, "register");
+  if (!k) return false;
   await env.DB.prepare(
     `INSERT INTO admin_passkeys (id, email, public_key, counter, transports, label, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(credential.id, email, isoBase64URL.fromBuffer(credential.publicKey), credential.counter,
-      credential.transports?.join(",") ?? null, label.slice(0, 80) || "passkey", new Date().toISOString())
+    .bind(k.id, email, k.publicKey, k.counter, k.transports, oznakaKljuca(label), new Date().toISOString())
     .run();
   return true;
 }
@@ -110,4 +131,18 @@ export async function registerRefusal(s: { email: string; createdAt: string }): 
     return `Najviše ${MAX_PASSKEYS_PER_EMAIL} passkeya po e-mailu — obriši stari pa dodaj novi.`;
   }
   return null;
+}
+
+// ---- /admin/passkeys: svatko vidi i briše samo svoje ključeve (e-mail iz sesije) ----
+
+export async function mojiKljucevi(email: string) {
+  return (await env.DB.prepare(
+    "SELECT id, label, created_at, last_used_at FROM admin_passkeys WHERE email = ? ORDER BY created_at",
+  ).bind(email).all<{ id: string; label: string; created_at: string; last_used_at: string | null }>()).results;
+}
+
+/** Briše ključ samo ako je vlasnik `email`; tuđi id ne radi ništa. */
+export async function obrisiKljuc(id: string, email: string): Promise<boolean> {
+  const r = await env.DB.prepare("DELETE FROM admin_passkeys WHERE id = ? AND email = ?").bind(id, email).run();
+  return (r.meta.changes ?? 0) > 0;
 }

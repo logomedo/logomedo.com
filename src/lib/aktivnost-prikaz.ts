@@ -34,6 +34,13 @@ export const RADNJE: Record<string, string> = {
   "znak.novi": "Novi znak",
   "znak.skriven": "Skriven znak",
   "znak.vracen": "Znak vraćen u katalog",
+  "poziv.izdan": "Izdana pozivnica",
+  "poziv.zamijenjen": "Pozivnica zamijenjena novom",
+  "poziv.iskoristen": "Iskorištena pozivnica",
+  "poziv.opozvan": "Opozvana pozivnica",
+  "korisnik.aktiviran": "Korisnik aktiviran",
+  "korisnik.deaktiviran": "Korisnik deaktiviran",
+  "korisnik.limit": "Promijenjen AI limit",
   ponisteno: "Poništeno",
   vraceno: "Vraćeno na stanje",
 };
@@ -44,7 +51,14 @@ const POLJA: Record<string, string> = {
   status: "status", razlog: "razlog", dorada: "kako treba biti", pregledao: "pregledao", opis_za_sliku: "opis za sliku", recenica: "rečenica",
   rima: "rima", aktivna: "aktivna", rijec: "riječ", slug: "adresa", glasovi: "glasovi", prompt: "prompt",
   naslov: "naslov", podnaslov: "podnaslov", javna: "javna", zadaci: "zadaci",
+  email: "e-mail", ime: "ime", uloga: "uloga", aktivan: "aktivan", limit_slike_7d: "limit slika (7 dana)",
+  limit_zvukovi_7d: "limit izgovora (7 dana)", korisnik_id: "korisnik", istjece: "vrijedi do",
+  iskoristena_at: "iskorištena", opozvana_at: "opozvana",
 };
+
+/** Tablice čiji se zapisi mogu poništiti ili vratiti; korisnici i pozivnice su samo zapis. */
+const VRATIVE = new Set(["rijeci", "slike", "generiranja", "biljeznice"]);
+export const jeVrativo = (tablica: string) => VRATIVE.has(tablica);
 /** Polja koja se mijenjaju uz svaku odluku i ne govore ništa sama za sebe. */
 const SKRIVENO = new Set(["pregledano_at", "rijec_id", "stil_id"]);
 
