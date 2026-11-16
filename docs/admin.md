@@ -29,6 +29,47 @@ propušta nikoga, a OTP se tiho ne šalje (Anitin kod „nije stizao”). Provje
 **Zamka (31. 10. 2026.):** `wrangler d1 migrations apply logomedo --remote` je bez `CLOUDFLARE_ACCOUNT_ID` vratio 7403 („account is not valid”) iako je `account_id` u wrangler.jsonc. S `CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4` prolazi; isto za `npm run deploy`. Od 8. 11. 2026. ga `npm run db:migrate` i `npm run deploy` postavljaju sami: tog je dana migracija 0024 tiho pala (izlaz kroz `| tail` sakrio je grešku), a deploy je prošao, pa je `/admin/zvukovi` oko minutu tražio stupac koji nije postojao. Migracija uvijek ide prije deploya, s provjerom izlaza.
 Stari Firebase A zapisi za apex i www su obrisani; `stage.logomedo.com` je ostao na Firebaseu.
 
+## Uloge i pozivnice (RBAC, 16. 11. 2026.)
+
+Plan, odluke i povijest: [`docs/rbac/`](rbac/plan.md) (odluke u [`decisions.md`](rbac/decisions.md)).
+
+| | superadmin | logoped |
+|---|---|---|
+| Tko je | e-mail u secretu `ADMIN_EMAILS` (ništa u bazi to ne mijenja) | redak u `korisnici` s `uloga='logoped'`, `aktivan=1`, nastao iz pozivnice |
+| Prijava | Access (`/admin/sso`) ili passkey | samo passkey (Access ga ne pušta) |
+| Katalog, situacije, odobravanje | sve | sve (autor se prati: `rijeci.dodao`, `slike.pregledao`, aktivnost) |
+| Zadaci, bilježnice | sve | samo svoje (tuđe je 404) |
+| Aktivnost | svi zapisi | samo svoji, bez administracije |
+| AI (slike, izgovori) | bez limita (potrošnja se bilježi) | kvota za zadnjih 7 dana |
+| Administracija | Prompt, Red, Korisnici, glasovi, prijava aplikacije, `/api/v1` | ništa (stranica „nemaš pristup”, 403) |
+
+Popis ruta samo za superadmina je u `src/lib/admin/rute.ts`; nova administracijska stranica ide
+tamo i u test.
+
+**Izdavanje pozivnice:** `/admin/korisnici` → „Nova pozivnica” (e-mail, ime) → „Napravi link”.
+Link `https://logomedo.com/admin/poziv#…` prikaže se **jednom**; pošalji ga osobno (ne u javni
+kanal, ne u repo). Vrijedi 72 h i jednom: troši se tek kad logoped registrira passkey, a tada
+odmah dobiva sesiju. Nova pozivnica za isti e-mail poništava staru. Otvorene pozivnice su u
+tablici ispod i mogu se opozvati. Za e-mail iz `ADMIN_EMAILS` pozivnica se ne izdaje.
+
+**Novi passkey** (izgubljen ili novi uređaj): u retku korisnika „Novi passkey” daje pozivnicu za
+isti račun; stari ključevi ostaju. Dodatni ključ logoped može dodati i sam na `/admin/passkeys`
+unutar 10 min od prijave pozivnicom.
+
+**Deaktivacija:** „Deaktiviraj” odmah briše sve njegove sesije i opoziva otvorene pozivnice;
+passkeyi ostaju, pa „Aktiviraj” vraća pristup bez nove pozivnice.
+
+**Limit:** u retku korisnika polja „slike” i „izgovori” (AI limit za 7 dana) → „Spremi”. Zadano je
+50 slika i 200 izgovora. Jedan posao u redu = jedan kredit (slika riječi ili situacije = slika;
+izgovor = izgovor). Zahtjev koji traži više od preostalog odbija se cijeli, s porukom koliko je
+ostalo i kad se prvi krediti vraćaju. Naplaćuje se i „Pokušaj ponovo” za neuspjele poslove;
+„Pogurni red” i probe glasova ne.
+
+**Potrošnja:** `/admin/korisnici`, stupci „Potrošeno (7 dana)” i „Doprinos” (dodane riječi,
+odobrene slike i izgovori). Logoped svoje preostalo vidi u bočnoj traci. Svaki upis je redak u
+`ai_potrosnja` (tko, vrsta, količina, vrijeme); svaka radnja nad korisnicima i pozivnicama je u
+Aktivnosti (`poziv.*`, `korisnik.*`).
+
 ## Bilo otvoreno prije produkcije (stavke 1–4 i 6 su gotove)
 
 1. `wrangler d1 create logomedo` → upisati `database_id` u `wrangler.jsonc`; `npm run db:migrate`;
