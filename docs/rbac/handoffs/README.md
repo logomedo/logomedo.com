@@ -24,7 +24,7 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 
 | Sesija | Paket | Stanje | Commit | Testovi | Napomena |
 | --- | --- | --- | --- | --- | --- |
-| S0 | Plan | gotovo | 1b82c1a | 111 | plan, koda nema; odluke 1–13 |
+| S0 | Plan | gotovo | 5f441e1 | 111 | plan, koda nema; odluke 1–13 |
 | S1 | Harness, migracija 0032, ovlasti, uloga u sesiji | otvoreno | | | |
 | S2 | Pozivnica, `/admin/korisnici` | otvoreno | | | |
 | S3 | Ovlasti na rutama, vlasništvo, UI po ulozi | otvoreno | | | |
