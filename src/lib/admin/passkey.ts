@@ -13,7 +13,7 @@ import {
   type RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
-import { adminEmails, consumeChallenge, storeChallenge } from "./sesija";
+import { consumeChallenge, storeChallenge, ulogaZa } from "./sesija";
 
 const RP_NAME = "LogoMedo admin";
 
@@ -76,7 +76,8 @@ export async function verifyLogin(url: URL, response: AuthenticationResponseJSON
   const key = await env.DB.prepare("SELECT id, email, public_key, counter, transports FROM admin_passkeys WHERE id = ?")
     .bind(response.id)
     .first<PasskeyRow>();
-  if (!key || !adminEmails().has(key.email)) return null;
+  // Superadmin (ADMIN_EMAILS) ili aktivan logoped; deaktiviran ključ ne vodi nikamo.
+  if (!key || !(await ulogaZa(key.email))) return null;
 
   const { rpID, origin } = ctx(url);
   const result = await verifyAuthenticationResponse({

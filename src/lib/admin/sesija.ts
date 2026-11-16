@@ -1,9 +1,12 @@
 // Iz omm.domovina.ai src/lib/admin/ (2026-10-31), tamo iz pay.domovina.ai. Sigurnosnu logiku držati u skladu.
 // Admin sesija. Preneseno iz pay.domovina.ai (backend/src/admin/auth/{env,session}.ts,
 // a tamo iz bank-push-gateway) — držati u skladu.
-// Nasumičan token u kolačiću, u D1 samo njegov sha-256. Pri svakom zahtjevu provjerava
-// se i da je e-mail još u ADMIN_EMAILS, pa micanje iz popisa oduzima pristup odmah.
+// Nasumičan token u kolačiću, u D1 samo njegov sha-256. Pri svakom zahtjevu se iznova
+// određuje uloga, pa micanje iz ADMIN_EMAILS ili deaktivacija oduzima pristup odmah.
+// Razlika od omm: ovdje postoje uloge (ovlasti.ts): superadmin iz ADMIN_EMAILS, logoped
+// iz `korisnici` (uloga = 'logoped', aktivan = 1); u omm je admin samo ADMIN_EMAILS.
 import { env } from "cloudflare:workers";
+import { odrediUlogu, type Uloga } from "./ovlasti.ts";
 
 export const SESSION_COOKIE = "__Host-logomedo_admin";
 export const SESSION_TTL_SECONDS = 12 * 3600;
@@ -12,13 +15,16 @@ const CHALLENGE_TTL_SECONDS = 300;
 const SESSION_IDLE_SECONDS = 2 * 3600;
 const LAST_SEEN_RESOLUTION_SECONDS = 300;
 
-export type SessionMethod = "passkey" | "access";
+export type SessionMethod = "passkey" | "access" | "poziv";
 export interface Session {
   email: string;
   method: SessionMethod;
   expiresAt: string;
   /** Kad je prijava bila; dodavanje passkeya traži svježu. */
   createdAt: string;
+  uloga: Uloga;
+  /** Redak u `korisnici`; superadmin ga možda još nema (korisnikId() ga stvara lijeno). */
+  korisnikId: number | null;
 }
 
 /** E-mailovi koji smiju u admin. Provjerava se pri svakom zahtjevu. */
@@ -26,6 +32,15 @@ export function adminEmails(): Set<string> {
   return new Set(
     (env.ADMIN_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
   );
+}
+
+/** Uloga i redak za e-mail (passkey prijava); null = nema pristup. */
+export async function ulogaZa(email: string): Promise<{ uloga: Uloga; korisnikId: number | null } | null> {
+  const red = await env.DB.prepare("SELECT id, uloga, aktivan FROM korisnici WHERE email = ?")
+    .bind(email.trim().toLowerCase())
+    .first<{ id: number; uloga: string; aktivan: number }>();
+  const uloga = odrediUlogu(email, adminEmails(), red);
+  return uloga ? { uloga, korisnikId: red?.id ?? null } : null;
 }
 
 export const accessConfigured = () => Boolean(env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD);
@@ -75,11 +90,19 @@ export async function getSession(cookieHeader: string | null): Promise<Session |
   if (!token) return null;
   const hash = await sha256Hex(token);
   const row = await env.DB.prepare(
-    "SELECT email, method, created_at, expires_at, last_seen_at FROM admin_sessions WHERE token_hash = ? AND expires_at > ?",
+    `SELECT s.email, s.method, s.created_at, s.expires_at, s.last_seen_at,
+            k.id AS korisnik_id, k.uloga, k.aktivan
+     FROM admin_sessions s LEFT JOIN korisnici k ON k.email = lower(s.email)
+     WHERE s.token_hash = ? AND s.expires_at > ?`,
   )
     .bind(hash, new Date().toISOString())
-    .first<{ email: string; method: SessionMethod; created_at: string; expires_at: string; last_seen_at: string | null }>();
-  if (!row || !adminEmails().has(row.email)) return null;
+    .first<{
+      email: string; method: SessionMethod; created_at: string; expires_at: string; last_seen_at: string | null;
+      korisnik_id: number | null; uloga: string | null; aktivan: number | null;
+    }>();
+  if (!row) return null;
+  const uloga = odrediUlogu(row.email, adminEmails(), row.korisnik_id === null ? null : { uloga: row.uloga ?? "", aktivan: row.aktivan ?? 0 });
+  if (!uloga) return null;
   const nowMs = Date.now();
   const lastSeenMs = Date.parse(row.last_seen_at ?? row.created_at);
   if (Number.isFinite(lastSeenMs) && nowMs - lastSeenMs > SESSION_IDLE_SECONDS * 1000) return null;
@@ -89,7 +112,10 @@ export async function getSession(cookieHeader: string | null): Promise<Session |
       .run()
       .catch(() => {});
   }
-  return { email: row.email, method: row.method, expiresAt: row.expires_at, createdAt: row.created_at };
+  return {
+    email: row.email, method: row.method, expiresAt: row.expires_at, createdAt: row.created_at,
+    uloga, korisnikId: row.korisnik_id,
+  };
 }
 
 export async function deleteSession(cookieHeader: string | null): Promise<void> {

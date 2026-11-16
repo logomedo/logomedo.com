@@ -1,6 +1,7 @@
 // Upiti za zadatke (D1). Pravila verzija: dok aktivnu verziju nitko nije rješavao, uređuje se
 // na mjestu; čim postoji rješavanje, spremanje otvara novu verziju (docs/zadaci.md).
 import { env } from "cloudflare:workers";
+import { adminEmails } from "../admin/sesija";
 import { brojSlogova, izvediRimu } from "./rima";
 import type { RijecGlasova } from "./listic-glas";
 import { imaOkvir, normalizirajOkvir, type Okvir } from "../okviri";
@@ -29,12 +30,21 @@ export function nazivPodrucja(sva: Podrucje[], id: number | null): string {
   return r ? `${r.naziv} › ${p.naziv}` : p.naziv;
 }
 
-/** Autor zadatka: admin dobiva redak u `korisnici` pri prvom spremanju. */
+/**
+ * Autor zadatka. Superadmin (ADMIN_EMAILS) dobiva redak 'admin' pri prvom spremanju;
+ * logoped redak nastaje samo iz pozivnice, pa ga ovdje nema smisla stvarati.
+ */
 export async function korisnikId(email: string): Promise<number> {
+  const e = email.toLowerCase();
+  if (!adminEmails().has(e)) {
+    const r = await DB().prepare("SELECT id FROM korisnici WHERE email = ?").bind(e).first<{ id: number }>();
+    if (!r) throw new Error("korisnik nije u bazi (logoped nastaje iz pozivnice)");
+    return r.id;
+  }
   const r = await DB().prepare(
     `INSERT INTO korisnici (email, uloga) VALUES (?, 'admin')
      ON CONFLICT(email) DO UPDATE SET email = excluded.email RETURNING id`,
-  ).bind(email.toLowerCase()).first<{ id: number }>();
+  ).bind(e).first<{ id: number }>();
   return r!.id;
 }
 
@@ -187,8 +197,14 @@ export async function logopedskiMod(email: string): Promise<boolean> {
 }
 
 export async function postaviLogopedskiMod(email: string, ukljucen: boolean) {
+  const e = email.toLowerCase();
+  // Redak 'admin' smije nastati samo za superadmina; ostali samo mijenjaju postojeći.
+  if (!adminEmails().has(e)) {
+    await DB().prepare("UPDATE korisnici SET logopedski_mod = ? WHERE email = ?").bind(ukljucen ? 1 : 0, e).run();
+    return;
+  }
   await DB().prepare(
     `INSERT INTO korisnici (email, uloga, logopedski_mod) VALUES (?, 'admin', ?)
      ON CONFLICT(email) DO UPDATE SET logopedski_mod = excluded.logopedski_mod`,
-  ).bind(email.toLowerCase(), ukljucen ? 1 : 0).run();
+  ).bind(e, ukljucen ? 1 : 0).run();
 }
