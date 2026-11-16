@@ -29,11 +29,11 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F2 — Ovlasti i vlasništvo
 
-- [ ] Middleware: tablica ruta samo za superadmina (`prompt`, `red`, `korisnici`, `zvukovi/glasovi`, `api/zvuk-proba`, `app/prijava`); čista funkcija + testovi → S3
-- [ ] Vlasništvo: zadaci, bilježnice (popis, otvaranje, spremanje, brisanje, dijete-prikaz) samo autor ili superadmin → S3
-- [ ] Aktivnost: logoped vidi i vraća samo svoje zapise → S3
-- [ ] UI: `AdminOkvir` i stranice skrivaju što uloga ne smije; oznaka uloge u bočnoj traci → S3
-- [ ] e2e kao logoped: 403/preusmjeravanje na zabranjenim rutama, tuđi zadatak 404 → S3
+- [x] Middleware: tablica ruta samo za superadmina (`prompt`, `red`, `korisnici`, `zvukovi/glasovi`, `api/zvuk-proba`, `app/prijava`); čista funkcija + testovi → S3
+- [x] Vlasništvo: zadaci, bilježnice (popis, otvaranje, spremanje, brisanje, dijete-prikaz) samo autor ili superadmin → S3
+- [x] Aktivnost: logoped vidi i vraća samo svoje zapise → S3
+- [x] UI: `AdminOkvir` i stranice skrivaju što uloga ne smije; oznaka uloge u bočnoj traci → S3
+- [x] e2e kao logoped: 403/preusmjeravanje na zabranjenim rutama, tuđi zadatak 404 → S3
 
 ## F3 — AI kvota i praćenje autora
 

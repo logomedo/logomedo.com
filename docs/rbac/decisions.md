@@ -128,7 +128,7 @@ njegovih otvorenih pozivnica (inače bi stari link vratio pristup). Passkeyi ost
 
 **205. Superadmin može ponovno aktivirati deaktiviranog logopeda izravno, bez pozivnice.** Malo
 popušta odluku 105: tako se mogu aktivirati i stari retci koje je 0032 deaktivirao, ali samo
-svjesnom radnjom superadmina na `/admin/korisnici`. (potvrditi)
+svjesnom radnjom superadmina na `/admin/korisnici`.
 
 **206. Superadmin je nedodirljiv na `/admin/korisnici`:** svaka radnja odbija e-mail iz `ADMIN_EMAILS`,
 i iskorištenje ga odbija ako je `ADMIN_EMAILS` promijenjen nakon izdavanja.
@@ -145,7 +145,7 @@ se brišu, pa same sesije nisu dovoljne).
 
 **210. `/admin/passkeys`** je već filtrirao po e-mailu sesije; popis i brisanje premješteni u
 `passkey.ts` (`mojiKljucevi`, `obrisiKljuc`) s testom. Pozivnica **ne** provodi limit od 5 ključeva po
-e-mailu (pozivnica za novi passkey je svjesna radnja superadmina). Za S5 review. (potvrditi)
+e-mailu (pozivnica za novi passkey je svjesna radnja superadmina). Za S5 review.
 
 **211. e2e: `scripts/e2e-poziv.sh`** (lokalno, uz `npm run dev`): `npx --yes @playwright/cli@0.1.21`
 (globalni `playwright-cli` nije instaliran), sve korake logopeda radi jedan `run-code` jer virtualni
@@ -153,3 +153,49 @@ autentifikator (CDP `WebAuthn.addVirtualAuthenticator`) živi dok i CDP sesija; 
 globalni `URL`. Superadmin je prvi e-mail iz `.dev.vars` (ne ispisuje se), logoped
 `e2e-<vrijeme>@primjer.hr`, superadmin radnje kroz `curl` s Originom. Pod `wrangler dev` Worker vidi
 `logomedo.com` (custom domain), pa rpID ne bi bio `localhost`: e2e ide samo na `astro dev`.
+
+## S3 (16. 11. 2026.)
+
+**300. Rute samo za superadmina** (`src/lib/admin/rute.ts`, `SAMO_SUPERADMIN`): `/admin/prompt`, `/admin/red`,
+`/admin/korisnici`, `/admin/zvukovi/glasovi`, `/admin/api/zvuk-proba`, `/admin/app/prijava`, `/admin/api/app-kod`
+(potvrda prijave aplikacije). Prefiks pogađa točnu putanju i `prefiks/…`, ne `prefiksXYZ`; provjerava se sirova i
+dekodirana putanja (`//`→`/`, mala slova), kao `adminPutanja`. Pregled svih 54 datoteka nije našao ništa dodatno.
+Inventar: `research/2026-11-16-rute-po-ulozi.md`. Revizija: nova administracijska stranica (dodati u popis i test).
+
+**301. 403 za logopeda:** GET/HEAD izvan `/admin/api/` dobiva stranicu `/admin/nemas-pristup` (rewrite u
+middlewareu, `AdminOkvir`, status 403; oznaka `x-nemas-pristup` potvrđuje rewrite, inače zamjenski HTML, također 403).
+Ostalo JSON `{"error":"forbidden"}` 403. e2e potvrđuje da dolazi prava stranica. `//admin//red` u `astro dev`
+daje 404 prije middlewarea (nije curenje; e2e provjerava samo da nije 200).
+
+**302. Vlasništvo kroz jedan filtar** (`src/lib/admin/vlasnistvo.ts`): `autorFiltar(session)` = `null` za superadmina,
+inače `korisnikId` (logoped bez retka baca). Funkcije u `zadaci/baza.ts` i `biljeznice.ts` primaju filtar kao obavezan
+argument i u SQL-u rade `AND (?n IS NULL OR autor_id = ?n)`, pa je tuđe 404 (otvaranje, dijete-prikaz, spremanje,
+brisanje, vraćanje iz koša, zvukovi zadatka, sve akcije bilježnice). Javni `/b/<slug>` ne gleda autora.
+
+**303. Bilježnica ne prima tuđi zadatak:** pri spremanju zadatak ulazi samo ako postoji i ako je autorov, ili je već
+bio u toj bilježnici (npr. ubacio ga superadmin). Logoped tako ne može tuđi zadatak izložiti na javnoj `/b/<slug>`.
+Nepostojeći id se preskače (prije FK greška, i za superadmina).
+
+**304. Brisanje zadatka zadržava prvo vrijeme brisanja** (`COALESCE`), pa ponovni „obriši” ne daje 404.
+
+**305. Aktivnost za logopeda** (odluka 9): popis i „autori” samo njegov `tko`, bez zapisa s `tablica IN
+('korisnici','pozivi')` (administracija; inače bi vidio svoj `poziv.iskoristen`); `tko` iz URL-a se ignorira.
+Poništi/vrati: cijela grupa mora biti njegova i bez administracije, inače 403 prije izmjene.
+
+**306. `/admin/passkeys` ostaje logopedu** (njegovi ključevi). `/admin/postavke` nema globalnih postavki (samo
+vlastiti `logopedski_mod`), ostaje obje uloge bez izmjena.
+
+**307. `/api/v1/admin/*` bez filtra autora** (uloga `admin` aplikacije, odluka 1 i 108). Iz `/api/v1/admin/biljeznice`
+ne izlazi novo polje `autor` (e-mail).
+
+**308. UI:** bočna traka skriva poveznice kroz `smijeNa(uloga, href)` (isti popis kao middleware) i pokazuje ulogu;
+`/admin/zvukovi` logopedu prikazuje glas bez poveznice na glasove; stupac Autor na popisima zadataka i bilježnica
+samo superadmin.
+
+**309. `src/lib/elevenlabs.ts`:** parametar-svojstvo u konstruktoru (`public status`) pretvoren u obično polje, jer
+`node --test` (type stripping) ne podnosi parameter properties, a testovi sad uvoze `biljeznice.ts`. Ponašanje isto.
+
+**310. Otvoreno za S5 review (potvrditi):** `provjeriPolja` u poruci o zauzetoj poveznici otkriva naslov tuđe
+bilježnice; u bilježnici koju je superadmin dopunio svojim zadatkom logoped vidi naslov zadatka, a poveznica daje 404.
+„Pogurni red” i „Pokušaj ponovo” na `/admin/zvukovi` ostaju logopedu kao dio kataloga; S4 ih mora provjeriti kao točke
+troška.
