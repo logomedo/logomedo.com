@@ -178,9 +178,10 @@ export async function napraviBozicnu(email: string): Promise<number> {
   const autor = await korisnikId(email);
   const sve = Object.keys(OPIS);
   await DB().batch(sve.map((r) => DB().prepare(
-    `INSERT INTO rijeci (rijec, slug, opis_za_sliku, izvor) VALUES (?1, ?2, ?3, 'admin')
-     ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, opis_za_sliku = COALESCE(rijeci.opis_za_sliku, excluded.opis_za_sliku)`,
-  ).bind(r, uSlug(r), OPIS[r])));
+    `INSERT INTO rijeci (rijec, slug, opis_za_sliku, izvor, dodao) VALUES (?1, ?2, ?3, 'admin', lower(?4))
+     ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, opis_za_sliku = COALESCE(rijeci.opis_za_sliku, excluded.opis_za_sliku),
+       dodao = COALESCE(rijeci.dodao, CASE WHEN rijeci.aktivna = 0 THEN excluded.dodao END)`,
+  ).bind(r, uSlug(r), OPIS[r], email)));
   const { results } = await DB().prepare("SELECT id, rijec FROM rijeci WHERE rijec IN (SELECT value FROM json_each(?))")
     .bind(JSON.stringify(sve)).all<{ id: number; rijec: string }>();
   const id = (r: string) => results.find((x) => x.rijec === r)!.id;

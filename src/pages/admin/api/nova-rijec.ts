@@ -54,9 +54,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const upisano = await db.batch(sZapisom({ tko: email, radnja: "rijec.nova", tablica: "rijeci", grupa },
     { sql: idRijeci, args: [rijec] }, [
       db.prepare(
-        `INSERT INTO rijeci (rijec, slug, opis_za_sliku, recenica, rima, izvor) VALUES (?, ?, ?, ?, ?, 'admin')
-         ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, opis_za_sliku = excluded.opis_za_sliku, recenica = excluded.recenica, rima = excluded.rima`,
-      ).bind(rijec, slug(rijec), t("opis_za_sliku"), t("recenica"), rima),
+        `INSERT INTO rijeci (rijec, slug, opis_za_sliku, recenica, rima, izvor, dodao) VALUES (?, ?, ?, ?, ?, 'admin', lower(?))
+         ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, opis_za_sliku = excluded.opis_za_sliku, recenica = excluded.recenica, rima = excluded.rima,
+           dodao = COALESCE(rijeci.dodao, CASE WHEN rijeci.aktivna = 0 THEN excluded.dodao END)`,
+      ).bind(rijec, slug(rijec), t("opis_za_sliku"), t("recenica"), rima, email),
       ...spremi.map((p) =>
         db.prepare(`INSERT OR REPLACE INTO rijec_glas (rijec_id, glas_id, pozicija, potvrdeno) VALUES (${idRijeci}, ?, ?, 1)`)
           .bind(rijec, idGlasa.get(p.glas)!, p.pozicija)),

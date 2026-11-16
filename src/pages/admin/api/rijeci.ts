@@ -17,8 +17,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
     { tko: locals.admin!.email, radnja: "rijec.nova", tablica: "rijeci", grupa: novaGrupa() },
     { sql: "SELECT id FROM rijeci WHERE rijec = ?", args: [rijec] },
     [env.DB.prepare(
-      "INSERT INTO rijeci (rijec, slug, izvor) VALUES (?, ?, 'admin') ON CONFLICT(rijec) DO UPDATE SET aktivna = 1 RETURNING id",
-    ).bind(rijec, slug(rijec))],
+      `INSERT INTO rijeci (rijec, slug, izvor, dodao) VALUES (?, ?, 'admin', lower(?))
+       ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, dodao = COALESCE(rijeci.dodao, CASE WHEN rijeci.aktivna = 0 THEN excluded.dodao END) RETURNING id`,
+    ).bind(rijec, slug(rijec), locals.admin!.email)],
   )).catch(() => null);
   const id = (upis?.[1].results[0] as { id: number } | undefined)?.id;
   if (!id) return json({ error: `Adresa „${slug(rijec)}” je već zauzeta drugom riječju.` }, 409);

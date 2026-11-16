@@ -121,6 +121,45 @@ S=$(kod -b "$KOLACIC=$T" "$BASE/admin/zadaci/$MOJ"); [ "$S" = 200 ] || pao "supe
 ok "vlastiti zadatak $MOJ spremljen (200), superadmin ga vidi"
 d1 "UPDATE zadaci SET obrisan_at=datetime('now') WHERE id IN ($TUDJI,$MOJ)" >/dev/null
 
+# 3c. AI kvota (S4): limit slika 1 → prva slika ide u red, druga je odbijena s porukom; bočna traka
+# pokazuje preostalo; riječi koje logoped doda imaju `dodao`. Runner se ne pokreće (posao ostaje 'ceka').
+ID=$(d1 "SELECT id FROM korisnici WHERE email='$LOGOPED' AND uloga='logoped' AND aktivan=1" | grep -o '"id": *[0-9]*' | grep -o '[0-9]*$')
+[ -n "$ID" ] || pao "nema aktivnog retka logopeda"
+S=$(kod "${SA[@]}" --data-urlencode akcija=limiti --data-urlencode id="$ID" --data-urlencode limit_slike_7d=1 --data-urlencode limit_zvukovi_7d=200 "$BASE/admin/korisnici")
+[ "$S" = 303 ] || pao "superadmin postavlja limit: $S"
+SUF=$(date +%s | tr '0-9' 'abcdefghij'); R1="ezeprva$SUF"; R2="ezedruga$SUF"
+for R in "$R1" "$R2"; do
+  S=$(kod "${LO[@]}" -H 'content-type: application/json' --data "{\"rijec\":\"$R\"}" "$BASE/admin/api/rijeci"); [ "$S" = 200 ] || pao "logoped dodaje riječ $R: $S"
+done
+IDS=$(d1 "SELECT group_concat(id) AS i FROM rijeci WHERE rijec IN ('$R1','$R2') AND dodao='$LOGOPED'" | grep -o '"i": *"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/')
+case "$IDS" in *,*) ;; *) pao "riječi logopeda bez dodao: $IDS";; esac
+RID1=$(d1 "SELECT id FROM rijeci WHERE rijec='$R1'" | grep -o '"id": *[0-9]*' | grep -o '[0-9]*$')
+RID2=$(d1 "SELECT id FROM rijeci WHERE rijec='$R2'" | grep -o '"id": *[0-9]*' | grep -o '[0-9]*$')
+S=$(kod -b "$KOLACIC=$LT" "$BASE/admin/rijec/$R1"); [ "$S" = 200 ] && grep -q "Dodao: E2E Logoped" "$TMP/odg" || pao "stranica riječi ne pokazuje autora: $S"
+ok "logoped dodao riječi ($IDS), dodao upisan i prikazan"
+ODG=$(curl "${LO[@]}" -o /dev/null -w '%{http_code} %{redirect_url}' -H "Referer: $BASE/admin/rijec/$R1" \
+  --data-urlencode stil=bojanka --data-urlencode rijec="$RID1" --data-urlencode next="/admin/rijec/$R1" "$BASE/admin/api/generiraj")
+case "$ODG" in 303*dodano=1*) ;; *) pao "prva slika: $ODG";; esac
+ODG=$(curl "${LO[@]}" -o /dev/null -w '%{http_code} %{redirect_url}' -H "Referer: $BASE/admin/rijec/$R2" \
+  --data-urlencode stil=bojanka --data-urlencode rijec="$RID2" --data-urlencode next="/admin/rijec/$R2" "$BASE/admin/api/generiraj")
+case "$ODG" in 303*kvota=*) ;; *) pao "druga slika nije odbijena: $ODG";; esac
+PORUKA=$(node -e 'const u=new URL(process.argv[1]); console.log(u.searchParams.get("kvota"))' "${ODG#* }")
+case "$PORUKA" in "Ostalo ti je 0 od 1 slika"*) ok "druga slika odbijena: $PORUKA";; *) pao "poruka kvote: $PORUKA";; esac
+S=$(kod -b "$KOLACIC=$LT" "${ODG#* }"); [ "$S" = 200 ] && grep -q 'class="kvota-poruka"' "$TMP/odg" || pao "banner kvote: $S"
+N=$(d1 "SELECT (SELECT COUNT(*) FROM generiranja WHERE rijec_id IN ($RID1,$RID2) AND status='ceka') * 10 + (SELECT COUNT(*) FROM ai_potrosnja WHERE korisnik_id=$ID) AS n" | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$')
+[ "$N" = 11 ] || pao "poslova*10 + redaka potrošnje: $N (treba 11)"
+ok "jedan posao (ceka) i jedan redak ai_potrosnja"
+kod -b "$KOLACIC=$LT" "$BASE/admin" >/dev/null
+tr -d '\n' < "$TMP/odg" | grep -o 'class="kvota-stanje".*class="dno"' | grep -q '>0/1</b>.*>200/200</b>' || pao "bočna traka ne pokazuje preostalo (0/1, 200/200)"
+kod -b "$KOLACIC=$T" "$BASE/admin" >/dev/null; grep -q 'class="kvota-stanje"' "$TMP/odg" && pao "superadmin vidi kvotu u traci"
+S=$(kod -b "$KOLACIC=$T" "$BASE/admin/korisnici"); tr -d '\n' < "$TMP/odg" | grep -o "data-email=\"$LOGOPED\".*" | grep -q 'slike 1/1' || pao "/admin/korisnici ne pokazuje potrošnju logopeda: $S"
+ok "bočna traka logopeda: slike 0/1, izgovori 200/200; superadmin bez nje; /admin/korisnici: slike 1/1"
+# Čišćenje lokalne baze: posao, potrošnja, riječi i njihovi zapisi u aktivnosti.
+d1 "DELETE FROM aktivnost WHERE (tablica='generiranja' AND redak_id IN (SELECT id FROM generiranja WHERE rijec_id IN ($RID1,$RID2))) OR (tablica='rijeci' AND redak_id IN ($RID1,$RID2)); DELETE FROM generiranja WHERE rijec_id IN ($RID1,$RID2); DELETE FROM ai_potrosnja WHERE korisnik_id=$ID; DELETE FROM rijeci WHERE id IN ($RID1,$RID2)" >/dev/null
+N=$(d1 "SELECT (SELECT COUNT(*) FROM generiranja WHERE rijec_id IN ($RID1,$RID2)) + (SELECT COUNT(*) FROM ai_potrosnja WHERE korisnik_id=$ID) + (SELECT COUNT(*) FROM rijeci WHERE id IN ($RID1,$RID2)) AS n" | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$')
+[ "$N" = 0 ] || pao "čišćenje: ostalo $N redaka"
+ok "posao, potrošnja i riječi obrisani iz lokalne baze"
+
 # 4. Superadmin deaktivira; logopedov sljedeći zahtjev ide na prijavu.
 ID=$(d1 "SELECT id FROM korisnici WHERE email='$LOGOPED' AND uloga='logoped' AND aktivan=1" | grep -o '"id": *[0-9]*' | grep -o '[0-9]*$')
 [ -n "$ID" ] || pao "nema aktivnog retka logopeda"

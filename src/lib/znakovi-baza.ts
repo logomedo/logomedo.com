@@ -37,9 +37,9 @@ export async function noviZnak(unos: unknown, tko: string): Promise<{ id: number
   const kljuc = { sql: "SELECT id FROM rijeci WHERE rijec = ? AND vrsta = 'znak'", args: [z] };
   await DB().batch(sZapisom({ tko, radnja: postoji ? "znak.vracen" : "znak.novi", tablica: "rijeci", grupa: novaGrupa() }, kljuc, [
     DB().prepare(
-      `INSERT INTO rijeci (rijec, slug, izvor, vrsta) VALUES (?, ?, 'admin', 'znak')
-       ON CONFLICT(rijec) DO UPDATE SET aktivna = 1`,
-    ).bind(z, slugZnaka(z)),
+      `INSERT INTO rijeci (rijec, slug, izvor, vrsta, dodao) VALUES (?, ?, 'admin', 'znak', lower(?))
+       ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, dodao = COALESCE(rijeci.dodao, CASE WHEN rijeci.aktivna = 0 THEN excluded.dodao END)`,
+    ).bind(z, slugZnaka(z), tko),
   ]));
   const r = await DB().prepare(kljuc.sql).bind(z).first<{ id: number }>();
   return r ? { id: r.id } : { greska: "Znak nije upisan." };

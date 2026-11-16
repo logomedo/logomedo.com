@@ -85,7 +85,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   <div class="raspored">
     <div class="ploha">
       <table id="korisnici">
-        <thead><tr><th>Korisnik</th><th>Uloga</th><th>Ključevi</th><th>Zadnja prijava</th><th>AI limit (7 dana)</th><th></th></tr></thead>
+        <thead><tr><th>Korisnik</th><th>Uloga</th><th>Ključevi</th><th>Zadnja prijava</th><th>AI limit (7 dana)</th><th>Potrošeno (7 dana)</th><th>Doprinos</th><th></th></tr></thead>
         <tbody>
           {korisnici.map((k) => {
             const logoped = k.uloga !== "superadmin" && k.ulogaRetka === "logoped" && k.id !== null;
@@ -107,6 +107,14 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
                       <button class="gumb mali tihi" type="submit">Spremi</button>
                     </form>
                   ) : <span class="blijedo">{k.uloga === "superadmin" ? "bez limita" : "—"}</span>}
+                </td>
+                <td class="brojke">
+                  {k.uloga === "superadmin" || k.limit_slike_7d === null
+                    ? <>slike {k.doprinos.slike}<br />izgovori {k.doprinos.zvukovi}</>
+                    : <>slike {k.doprinos.slike}/{k.limit_slike_7d}<br />izgovori {k.doprinos.zvukovi}/{k.limit_zvukovi_7d}</>}
+                </td>
+                <td class="brojke" title="Dodane riječi (u katalogu) i trenutno odobrene slike i izgovori koje je odobrio">
+                  riječi {k.doprinos.rijeci}<br />odobrio slika {k.doprinos.odobreneSlike}<br />izgovora {k.doprinos.odobreniZvukovi}
                 </td>
                 <td class="akcije">
                   {logoped && (
@@ -195,6 +203,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   .limiti { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .limiti label { display: inline-flex; gap: 4px; align-items: center; font-size: .8rem; color: var(--blijedo); margin: 0; }
   .limiti input { width: 76px; }
+  .brojke { font-size: .84rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .podnaslov-tablice { margin: 24px 16px 8px; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
   .prazne { padding: 0 16px 16px; }
   .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }

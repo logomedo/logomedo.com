@@ -68,11 +68,19 @@ export async function rijeciGlasa(glasId: number, stilId: number): Promise<Rijec
 export interface RijecDetalj {
   id: number; rijec: string; slug: string; opis_za_sliku: string | null; recenica: string | null;
   legacy_koristeno: number; izvor: string; rima: string | null;
+  /**
+   * Tko je dodao riječ u adminu (e-mail, `rijeci.dodao`) i njegovo ime iz `korisnici`, ako ga ima.
+   * Upisuje se pri nastanku riječi; pri `ON CONFLICT` samo kad je riječ bila neaktivna i bez autora
+   * (postojeći autor se ne prepisuje, aktivna riječ ga ne dobiva).
+   */
+  dodao: string | null; dodao_ime: string | null;
 }
 
 export async function rijec(slug: string) {
   const r = await DB().prepare(
-    "SELECT id, rijec, slug, opis_za_sliku, recenica, legacy_koristeno, izvor, rima FROM rijeci WHERE slug = ? AND vrsta = 'rijec'",
+    `SELECT r.id, r.rijec, r.slug, r.opis_za_sliku, r.recenica, r.legacy_koristeno, r.izvor, r.rima, r.dodao,
+       (SELECT NULLIF(trim(k.ime), '') FROM korisnici k WHERE k.email = lower(r.dodao)) AS dodao_ime
+     FROM rijeci r WHERE r.slug = ? AND r.vrsta = 'rijec'`,
   ).bind(slug).first<RijecDetalj>();
   if (!r) return null;
   const [pozicije, slike, red] = await DB().batch([

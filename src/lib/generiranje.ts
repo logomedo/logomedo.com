@@ -370,7 +370,8 @@ export async function premjesti(slikaId: number, cilj: string, email: string, o:
     const izvedeno = pojave(rijec, glasovi.map((g) => g.oznaka), glasovi.filter((g) => g.skupine).map((g) => g.oznaka));
     const idRijeci = "(SELECT id FROM rijeci WHERE rijec = ?)";
     const ok = await db.batch(sZapisom({ tko: email, radnja: "rijec.nova", tablica: "rijeci", grupa }, { sql: idRijeci, args: [rijec] }, [
-      db.prepare(`INSERT INTO rijeci (rijec, slug, izvor) VALUES (?, ?, 'admin') ON CONFLICT(rijec) DO UPDATE SET aktivna = 1`).bind(rijec, uSlug(rijec)),
+      db.prepare(`INSERT INTO rijeci (rijec, slug, izvor, dodao) VALUES (?, ?, 'admin', lower(?))
+        ON CONFLICT(rijec) DO UPDATE SET aktivna = 1, dodao = COALESCE(rijeci.dodao, CASE WHEN rijeci.aktivna = 0 THEN excluded.dodao END)`).bind(rijec, uSlug(rijec), email),
       ...izvedeno.map((p) => db.prepare(`INSERT OR IGNORE INTO rijec_glas (rijec_id, glas_id, pozicija, potvrdeno) VALUES (${idRijeci}, ?, ?, 0)`)
         .bind(rijec, idGlasa.get(p.glas)!, p.pozicija)),
     ])).then(() => true, () => false);

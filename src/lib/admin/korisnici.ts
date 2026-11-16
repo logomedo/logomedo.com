@@ -24,6 +24,42 @@ export interface KorisnikPrikaz {
   kljuceva: number;
   /** Najnovije od: početak sesije, zadnja upotreba passkeya (sesije se brišu nakon isteka). */
   zadnja_prijava: string | null;
+  doprinos: Doprinos;
+}
+
+/** Što je korisnik potrošio (zadnjih 7 dana) i napravio u katalogu; ključ je e-mail malim slovima. */
+export interface Doprinos {
+  /** AI krediti u kliznom prozoru kvote (`ai_potrosnja`, isti prozor kao lib/kvota.ts). */
+  slike: number;
+  zvukovi: number;
+  /** Riječi u katalogu (aktivne) kojima je `rijeci.dodao`. */
+  rijeci: number;
+  /** Trenutno odobrene slike i izgovori koje je on odobrio (`pregledao`). */
+  odobreneSlike: number;
+  odobreniZvukovi: number;
+}
+
+const NULA: Doprinos = { slike: 0, zvukovi: 0, rijeci: 0, odobreneSlike: 0, odobreniZvukovi: 0 };
+
+/** Doprinos svih korisnika jednim upitom (po e-mailu, pa uključuje i superadmina bez retka). */
+export async function doprinosi(): Promise<Map<string, Doprinos>> {
+  const { results } = await env.DB.prepare(
+    `WITH
+       p AS (SELECT lower(k.email) AS email, SUM(CASE WHEN a.vrsta = 'slike' THEN a.kolicina ELSE 0 END) AS slike,
+               SUM(CASE WHEN a.vrsta = 'zvukovi' THEN a.kolicina ELSE 0 END) AS zvukovi
+             FROM ai_potrosnja a JOIN korisnici k ON k.id = a.korisnik_id
+             WHERE a.at > datetime('now', '-7 days') GROUP BY 1),
+       r AS (SELECT lower(dodao) AS email, COUNT(*) AS n FROM rijeci
+             WHERE dodao IS NOT NULL AND aktivna = 1 AND vrsta = 'rijec' GROUP BY 1),
+       s AS (SELECT lower(pregledao) AS email, COUNT(*) AS n FROM slike WHERE status = 'odobrena' AND pregledao IS NOT NULL GROUP BY 1),
+       z AS (SELECT lower(pregledao) AS email, COUNT(*) AS n FROM zvukovi WHERE status = 'odobren' AND pregledao IS NOT NULL GROUP BY 1),
+       e AS (SELECT email FROM p UNION SELECT email FROM r UNION SELECT email FROM s UNION SELECT email FROM z)
+     SELECT e.email, COALESCE(p.slike, 0) AS slike, COALESCE(p.zvukovi, 0) AS zvukovi, COALESCE(r.n, 0) AS rijeci,
+       COALESCE(s.n, 0) AS odobreneSlike, COALESCE(z.n, 0) AS odobreniZvukovi
+     FROM e LEFT JOIN p ON p.email = e.email LEFT JOIN r ON r.email = e.email
+       LEFT JOIN s ON s.email = e.email LEFT JOIN z ON z.email = e.email`,
+  ).all<Doprinos & { email: string }>();
+  return new Map(results.map(({ email, ...d }) => [email, d]));
 }
 
 /** Cijeli broj 0…LIMIT_MAX iz forme; inače null. */
@@ -36,7 +72,7 @@ export function procitajLimit(v: unknown): number | null {
 const RANG: Record<string, number> = { superadmin: 0, logoped: 1 };
 
 export async function popisKorisnika(): Promise<KorisnikPrikaz[]> {
-  const { results } = await env.DB.prepare(
+  const [{ results }, dop] = await Promise.all([env.DB.prepare(
     `SELECT k.id, k.email, k.ime, k.uloga, k.aktivan, k.deaktiviran_at, k.limit_slike_7d, k.limit_zvukovi_7d,
        (SELECT COUNT(*) FROM admin_passkeys p WHERE lower(p.email) = k.email) AS kljuceva,
        NULLIF(MAX(
@@ -44,10 +80,11 @@ export async function popisKorisnika(): Promise<KorisnikPrikaz[]> {
          COALESCE((SELECT MAX(p.last_used_at) FROM admin_passkeys p WHERE lower(p.email) = k.email), '')
        ), '') AS zadnja_prijava
      FROM korisnici k`,
-  ).all<Omit<KorisnikPrikaz, "uloga" | "ulogaRetka"> & { uloga: string }>();
+  ).all<Omit<KorisnikPrikaz, "uloga" | "ulogaRetka" | "doprinos"> & { uloga: string }>(), doprinosi()]);
   const sa = adminEmails();
+  const doprinos = (email: string) => dop.get(email.toLowerCase()) ?? NULA;
   const out: KorisnikPrikaz[] = results.map((r) => ({
-    ...r, ulogaRetka: r.uloga, uloga: odrediUlogu(r.email, sa, { uloga: r.uloga, aktivan: r.aktivan }),
+    ...r, ulogaRetka: r.uloga, uloga: odrediUlogu(r.email, sa, { uloga: r.uloga, aktivan: r.aktivan }), doprinos: doprinos(r.email),
   }));
   // Superadmin bez retka (redak nastaje tek kad nešto spremi).
   const imaju = new Set(out.map((r) => r.email.toLowerCase()));
@@ -61,6 +98,7 @@ export async function popisKorisnika(): Promise<KorisnikPrikaz[]> {
     out.push({
       id: null, email, ime: null, uloga: "superadmin", ulogaRetka: null, aktivan: 1, deaktiviran_at: null,
       limit_slike_7d: null, limit_zvukovi_7d: null, kljuceva: z?.kljuceva ?? 0, zadnja_prijava: z?.zadnja_prijava ?? null,
+      doprinos: doprinos(email),
     });
   }
   return out.sort((a, b) => (RANG[a.uloga ?? ""] ?? 2) - (RANG[b.uloga ?? ""] ?? 2) || a.email.localeCompare(b.email));

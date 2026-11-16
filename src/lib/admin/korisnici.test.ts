@@ -93,3 +93,47 @@ test("popis: superadmin bez retka, logoped s ključem i zadnjom prijavom, deakti
   assert.ok(p[1].zadnja_prijava! > "2026-11-02T08:00:00.000Z", "sesija je novija od passkeya");
   assert.equal(p[2].zadnja_prijava, null);
 });
+
+test("doprinos: potrošnja u 7 dana (stari redak ne ulazi), dodane riječi, odobrene slike i izgovori", async () => {
+  const ana = await korisnik(LOGOPED, "logoped");
+  const sa = await korisnik(SA, "admin");
+  const potrosnja = (id: number, vrsta: string, n: number, at: string) =>
+    db().prepare(`INSERT INTO ai_potrosnja (korisnik_id, vrsta, kolicina, at) VALUES (?, ?, ?, datetime('now', ?))`).bind(id, vrsta, n, at).run();
+  await potrosnja(ana, "slike", 3, "-1 day");
+  await potrosnja(ana, "slike", 2, "-6 days");
+  await potrosnja(ana, "slike", 40, "-8 days");
+  await potrosnja(ana, "zvukovi", 5, "-2 hours");
+  await potrosnja(sa, "slike", 7, "-1 hour");
+
+  const rijec = async (r: string, dodao: string | null, aktivna = 1) =>
+    (await db().prepare("INSERT INTO rijeci (rijec, slug, dodao, aktivna) VALUES (?, ?, ?, ?) RETURNING id").bind(r, r, dodao, aktivna).first<number>("id"))!;
+  const r1 = await rijec("gugutka", LOGOPED);
+  await rijec("pomfrit", "B@Primjer.HR");
+  await rijec("trampolin", LOGOPED, 0); // maknuta iz kataloga: ne broji se
+  await rijec("kvacica", null);
+  const slika = (n: number, status: string, pregledao: string | null) =>
+    db().prepare(`INSERT INTO slike (rijec_id, stil_id, r2_kljuc, sha256, mime, bajtova, izvor, status, pregledao)
+      VALUES (?, (SELECT MIN(id) FROM stilovi), ?, 'h', 'image/png', 1, 'agy', ?, ?)`).bind(r1, `k${n}`, status, pregledao).run();
+  await slika(1, "odobrena", LOGOPED);
+  await slika(2, "odbijena", LOGOPED);
+  await slika(3, "kandidat", null);
+  const zvuk = (status: string, pregledao: string) =>
+    db().prepare("INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, bajtova, glas_id, model, provjera, status, pregledao) VALUES ('mis', 'miš', 'z', 1, 'g', 'm', 'ok', ?, ?)")
+      .bind(status, pregledao).run();
+  await zvuk("odobren", LOGOPED);
+  await zvuk("odobren", LOGOPED);
+  await zvuk("odobren", "automatski");
+  await zvuk("odbijen", SA);
+
+  const p = await popisKorisnika();
+  const po = (email: string) => p.find((k) => k.email === email)!.doprinos;
+  assert.deepEqual(po(LOGOPED), { slike: 5, zvukovi: 5, rijeci: 2, odobreneSlike: 1, odobreniZvukovi: 2 });
+  assert.deepEqual(po(SA), { slike: 7, zvukovi: 0, rijeci: 0, odobreneSlike: 0, odobreniZvukovi: 0 });
+});
+
+test("doprinos: superadmin bez retka dobiva svoje brojke po e-mailu", async () => {
+  await db().prepare("INSERT INTO rijeci (rijec, slug, dodao) VALUES ('gugutka', 'gugutka', ?)").bind(SA).run();
+  const p = await popisKorisnika();
+  assert.equal(p[0].id, null);
+  assert.equal(p[0].doprinos.rijeci, 1);
+});

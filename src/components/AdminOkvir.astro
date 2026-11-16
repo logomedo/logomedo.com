@@ -9,6 +9,7 @@ import type { ComponentProps } from "astro/types";
 import { env } from "cloudflare:workers";
 import { smije } from "../lib/admin/ovlasti";
 import { smijeNa } from "../lib/admin/rute";
+import { preostalo, type StanjeKvote, type VrstaKvote } from "../lib/kvota";
 
 interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "postavke"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
@@ -26,6 +27,9 @@ if (admin) {
        (SELECT COUNT(DISTINCT kljuc) FROM zvukovi WHERE status = 'kandidat') AS zvukova`,
   ).first<typeof brojevi>()) ?? brojevi;
 }
+// Logoped vidi koliko mu je AI kredita ostalo (lib/kvota.ts); superadmin je bez limita, pa ništa.
+const kvotaStanje: Record<VrstaKvote, StanjeKvote> | null =
+  admin?.uloga === "logoped" && admin.korisnikId !== null ? await preostalo(admin.korisnikId) : null;
 type Stavka = { kod: NonNullable<Props["aktivno"]>; href: string; tekst: string; ikona: ComponentProps<typeof Ikona>["ime"]; broj: number; greska?: boolean };
 // Izbornik po poslu: što čeka odluku, od čega se slaže, što se slaže; dolje alati i postavke.
 const skupine: { naslov: string; boja: string; stavke: Stavka[] }[] = [
@@ -98,6 +102,19 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
             ))}
           </section>
         </nav>
+        {kvotaStanje && (
+          <div class="kvota-stanje" title="AI krediti: preostalo od tjednog limita (zadnjih 7 dana)">
+            <span class="kvota-naslov">Preostalo (7 dana)</span>
+            {([["slike", "Slike", "pregled"], ["zvukovi", "Izgovori", "zvuk"]] as const).map(([v, tekst, ikona]) => (
+              <span class:list={["kvota-red", { nula: kvotaStanje[v].preostalo === 0 }]} data-vrsta={v}
+                aria-label={`${tekst}: ostalo ${kvotaStanje[v].preostalo} od ${kvotaStanje[v].limit}`}>
+                <Ikona ime={ikona} velicina={16} />
+                <span class="kvota-tekst">{tekst}</span>
+                <b>{kvotaStanje[v].preostalo}/{kvotaStanje[v].limit}</b>
+              </span>
+            ))}
+          </div>
+        )}
         <div class="dno">
           <div class="tko" title={`${admin.email} (${admin.uloga})`}>
             <span class="avatar">{admin.email[0].toUpperCase()}</span>
@@ -234,6 +251,11 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
       .sadrzaj { padding: 40px clamp(20px, 4vw, 56px) 80px; max-width: 1360px; width: 100%; }
       .kvota-poruka { margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-weight: 600; }
       .sadrzaj.puno { max-width: none; padding: 0; }
+      .kvota-stanje { display: flex; flex-direction: column; gap: 2px; padding: 0 10px; font-size: .82rem; color: var(--blijedo); }
+      .kvota-naslov { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }
+      .kvota-red { display: flex; align-items: center; gap: 8px; }
+      .kvota-red b { margin-left: auto; color: var(--tinta); font-variant-numeric: tabular-nums; }
+      .kvota-red.nula b { color: var(--greska); }
 
       @media (max-width: 860px) {
         body.s-trakom { grid-template-columns: 1fr; }
@@ -288,6 +310,12 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
       .mono { font-family: ui-monospace, "SF Mono", monospace; font-size: .82rem; }
       .blijedo { color: var(--blijedo); }
       .rijec-tekst { text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+
+      @media (max-width: 860px) {
+        .kvota-stanje { flex: none; flex-direction: row; gap: 10px; padding: 0; }
+        .kvota-naslov, .kvota-tekst { display: none; }
+        .kvota-red { gap: 4px; }
+      }
     </style>
   </body>
 </html>

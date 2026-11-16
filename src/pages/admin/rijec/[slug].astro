@@ -82,6 +82,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
       </details>
       <p class="podnaslov">
         {r.izvor === "legacy" ? `Iz starog kataloga, na listićima ${r.legacy_koristeno}×` : "Dodana u adminu"}
+        {r.dodao && <> · Dodao: {r.dodao_ime ?? r.dodao}</>}
       </p>
 
       <h2>Glasovi i pozicije</h2>
