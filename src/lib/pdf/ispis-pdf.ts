@@ -183,7 +183,12 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     p.okvir(x, y, s, s, 4, debljinaPt);
     const img = await ugradi(sl.url);
     if (img) p.slika(img, x + 2, y + 2, s - 4, s - 4, sl.izmjena);
-    else if (sl.znak) {
+    else if (sl.napisano) {
+      // Napisana riječ: Andika, što veća da stane u okvir (do ~30 % stranice okvira).
+      let pt = (s * MM) * 0.3;
+      while (pt > 8 && p.sirinaZnaka(sl.rijec, pt) > s - 6) pt -= 0.5;
+      p.znak(sl.rijec, x + s / 2, y + s / 2, pt, sl.izmjena);
+    } else if (sl.znak) {
       // Znak ispunjava okvir: oko 55 % visine, manje za dvoslove (DŽ) i više znakova.
       let pt = (s * MM) * (sl.rijec.length > 1 ? 0.42 : 0.6);
       while (pt > 10 && p.sirinaZnaka(sl.rijec, pt) > s - 6) pt -= 1;

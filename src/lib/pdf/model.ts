@@ -2,6 +2,7 @@
 // je ista kao u HTML ispisu bilježnice: odabir 3 reda, uljez i percepcija 4 reda, povezivanje 1 stranica,
 // listić 12 kartica (3 × 4, kao stari LogoMedo).
 
+import { jeNapisano, mapaRijeci } from "../zadaci/napisano.ts";
 import type { Tema } from "../teme.ts";
 import { imaOkvir, podrucje, slojevi, type Okvir } from "../okviri.ts";
 import { TEME } from "../teme.ts";
@@ -9,7 +10,8 @@ import { rasporedListica, poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, t
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
 /** `znak`: slovo ili brojka iz kataloga znakova, crta se kao znak u okviru (s izmjenom), ne kao riječ. */
-export interface SlikaPdf { url: string | null; rijec: string; natpis: string; izmjena?: Izmjena; znak?: boolean }
+/** `napisano`: riječ napisana umjesto slike (zadaci/napisano.ts), Andikom preko okvira; ima i `znak` jer treba isti font. */
+export interface SlikaPdf { url: string | null; rijec: string; natpis: string; izmjena?: Izmjena; znak?: boolean; napisano?: boolean }
 
 /** Siva slika je zasebna datoteka: preglednik je pri smanjivanju pretvori u sivu (preglednik.ts). */
 export const SIVA = "#siva";
@@ -71,6 +73,7 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
   const sl = (id: number | null): SlikaPdf => {
     const r = id === null ? undefined : rijeci.get(id);
     if (!r) return { url: null, rijec: "?", natpis: "" };
+    if (jeNapisano(id)) return { url: null, rijec: VELIKO(r.rijec), natpis: "", znak: true, napisano: true };
     if (r.znak) return { url: null, rijec: r.rijec, natpis: "", znak: true };
     // Bez slike je riječ već u okviru, pa natpis ne treba.
     return { url: r.slika, rijec: VELIKO(r.rijec), natpis: sRijecima && r.slika ? VELIKO(r.rijec) : "" };
@@ -117,7 +120,7 @@ export function tijelaZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Rije
 
 /** Samostalan zadatak (admin): naslov, uputa i ime na prvoj stranici. */
 export function dokumentZadatka(z: { vrsta: Vrsta; naslov: string; uputa: string; sadrzaj: Sadrzaj; okvir?: Okvir | null }, rijeci: RijecPdf[], sRijecima: boolean, pozadine: PozadinaPdf[] = []): DokumentPdf {
-  const tijela = tijelaZadatka(z.vrsta, z.sadrzaj, new Map(rijeci.map((r) => [r.id, r])), sRijecima, pozadine, true);
+  const tijela = tijelaZadatka(z.vrsta, z.sadrzaj, mapaRijeci(rijeci), sRijecima, pozadine, true);
   const naslov = z.naslov || VRSTE[z.vrsta].naziv;
   const dok: DokumentPdf = {
     naslov, podnozje: "logomedo.com",
@@ -196,7 +199,7 @@ export function dokumentBiljeznice(
   lampica: number,
   pozadine: PozadinaPdf[] = [],
 ): DokumentPdf {
-  const m = new Map(rijeci.map((r) => [r.id, r]));
+  const m = mapaRijeci(rijeci);
   return {
     naslov: b.naslov, podnozje: `${b.naslov} · logomedo.com`, ukrasi: TEME[b.tema ?? "bozic"].kutovi,
     naslovnica: { naslov: b.naslov, uputa: TEME[b.tema ?? "bozic"].uputaIspisa, lampica, tema: b.tema ?? "bozic" },

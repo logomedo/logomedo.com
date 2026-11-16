@@ -105,6 +105,13 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-slika .z-natpis { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-weight: 700; font-size: .78rem; letter-spacing: .05em; color: #3a3226; }
   .z-slika.mala { width: 56px; flex: none; border-radius: 9px; }
   .z-slika.mala .z-bez { font-size: calc(.55rem * var(--m, 1)); }
+  /* Napisana riječ umjesto slike (napisano.ts): Andika, veličina prema duljini riječi (--n slova) */
+  .z-slika .z-napisano-tekst { font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; line-height: 1.1; color: #2b2118; text-align: center; padding: 4px;
+    font-size: min(2rem, calc(150px / var(--n, 5))); white-space: nowrap; }
+  .z-slika.mala .z-napisano-tekst { font-size: min(1.1rem, calc(70px / var(--n, 5))); }
+  .a4 .z-slika .z-napisano-tekst { font-size: min(26pt, calc(105pt / var(--n, 5))); color: #1a1a1a; }
+  .z-napisi { border: 1px dashed var(--rub); background: none; border-radius: 8px; font-size: .75rem; padding: 2px 8px; color: var(--blijedo, #7a6e5d); cursor: pointer; }
+  .z-napisi.on { border-style: solid; border-color: var(--med); background: var(--med-blago); color: inherit; }
   /* Znak (slovo, brojka): veliko, tamno, Andika (font za početno čitanje) kao u igri i PDF-u; izmjena (zrcalo, naopako) je na samom znaku */
   .z-slika .z-znak { display: inline-block; font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; line-height: 1; color: #2b2118;
     font-size: calc(clamp(2.4rem, 6vw, 4.2rem) * var(--m, 1)); }

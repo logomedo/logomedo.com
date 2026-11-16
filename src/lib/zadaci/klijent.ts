@@ -15,6 +15,7 @@ import {
   type GlasoviZadatka, type Izmjena, type Listic, type Odabir, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta, zaGenerator,
 } from "./vrste.ts";
 import { usporediZnakove } from "../znakovi.ts";
+import { izvorni, jeNapisano, mapaRijeci, postaviUlogu, uObliku, ulogaNapisana, ulogeNapisano, VRSTE_NAPISANO } from "./napisano.ts";
 import { slikaZa, vidljiviGumbi, type PozadinaPrikaz } from "../scena-prikaz.ts";
 import { A4 as A4_MM, GOTOVI, imaOkvir, isti, KUTOVI, MASNE, normalizirajOkvir, okvirSvg, podrucje as podrucjeOkvira, RUBOVI, UKRASI, urlUkrasa, type Kutovi, type Okvir } from "../okviri.ts";
 
@@ -54,7 +55,11 @@ const VELIKO = (s: string) => s.toLocaleUpperCase("hr");
 export function pokreni(korijen: HTMLElement, p: Podaci) {
   const z = p.zadatak;
   const vrsta = z.vrsta;
-  const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
+  // Uz svaku riječ i njezina napisana inačica (-id), napisano.ts.
+  const rijeci = mapaRijeci(p.rijeci);
+  /** Može li polje ove vrste biti napisana riječ (uparivanje, povezivanje, uljez). */
+  const smijeNapisano = (VRSTE_NAPISANO as readonly string[]).includes(vrsta);
+  const jeZnakId = (id: number) => !!R(id)?.znak;
   let sadrzaj: Sadrzaj = structuredClone(z.sadrzaj);
   let naslov = z.naslov, uputa = z.uputa ?? zadanaUputa(vrsta, z.sadrzaj), podrucje = z.podrucje_id, stil = z.stil;
   let okvir: Okvir = normalizirajOkvir(z.okvir);
@@ -95,6 +100,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     if (!r) return h("div", { class: `z-slika prazna ${kl}` }, h("span", {}, "?"));
     const css = izmjenaCss(izmjena) || undefined;
     // Znak (slovo, brojka) je sam sebi slika: točno kako je upisan, izmjena (zrcalo, naopako) vrijedi i za njega.
+    // Napisana riječ (napisano.ts): tiskana slova u polju, bez slike i natpisa.
+    if (r.napisano) return h("div", { class: `z-slika z-napisano ${kl}` }, h("span", { class: "z-napisano-tekst", style: `--n:${[...r.rijec].length}` }, VELIKO(r.rijec)));
     if (r.znak) return h("div", { class: `z-slika z-znak-polje ${kl}` }, h("span", { class: "z-znak", style: [r.rijec.length > 1 ? `--m:${r.rijec.length > 2 ? 0.5 : 0.7}` : "", css ?? ""].filter(Boolean).join(";") || undefined }, r.rijec));
     return h("div", { class: `z-slika ${kl}` },
       r.slika ? h("img", { src: r.slika, alt: r.rijec, loading: "lazy", draggable: "false", style: css })
@@ -149,11 +156,11 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         (!q || (rima ? r.rima?.endsWith(rima) : r.rijec.toLocaleLowerCase("hr").includes(q))) &&
         (!samoSlika || r.slika) &&
         (!poGlasu || odgovara(sGlasovima(r), pg!)) &&
-        (!u || filtar === "sve" || (filtar === "rima" ? uOdnosu(odnos(), u, r) : !uOdnosu(odnos(), u, r) && r.id !== u.id)));
+        (!u || filtar === "sve" || (filtar === "rima" ? uOdnosu(odnos(), u, r) : !uOdnosu(odnos(), u, r) && r.id !== izvorni(u.id))));
       const pozicija = lista.scrollTop;
       zamijeni(lista, 
         ...svi.slice(0, koliko).map((r) => h("button", {
-          type: "button", class: `z-izbor${r.id === trenutna ? " on" : ""}`,
+          type: "button", class: `z-izbor${trenutna !== null && r.id === izvorni(trenutna) ? " on" : ""}`,
           onclick: () => { dlg.close(); gotovo(r.id); },
         }, slika(r.id, "mala", false), h("b", {}, VELIKO(r.rijec)), h("small", {}, oznakaRijeci(r)))),
         svi.length > koliko ? h("div", { class: "z-jos" },
@@ -171,7 +178,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const o = await fetch("/admin/api/rijeci", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rijec: t }) });
       const j: any = await o.json();
       if (!o.ok) { alert(j.error ?? "Nije uspjelo"); return; }
-      p.rijeci.push(j); p.rijeci.sort((a, b) => a.rijec.localeCompare(b.rijec, "hr")); rijeci.set(j.id, j);
+      p.rijeci.push(j); p.rijeci.sort((a, b) => a.rijec.localeCompare(b.rijec, "hr")); mapaRijeci([j], rijeci);
       dlg.close(); gotovo(j.id);
     }
     trazi.oninput = () => { koliko = KORAK; lista.scrollTop = 0; crtaj(); };
@@ -188,13 +195,18 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   /** Slot u editoru: klik otvara birač. */
   function slot(id: number | null, postavi: (id: number | null) => void, o: { uzor?: number | null; nacin?: "rima" | "ne-rima"; tocno?: boolean; naTocno?: () => void; oznakaTocno?: string } = {}) {
     const r = R(id);
+    // Nova riječ u napisanom polju ostaje napisana; znak (slovo, brojka) je uvijek znak.
+    const uPolje = (n: number | null) => (n !== null && jeNapisano(id) && !jeZnakId(n) ? uObliku(n, true) : n);
     return h("div", { class: `z-slot${o.tocno ? " tocno" : ""}` },
       h("button", { type: "button", class: "z-slot-slika", title: "Promijeni sliku",
-        onclick: () => biraj(id, o.uzor ?? null, o.nacin ?? null, (n) => { postavi(n); oznaci(); osvjezi(); }) },
+        onclick: () => biraj(id, o.uzor ?? null, o.nacin ?? null, (n) => { postavi(uPolje(n)); oznaci(); osvjezi(); }) },
         r ? slika(id, "", false) : h("div", { class: "z-slika prazna" }, h("span", {}, "+"))),
       h("div", { class: "z-slot-dno" },
         h("span", { class: "z-rijec" }, r ? VELIKO(r.rijec) : "prazno"),
         r && !r.znak && (r.rima || odnos() !== "rima") ? h("span", { class: "z-rima" }, oznakaRijeci(r)) : null),
+      smijeNapisano && r && !r.znak ? h("button", { type: "button", class: `z-napisi${r.napisano ? " on" : ""}`,
+        title: r.napisano ? "Prikaži sliku umjesto napisane riječi" : "Prikaži napisanu riječ umjesto slike",
+        onclick: () => { postavi(uObliku(id!, !r.napisano)); oznaci(); osvjezi(); } }, r.napisano ? "Aa napisano" : "Aa napiši") : null,
       o.naTocno ? h("button", { type: "button", class: `z-tocno${o.tocno ? " on" : ""}`, title: o.oznakaTocno, onclick: () => { o.naTocno!(); oznaci(); osvjezi(); } },
         o.tocno ? `✓ ${o.oznakaTocno}` : o.oznakaTocno) : null,
     );
@@ -448,7 +460,15 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       h("div", { class: "z-dio-glava" }, h("b", {}, "Što povezuje slike")),
       h("div", { class: "z-prekidac" },
         ...ODNOSI_POPIS.map((o) => h("button", { type: "button", class: `z-tocno${s.odnos === o ? " on" : ""}`, onclick: () => promijeni(o) }, ODNOSI[o].naziv))),
-      h("p", { class: "sitno blijedo" }, "Slike ostaju; što više ne odgovara, piše u upozorenjima. „Složi automatski” slaže nove po ovom odnosu."));
+      h("p", { class: "sitno blijedo" }, "Slike ostaju; što više ne odgovara, piše u upozorenjima. „Složi automatski” slaže nove po ovom odnosu."),
+      h("div", { class: "z-dio-glava" }, h("b", {}, "Napisane riječi umjesto slika"), h("span", { class: "sitno blijedo" }, "dijete čita; pojedino polje: „Aa” ispod njega")),
+      h("div", { class: "z-prekidac" },
+        ...ulogeNapisano(vrsta, s).map((u) => {
+          const on = ulogaNapisana(u, jeZnakId);
+          return h("button", { type: "button", class: `z-tocno${on ? " on" : ""}`, disabled: !u.polja.some((x) => x.daj() !== null),
+            onclick: () => { postaviUlogu(u, !on, jeZnakId); oznaci(); osvjezi(); } }, `${on ? "✓ " : ""}${u.naziv}: napisano`);
+        })),
+      h("p", { class: "sitno blijedo" }, "Brojke i slova biraju se kao znakovi (u biraču „Znakovi”)."));
   }
 
   function uredi(): HTMLElement {
@@ -819,6 +839,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("button", { type: "button", class: "gumb", onclick: () => {
           if (rijeciU(vrsta, sadrzaj).length && !confirm("Zamijeniti sadržaj novim prijedlogom?")) return;
           const prije = sadrzaj;
+          const napisane = ulogeNapisano(vrsta, prije).filter((u) => ulogaNapisana(u, jeZnakId)).map((u) => u.kljuc);
           const pg = poGlasovima();
           if (vrsta === "slogovi") sadrzaj = slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), postavke.stavki, (prije as Slogovi).krugova);
           else if (pg) {
@@ -828,6 +849,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
             sadrzaj = slozi(vrsta, izvor, { ...postavke, nacin: odnosOd(prije), ciljevi: ciljevi.length ? ciljevi : undefined });
             (sadrzaj as Odabir).po_glasovima = pg;
           } else sadrzaj = slozi(vrsta, zaGenerator(p.rijeci), { ...postavke, nacin: VRSTE[vrsta].odnos ? odnosOd(prije) : undefined });
+          // Napisani stupci (zadane, desni stupac…) ostaju napisani i u novom prijedlogu.
+          for (const u of ulogeNapisano(vrsta, sadrzaj)) if (napisane.includes(u.kljuc)) postaviUlogu(u, true, jeZnakId);
           // Prvi glas zadržava odabir slova na kolu; slova krugova biraju se samo s kola.
           if (vrsta === "prvi_glas") {
             const kolo = (prije as PrviGlas).kolo, s = sadrzaj as PrviGlas;

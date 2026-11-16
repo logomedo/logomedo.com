@@ -7,6 +7,7 @@ import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts
 import { izmjenaCss, UPUTE_PRVOG_GLASA, BOJE_DULJINE, jeDuga, type Polje } from "./zadaci/vrste.ts";
 import { iskocenoSlovo, koloSlova, znackaSlova } from "./kolo-slova.ts";
 import { kljucZvuka } from "./zvukovi-tekst.ts";
+import { mapaRijeci } from "./zadaci/napisano.ts";
 
 interface Podaci {
   naslov: string; podnaslov: string | null;
@@ -97,7 +98,8 @@ const fanfara = () => [784, 988, 1175, 1568, 1976, 2349].forEach((f, i) => { ton
 // ---------- Igra ----------
 
 export function pokreni(korijen: HTMLElement, p: Podaci) {
-  const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
+  // Uz svaku riječ i napisana inačica (-id): polje u kojem dijete čita riječ umjesto slike.
+  const rijeci = mapaRijeci(p.rijeci);
   snimke = p.zvukovi ?? {};
   const sviEkrani = ekrani(p.zadaci);
   const lampice = Array.from(document.querySelectorAll<SVGGElement>(".lampica"));
@@ -116,10 +118,12 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   };
   const ime = (id: number | null) => (id === null ? "" : rijeci.get(id)?.rijec ?? "");
 
-  const jeZnak = (id: number | null) => id !== null && !!rijeci.get(id)?.znak;
+  // Znak i napisana riječ nemaju zvučnik: dijete ih čita samo.
+  const jeZnak = (id: number | null) => id !== null && !!(rijeci.get(id)?.znak || rijeci.get(id)?.napisano);
   function slika(id: number | null) {
     const r = id === null ? null : rijeci.get(id);
     // Znak (slovo, brojka) se crta kao znak; izmjena percepcije ide na sam <span>.
+    if (r?.napisano) return h("div", { class: "slika napisano" }, h("span", { class: "napisano", style: `--n:${[...r.rijec].length}` }, VELIKO(r.rijec)));
     if (r?.znak) return h("div", { class: "slika znak" }, h("span", { class: "znak" }, r.rijec));
     if (r?.slika) return h("div", { class: "slika" }, h("img", { src: r.slika, alt: r.rijec, loading: "eager", draggable: "false" }));
     return h("div", { class: "slika" }, h("span", { class: "bez" }, VELIKO(r?.rijec ?? "?")));

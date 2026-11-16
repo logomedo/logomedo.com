@@ -302,6 +302,8 @@ export function tocnaPolja(polja: Polje[], trazi: Trazi): number[] {
 // ---- Normalizacija ulaza (API prima JSON iz preglednika) ----
 
 const id = (x: unknown): Id => (Number.isInteger(x) && (x as number) > 0 ? (x as number) : null);
+/** Polje uparivanja, povezivanja i uljeza: i negativan id (napisana riječ, napisano.ts). */
+const idPolja = (x: unknown): Id => (Number.isInteger(x) && x !== 0 ? (x as number) : null);
 const niz = <T>(x: unknown, max: number, f: (e: unknown) => T): T[] => (Array.isArray(x) ? x.slice(0, max).map(f) : []);
 const obj = (x: unknown) => (x && typeof x === "object" ? (x as Record<string, unknown>) : {});
 const ind = (x: unknown, n: number) => (Number.isInteger(x) && (x as number) >= 0 && (x as number) < n ? (x as number) : 0);
@@ -330,11 +332,11 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
         odnos: odnosOd(o), ...glasoviZadatka(o.po_glasovima),
         stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
-          return { zadana: id(x.zadana), ponudeno: tocnoN(niz(x.ponudeno, PONUDENIH, id), PONUDENIH, () => null), tocno: ind(x.tocno, PONUDENIH) };
+          return { zadana: idPolja(x.zadana), ponudeno: tocnoN(niz(x.ponudeno, PONUDENIH, idPolja), PONUDENIH, () => null), tocno: ind(x.tocno, PONUDENIH) };
         }),
       };
     case "povezivanje": {
-      const parovi = niz(o.parovi, 8, (p) => ({ lijevo: id(obj(p).lijevo), desno: id(obj(p).desno) }));
+      const parovi = niz(o.parovi, 8, (p) => ({ lijevo: idPolja(obj(p).lijevo), desno: idPolja(obj(p).desno) }));
       const r = niz(o.desno_redoslijed, 8, (x) => Number(x));
       const ok = r.length === parovi.length && [...r].sort((a, b) => a - b).every((x, i) => x === i);
       return { odnos: odnosOd(o), ...glasoviZadatka(o.po_glasovima), parovi, desno_redoslijed: ok ? r : parovi.map((_, i) => i) };
@@ -344,7 +346,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
         odnos: odnosOd(o), ...glasoviZadatka(o.po_glasovima),
         stavke: niz(o.stavke, MAX_REDOVA, (s) => {
           const x = obj(s);
-          return { slike: tocnoN(niz(x.slike, U_REDU, id), U_REDU, () => null), uljez: ind(x.uljez, U_REDU) };
+          return { slike: tocnoN(niz(x.slike, U_REDU, idPolja), U_REDU, () => null), uljez: ind(x.uljez, U_REDU) };
         }),
       };
     case "scena":
@@ -390,7 +392,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
   }
 }
 
-/** Svi id-jevi riječi u sadržaju (za dohvat slika). */
+/** Svi id-jevi riječi u sadržaju (za dohvat slika); napisano polje daje id riječi. */
 export function rijeciU(v: Vrsta, s: Sadrzaj): number[] {
   const out: Id[] = [];
   if (v === "listic") out.push(...(s as Listic).kartice.map((k) => k.rijec_id));
@@ -401,7 +403,7 @@ export function rijeciU(v: Vrsta, s: Sadrzaj): number[] {
   if (v === "percepcija") for (const x of (s as Percepcija).stavke) out.push(...x.polja.map((p) => p.rijec_id));
   if (v === "prvi_glas") for (const k of (s as PrviGlas).krugovi) out.push(...k.slike);
   if (v === "slogovi") out.push(...(s as Slogovi).slike.map((x) => x.rijec_id));
-  return [...new Set(out.filter((x): x is number => x !== null))];
+  return [...new Set(out.filter((x): x is number => x !== null).map(Math.abs))];
 }
 
 // ---- Provjere za editor: zadatak se smije spremiti i s upozorenjima ----

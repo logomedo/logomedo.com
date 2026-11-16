@@ -155,6 +155,9 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .kartica .zvucnik { --z: calc(var(--s) * .16); }
   .slika { width: 100%; aspect-ratio: 1; display: grid; place-items: center; }
   .slika img { width: 100%; height: 100%; object-fit: contain; mix-blend-mode: multiply; pointer-events: none; -webkit-user-drag: none; }
+  /* Napisana riječ umjesto slike: Andika, veličina prema broju slova (--n) */
+  .slika span.napisano { font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; line-height: 1.1; color: #3b2412; white-space: nowrap;
+    font-size: min(calc(var(--s) * .26), calc(var(--s) * 1.25 / var(--n, 5))); }
   .slika span.znak { display: inline-block; font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; font-size: calc(var(--s) * .55); line-height: 1; color: #3b2412; }
   .slika .bez { font-weight: 900; font-size: calc(var(--s) * .2); color: #8a5a2c; text-align: center; overflow-wrap: anywhere; }
   .bez-slike .unutra { position: relative; justify-content: center; min-height: var(--s); }

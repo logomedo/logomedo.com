@@ -7,12 +7,14 @@ import { TEME } from "../../../lib/teme";
 import { brojEkrana } from "../../../lib/biljeznice-ekrani";
 import { izmjenaCss, VRSTE, zadanaUputa, BOJE_DULJINE, type Slogovi, type Odabir, type Percepcija, type PrviGlas, type Krug, type Povezivanje, type Scena, type Uljez } from "../../../lib/zadaci/vrste";
 import { GRANCICA } from "../../../lib/ukrasi";
+import { mapaRijeci } from "../../../lib/zadaci/napisano";
+import "@fontsource/andika/700.css";
 import { dokumentBiljeznice } from "../../../lib/pdf/model";
 
 const b = await poSlugu(String(Astro.params.slug));
 if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
 const p = await podaci(b);
-const rijeci = new Map(p.rijeci.map((r) => [r.id, r]));
+const rijeci = mapaRijeci(p.rijeci);
 const R = (id: number | null) => (id === null ? null : rijeci.get(id) ?? null);
 const VEL = (s: string) => s.toLocaleUpperCase("hr");
 
@@ -84,14 +86,14 @@ const grancica = tema.kutovi ? GRANCICA : "";
         {s.vrsta === "odabir" && s.stavke.map((x) => (
           <div class="red">
             <figure class="slika zadana">
-              {R(x.zadana)?.slika ? <img src={R(x.zadana)!.slika!} alt="" /> : <span class="bez">{VEL(R(x.zadana)?.rijec ?? "")}</span>}
+              {R(x.zadana)?.slika ? <img src={R(x.zadana)!.slika!} alt="" /> : <span class={R(x.zadana)?.napisano ? "bez napisano" : "bez"}>{VEL(R(x.zadana)?.rijec ?? "")}</span>}
               <figcaption>{VEL(R(x.zadana)?.rijec ?? "")}</figcaption>
             </figure>
             <div class="strelica" />
             <div class="ladica">
               {x.ponudeno.map((id) => (
                 <figure class="slika">
-                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class={R(id)?.napisano ? "bez napisano" : "bez"}>{VEL(R(id)?.rijec ?? "")}</span>}
                   <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
                 </figure>
               ))}
@@ -102,7 +104,7 @@ const grancica = tema.kutovi ? GRANCICA : "";
           <div class="red">
             {x.slike.map((id) => (
               <figure class="slika">
-                {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class={R(id)?.napisano ? "bez napisano" : "bez"}>{VEL(R(id)?.rijec ?? "")}</span>}
                 <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
               </figure>
             ))}
@@ -119,7 +121,7 @@ const grancica = tema.kutovi ? GRANCICA : "";
               {s.slike.map((id) => (
                 <div class="stavka">
                   <figure class="slika">
-                    {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                    {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class={R(id)?.napisano ? "bez napisano" : "bez"}>{VEL(R(id)?.rijec ?? "")}</span>}
                   </figure>
                   {s.nacin !== "duljina" && <div class="krugovi" style={`--k:${s.krugova <= 4 ? s.krugova : Math.ceil(s.krugova / 2)};grid-template-columns:repeat(var(--k),auto)`}>{Array.from({ length: s.krugova }, () => <i />)}</div>}
                 </div>
@@ -133,7 +135,7 @@ const grancica = tema.kutovi ? GRANCICA : "";
             <div class="mreza" style={`--stupaca:${s.krug.slike.length > 12 ? 5 : 4}`}>
               {s.krug.slike.filter((id) => id !== null).map((id) => (
                 <figure class="slika">
-                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class={R(id)?.napisano ? "bez napisano" : "bez"}>{VEL(R(id)?.rijec ?? "")}</span>}
                 </figure>
               ))}
             </div>
@@ -155,7 +157,7 @@ const grancica = tema.kutovi ? GRANCICA : "";
               {s.s.parovi.map((x) => (
                 <div class="par">
                   <figure class="slika">
-                    {R(x.lijevo)?.slika ? <img src={R(x.lijevo)!.slika!} alt="" /> : <span class="bez">{VEL(R(x.lijevo)?.rijec ?? "")}</span>}
+                    {R(x.lijevo)?.slika ? <img src={R(x.lijevo)!.slika!} alt="" /> : <span class={R(x.lijevo)?.napisano ? "bez napisano" : "bez"}>{VEL(R(x.lijevo)?.rijec ?? "")}</span>}
                     <figcaption>{VEL(R(x.lijevo)?.rijec ?? "")}</figcaption>
                   </figure>
                   <i class="tocka" />
@@ -167,7 +169,7 @@ const grancica = tema.kutovi ? GRANCICA : "";
                 <div class="par">
                   <i class="tocka" />
                   <figure class="slika">
-                    {R(s.s.parovi[pi].desno)?.slika ? <img src={R(s.s.parovi[pi].desno)!.slika!} alt="" /> : <span class="bez">{VEL(R(s.s.parovi[pi].desno)?.rijec ?? "")}</span>}
+                    {R(s.s.parovi[pi].desno)?.slika ? <img src={R(s.s.parovi[pi].desno)!.slika!} alt="" /> : <span class={R(s.s.parovi[pi].desno)?.napisano ? "bez napisano" : "bez"}>{VEL(R(s.s.parovi[pi].desno)?.rijec ?? "")}</span>}
                     <figcaption>{VEL(R(s.s.parovi[pi].desno)?.rijec ?? "")}</figcaption>
                   </figure>
                 </div>
@@ -181,7 +183,7 @@ const grancica = tema.kutovi ? GRANCICA : "";
             <div class="gumbi">
               {s.gumbi.map((id) => (
                 <figure class="slika">
-                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class="bez">{VEL(R(id)?.rijec ?? "")}</span>}
+                  {R(id)?.slika ? <img src={R(id)!.slika!} alt="" /> : <span class={R(id)?.napisano ? "bez napisano" : "bez"}>{VEL(R(id)?.rijec ?? "")}</span>}
                   <figcaption>{VEL(R(id)?.rijec ?? "")}</figcaption>
                 </figure>
               ))}
@@ -248,6 +250,9 @@ const grancica = tema.kutovi ? GRANCICA : "";
   .slika { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 1.5mm; }
   .slika img, .slika .bez { width: 100%; aspect-ratio: 1; object-fit: contain; border: 1.5px solid #000; border-radius: 4mm; padding: 2mm; background: #fff; }
   .slika .bez { display: grid; place-items: center; font-weight: 900; font-size: 14pt; color: #5c5345; }
+  /* Napisana riječ umjesto slike: tamno, Andika, bez natpisa ispod (riječ je već u okviru) */
+  .slika .bez.napisano { font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; color: #1a1a1a; font-size: 16pt; white-space: nowrap; }
+  .slika:has(.napisano) figcaption { display: none; }
   .slika figcaption { font-weight: 800; font-size: 12pt; letter-spacing: .04em; }
   .red { display: flex; align-items: center; justify-content: center; gap: 6mm; }
   /* Uparivanje: zadana (debeli okvir) → strelica → tri ponuđene u sivoj podlozi; isto kao PDF (ispis-pdf.ts). */

@@ -42,8 +42,9 @@ test("ocjena: broji se prvi pokušaj", () => {
 });
 
 test("normalizacija odbacuje smeće i dopunjava slotove", () => {
-  const s = normaliziraj("uljez", { stavke: [{ slike: [1, "x", -3], uljez: 9 }], zlo: 1 }) as Uljez;
-  assert.deepEqual(s, { odnos: "rima", stavke: [{ slike: [1, null, null, null], uljez: 0 }] });
+  const s = normaliziraj("uljez", { stavke: [{ slike: [1, "x", 2.5, -3], uljez: 9 }], zlo: 1 }) as Uljez;
+  // -3 je napisana riječ 3 (napisano.ts), ne smeće.
+  assert.deepEqual(s, { odnos: "rima", stavke: [{ slike: [1, null, null, -3], uljez: 0 }] });
   const p = normaliziraj("povezivanje", { parovi: [{ lijevo: 1, desno: 2 }, { lijevo: 3, desno: 4 }], desno_redoslijed: [0, 0] }) as Povezivanje;
   assert.deepEqual(p.desno_redoslijed, [0, 1]);
 });

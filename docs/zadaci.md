@@ -213,6 +213,16 @@ trebaju parove u katalogu (nova tablica parova riječi), pa ih `uOdnosu` neće r
 Svaka slika je `rijec_id` iz kataloga (slika se bira po stilu pri prikazu). Od 10. 11. 2026. to može biti i
 **znak** (slovo, brojka) iz kataloga znakova: isti `rijec_id`, crta se kao znak (docs/katalog.md, „Znakovi”).
 
+**Napisano umjesto slike** (16. 11. 2026., `src/lib/zadaci/napisano.ts`): u uparivanju, povezivanju i uljezu
+svako polje može umjesto slike pokazati napisanu riječ (dijete čita). U sadržaju je to **negativan id**: `-id` je
+riječ `id` iz kataloga, napisana. Odnosi i provjere rade kao za sliku (KRAVA napisano rimuje se s TRAVA), a
+`rijeciU` vraća id riječi. Prikazi traže riječ kroz `mapaRijeci()`, koja uz svaku riječ dodaje napisanu inačicu
+(`slika: null`, `napisano: true`): editor i igra je crtaju Andikom prema duljini riječi, igra bez zvučnika,
+HTML ispis bez natpisa ispod, PDF Andikom (`SlikaPdf.napisano`). U editoru: „Aa napiši” ispod svakog polja i
+„Zadane / Ponuđene / Lijevi stupac / Desni stupac / Sva polja: napisano” odjednom; nova riječ u napisanom polju
+ostaje napisana, „Složi automatski” zadržava napisane skupine. Brojke i slova nisu napisane riječi, nego znakovi.
+Flutter app napisana polja još ne crta (ionako crta samo scenu).
+
 ### `odabir`: zadana slika, odaberi onu koja ide uz nju
 
 Gore jedna slika, ispod tri; jedna je u odnosu sa zadanom (rimuje se, isti prvi glas…).
