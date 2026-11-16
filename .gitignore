@@ -6,3 +6,6 @@ dist/
 .env*
 .DS_Store
 /runner/
+
+# playwright-cli (scripts/e2e-poziv.sh)
+.playwright-cli/
