@@ -2,7 +2,7 @@
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import { logopedskiMod, podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
 import { BROJEVI_LISTICA, jePoGlasovima, ZADANO_SLIKA } from "../../lib/zadaci/listic-glas";
-import { ODNOSI, ODNOSI_POPIS, type Odnos } from "../../lib/zadaci/odnosi";
+import { ODNOSI, ODNOSI_POPIS, odnosiZa, type Odnos } from "../../lib/zadaci/odnosi";
 import { ABECEDA, VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
 
 const [podrucja, listic, mod] = await Promise.all([svaPodrucja(), zaListic(), logopedskiMod(Astro.locals.admin!.email)]);
@@ -19,13 +19,13 @@ const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
   listic: [{ tekst: "Iz cijelog kataloga" }],
   slogovi: [{ tekst: "Slogovi u riječi", nacin: "analiza" }, { tekst: "Glasovi u riječi", nacin: "glasovi" }, { tekst: "Dugačke i kratke riječi", nacin: "duljina" }],
   // Uparivanje, povezivanje i uljez: jedan gumb po odnosu (rima, isti prvi glas…).
-  ...Object.fromEntries((["odabir", "povezivanje", "uljez"] as const).map((v) => [v, ODNOSI_POPIS.map((o) => ({ tekst: ODNOSI[o].naziv, nacin: o }))])) as Record<"odabir" | "povezivanje" | "uljez", { tekst: string; nacin: string }[]>,
+  ...Object.fromEntries((["odabir", "povezivanje", "uljez"] as const).map((v) => [v, odnosiZa(v).map((o) => ({ tekst: ODNOSI[o].naziv, nacin: o }))])) as Record<"odabir" | "povezivanje" | "uljez", { tekst: string; nacin: string }[]>,
   percepcija: [{ tekst: "Nađi različitu", nacin: "razlicitu" }, { tekst: "Nađi dvije iste", nacin: "par" }],
   prvi_glas: [{ tekst: "Kolo slova" }], scena: [{ tekst: "Nova scena" }],
 };
 const podrucjeVrste = (kod: Vrsta) => listovi.find((p) => p.slug === zadano[kod]);
 // Odnos ima svoje podpodručje (rima u „Prepoznavanje rime”, prvi glas u „Prvi glas u riječi”…); bez para ostaje prazno.
-const podrucjeOdnosa: Record<Odnos, string | null> = { rima: "rima", pocetni_glas: "prvi-glas", pocetni_slog: "slogovi", zavrsni_glas: null };
+const podrucjeOdnosa: Record<Odnos, string | null> = { rima: "rima", pocetni_glas: "prvi-glas", pocetni_slog: "slogovi", zavrsni_glas: null, ista_rijec: null };
 const idPodrucjaOdnosa = (o: string) => String(listovi.find((p) => p.slug === podrucjeOdnosa[o as Odnos])?.id ?? "");
 // Jedna mreža, redom podpodručja (bez naslova po glavnim područjima); vrste bez podpodručja na kraju.
 const poRedu = [...listovi.flatMap((l) => vrste.filter(([kod]) => podrucjeVrste(kod)?.id === l.id)), ...vrste.filter(([kod]) => !podrucjeVrste(kod))];
@@ -89,7 +89,7 @@ const shema: Record<Vrsta, string> = {
       <p class="objasnjenje" data-za="prvi_glas">Svaki odabrani glas je jedan krug (najviše 6): kolo stane na njemu, a dijete traži slike koje počinju tim glasom.</p>
       <div class="glas">
         <label class="pozicija" data-za="odabir povezivanje uljez">Odnos
-          <select name="nacin" data-odnos>{ODNOSI_POPIS.map((o) => <option value={o} data-podrucje={idPodrucjaOdnosa(o)}>{ODNOSI[o].naziv}</option>)}</select>
+          <select name="nacin" data-odnos>{ODNOSI_POPIS.map((o) => <option value={o} data-podrucje={idPodrucjaOdnosa(o)} data-bez-uljeza={o === "ista_rijec" ? "" : undefined}>{ODNOSI[o].naziv}</option>)}</select>
         </label>
         <fieldset>
           <legend><span data-za="listic slogovi odabir povezivanje uljez">Riječ ima glas <span class="blijedo">(jedan ili više; bez odabira iz cijelog kataloga)</span></span><span data-za="prvi_glas">Glasovi na kolu</span></legend>
@@ -201,6 +201,8 @@ const shema: Record<Vrsta, string> = {
       polje("vrsta").value = vrsta;
       polje("podrucje").value = b.dataset.podrucje ?? "";
       forma.querySelector("h2")!.textContent = b.dataset.naslov ?? "Po glasovima";
+      // „Riječ i slika” nema uljeza.
+      forma.querySelectorAll<HTMLOptionElement>("option[data-bez-uljeza]").forEach((o) => { o.hidden = o.disabled = vrsta === "uljez"; });
       if (b.dataset.odnos) { (forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value = b.dataset.odnos; pozicijaOdnosa(); }
       forma.querySelectorAll<HTMLElement>("[data-za]").forEach((el) => {
         const vidi = el.dataset.za!.split(" ").includes(vrsta);
@@ -216,7 +218,7 @@ const shema: Record<Vrsta, string> = {
     dijalog.addEventListener("click", (e) => { if (e.target === dijalog) dijalog.close(); });
     // Odnos određuje gdje glas ima smisla: prvi glas i slog na početku, zadnji glas na kraju, rima bilo gdje.
     // Ide prije osvježavanja forme (događaj s izbornika stigne do forme poslije).
-    const POZICIJA_ODNOSA: Record<Odnos, string> = { rima: "", pocetni_glas: "inicijalna", pocetni_slog: "inicijalna", zavrsni_glas: "finalna" };
+    const POZICIJA_ODNOSA: Record<Odnos, string> = { rima: "", pocetni_glas: "inicijalna", pocetni_slog: "inicijalna", zavrsni_glas: "finalna", ista_rijec: "" };
     function pozicijaOdnosa() {
       const o = (forma!.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value as Odnos;
       poz.value = POZICIJA_ODNOSA[o] ?? "";

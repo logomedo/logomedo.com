@@ -6,7 +6,7 @@
 
 import { brojSlogova, izvediRimu } from "./rima.ts";
 import { ciljeviGlasova, naslovListica, odgovara, redovaZaGlasove, type RijecGlasova, type VrstaOdnosa } from "./listic-glas.ts";
-import { jeZadanaUputa, ODNOSI, ODNOSI_POPIS, oznakaKljuca, uOdnosu, type Odnos } from "./odnosi.ts";
+import { jeZadanaUputa, ODNOSI, odnosiZa, oznakaKljuca, uOdnosu, type Odnos } from "./odnosi.ts";
 import {
   odnosOd, provjeri, rijeciU, zadanaUputa, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   BOJE_DULJINE, DUGA_OD, izbroji, jedinica, krugovaZa, KRUGOVA_MIN, KRUGOVA_MAX, SLOGOVA_MAX, SLOGOVI_SLIKA_MAX, UPUTE_SLOGOVA, jeDuga, slozSlogove, type NacinSlogova, type Slogovi,
@@ -454,12 +454,14 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       if (o === s.odnos) return;
       if (jeZadanaUputa(uputa)) uputa = ODNOSI[o].uputa[v];
       s.odnos = o;
+      // Riječ i slika: zadane / desni stupac napisani, ponuđene / lijevi stupac slike.
+      if (o === "ista_rijec") for (const u of ulogeNapisano(vrsta, s)) postaviUlogu(u, u.kljuc === "zadana" || u.kljuc === "desno", jeZnakId);
       oznaci(); osvjezi();
     };
     return h("div", { class: "ploha z-scena-dio" },
       h("div", { class: "z-dio-glava" }, h("b", {}, "Što povezuje slike")),
       h("div", { class: "z-prekidac" },
-        ...ODNOSI_POPIS.map((o) => h("button", { type: "button", class: `z-tocno${s.odnos === o ? " on" : ""}`, onclick: () => promijeni(o) }, ODNOSI[o].naziv))),
+        ...odnosiZa(v).map((o) => h("button", { type: "button", class: `z-tocno${s.odnos === o ? " on" : ""}`, onclick: () => promijeni(o) }, ODNOSI[o].naziv))),
       h("p", { class: "sitno blijedo" }, "Slike ostaju; što više ne odgovara, piše u upozorenjima. „Složi automatski” slaže nove po ovom odnosu."),
       h("div", { class: "z-dio-glava" }, h("b", {}, "Napisane riječi umjesto slika"), h("span", { class: "sitno blijedo" }, "dijete čita; pojedino polje: „Aa” ispod njega")),
       h("div", { class: "z-prekidac" },

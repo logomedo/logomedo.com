@@ -93,7 +93,9 @@ export const ciljeviGlasova = (f: FiltarListica) =>
 export function rasporedOdnosa(vrsta: VrstaOdnosa, rijeci: RijecGlasova[], f: FiltarListica, odnos: Odnos): { redova: number; mogucih: number; prazni: number[] } {
   const K = (r: RijecGlasova) => kljuc(odnos, r);
   const skupine = new Map<string, RijecGlasova[]>();
-  for (const r of rijeci) if (K(r) && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez })) skupine.set(K(r)!, [...(skupine.get(K(r)!) ?? []), r]);
+  // Riječ i slika: svaka riječ je sama svoj par (napisana i slika).
+  const par = odnos === "ista_rijec";
+  for (const r of rijeci) if (K(r) && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez })) skupine.set(K(r)!, par ? [r, r] : [...(skupine.get(K(r)!) ?? []), r]);
   const velike = [...skupine.values()].filter((g) => g.length >= (vrsta === "uljez" ? 3 : 2));
   if (!f.glasovi.length) return { redova: Math.min(velike.length, 4), mogucih: velike.length, prazni: [] };
   const r = poCiljevima(velike, ciljeviGlasova(f), redovaZaGlasove(vrsta, f.glasovi.length));

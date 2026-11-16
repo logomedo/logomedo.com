@@ -223,6 +223,13 @@ HTML ispis bez natpisa ispod, PDF Andikom (`SlikaPdf.napisano`). U editoru: „A
 ostaje napisana, „Složi automatski” zadržava napisane skupine. Brojke i slova nisu napisane riječi, nego znakovi.
 Flutter app napisana polja još ne crta (ionako crta samo scenu).
 
+**Odnos „Riječ i slika”** (`ista_rijec`, 16. 11. 2026., na traženje nakon isprobavanja): par je napisana riječ i
+slika iste riječi, dijete čita. Uparivanje: zadana je napisana riječ, dolje tri slike, točna je slika te riječi.
+Povezivanje: lijevo slike, desno iste riječi napisane. Ključ je sama riječ, pa su slika 5 i napisano −5 u odnosu,
+a ista slika dvaput nije. Generator uzima samo riječi sa slikom; odabir ovog odnosa u editoru sam napiše zadane /
+desni stupac i ostavi slike ponuđenima / lijevo. Uljez ga nema (`odnosiZa`). U predlošcima je gumb „Riječ i slika”
+uz ostale odnose, bez vlastitog podpodručja.
+
 ### `odabir`: zadana slika, odaberi onu koja ide uz nju
 
 Gore jedna slika, ispod tri; jedna je u odnosu sa zadanom (rimuje se, isti prvi glas…).

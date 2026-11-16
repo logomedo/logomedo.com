@@ -1,6 +1,8 @@
 // Odnos između slika u uparivanju, povezivanju i izbacivanju uljeza (docs/zadaci.md, „Odnosi”).
 // Vrsta je mehanika, odnos je ono što slike povezuje: rima, isti prvi glas, isti prvi slog, isti
 // zadnji glas. Svaki odnos je ključ riječi: dvije riječi su u odnosu ako imaju isti ključ.
+// „Riječ i slika” (ista_rijec): par je napisana riječ i slika iste riječi (napisano.ts); ključ je sama riječ,
+// a dvije različite pojave iste riječi (slika 5 i napisano -5) su u odnosu.
 // Kasnije mogu doći odnosi po značenju (životinja i hrana, suprotnosti); oni neće imati ključ iz
 // pisanja, nego parove u katalogu.
 //
@@ -9,8 +11,10 @@
 import { fonemi } from "../fonemi.ts";
 import { jezgre } from "./rima.ts";
 
-export type Odnos = "rima" | "pocetni_glas" | "pocetni_slog" | "zavrsni_glas";
-export const ODNOSI_POPIS: Odnos[] = ["rima", "pocetni_glas", "pocetni_slog", "zavrsni_glas"];
+export type Odnos = "rima" | "pocetni_glas" | "pocetni_slog" | "zavrsni_glas" | "ista_rijec";
+export const ODNOSI_POPIS: Odnos[] = ["rima", "pocetni_glas", "pocetni_slog", "zavrsni_glas", "ista_rijec"];
+/** Odnosi za vrstu: „Riječ i slika” nema uljeza (tri iste riječi nisu zadatak). */
+export const odnosiZa = (v: "odabir" | "povezivanje" | "uljez"): Odnos[] => ODNOSI_POPIS.filter((o) => o !== "ista_rijec" || v !== "uljez");
 export const jeOdnos = (x: unknown): x is Odnos => typeof x === "string" && (ODNOSI_POPIS as string[]).includes(x);
 
 /** Riječ za odnos: `rijec` je zapis, `rima` ključ rime (ručni ili izveden). */
@@ -41,6 +45,7 @@ export function kljuc(odnos: Odnos, r: RijecOdnosa): string | null {
     case "pocetni_glas": { const s = jedna(r.rijec); return s ? fonemi(s)[0] ?? null : null; }
     case "zavrsni_glas": { const s = jedna(r.rijec); return s ? fonemi(s).at(-1) ?? null : null; }
     case "pocetni_slog": return prviSlog(r.rijec);
+    case "ista_rijec": return VELIKO(r.rijec.trim()) || null;
   }
 }
 
@@ -53,6 +58,7 @@ export const uOdnosu = (odnos: Odnos, a: RijecOdnosa, b: RijecOdnosa) => {
 
 /** Kratka oznaka ključa ispod slike u editoru: -ava, m-, ma-, -a. */
 export function oznakaKljuca(odnos: Odnos, r: RijecOdnosa): string {
+  if (odnos === "ista_rijec") return "";
   const k = kljuc(odnos, r)?.toLocaleLowerCase("hr");
   if (!k) return odnos === "rima" ? "bez rime" : "izraz";
   return odnos === "rima" || odnos === "zavrsni_glas" ? `-${k}` : `${k}-`;
@@ -101,6 +107,13 @@ export const ODNOSI: Record<Odnos, {
     daOstale: "završava istim glasom kao ostale", neSve: "ne završavaju sve istim glasom",
     uputa: { odabir: "Koja slika završava istim glasom kao prva? Zaokruži je.", povezivanje: "Poveži slike koje završavaju istim glasom.", uljez: "Koja slika ne završava istim glasom kao ostale? Prekriži je." },
     oznakaTocno: "isti zadnji glas", filtarDa: (x) => `Završava kao ${x}`, filtarNe: (x) => `Ne završava kao ${x}`,
+  },
+  ista_rijec: {
+    naziv: "Riječ i slika", skupina: "riječi sa slikom", mnozina: "su ista riječ (napisana riječ i njezina slika)",
+    da: (x, y) => `${x} je ista riječ kao ${y}`, ne: (x, y) => `${x} nije ista riječ kao ${y}`,
+    daOstale: "je ista riječ kao ostale", neSve: "nisu sve ista riječ",
+    uputa: { odabir: "Pročitaj riječ. Zaokruži sliku koja to prikazuje.", povezivanje: "Pročitaj riječi i poveži svaku s njezinom slikom.", uljez: "Pročitaj riječi. Koja ne pripada? Prekriži je." },
+    oznakaTocno: "ista riječ", filtarDa: (x) => `Riječ ${x}`, filtarNe: (x) => `Nije ${x}`,
   },
 };
 

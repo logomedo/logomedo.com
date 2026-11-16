@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mapaRijeci, postaviUlogu, ulogaNapisana, ulogeNapisano } from "./napisano.ts";
-import { normaliziraj, provjeri, rijeciU, type Odabir, type Povezivanje, type RijecZadatka, type Uljez } from "./vrste.ts";
+import { normaliziraj, provjeri, rijeciU, slozi, type Odabir, type Povezivanje, type RijecZadatka, type Uljez } from "./vrste.ts";
 import { tijelaZadatka } from "../pdf/model.ts";
 import { izvediRimu } from "./rima.ts";
 
@@ -51,4 +51,26 @@ test("PDF: napisano polje je riječ Andikom, bez slike i natpisa", () => {
   const [t] = tijelaZadatka("odabir", s, M, true);
   const z = (t as { redovi: { zadana: unknown }[] }).redovi[0].zadana;
   assert.deepEqual(z, { url: null, rijec: "KRAVA", natpis: "", znak: true, napisano: true });
+});
+
+test("Riječ i slika: uparivanje ima napisanu zadanu i njezinu sliku među ponuđenima", () => {
+  const s = slozi("odabir", [...R, { ...R[0], id: 9, rijec: "bez slike", slika: null }], { stavki: 4, nacin: "ista_rijec" }) as Odabir;
+  assert.equal(s.odnos, "ista_rijec");
+  assert.equal(s.stavke.length, 4);
+  for (const x of s.stavke) {
+    assert.ok(x.zadana! < 0);
+    assert.equal(x.ponudeno[x.tocno], -x.zadana!);
+    assert.ok(x.ponudeno.every((id) => id! > 0 && id !== 9));
+  }
+  assert.deepEqual(provjeri("odabir", s, M), []);
+  // Ista slika dvaput nije par riječ–slika.
+  const krivo: Odabir = { odnos: "ista_rijec", stavke: [{ zadana: 1, ponudeno: [1, 2, 3], tocno: 0 }] };
+  assert.equal(provjeri("odabir", krivo, M).length, 1);
+});
+
+test("Riječ i slika: povezivanje slika lijevo, ista riječ napisana desno", () => {
+  const p = slozi("povezivanje", R, { stavki: 4, nacin: "ista_rijec" }) as Povezivanje;
+  assert.equal(p.parovi.length, 4);
+  assert.ok(p.parovi.every((x) => x.lijevo! > 0 && x.desno === -x.lijevo!));
+  assert.deepEqual(provjeri("povezivanje", p, M), []);
 });

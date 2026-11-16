@@ -609,9 +609,11 @@ function promijesaj<T>(a: T[], rnd: () => number): T[] {
 export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => number = Math.random): Sadrzaj {
   const odnos: Odnos = jeOdnos(p.nacin) ? p.nacin : "rima";
   const K = (r: RijecZadatka) => kljuc(odnos, r);
-  const dobre = rijeci.filter((r) => K(r) && (!p.maxSlogova || r.slogova <= p.maxSlogova) && (!p.samoSaSlikom || r.slika));
+  // Riječ i slika: riječ mora imati sliku, a skupina je ista riječ dvaput (napisana i slika, napisano.ts).
+  const ista = odnos === "ista_rijec";
+  const dobre = rijeci.filter((r) => K(r) && (!p.maxSlogova || r.slogova <= p.maxSlogova) && (!(p.samoSaSlikom || ista) || r.slika));
   const skupine = new Map<string, RijecZadatka[]>();
-  for (const r of dobre) skupine.set(K(r)!, [...(skupine.get(K(r)!) ?? []), r]);
+  for (const r of dobre) skupine.set(K(r)!, ista ? [r, r] : [...(skupine.get(K(r)!) ?? []), r]);
   const cilj = p.cilj;
   const vecih = (n: number) => promijesaj([...skupine.entries()].filter(([, g]) => g.length >= n && (!cilj || g.some(cilj))), rnd);
   // Riječi skupine s glasom prve (zadana, lijeva), redom kako su izmiješane.
@@ -653,12 +655,13 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     const stavke = izbor(2, n).map(([rima, g]) => {
       const [zadana, tocan] = g;
       const ponudeno = promijesaj([tocan, ...izvan(rima, PONUDENIH - 1)], rnd);
-      return { zadana: zadana.id, ponudeno: ponudeno.map((r) => r.id), tocno: ponudeno.indexOf(tocan) };
+      // Riječ i slika: zadana je napisana riječ, ponuđene su slike.
+      return { zadana: ista ? -zadana.id : zadana.id, ponudeno: ponudeno.map((r) => r.id), tocno: ponudeno.indexOf(tocan) };
     });
     return { odnos, stavke };
   }
   if (v === "povezivanje") {
-    const parovi = izbor(2, Math.min(n, p.ciljevi?.length ? MAX_PAROVA : 6)).map(([, [a, b]]) => ({ lijevo: a.id, desno: b.id }));
+    const parovi = izbor(2, Math.min(n, p.ciljevi?.length ? MAX_PAROVA : 6)).map(([, [a, b]]) => ({ lijevo: a.id, desno: ista ? -b.id : b.id }));
     let red = promijesaj(parovi.map((_, i) => i), rnd);
     // Desni stupac ne smije biti u istom redoslijedu kao lijevi.
     if (red.length > 1 && red.every((x, i) => x === i)) red = [...red.slice(1), red[0]];
