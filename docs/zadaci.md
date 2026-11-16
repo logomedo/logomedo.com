@@ -437,6 +437,26 @@ Ograničenja koja treba znati:
 - pravopisni ključ ne zna naglasak, pa je prijedlog, ne istina; editor upozorava, admin ispravlja
 - složenice daju prelake rime (KIŠOBRAN–PADOBRAN): editor ih označi
 
+### Otvoreno: rima po naglasku i granica sloga (16. 11. 2026., čeka odluku logopedice)
+
+Nakon isprobavanja odnosa logopedica je javila dvije greške. Ništa još nije promijenjeno.
+
+1. **Rima ne zna naglasak.** Ključ ide od predzadnjeg samoglasnika, pa KOŠARA, GITARA i
+   MOČVARA ispadnu kao `-ARA`, a MOČVARA je naglašena na prvom slogu. Prijedlog: novo polje
+   „naglašeni slog” po riječi, unaprijed popunjeno za ~590 riječi, ekran za pregled s dodirom
+   za ispravak (sumnjive, tj. iste po slovima a možda različite po naglasku, prve). Ključ rime
+   onda ide od naglašenog samoglasnika do kraja; ručni `rijeci.rima` ostaje jači. Treba D1
+   migraciju (novi stupac) i upis prijedloga: na produkciji tek uz dopuštenje.
+2. **Prvi slog je uvijek otvoren.** `prviSlog()` u `odnosi.ts` reže do prve jezgre, pa MAJMUN
+   daje `MA` (test `odnosi.test.ts` to čak tvrdi, krivo). Predloženo pravilo: između samoglasnika
+   sonant (J, L, LJ, M, N, NJ, R, V) ostaje u prvom slogu (MAJ-MUN, LAM-PA, KOR-PA, ŠUN-KA),
+   ostale skupine idu u sljedeći (MA-ČKA, SE-STRA, PA-TKA). Pitano je je li to pravilo iz njezine
+   prakse i za primjere krivo rastavljenih riječi. Brojanje slogova (`brojSlogova`) to ne dira,
+   samo „Isti prvi slog”.
+
+Usput otvoreno: `zavrsni_glas` nema podpodručje (dodavanje je insert u produkcijski D1, pitati);
+odnosi po značenju (tko što jede, suprotnosti) trebaju tablicu parova riječi.
+
 ### Generator
 
 Novi zadatak se odmah složi (4 stavke, do 3 sloga); u editoru „Složi automatski” s brojem stavki,
