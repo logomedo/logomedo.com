@@ -223,12 +223,12 @@ zahtjev (prije batch po 50) i uklanja duple id-jeve.
 **403. Naplaćuje se vraćanje neuspjelih poslova u red** („Pokušaj ponovo” na `/admin/zvukovi` →
 `greskeURed(email)`, na `/admin/red` → `neuspjeliURed`) onome tko klikne, n = broj vraćenih. Ne naplaćuje
 se: `posaljiZaglavljene` („Pogurni red”, već plaćeni poslovi, odluka 310), runnerovi ponovni pokušaji
-(`uzmi`, `odgodi`, `neuspjeh`), `preimenuj`, probe glasova (administracija). (potvrditi)
+(`uzmi`, `odgodi`, `neuspjeh`), `preimenuj`, probe glasova (administracija). (potvrdio korisnik 16. 11.)
 
 **404. Gdje se mijenja nešto prije posla, prvo `provjeri` (nije atomski):** odbijanje slike s `ponovi`,
 `premjesti` s `ponovi`, `nova-rijec` (n = broj stilova), `dupliciraj` s uputom. Ako netko istovremeno
 potroši kredite, odluka, riječ ili kopija ostaje bez posla (nova-rijec: preusmjerenje na riječ s porukom
-kvote). Za S5 review: kopija iz izgubljene utrke u `dupliciraj` se ne briše. (potvrditi)
+kvote). Za S5 review: kopija iz izgubljene utrke u `dupliciraj` se ne briše. (potvrdio korisnik 16. 11.)
 
 **405. `odbijZvukove({ponovo})`:** odbijanje i novi posao su jedan batch; bez kredita se poništava i odbijanje.
 
@@ -247,7 +247,7 @@ svih pet mjesta (`api/nova-rijec`, `api/rijeci`, `generiranje` premjesti, `bilje
 e-mail malim slovima. `premjesti` nema test (treba R2).
 
 **409. Autor na `/admin/rijec/[slug]`** je ime iz `korisnici`, e-mail samo kad imena nema (logoped ime ima
-iz pozivnice). Katalog je zajednički, pa ga vidi i logoped. (potvrditi)
+iz pozivnice). Katalog je zajednički, pa ga vidi i logoped. (potvrdio korisnik 16. 11.)
 
 **410. Doprinos na `/admin/korisnici`** (jedan agregatni upit `doprinosi()`): dodane riječi = sada aktivne
 riječi vrste riječ s tim `dodao`; odobrene slike/izgovori = sada odobreni s tim `pregledao` (kasnije
@@ -259,3 +259,41 @@ i broj), jedan `preostalo()` po zahtjevu; superadmin ništa.
 **412. e2e korak 3c** (`scripts/e2e-poziv.sh`, prije deaktivacije): limit slika 1, prvi zahtjev = posao
 `ceka` i jedan redak `ai_potrosnja`, drugi = poruka kvote, provjera bočne trake i `/admin/korisnici`,
 zatim brisanje posla, potrošnje i riječi iz lokalne baze. Runner se ne pokreće.
+
+## S5 (16. 11. 2026.)
+
+**500. Code review** (`/code-review high` nad `5f441e1..712bddc`): 10 nalaza. Popravljeno u `0cd2281`: pozivnica
+„Novi passkey” za deaktiviranog (504), „Pokušaj ponovo” naplaćivao tuđe greške (501), kvota nakon spremljene odluke
+(502), `nova-rijec` brojala stilove koji ne ulaze u red, neograničeni batch u `dodajURed` (503), lažna poruka kroz
+`?kvota=` (505), suvišan uvjet u izborniku, mrtvi parametar `prije` u `upisiPoslove`. Zatvoreno bez izmjene:
+pozivnica ne provodi limit od 5 ključeva (odluka 210 ostaje, svjesna radnja superadmina); matrica `OVLASTI` i
+`rute.ts` su dva mjesta (matrica je opis i test, provedba su `rute.ts`, `autorFiltar` i kvota; spajanje kad dođe
+treća uloga, odluka 6); `iskoristi()` ponovno čita pozivnicu (jedan D1 upit, ostaje radi jednostavnosti).
+Lokalni e2e `scripts/e2e-poziv.sh` nakon popravaka: PROŠLO.
+
+**501. Neuspjele izgovore logoped vraća u red samo ako ih je sam zatražio** (`lower(zvuk_generiranja.zatrazio)` =
+njegov e-mail); popis grešaka mu je filtriran isto, pa broj na gumbu odgovara naplati. Superadmin sve. Brojač „Nije
+uspjelo” u kartici ostaje globalan. Dopunjuje odluku 403.
+
+**502. Kvota potrošena nakon spremljene odluke** (`odluciIPonovi`, `premjesti`; utrka iz odluke 404) daje uspjeh s
+poljem `upozorenje`, ne 429; `/admin/pregled` prikaže upozorenje i ide dalje. Ako kvote nema već pri `provjeri`,
+ostaje 429 i ništa se ne sprema. `/api/v1` dobiva novo polje; aplikacija ga za sada ne prikazuje (revizija: logopedi
+u aplikaciji).
+
+**503. `dodajURed`:** superadmin u komadima po 50 (redak potrošnje po komadu; pad usred ostavlja ranije komade, bez
+limita je to prihvatljivo), logoped jedan atomski batch.
+
+**504. „Novi passkey” samo za aktivnog logopeda** (`PozivOdbijen("neaktivan")`, gumb skriven). Deaktiviranog vraćaju
+„Aktiviraj” ili opća pozivnica (odluka 205).
+
+**505. U adresu nakon 303 idu samo `kvota=slike|zvukovi` i `kvota_n=<cijeli broj>`;** tekst poruke gradi AdminOkvir
+na serveru iz trenutnog stanja. Nepoznata vrijednost se ignorira. Isti obrazac (tekst u URL-u, bez `role=alert`)
+ostaje na `/admin/zvukovi?p=` i `/admin/nova-rijec?greska=`: nije bio nalaz, za kasnije.
+
+**506. `LIMIT_MAX = 100_000` ostaje.** Logoped s ogromnim limitom mogao bi jednim zahtjevom upisati tisuće poslova u
+jedan batch; limit postavlja samo superadmin, a zadano je 50/200. Revizija: prvi limit iznad 1000 ili pad batcha.
+(potvrditi)
+
+**507. Produkcija prije migracije (samo čitanje, 16. 11. 2026.):** `korisnici` 2 retka, oba `uloga='admin'`, nijedan
+logoped (0032 nikoga ne deaktivira; stupac `aktivan` još ne postoji pa je upit iz odluke 105 grupiran samo po ulozi);
+`aktivnost` 4134 retka (0033 ih prepisuje); `migrations list --remote`: na čekanju točno 0032 i 0033.

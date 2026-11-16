@@ -47,8 +47,8 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F4 — Pregled, produkcija, testeri
 
-- [ ] `/code-review high` nad rasponom S1–S4, popravci → S5
-- [ ] `docs/admin.md`: uloge, pozivnica, kvota, kako dići limit → S5
+- [x] `/code-review high` nad rasponom S1–S4, popravci → S5 (`0cd2281`, odluka 500)
+- [x] `docs/admin.md`: uloge, pozivnica, kvota, kako dići limit → S5
 - [ ] (!) Korisnik daje „go” za produkciju → S5
 - [ ] `npm run db:migrate` (0032) s provjerom izlaza, pa `npm run deploy` → S5
 - [ ] Smoke na produkciji: superadmin prijava (passkey i Access) radi kao prije → S5

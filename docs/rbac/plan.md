@@ -74,4 +74,5 @@ S0 (16. 11. 2026.): plan, koda nema.
 S1 (16. 11. 2026.): harness, 0032, ovlasti, uloga u sesiji i passkey prijavi (d10369e, 153 testa).
 S2 (16. 11. 2026.): pozivnica, `/admin/korisnici`, 0033, e2e s virtualnim autentifikatorom (b46c02f, 176 testova).
 S3 (16. 11. 2026.): rute samo za superadmina, vlasništvo zadataka i bilježnica, aktivnost po korisniku, UI po ulozi (66e16a9, 199 testova).
-S4 (16. 11. 2026.): AI kvota na svim točkama troška, `rijeci.dodao`, preostalo u bočnoj traci, doprinos po korisniku, e2e kvote (e89f432, 218 testova). Sljedeće: S5 (vrata).
+S4 (16. 11. 2026.): AI kvota na svim točkama troška, `rijeci.dodao`, preostalo u bočnoj traci, doprinos po korisniku, e2e kvote (e89f432, 218 testova).
+S5 (16. 11. 2026.): review (10 nalaza, popravljeni ili zatvoreni odlukom), `docs/admin.md` „Uloge i pozivnice” (0cd2281, 224 testa). Produkcija čeka korisnikov „go”.

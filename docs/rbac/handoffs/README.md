@@ -29,7 +29,7 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 | S2 | Pozivnica, `/admin/korisnici` | gotovo | b46c02f | 176 | migracija 0033 (rebuild `aktivnost`, prije produkcije COUNT); e2e `scripts/e2e-poziv.sh` prolazi; odluke 200–211 |
 | S3 | Ovlasti na rutama, vlasništvo, UI po ulozi | gotovo | 66e16a9 | 199 | `rute.ts` + rewrite 403, `vlasnistvo.ts` (tuđe 404), aktivnost bez administracije; e2e proširen i prolazi; odluke 300–310 |
 | S4 | AI kvota, `rijeci.dodao`, pregled po korisniku | gotovo | e89f432 | 218 | `kvota.ts` (NOT NULL poništava batch), sve točke troška u `research/2026-11-16-tocke-troska.md`, poruka u middlewareu; e2e korak 3c prolazi; odluke 400–412 |
-| S5 | Review, docs, **vrata**: produkcija i pozivnice | otvoreno | | | |
+| S5 | Review, docs, **vrata**: produkcija i pozivnice | čeka „go” | 0cd2281 | 224 | review popravljen (odluke 500–507), docs gotov, e2e prolazi; koraci 3–5 (produkcija, smoke, pozivnice) čekaju korisnika |
 
 ## Zajednička pravila (svaka sesija)
 
