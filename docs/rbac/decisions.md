@@ -297,3 +297,11 @@ jedan batch; limit postavlja samo superadmin, a zadano je 50/200. Revizija: prvi
 **507. Produkcija prije migracije (samo čitanje, 16. 11. 2026.):** `korisnici` 2 retka, oba `uloga='admin'`, nijedan
 logoped (0032 nikoga ne deaktivira; stupac `aktivan` još ne postoji pa je upit iz odluke 105 grupiran samo po ulozi);
 `aktivnost` 4134 retka (0033 ih prepisuje); `migrations list --remote`: na čekanju točno 0032 i 0033.
+
+**508. Produkcija (16./17. 11. 2026., korisnikov „go” kroz orkestratora):** `npm run db:migrate` primijenio 0032 i
+0033 bez greške (cijeli izlaz pročitan); poslije: `aktivnost` 4134 (isto kao prije), aktivnih korisnika 2, `pozivi` 0,
+`ai_potrosnja` 0. `npm run deploy`: verzija `4ed58f25`. Smoke bez prijave prošao. Prijava passkeyem traži Touch ID,
+a Access OTP kod iz e-maila: to radi korisnik, ne Claude.
+
+**509. Pozivnice testerima izdaje korisnik sam** na `/admin/korisnici` i šalje ih ručno na WhatsApp; Claude ne izdaje
+pozivnice i ne šalje poruke. Uvjet „oba testera prijavljena” iz plana se ne čeka. Odluka korisnika 16. 11. 2026.

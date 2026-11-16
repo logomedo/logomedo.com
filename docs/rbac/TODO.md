@@ -49,7 +49,7 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 - [x] `/code-review high` nad rasponom S1–S4, popravci → S5 (`0cd2281`, odluka 500)
 - [x] `docs/admin.md`: uloge, pozivnica, kvota, kako dići limit → S5
-- [ ] (!) Korisnik daje „go” za produkciju → S5
-- [ ] `npm run db:migrate` (0032) s provjerom izlaza, pa `npm run deploy` → S5
-- [ ] Smoke na produkciji: superadmin prijava (passkey i Access) radi kao prije → S5
-- [ ] (!) Dvije pozivnice za alpha testere (imena i kanal slanja daje korisnik; e-mailovi ne idu u repo) → S5
+- [x] (!) Korisnik daje „go” za produkciju → S5 (16. 11. 2026., kroz orkestratora)
+- [x] `npm run db:migrate` (0032, 0033) s provjerom izlaza, pa `npm run deploy` → S5 (verzija `4ed58f25`)
+- [~] Smoke na produkciji: bez prijave provjereno (rute 302 na prijavu, `/admin/sso` → Access, `/api/v1` 401, pozivnica s lošim tokenom 400 s jednolikom porukom); prijavu passkeyem i Accessom (Touch ID / OTP kod) i `/admin/korisnici`, `/admin/pregled` nakon prijave potvrđuje korisnik → S5
+- [x] (!) Pozivnice za alpha testere izdaje **korisnik sam** na `/admin/korisnici` i šalje ih ručno (WhatsApp); lanac ne čeka njihovu prijavu (odluka korisnika 16. 11.) → S5
