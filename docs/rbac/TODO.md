@@ -37,13 +37,13 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F3 — AI kvota i praćenje autora
 
-- [ ] `src/lib/kvota.ts`: preostalo po vrsti (klizni 7 dana), atomski uvjetni upis u `ai_potrosnja` u istom batchu kao posao → S4
-- [ ] Kvota na svim točkama troška: `dodajURed`, `dodajZvukove`, `pozadine-generiranje` (`zatrazi`, `dupliciraj`, `ponovi`), `ponoviZvuk`, `odbijZvukove(ponovo)`, `aktivnost.vrati` (ponovno u red) → S4
-- [ ] Poruka pri prekoračenju (preostalo, kad se oslobađa); cijeli zahtjev odbijen → S4
-- [ ] Preostale slike/izgovori u bočnoj traci za logopeda → S4
-- [ ] `rijeci.dodao` pri novoj riječi; „dodao” vidljiv na riječi → S4
-- [ ] `/admin/korisnici`: potrošnja 7 dana, dodane riječi, odobrenja po korisniku → S4
-- [ ] Testovi na `node:sqlite`: limit točno na granici, dva istovremena zahtjeva ne prelaze limit → S4
+- [x] `src/lib/kvota.ts`: preostalo po vrsti (klizni 7 dana), atomski uvjetni upis u `ai_potrosnja` u istom batchu kao posao → S4
+- [x] Kvota na svim točkama troška: `dodajURed`, `dodajZvukove`, `pozadine-generiranje` (`zatrazi`, `dupliciraj`, `ponovi`), `ponoviZvuk`, `odbijZvukove(ponovo)`, `aktivnost.vrati` (ponovno u red) → S4
+- [x] Poruka pri prekoračenju (preostalo, kad se oslobađa); cijeli zahtjev odbijen → S4
+- [x] Preostale slike/izgovori u bočnoj traci za logopeda → S4
+- [x] `rijeci.dodao` pri novoj riječi; „dodao” vidljiv na riječi → S4
+- [x] `/admin/korisnici`: potrošnja 7 dana, dodane riječi, odobrenja po korisniku → S4
+- [x] Testovi na `node:sqlite`: limit točno na granici, dva istovremena zahtjeva ne prelaze limit → S4
 
 ## F4 — Pregled, produkcija, testeri
 

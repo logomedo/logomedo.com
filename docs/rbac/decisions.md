@@ -199,3 +199,63 @@ samo superadmin.
 bilježnice; u bilježnici koju je superadmin dopunio svojim zadatkom logoped vidi naslov zadatka, a poveznica daje 404.
 „Pogurni red” i „Pokušaj ponovo” na `/admin/zvukovi` ostaju logopedu kao dio kataloga; S4 ih mora provjeriti kao točke
 troška.
+
+## S4 (16. 11. 2026.)
+
+**400. Atomska naplata: NOT NULL poništava batch.** Prva (ili zadnja prije upisa posla) naredba u istom
+`db.batch` je `INSERT INTO ai_potrosnja … SELECT …, CASE WHEN zbroj_7d + n <= limit THEN n ELSE NULL END`;
+limit se čita samo za `uloga='logoped' AND aktivan=1`. Bez mjesta je `kolicina` NULL, `NOT NULL constraint
+failed: ai_potrosnja.kolicina` poništi cijeli batch (i posao), `jePrekoracenje` to prepoznaje i baca
+`KvotaPrekoracena`. Odbačeno: posao s `WHERE EXISTS (redak potrošnje)` (traži oznaku retka i uvjet na
+svakom INSERT-u). Superadmin: bezuvjetni upis. Harness je već poništavao batch kao D1 (bez izmjene).
+Revizija: D1 batch prestane biti transakcija.
+
+**401. Količina je točna:** broj ili SQL koji broji istim uvjetom kao upis (`zatrazi` „već u redu”,
+„nema što ponoviti” se ne naplaćuju). U `aktivnost.vrati` naplata ide neposredno prije upisa posla, ne
+prva u batchu, jer brisanja ranije u batchu mijenjaju brojanje. `dodajURed` je jedan batch za cijeli
+zahtjev (prije batch po 50) i uklanja duple id-jeve.
+
+**402. Identitet bez novih potpisa:** točke troška i dalje primaju `email`; `platitelj(email)` (kroz
+`ulogaZa`, S1) daje `{email, uloga, korisnikId}`. Superadmin bez retka dobiva redak `admin` kroz
+`korisnikId(email)` (odluka 104), pa se potrošnja uvijek bilježi. Nepoznat ili deaktiviran: ista
+`KvotaPrekoracena` s limitom 0, ništa upisano.
+
+**403. Naplaćuje se vraćanje neuspjelih poslova u red** („Pokušaj ponovo” na `/admin/zvukovi` →
+`greskeURed(email)`, na `/admin/red` → `neuspjeliURed`) onome tko klikne, n = broj vraćenih. Ne naplaćuje
+se: `posaljiZaglavljene` („Pogurni red”, već plaćeni poslovi, odluka 310), runnerovi ponovni pokušaji
+(`uzmi`, `odgodi`, `neuspjeh`), `preimenuj`, probe glasova (administracija). (potvrditi)
+
+**404. Gdje se mijenja nešto prije posla, prvo `provjeri` (nije atomski):** odbijanje slike s `ponovi`,
+`premjesti` s `ponovi`, `nova-rijec` (n = broj stilova), `dupliciraj` s uputom. Ako netko istovremeno
+potroši kredite, odluka, riječ ili kopija ostaje bez posla (nova-rijec: preusmjerenje na riječ s porukom
+kvote). Za S5 review: kopija iz izgubljene utrke u `dupliciraj` se ne briše. (potvrditi)
+
+**405. `odbijZvukove({ponovo})`:** odbijanje i novi posao su jedan batch; bez kredita se poništava i odbijanje.
+
+**406. Prikaz prekoračenja na jednom mjestu** (middleware `sKvotom`, i za `/api/v1`): JSON 429
+`{error:'kvota', poruka, greska, ok:false}` za `/api/*`, `x-ajax` i fetch na `/admin/api/*`; obrasci
+303 natrag (Referer istog izvora, inače `/admin`) s `?kvota=` (banner u `AdminOkvir`). `?kvota=`, ne
+`?greska=`, jer `situacije` i `nova-rijec` već prikazuju `?greska=` pa bi poruka bila dvaput.
+
+**407. Poruka:** „Ostalo ti je X od L slika/izgovora (ovo traži N); prvi krediti vraćaju se u srijedu
+18. 11. u 14:05.” (Europe/Zagreb); zagrada samo kad zahtjev traži više od preostalog.
+
+**408. `rijeci.dodao` se ne prepisuje.** Pri sukobu s postojećom riječi `dodao = COALESCE(rijeci.dodao,
+CASE WHEN rijeci.aktivna = 0 THEN excluded.dodao END)`: autora dobiva samo neaktivna riječ bez autora.
+Inače bi seed riječi dobile autora čim ih netko upiše u editoru zadatka ili božićnoj bilježnici. Upis na
+svih pet mjesta (`api/nova-rijec`, `api/rijeci`, `generiranje` premjesti, `biljeznice`, `znakovi-baza`),
+e-mail malim slovima. `premjesti` nema test (treba R2).
+
+**409. Autor na `/admin/rijec/[slug]`** je ime iz `korisnici`, e-mail samo kad imena nema (logoped ime ima
+iz pozivnice). Katalog je zajednički, pa ga vidi i logoped. (potvrditi)
+
+**410. Doprinos na `/admin/korisnici`** (jedan agregatni upit `doprinosi()`): dodane riječi = sada aktivne
+riječi vrste riječ s tim `dodao`; odobrene slike/izgovori = sada odobreni s tim `pregledao` (kasnije
+zamijenjeni se ne broje, „automatski” se nikome ne pripisuje). Potrošnja 7 dana „X/L”, superadmin samo X.
+
+**411. Bočna traka:** logoped vidi „Preostalo (7 dana)” slike i izgovore (0 crveno, na mobitelu samo ikona
+i broj), jedan `preostalo()` po zahtjevu; superadmin ništa.
+
+**412. e2e korak 3c** (`scripts/e2e-poziv.sh`, prije deaktivacije): limit slika 1, prvi zahtjev = posao
+`ceka` i jedan redak `ai_potrosnja`, drugi = poruka kvote, provjera bočne trake i `/admin/korisnici`,
+zatim brisanje posla, potrošnje i riječi iz lokalne baze. Runner se ne pokreće.
