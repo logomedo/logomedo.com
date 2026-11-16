@@ -20,12 +20,12 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F1 — Pozivnica i upravljanje korisnicima
 
-- [ ] `src/lib/admin/pozivi.ts`: izdaj (token 32 B, sha-256, 72 h), provjeri, iskoristi atomski; odbija e-mail iz `ADMIN_EMAILS` → S2
-- [ ] `/admin/poziv` (token u `#fragmentu`) + `/admin/poziv/options` i `/admin/poziv/verify` (javne putanje u middlewareu) → S2
-- [ ] Uspješna registracija: korisnik (logoped, aktivan) + passkey + sesija `method='poziv'` u jednom koraku → S2
-- [ ] `/admin/korisnici` (samo superadmin): popis, nova pozivnica, pozivnica za novi passkey, deaktiviraj/aktiviraj, limiti → S2
-- [ ] Zapisi u `aktivnost`: pozivnica izdana, iskorištena, korisnik deaktiviran/aktiviran, limit promijenjen → S2
-- [ ] e2e lokalno (playwright-cli + virtualni WebAuthn autentifikator): pozivnica → passkey → odjava → prijava passkeyem → deaktivacija gasi sesiju → S2
+- [x] `src/lib/admin/pozivi.ts`: izdaj (token 32 B, sha-256, 72 h), provjeri, iskoristi atomski; odbija e-mail iz `ADMIN_EMAILS` → S2
+- [x] `/admin/poziv` (token u `#fragmentu`) + `/admin/poziv/options` i `/admin/poziv/verify` (javne putanje u middlewareu) → S2
+- [x] Uspješna registracija: korisnik (logoped, aktivan) + passkey + sesija `method='poziv'` u jednom koraku → S2
+- [x] `/admin/korisnici` (samo superadmin): popis, nova pozivnica, pozivnica za novi passkey, deaktiviraj/aktiviraj, limiti → S2
+- [x] Zapisi u `aktivnost`: pozivnica izdana, iskorištena, korisnik deaktiviran/aktiviran, limit promijenjen → S2
+- [x] e2e lokalno (playwright-cli + virtualni WebAuthn autentifikator): pozivnica → passkey → odjava → prijava passkeyem → deaktivacija gasi sesiju → S2
 
 ## F2 — Ovlasti i vlasništvo
 

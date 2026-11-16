@@ -26,7 +26,7 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 | --- | --- | --- | --- | --- | --- |
 | S0 | Plan | gotovo | 5f441e1 | 111 | plan, koda nema; odluke 1–13 |
 | S1 | Harness, migracija 0032, ovlasti, uloga u sesiji | gotovo | d10369e | 153 | migracije 33/33 u node:sqlite; do S3 logoped vidi cijeli admin (odluka 107); odluke 100–108 |
-| S2 | Pozivnica, `/admin/korisnici` | otvoreno | | | |
+| S2 | Pozivnica, `/admin/korisnici` | gotovo | b46c02f | 176 | migracija 0033 (rebuild `aktivnost`, prije produkcije COUNT); e2e `scripts/e2e-poziv.sh` prolazi; odluke 200–211 |
 | S3 | Ovlasti na rutama, vlasništvo, UI po ulozi | otvoreno | | | |
 | S4 | AI kvota, `rijeci.dodao`, pregled po korisniku | otvoreno | | | |
 | S5 | Review, docs, **vrata**: produkcija i pozivnice | otvoreno | | | |

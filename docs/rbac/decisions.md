@@ -72,7 +72,7 @@ u memoriji, migracije sortirane po punom imenu. **Mjerenje: svih 32 postojećih 
 **102. Ovlasti** (`src/lib/admin/ovlasti.ts`): `katalog`, `zadaci`, `ai` (obje uloge);
 `ai.bez_limita`, `sve.zadaci`, `aktivnost.tudja`, `korisnici`, `administracija` (samo superadmin).
 `odrediUlogu(email, adminEmails, redak)` je jedino mjesto pravila iz odluke 2; test drži skup ključeva
-fiksnim pa nova ovlast ne prolazi bez testa. (potvrditi imena)
+fiksnim pa nova ovlast ne prolazi bez testa.
 
 **103. `getSession`:** jedan upit `admin_sessions LEFT JOIN korisnici ON k.email = lower(s.email)`.
 `Session` dobiva `uloga` i `korisnikId` (superadmin bez retka: `null`). Uloga se određuje pri svakom
@@ -89,7 +89,7 @@ iz rute za korisnika bez retka treba biti 403, ne 500.
 `uloga` ima zadano `'logoped'`, pa bi eventualni stari retci inače odjednom dobili pristup čim
 imaju passkey ili sesiju. Logoped postaje aktivan samo pozivnicom (S2 mora pri iskorištenju postaviti
 `aktivan=1, deaktiviran_at=NULL`). Prije `db:migrate` u S5: `SELECT uloga, aktivan, COUNT(*) FROM
-korisnici GROUP BY 1,2` (samo čitanje). (potvrditi)
+korisnici GROUP BY 1,2` (samo čitanje).
 
 **106. Superadmin s retkom `aktivan=0` ili `uloga='logoped'` ostaje superadmin** (odluka 2: redak se
 za njega ne čita). Deaktivacija superadmina na `/admin/korisnici` (S2) zato nema smisla: sakriti je.
@@ -100,4 +100,56 @@ Nije rizik jer ništa ne ide na produkciju prije S5, a logoped redak lokalno nas
 `/admin/zvukovi`; aktivni logoped 200; deaktivirani logoped i `admin` redak izvan `ADMIN_EMAILS` 302 na prijavu.
 
 **108. `src/lib/app/sesija.ts` zadržava svoj `Uloga = "admin"`** (odluka 1, `/api/v1` samo
-superadmin). Dva pojma „Uloga” žive odvojeno do revizije odluke 1. (potvrditi)
+superadmin). Dva pojma „Uloga” žive odvojeno do revizije odluke 1.
+
+## S2 (16. 11. 2026.)
+
+**200. Migracija 0033.** `aktivnost.tablica` imao je CHECK na 4 tablice, pa je tablica prebačena
+(rebuild, svi retci i id-jevi zadržani, 4 indeksa ponovno) da dopusti `korisnici` i `pozivi`. `pozivi`
+dobiva `id INTEGER PRIMARY KEY` i `passkey_id`: UI i zapisi koriste `id`, `token_hash` ne izlazi iz baze
+(ni u snimci aktivnosti). `admin_challenges.purpose` nema CHECK, pa `'poziv'` ne traži migraciju.
+**Prije `db:migrate` u S5:** `SELECT COUNT(*) FROM aktivnost` (rebuild cijele tablice na produkciji).
+
+**201. Iskorištenje pozivnice je jedan batch koji ne može stvoriti dvaput** (odluka 4). Prva naredba:
+`UPDATE pozivi SET iskoristena_at, passkey_id = <id novog ključa> WHERE token_hash AND otvorena AND
+e-mail nije superadmin RETURNING`; upis korisnika i passkeya su `INSERT … SELECT … FROM pozivi p WHERE
+p.token_hash = ? AND p.passkey_id = <isti id>`. Oznaka je id ključa, ne vrijeme (dva pokušaja u istoj
+milisekundi bi se oba poklopila s vremenom). E-mail dolazi iz retka pozivnice, ne iz parametra. Testovi:
+tri paralelna pokušaja i deterministički slučaj iste milisekunde.
+
+**202. Korisnik pri iskorištenju:** upsert `uloga='logoped', aktivan=1, deaktiviran_at=NULL`,
+`ime = COALESCE(novo, staro)` (odluka 105). Redak `'admin'` izvan `ADMIN_EMAILS` postaje logoped samo pozivnicom.
+
+**203. Nova pozivnica za isti e-mail opoziva staru otvorenu** (zapis `poziv.zamijenjen`): vrijedi samo
+zadnji link.
+
+**204. Deaktivacija:** `aktivan=0`, `deaktiviran_at`, brisanje svih njegovih `admin_sessions` i opoziv
+njegovih otvorenih pozivnica (inače bi stari link vratio pristup). Passkeyi ostaju.
+
+**205. Superadmin može ponovno aktivirati deaktiviranog logopeda izravno, bez pozivnice.** Malo
+popušta odluku 105: tako se mogu aktivirati i stari retci koje je 0032 deaktivirao, ali samo
+svjesnom radnjom superadmina na `/admin/korisnici`. (potvrditi)
+
+**206. Superadmin je nedodirljiv na `/admin/korisnici`:** svaka radnja odbija e-mail iz `ADMIN_EMAILS`,
+i iskorištenje ga odbija ako je `ADMIN_EMAILS` promijenjen nakon izdavanja.
+
+**207. Zapisi u aktivnosti:** `poziv.izdan`, `poziv.zamijenjen`, `poziv.iskoristen` (`tko` = e-mail
+pozvanog), `poziv.opozvan`, `korisnik.aktiviran`, `korisnik.deaktiviran`, `korisnik.limit`. Nijedan
+se ne može vratiti (`vrati()` ih odbija, gumbi skriveni).
+
+**208. Greške prema van su jednolike:** options uvijek „Pozivnica ne vrijedi. Zatraži novu.”, verify
+uvijek jedna poruka; razlog ide samo u `console.error` bez tokena.
+
+**209. Zadnja prijava** = najkasnije od početka sesije i `admin_passkeys.last_used_at` (istekle sesije
+se brišu, pa same sesije nisu dovoljne).
+
+**210. `/admin/passkeys`** je već filtrirao po e-mailu sesije; popis i brisanje premješteni u
+`passkey.ts` (`mojiKljucevi`, `obrisiKljuc`) s testom. Pozivnica **ne** provodi limit od 5 ključeva po
+e-mailu (pozivnica za novi passkey je svjesna radnja superadmina). Za S5 review. (potvrditi)
+
+**211. e2e: `scripts/e2e-poziv.sh`** (lokalno, uz `npm run dev`): `npx --yes @playwright/cli@0.1.21`
+(globalni `playwright-cli` nije instaliran), sve korake logopeda radi jedan `run-code` jer virtualni
+autentifikator (CDP `WebAuthn.addVirtualAuthenticator`) živi dok i CDP sesija; `run-code` nema
+globalni `URL`. Superadmin je prvi e-mail iz `.dev.vars` (ne ispisuje se), logoped
+`e2e-<vrijeme>@primjer.hr`, superadmin radnje kroz `curl` s Originom. Pod `wrangler dev` Worker vidi
+`logomedo.com` (custom domain), pa rpID ne bi bio `localhost`: e2e ide samo na `astro dev`.
