@@ -11,3 +11,8 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
   sesije s notifikacijama po slici: katalog ima 428 riječi, a Vertex se plaća.
 - Izgovor (ElevenLabs) radi sam Worker kroz Cloudflare Queue, bez runnera: `docs/zvukovi.md`.
 - Prije commita: `npm test && npm run check && npm run build`.
+
+## Lanac: RBAC (logopedi, pozivnica, AI kvota)
+
+Plan od 16. 11. 2026. u `docs/rbac/` (`TODO.md`, `plan.md`, `decisions.md`, `handoffs/`). „Nastavi RBAC”
+znači prvi red koji nije „gotovo” u „Stanje lanca” u `docs/rbac/handoffs/README.md`; prompt je `SN.md`.
