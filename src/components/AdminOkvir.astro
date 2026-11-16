@@ -8,6 +8,7 @@ import Ikona from "./Ikona.astro";
 import type { ComponentProps } from "astro/types";
 import { env } from "cloudflare:workers";
 import { smije } from "../lib/admin/ovlasti";
+import { smijeNa } from "../lib/admin/rute";
 
 interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "postavke"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
@@ -39,7 +40,9 @@ const skupine: { naslov: string; boja: string; stavke: Stavka[] }[] = [
     { kod: "biljeznice", href: "/admin/biljeznice", tekst: "Bilježnice", ikona: "biljeznica", broj: 0 },
   ] },
 ];
-const sustav: Stavka[] = [
+// Stavke koje uloga ne smije se ne prikazuju (server ih ionako odbija, lib/admin/rute.ts).
+const vidljivo = (s: Stavka) => !!admin && smijeNa(admin.uloga, s.href);
+const sustav: Stavka[] = ([
   { kod: "red", href: "/admin/red", tekst: brojevi.gresaka ? "Red (greške)" : "Red generiranja", ikona: "red", broj: brojevi.uRedu + brojevi.gresaka, greska: brojevi.gresaka > 0 },
   { kod: "prompt", href: "/admin/prompt", tekst: "Prompt", ikona: "iskra", broj: 0 },
   { kod: "aktivnost", href: "/admin/aktivnost", tekst: "Aktivnost", ikona: "sat", broj: 0 },
@@ -48,7 +51,8 @@ const sustav: Stavka[] = [
     ? [{ kod: "korisnici", href: "/admin/korisnici", tekst: "Korisnici", ikona: "korisnici", broj: 0 } satisfies Stavka]
     : []),
   { kod: "postavke", href: "/admin/postavke", tekst: "Postavke", ikona: "postavke", broj: 0 },
-];
+] satisfies Stavka[]).filter(vidljivo);
+for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
 ---
 <!doctype html>
 <html lang="hr">
@@ -93,9 +97,12 @@ const sustav: Stavka[] = [
           </section>
         </nav>
         <div class="dno">
-          <div class="tko" title={admin.email}>
+          <div class="tko" title={`${admin.email} (${admin.uloga})`}>
             <span class="avatar">{admin.email[0].toUpperCase()}</span>
-            <span class="email">{admin.email}</span>
+            <span class="tko-tekst">
+              <span class="email">{admin.email}</span>
+              <span class="uloga">{admin.uloga}</span>
+            </span>
           </div>
           <div class="alati">
             <button type="button" class="ikona-gumb prekidac-teme" aria-label="Svijetlo / tamno" title="Svijetlo / tamno">
@@ -211,7 +218,9 @@ const sustav: Stavka[] = [
       .tko { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; }
       .avatar { flex: none; width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center; font-weight: 700; font-size: .8rem;
         background: var(--povrsina-2); color: var(--blijedo); border: 1px solid var(--rub); }
+      .tko-tekst { display: flex; flex-direction: column; min-width: 0; }
       .email { font-size: .8rem; color: var(--blijedo); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .uloga { font-size: .7rem; color: var(--blijedo); text-transform: uppercase; letter-spacing: .08em; font-weight: 650; }
       .alati { display: flex; gap: 2px; }
       .alati form { margin: 0; }
       .ikona-gumb { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 0; border-radius: 8px; background: none;

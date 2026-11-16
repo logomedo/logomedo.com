@@ -3,16 +3,20 @@ import AdminOkvir from "../../../components/AdminOkvir.astro";
 import { kad } from "../../../lib/katalog";
 import { nazivPodrucja, obrisani as sviObrisani, obrisiVise, podrucja as svaPodrucja, popis, vrati } from "../../../lib/zadaci/baza";
 import { VRSTE } from "../../../lib/zadaci/vrste";
+import { autorFiltar } from "../../../lib/admin/vlasnistvo";
+
+// Logoped vidi, briše i vraća samo svoje zadatke (odluka 8); superadmin sve, s autorom.
+const autor = autorFiltar(Astro.locals.admin!);
 
 // Meko brisanje s popisa (kvačice) i vraćanje obrisanih.
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
-  if (f.get("akcija") === "obrisi") await obrisiVise(f.getAll("id").map(Number).filter((n) => n > 0));
-  if (f.get("akcija") === "vrati") await vrati(Number(f.get("id")));
+  if (f.get("akcija") === "obrisi") await obrisiVise(f.getAll("id").map(Number).filter((n) => n > 0), autor);
+  if (f.get("akcija") === "vrati" && !(await vrati(Number(f.get("id")), autor))) return new Response("Nema tog zadatka", { status: 404 });
   return Astro.redirect("/admin/zadaci", 303);
 }
 
-const [zadaci, podrucja, obrisani] = await Promise.all([popis(), svaPodrucja(), sviObrisani()]);
+const [zadaci, podrucja, obrisani] = await Promise.all([popis(autor), svaPodrucja(), sviObrisani(autor)]);
 const skupine = [...new Set(zadaci.map((z) => z.podrucje_id))].map((id) => ({ id, naziv: nazivPodrucja(podrucja, id), zadaci: zadaci.filter((z) => z.podrucje_id === id) }));
 ---
 <AdminOkvir naslov="Gotovi zadaci" aktivno="zadaci">
@@ -29,7 +33,7 @@ const skupine = [...new Set(zadaci.map((z) => z.podrucje_id))].map((id) => ({ id
       <h2 class="odjeljak">{s.naziv} <span>{s.zadaci.length}</span></h2>
       <div class="ploha">
         <table>
-          <thead><tr><th class="kv"><input type="checkbox" class="sve" aria-label="Odaberi sve u skupini" /></th><th class="id">ID</th><th>Naslov</th><th>Vrsta</th><th>Verzija</th><th>Rješavano</th><th>Autor</th><th>Izmijenjeno</th></tr></thead>
+          <thead><tr><th class="kv"><input type="checkbox" class="sve" aria-label="Odaberi sve u skupini" /></th><th class="id">ID</th><th>Naslov</th><th>Vrsta</th><th>Verzija</th><th>Rješavano</th>{autor === null && <th>Autor</th>}<th>Izmijenjeno</th></tr></thead>
           <tbody>
             {s.zadaci.map((z) => (
               <tr>
@@ -39,7 +43,7 @@ const skupine = [...new Set(zadaci.map((z) => z.podrucje_id))].map((id) => ({ id
                 <td><span class="oznaka">{VRSTE[z.vrsta].naziv}</span></td>
                 <td class="mono">v{z.aktivna_verzija}</td>
                 <td>{z.rjesavanja}×</td>
-                <td class="blijedo">{z.autor}</td>
+                {autor === null && <td class="blijedo">{z.autor}</td>}
                 <td class="blijedo">{kad(z.updated_at)}</td>
               </tr>
             ))}

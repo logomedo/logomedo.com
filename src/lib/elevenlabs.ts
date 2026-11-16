@@ -7,7 +7,9 @@ const API = "https://api.elevenlabs.io/v1";
 
 /** Greška s HTTP statusom: 429 i 5xx se ponavljaju kasnije (`privremena`). */
 export class GreskaElevenLabs extends Error {
-  constructor(public status: number, poruka: string) { super(poruka); }
+  // Bez parametarskog svojstva (`public status`): node --test (strip-only TS) ga ne podržava.
+  status: number;
+  constructor(status: number, poruka: string) { super(poruka); this.status = status; }
   get privremena() { return this.status === 429 || this.status >= 500; }
 }
 

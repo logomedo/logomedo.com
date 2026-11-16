@@ -1,0 +1,17 @@
+---
+// 403 za logopeda na ruti samo za superadmina (lib/admin/rute.ts). Middleware ovamo radi rewrite i
+// postavlja status 403; oznaka u zaglavlju mu potvrđuje da je rewrite stvarno dao ovu stranicu.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+
+Astro.response.status = 403;
+Astro.response.headers.set("x-nemas-pristup", "1");
+---
+<AdminOkvir naslov="Nemaš pristup">
+  <div class="naslov">
+    <div>
+      <h1>Nemaš pristup</h1>
+      <p class="podnaslov">Ova stranica je samo za administratora. Ako ti treba, javi se administratoru.</p>
+    </div>
+  </div>
+  <p><a class="gumb" href="/admin">Natrag na katalog</a></p>
+</AdminOkvir>

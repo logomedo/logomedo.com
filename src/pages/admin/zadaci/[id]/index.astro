@@ -7,12 +7,14 @@ import { popis as svePozadine } from "../../../../lib/pozadine";
 import { rijeciIPozadine } from "../../../../lib/biljeznice";
 import { dodajZvukove, stanjeZvukova, tekstoviIgre } from "../../../../lib/zvukovi";
 import { TEME } from "../../../../lib/teme";
+import { autorFiltar } from "../../../../lib/admin/vlasnistvo";
 import "../../../../lib/scena.css";
 import "../../../../lib/kolo-slova.css";
 import "@fontsource-variable/nunito";
 import "@fontsource/andika/700.css";
 
-const z = await nadji(Number(Astro.params.id));
+// Tuđi zadatak (za logopeda) je 404, i za GET i za POST zvukova (odluka 8).
+const z = await nadji(Number(Astro.params.id), autorFiltar(Astro.locals.admin!));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
 
 // Izgovor (ElevenLabs) za spremljenu verziju zadatka: isti tekstovi koje igra izgovara, uz kraj

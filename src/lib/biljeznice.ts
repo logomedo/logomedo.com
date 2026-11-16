@@ -12,6 +12,7 @@ import { brojSlogova, izvediRimu } from "./zadaci/rima";
 import { poIds as pozadinePoId, pozadineU, type Pozadina } from "./pozadine";
 import { TEME, type Tema } from "./teme";
 import { tekstoviIgre } from "./zvukovi";
+import type { AutorFiltar } from "./admin/vlasnistvo";
 
 const DB = () => env.DB;
 
@@ -24,15 +25,21 @@ export interface PodaciBiljeznice { biljeznica: Biljeznica; zadaci: ZadatakBilje
 
 const SQL_B = "SELECT id, slug, naslov, podnaslov, tema, stil, javna, updated_at FROM biljeznice";
 
-export async function popis(): Promise<(Biljeznica & { zadataka: number })[]> {
+// Vlasništvo (lib/admin/vlasnistvo.ts): admin funkcije primaju obavezan `autor`; null = superadmin (sve),
+// broj = samo bilježnice tog autora. Javni /b/<slug> ide kroz poSlugu i ne gleda autora.
+
+export async function popis(autor: AutorFiltar): Promise<(Biljeznica & { zadataka: number; autor: string })[]> {
   return (await DB().prepare(
-    `SELECT b.id, b.slug, b.naslov, b.podnaslov, b.tema, b.stil, b.javna, b.updated_at,
+    `SELECT b.id, b.slug, b.naslov, b.podnaslov, b.tema, b.stil, b.javna, b.updated_at, k.email AS autor,
        (SELECT COUNT(*) FROM biljeznica_zadaci bz WHERE bz.biljeznica_id = b.id) AS zadataka
-     FROM biljeznice b ORDER BY b.updated_at DESC`,
-  ).all<Biljeznica & { zadataka: number }>()).results;
+     FROM biljeznice b JOIN korisnici k ON k.id = b.autor_id
+     WHERE (?1 IS NULL OR b.autor_id = ?1) ORDER BY b.updated_at DESC`,
+  ).bind(autor).all<Biljeznica & { zadataka: number; autor: string }>()).results;
 }
 
-export const poId = (id: number) => DB().prepare(`${SQL_B} WHERE id = ?`).bind(id).first<Biljeznica>();
+/** Bilježnica za admin; tuđa (za logopeda) je null, kao nepostojeća. Sve akcije na bilježnici idu kroz ovo. */
+export const poId = (id: number, autor: AutorFiltar) =>
+  DB().prepare(`${SQL_B} WHERE id = ?1 AND (?2 IS NULL OR autor_id = ?2)`).bind(id, autor).first<Biljeznica>();
 export const poSlugu = (s: string) => DB().prepare(`${SQL_B} WHERE slug = ?`).bind(s).first<Biljeznica>();
 
 /** Zadaci bilježnice redom, s aktivnom verzijom sadržaja. */
@@ -122,14 +129,27 @@ export async function nova(email: string, x: { naslov: string; podnaslov: string
   return b!.id;
 }
 
-export async function spremi(id: number, email: string, x: { naslov: string; podnaslov: string; slug: string; javna: boolean; tema: Tema; zadaci: number[] }) {
+/**
+ * Spremanje; tuđa bilježnica (za logopeda) ostaje netaknuta. Zadatak ulazi samo ako postoji i ako je
+ * autorov ili je već bio u ovoj bilježnici (npr. dodao ga superadmin): logoped tako ne može tuđi
+ * zadatak izložiti na javnoj /b/<slug>, a spremanje ne izbacuje ono što je tamo već bilo.
+ */
+export async function spremi(id: number, email: string, x: { naslov: string; podnaslov: string; slug: string; javna: boolean; tema: Tema; zadaci: number[] }, autor: AutorFiltar) {
   const s = uSlug(x.slug) || `biljeznica-${id}`;
+  const vlastita = "id = ?1 AND (?2 IS NULL OR autor_id = ?2)";
+  const bili = JSON.stringify((await DB().prepare(
+    `SELECT zadatak_id FROM biljeznica_zadaci WHERE biljeznica_id IN (SELECT id FROM biljeznice WHERE ${vlastita})`,
+  ).bind(id, autor).all<{ zadatak_id: number }>()).results.map((r) => r.zadatak_id));
   await DB().batch(sZapisom({ tko: email, radnja: "biljeznica.spremljena", tablica: "biljeznice", grupa: novaGrupa() }, id, [
-    DB().prepare("UPDATE biljeznice SET naslov = ?, podnaslov = ?, slug = ?, javna = ?, tema = ?, updated_at = datetime('now') WHERE id = ?")
-      .bind(x.naslov.slice(0, 120), x.podnaslov.slice(0, 200) || null, s, x.javna ? 1 : 0, x.tema, id),
-    DB().prepare("DELETE FROM biljeznica_zadaci WHERE biljeznica_id = ?").bind(id),
+    DB().prepare(`UPDATE biljeznice SET naslov = ?3, podnaslov = ?4, slug = ?5, javna = ?6, tema = ?7, updated_at = datetime('now') WHERE ${vlastita}`)
+      .bind(id, autor, x.naslov.slice(0, 120), x.podnaslov.slice(0, 200) || null, s, x.javna ? 1 : 0, x.tema),
+    DB().prepare(`DELETE FROM biljeznica_zadaci WHERE biljeznica_id IN (SELECT id FROM biljeznice WHERE ${vlastita})`).bind(id, autor),
     ...x.zadaci.slice(0, 40).map((z, i) =>
-      DB().prepare("INSERT OR IGNORE INTO biljeznica_zadaci (biljeznica_id, zadatak_id, redoslijed) VALUES (?, ?, ?)").bind(id, z, i)),
+      DB().prepare(
+        `INSERT OR IGNORE INTO biljeznica_zadaci (biljeznica_id, zadatak_id, redoslijed)
+         SELECT b.id, z.id, ?4 FROM biljeznice b JOIN zadaci z ON z.id = ?3
+         WHERE b.id = ?1 AND (?2 IS NULL OR (b.autor_id = ?2 AND (z.autor_id = ?2 OR z.id IN (SELECT value FROM json_each(?5)))))`,
+      ).bind(id, autor, z, i, bili)),
   ]));
 }
 

@@ -9,7 +9,7 @@ export const GET: APIRoute = async (ctx) => {
   if (!admin(ctx)) return greska("forbidden", 403);
   const id = Number(ctx.params.id);
   if (!Number.isInteger(id) || id <= 0) return greska("not_found", 404);
-  const z = await zadatak(id);
+  const z = await zadatak(id, null);
   if (!z) return greska("not_found", 404);
   const zz = { id: z.id, vrsta: z.vrsta, naslov: z.naslov, uputa: z.uputa, verzija: z.aktivna_verzija, sadrzaj: z.sadrzaj };
   return Response.json({ zadatak: zz, ekrani: ekrani([z]), ...slikePrikaz(await rijeciIPozadine([z], z.stil), cdnZa(ctx.url)) });

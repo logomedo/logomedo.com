@@ -6,6 +6,7 @@ import Ikona from "../../components/Ikona.astro";
 import { env } from "cloudflare:workers";
 import { kad } from "../../lib/katalog";
 import { postavka } from "../../lib/postavke";
+import { smijeNa } from "../../lib/admin/rute";
 import { kratak, opisNacina } from "../../lib/zvukovi-tekst";
 import {
   brojeviIzgovora, greskeIzgovora, greskeURed, odbijZvukove, odobriZvuk, ponoviZvuk, posaljiZaglavljene, skupineIzgovora,
@@ -69,8 +70,13 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
       <h1>Izgovor</h1>
       <p class="podnaslov">Poslušaj kako ElevenLabs izgovara riječi i upute. Djeca čuju samo odobrene snimke; bez snimke igra šuti.</p>
     </div>
-    <a class="gumb" href="/admin/zvukovi/glasovi"><Ikona ime="zvuk" velicina={18} />
-      {glas ? <>Glas: <b>{imeGlasa}</b></> : <b class="greska">Odaberi glas</b>}</a>
+    {smijeNa(Astro.locals.admin!.uloga, "/admin/zvukovi/glasovi") ? (
+      <a class="gumb" href="/admin/zvukovi/glasovi"><Ikona ime="zvuk" velicina={18} />
+        {glas ? <>Glas: <b>{imeGlasa}</b></> : <b class="greska">Odaberi glas</b>}</a>
+    ) : (
+      <span class="gumb" aria-disabled="true"><Ikona ime="zvuk" velicina={18} />
+        {glas ? <>Glas: <b>{imeGlasa}</b></> : <b class="greska">Glas nije odabran</b>}</span>
+    )}
   </div>
   {poruka && <p class="ploha obavijest" role="status">{poruka}</p>}
 

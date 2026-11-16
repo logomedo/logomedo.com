@@ -3,6 +3,7 @@ import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import { glas as nadjiGlas, rijeciGlasa, stilIzUrla, NAZIV_POZICIJE } from "../../../lib/katalog";
 import { POZICIJE, type Pozicija } from "../../../lib/fonemi";
+import { smijeNa } from "../../../lib/admin/rute";
 
 const g = await nadjiGlas(Astro.params.slug!);
 if (!g) return new Response("Nema tog glasa", { status: 404 });
@@ -55,7 +56,7 @@ const ovdje = url({});
     </form>
   </div>
 
-  {dodano !== null && <div class="obavijest"><Ikona ime="red" /> U red dodano: {dodano}. Runner ih uzima redom (<a href="/admin/red">Red</a>).</div>}
+  {dodano !== null && <div class="obavijest"><Ikona ime="red" /> U red dodano: {dodano}. Runner ih uzima redom{smijeNa(Astro.locals.admin!.uloga, "/admin/red") ? <> (<a href="/admin/red">Red</a>)</> : ""}.</div>}
 
   <div class="alatna">
     <nav class="segmenti">

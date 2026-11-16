@@ -1,8 +1,11 @@
 // /admin: prijava preko Cloudflare Accessa ili passkeya (docs/admin.md, model iz
 // omm.domovina.ai i pay.domovina.ai). /api/runner/*: lokalni runner s bearer tokenom.
+// Razlika od omm: uloge (docs/rbac/). Sesija nosi ulogu; rute iz lib/admin/rute.ts smije samo
+// superadmin (logoped: 403), a vlasništvo zadataka, bilježnica i aktivnosti provjerava lib/admin/vlasnistvo.ts.
 import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSession } from "./lib/admin/sesija";
+import { rutaSamoSuperadmin } from "./lib/admin/rute";
 import { runnerOk } from "./lib/runner-auth";
 import { appSesija } from "./lib/app/sesija";
 
@@ -59,10 +62,33 @@ export const onRequest = defineMiddleware(async ({ request, url, locals }, next)
       return Response.redirect(new URL(`/admin/login?next=${encodeURIComponent(url.pathname + url.search)}`, url), 302);
     }
     locals.admin = s;
+    // 4. Uloga: administracija (prompt, red, korisnici, glasovi, prijava aplikacije) samo superadmin.
+    if (s.uloga !== "superadmin" && rutaSamoSuperadmin(url.pathname)) {
+      if (!["GET", "HEAD"].includes(request.method) || url.pathname.startsWith("/admin/api/")) return json({ error: "forbidden" }, 403);
+      return zastiti(await nemasPristup(next), true);
+    }
   }
 
   return zastiti(await next(), true);
 });
+
+/**
+ * Stranica „Nemaš pristup” (src/pages/admin/nemas-pristup.astro) kroz rewrite, sa sesijom u `locals`.
+ * Status je uvijek 403; ako rewrite ne vrati tu stranicu (oznaka u zaglavlju), jednostavan HTML.
+ */
+async function nemasPristup(next: (put?: string) => Promise<Response>): Promise<Response> {
+  const r = await next("/admin/nemas-pristup");
+  if (r.headers.get("x-nemas-pristup") === "1") {
+    const h = new Headers(r.headers);
+    h.delete("x-nemas-pristup");
+    return new Response(r.body, { status: 403, headers: h });
+  }
+  await r.body?.cancel();
+  return new Response(
+    '<!doctype html><html lang="hr"><meta charset="utf-8"><title>Nemaš pristup</title><h1>Nemaš pristup</h1><p><a href="/admin">Natrag u admin</a></p></html>',
+    { status: 403, headers: { "content-type": "text/html; charset=utf-8" } },
+  );
+}
 
 /**
  * /api/v1: mobilna aplikacija (docs/app-api.md). Samo bearer token, kolačići se ne gledaju,

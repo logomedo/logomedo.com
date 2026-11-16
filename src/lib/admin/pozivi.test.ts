@@ -197,7 +197,7 @@ test("vrati(): zapisi o pozivnicama i korisnicima se ne poništavaju", async () 
   await iskoristi(token, kljuc("k1"));
   for (const z of await db().prepare("SELECT id FROM aktivnost").all<{ id: number }>().then((r) => r.results)) {
     for (const smjer of ["ponisti", "vrati"] as const) {
-      const r = await vrati(z.id, smjer, SA);
+      const r = await vrati(z.id, smjer, SA, null);
       assert.equal(r.ok, false);
     }
   }

@@ -4,6 +4,7 @@ import { kad } from "../../../lib/katalog";
 import Ikona from "../../../components/Ikona.astro";
 import { napraviBozicnu, nova, popis, provjeriPolja } from "../../../lib/biljeznice";
 import { jeTema, TEME, type Tema } from "../../../lib/teme";
+import { autorFiltar } from "../../../lib/admin/vlasnistvo";
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -26,7 +27,9 @@ if (Astro.request.method === "POST") {
   }
   return Astro.redirect("/admin/biljeznice", 303);
 }
-const biljeznice = await popis();
+// Logoped vidi samo svoje bilježnice (odluka 8); superadmin sve, s autorom.
+const superadmin = Astro.locals.admin!.uloga === "superadmin";
+const biljeznice = await popis(autorFiltar(Astro.locals.admin!));
 const q = Astro.url.searchParams;
 const teme = Object.entries(TEME) as [Tema, (typeof TEME)[Tema]][];
 ---
@@ -78,7 +81,7 @@ const teme = Object.entries(TEME) as [Tema, (typeof TEME)[Tema]][];
   {biljeznice.length ? (
     <div class="ploha">
       <table>
-        <thead><tr><th>Naslov</th><th>Poveznica</th><th>Zadataka</th><th>Javna</th><th>Izmijenjeno</th></tr></thead>
+        <thead><tr><th>Naslov</th><th>Poveznica</th><th>Zadataka</th><th>Javna</th>{superadmin && <th>Autor</th>}<th>Izmijenjeno</th></tr></thead>
         <tbody>
           {biljeznice.map((b) => (
             <tr>
@@ -86,6 +89,7 @@ const teme = Object.entries(TEME) as [Tema, (typeof TEME)[Tema]][];
               <td class="mono"><a href={`/b/${b.slug}`} target="_blank" rel="noopener">/b/{b.slug}</a></td>
               <td>{b.zadataka}</td>
               <td>{b.javna ? <span class="oznaka uspjeh">javna</span> : <span class="oznaka">skrivena</span>}</td>
+              {superadmin && <td class="blijedo">{b.autor}</td>}
               <td class="blijedo">{kad(b.updated_at)}</td>
             </tr>
           ))}

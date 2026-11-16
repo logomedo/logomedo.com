@@ -2,6 +2,7 @@
 // na mjestu; čim postoji rješavanje, spremanje otvara novu verziju (docs/zadaci.md).
 import { env } from "cloudflare:workers";
 import { adminEmails } from "../admin/sesija";
+import type { AutorFiltar } from "../admin/vlasnistvo";
 import { brojSlogova, izvediRimu } from "./rima";
 import type { RijecGlasova } from "./listic-glas";
 import { imaOkvir, normalizirajOkvir, type Okvir } from "../okviri";
@@ -100,12 +101,17 @@ const SQL_ZADATAK = `SELECT z.id, z.vrsta, z.podrucje_id, z.naslov, z.uputa, z.v
     k.email AS autor, (SELECT COUNT(*) FROM rjesavanja r WHERE r.zadatak_id = z.id) AS rjesavanja
   FROM zadaci z JOIN korisnici k ON k.id = z.autor_id`;
 
-export async function popis(): Promise<ZadatakRed[]> {
-  return (await DB().prepare(`${SQL_ZADATAK} WHERE z.obrisan_at IS NULL ORDER BY z.updated_at DESC`).all<ZadatakRed>()).results;
+// Vlasništvo (lib/admin/vlasnistvo.ts): `autor` je obavezan; null = superadmin (svi zadaci),
+// broj = samo zadaci tog autora. Tuđi zadatak za logopeda izgleda kao nepostojeći.
+
+export async function popis(autor: AutorFiltar): Promise<ZadatakRed[]> {
+  return (await DB().prepare(`${SQL_ZADATAK} WHERE z.obrisan_at IS NULL AND (?1 IS NULL OR z.autor_id = ?1) ORDER BY z.updated_at DESC`)
+    .bind(autor).all<ZadatakRed>()).results;
 }
 
-export async function zadatak(id: number): Promise<Zadatak | null> {
-  const z = await DB().prepare(`${SQL_ZADATAK} WHERE z.id = ? AND z.obrisan_at IS NULL`).bind(id).first<ZadatakRed>();
+export async function zadatak(id: number, autor: AutorFiltar): Promise<Zadatak | null> {
+  const z = await DB().prepare(`${SQL_ZADATAK} WHERE z.id = ?1 AND z.obrisan_at IS NULL AND (?2 IS NULL OR z.autor_id = ?2)`)
+    .bind(id, autor).first<ZadatakRed>();
   if (!z) return null;
   const v = await DB().prepare("SELECT sadrzaj FROM zadatak_verzije WHERE zadatak_id = ? AND verzija = ?")
     .bind(id, z.aktivna_verzija).first<{ sadrzaj: string }>();
@@ -122,12 +128,12 @@ export async function stvori(autorId: number, vrsta: Vrsta, podrucjeId: number |
 
 export interface Izmjena { naslov: string; uputa: string; podrucje_id: number | null; stil: string; sadrzaj: unknown; okvir?: unknown }
 
-/** Spremi; vraća verziju u koju je spremljeno. */
-export async function spremi(id: number, x: Izmjena): Promise<number | null> {
+/** Spremi; vraća verziju u koju je spremljeno, null kad zadatka nema (ili je tuđi). */
+export async function spremi(id: number, x: Izmjena, autor: AutorFiltar): Promise<number | null> {
   const z = await DB().prepare(
     `SELECT vrsta, aktivna_verzija, EXISTS (SELECT 1 FROM rjesavanja r WHERE r.zadatak_id = z.id AND r.verzija = z.aktivna_verzija) AS rjesavano
-     FROM zadaci z WHERE id = ? AND obrisan_at IS NULL`,
-  ).bind(id).first<{ vrsta: Vrsta; aktivna_verzija: number; rjesavano: number }>();
+     FROM zadaci z WHERE id = ?1 AND obrisan_at IS NULL AND (?2 IS NULL OR autor_id = ?2)`,
+  ).bind(id, autor).first<{ vrsta: Vrsta; aktivna_verzija: number; rjesavano: number }>();
   if (!z) return null;
   const sadrzaj = JSON.stringify(normaliziraj(z.vrsta, x.sadrzaj));
   const verzija = z.rjesavano ? z.aktivna_verzija + 1 : z.aktivna_verzija;
@@ -144,26 +150,33 @@ export async function spremi(id: number, x: Izmjena): Promise<number | null> {
   return verzija;
 }
 
-export async function obrisi(id: number) {
-  await obrisiVise([id]);
+/** Meko brisanje; false kad zadatka nema (ili je tuđi). Već obrisan ostaje s prvim vremenom brisanja. */
+export async function obrisi(id: number, autor: AutorFiltar): Promise<boolean> {
+  return (await obrisiVise([id], autor)) > 0;
 }
 
-/** Meko brisanje više zadataka odjednom (s popisa). */
-export async function obrisiVise(ids: number[]) {
-  if (!ids.length) return;
-  await DB().prepare("UPDATE zadaci SET obrisan_at = datetime('now') WHERE obrisan_at IS NULL AND id IN (SELECT value FROM json_each(?))")
-    .bind(JSON.stringify(ids)).run();
+/** Meko brisanje više zadataka odjednom (s popisa); briše samo svoje. Vraća broj pogođenih. */
+export async function obrisiVise(ids: number[], autor: AutorFiltar): Promise<number> {
+  if (!ids.length) return 0;
+  const r = await DB().prepare(
+    `UPDATE zadaci SET obrisan_at = COALESCE(obrisan_at, datetime('now'))
+     WHERE id IN (SELECT value FROM json_each(?1)) AND (?2 IS NULL OR autor_id = ?2)`,
+  ).bind(JSON.stringify(ids), autor).run();
+  return r.meta.changes ?? 0;
 }
 
-export async function vrati(id: number) {
-  await DB().prepare("UPDATE zadaci SET obrisan_at = NULL WHERE id = ?").bind(id).run();
+/** Vraćanje iz koša; false kad zadatka nema (ili je tuđi). */
+export async function vrati(id: number, autor: AutorFiltar): Promise<boolean> {
+  const r = await DB().prepare("UPDATE zadaci SET obrisan_at = NULL WHERE id = ?1 AND (?2 IS NULL OR autor_id = ?2)").bind(id, autor).run();
+  return (r.meta.changes ?? 0) > 0;
 }
 
 export interface ObrisaniRed { id: number; vrsta: Vrsta; naslov: string; obrisan_at: string }
 
-export async function obrisani(): Promise<ObrisaniRed[]> {
-  return (await DB().prepare("SELECT id, vrsta, naslov, obrisan_at FROM zadaci WHERE obrisan_at IS NOT NULL ORDER BY obrisan_at DESC LIMIT 200")
-    .all<ObrisaniRed>()).results;
+export async function obrisani(autor: AutorFiltar): Promise<ObrisaniRed[]> {
+  return (await DB().prepare(
+    "SELECT id, vrsta, naslov, obrisan_at FROM zadaci WHERE obrisan_at IS NOT NULL AND (?1 IS NULL OR autor_id = ?1) ORDER BY obrisan_at DESC LIMIT 200",
+  ).bind(autor).all<ObrisaniRed>()).results;
 }
 
 /** Za predloške po glasovima: glasovi kataloga i sve riječi sa slikom s pojavama glasova, abecedno. */

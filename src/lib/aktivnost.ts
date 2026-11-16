@@ -10,6 +10,10 @@ import { jeVrativo, type StavkaPrikaz } from "./aktivnost-prikaz";
 
 export type Tablica = "rijeci" | "slike" | "generiranja" | "biljeznice" | "korisnici" | "pozivi";
 
+/** Zapisi administracije (korisnici, pozivnice): logoped ih ne vidi ni kad je `tko` on sam (poziv.iskoristen). */
+export const TABLICE_ADMINISTRACIJE = ["korisnici", "pozivi"] as const satisfies readonly Tablica[];
+const SQL_ADMINISTRACIJA = TABLICE_ADMINISTRACIJE.map((t) => `'${t}'`).join(", ");
+
 /**
  * JSON snimak retka kao izraz nad aliasom `x`. Samo ono što admin mijenja: bez vremena i
  * brojača koje mijenja runner, da isto stanje uvijek da isti tekst (tako se prepoznaje zapis bez promjene).
@@ -95,8 +99,12 @@ export type Stavka = StavkaPrikaz;
 
 export interface Filtar { nakon?: number; prije?: number; tko?: string; rijecId?: number; grupa?: string; limit?: number }
 
-/** Najnovije prvo. `nakon` za osvježavanje uživo, `prije` za starije stranice. */
-export async function popis(f: Filtar = {}): Promise<Stavka[]> {
+/**
+ * Najnovije prvo. `nakon` za osvježavanje uživo, `prije` za starije stranice.
+ * `samo` (lib/admin/vlasnistvo.ts, aktivnostFiltar): null = sve; e-mail = samo zapisi tog korisnika bez
+ * administracije, a `f.tko` se tada ne gleda.
+ */
+export async function popis(f: Filtar, samo: string | null): Promise<Stavka[]> {
   const { results } = await env.DB.prepare(
     `SELECT a.id, a.at, a.tko, a.radnja, a.tablica, a.redak_id, a.grupa, a.prije, a.poslije, a.vraca_id, a.rijec_id,
        r.rijec, r.slug, st.naziv AS stil, b.naslov AS biljeznica, v.radnja AS vraca_radnja,
@@ -109,13 +117,16 @@ export async function popis(f: Filtar = {}): Promise<Stavka[]> {
      LEFT JOIN aktivnost v ON v.id = a.vraca_id
      WHERE (?1 IS NULL OR a.id > ?1) AND (?2 IS NULL OR a.id < ?2) AND (?3 IS NULL OR a.tko = ?3)
        AND (?4 IS NULL OR a.rijec_id = ?4) AND (?5 IS NULL OR a.grupa = ?5)
+       AND (?7 IS NULL OR (a.tko = ?7 AND a.tablica NOT IN (${SQL_ADMINISTRACIJA})))
      ORDER BY a.id DESC LIMIT ?6`,
-  ).bind(f.nakon ?? null, f.prije ?? null, f.tko ?? null, f.rijecId ?? null, f.grupa ?? null, Math.min(f.limit ?? 100, 300)).all<Stavka>();
+  ).bind(f.nakon ?? null, f.prije ?? null, samo === null ? (f.tko ?? null) : null, f.rijecId ?? null, f.grupa ?? null,
+    Math.min(f.limit ?? 100, 300), samo).all<Stavka>();
   return results;
 }
 
-/** Tko je sve nešto mijenjao (filtar u dnevniku). */
-export async function autori(): Promise<string[]> {
+/** Tko je sve nešto mijenjao (filtar u dnevniku); uz `samo` samo taj korisnik. */
+export async function autori(samo: string | null): Promise<string[]> {
+  if (samo !== null) return [samo];
   return (await env.DB.prepare("SELECT DISTINCT tko FROM aktivnost ORDER BY tko").all<{ tko: string }>()).results.map((r) => r.tko);
 }
 
@@ -128,11 +139,19 @@ type Snimak = Record<string, unknown>;
 /**
  * Primijeni snimak cijele grupe zapisa: `ponisti` = stanje prije (od zadnjeg prema prvom),
  * `vrati` = stanje poslije (redom). Sve u jednoj transakciji; nastaje nova grupa zapisa.
+ * `samo` kao u popis(): uz e-mail cijela grupa mora biti njegova i bez administracije, inače
+ * `zabranjeno` (403) prije bilo kakve izmjene.
  */
-export async function vrati(zapisId: number, smjer: Smjer, tko: string): Promise<{ ok: true; promjena: number; grupa: string } | { ok: false; greska: string }> {
+export async function vrati(zapisId: number, smjer: Smjer, tko: string, samo: string | null):
+  Promise<{ ok: true; promjena: number; grupa: string } | { ok: false; greska: string; zabranjeno?: true }> {
   const db = env.DB;
-  const izvor = await db.prepare("SELECT grupa FROM aktivnost WHERE id = ?").bind(zapisId).first<{ grupa: string }>();
+  const izvor = await db.prepare(
+    `SELECT a.grupa, (?2 IS NULL OR NOT EXISTS (SELECT 1 FROM aktivnost g WHERE g.grupa = a.grupa
+       AND (g.tko IS NOT ?2 OR g.tablica IN (${SQL_ADMINISTRACIJA})))) AS smije
+     FROM aktivnost a WHERE a.id = ?1`,
+  ).bind(zapisId, samo).first<{ grupa: string; smije: number }>();
   if (!izvor) return { ok: false, greska: "Nema tog zapisa." };
+  if (!izvor.smije) return { ok: false, greska: "Nemaš pristup tom zapisu.", zabranjeno: true };
   let { results: redovi } = await db.prepare(
     `SELECT id, tablica, redak_id, prije, poslije FROM aktivnost WHERE grupa = ? ORDER BY id ${smjer === "ponisti" ? "DESC" : "ASC"}`,
   ).bind(izvor.grupa).all<Redak>();

@@ -3,6 +3,10 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import Aktivnost from "../../components/Aktivnost.astro";
 import { env } from "cloudflare:workers";
 import { autori } from "../../lib/aktivnost";
+import { aktivnostFiltar } from "../../lib/admin/vlasnistvo";
+
+// Logoped vidi samo svoje izmjene (odluka 9); filtar provodi /admin/api/aktivnost.
+const samo = aktivnostFiltar(Astro.locals.admin!);
 
 const rijecId = Number(Astro.url.searchParams.get("rijec")) || undefined;
 const rijec = rijecId
@@ -16,10 +20,10 @@ const rijec = rijecId
       <p class="podnaslov">
         {rijec
           ? <>Izmjene riječi <a href={`/admin/rijec/${rijec.slug}`}>{rijec.rijec}</a> i njenih slika · <a href="/admin/aktivnost">sve izmjene</a></>
-          : "Sve izmjene kataloga, svih admina i runnera, najnovije gore."}{" "}
+          : samo ? "Tvoje izmjene kataloga i bilježnica, najnovije gore." : "Sve izmjene kataloga, svih admina i runnera, najnovije gore."}{" "}
         „Poništi” vraća stanje prije izmjene, „Vrati na ovo” stanje nakon nje. Oboje je nova izmjena: povijest ostaje cijela.
       </p>
     </div>
   </div>
-  <Aktivnost rijec={rijecId} limit={80} filtri autori={await autori()} />
+  <Aktivnost rijec={rijecId} limit={80} filtri autori={await autori(samo)} />
 </AdminOkvir>

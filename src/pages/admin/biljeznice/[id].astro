@@ -8,9 +8,12 @@ import { brojEkrana } from "../../../lib/biljeznice-ekrani";
 import { jeTema, TEME, type Tema } from "../../../lib/teme";
 import { popis as sviZadaci } from "../../../lib/zadaci/baza";
 import { VRSTE } from "../../../lib/zadaci/vrste";
+import { autorFiltar } from "../../../lib/admin/vlasnistvo";
 
+// Tuđa bilježnica (za logopeda) je 404 za prikaz i sve akcije; izbornik nudi samo svoje zadatke (odluka 8).
+const autor = autorFiltar(Astro.locals.admin!);
 const id = Number(Astro.params.id);
-let b = await poId(id);
+let b = await poId(id, autor);
 if (!b) return new Response("Nema te bilježnice", { status: 404 });
 
 let poruka = "";
@@ -39,7 +42,7 @@ if (Astro.request.method === "POST") {
     };
     greska = (await provjeriPolja(x, id)) ?? "";
     if (!greska) {
-      await spremi(id, Astro.locals.admin!.email, x);
+      await spremi(id, Astro.locals.admin!.email, x, autor);
       return Astro.redirect(`/admin/biljeznice/${id}?spremljeno=1`, 303);
     }
   }
@@ -51,7 +54,7 @@ if (zvukova !== null) poruka = Number(zvukova) ? `U red izgovora dodano ${zvukov
 if (Astro.url.searchParams.has("spremljeno")) poruka = "Spremljeno.";
 if (Astro.url.searchParams.has("nova")) poruka = "Bilježnica je napravljena. Dodaj joj zadatke ispod i spremi.";
 
-const [zadaci, stanje, svi, zvuci] = await Promise.all([zadaciBiljeznice(id), stanjeSlika(b), sviZadaci(), tekstoviBiljeznice(b).then(stanjeZvukova)]);
+const [zadaci, stanje, svi, zvuci] = await Promise.all([zadaciBiljeznice(id), stanjeSlika(b), sviZadaci(autor), tekstoviBiljeznice(b).then(stanjeZvukova)]);
 const zvukaOdobreno = zvuci.filter((z) => z.odobren).length;
 const zvukaBez = zvuci.filter((z) => !z.odobren && !z.kandidata && !z.u_redu && !z.bez_ponavljanja).length;
 const ukljuceni = new Set(zadaci.map((z) => z.id));

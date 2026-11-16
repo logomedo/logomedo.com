@@ -7,8 +7,10 @@ import { zadatak as nadji } from "../../../../lib/zadaci/baza";
 import { normaliziraj, VRSTE } from "../../../../lib/zadaci/vrste";
 import { rijeciIPozadine } from "../../../../lib/biljeznice";
 import { jeTema } from "../../../../lib/teme";
+import { autorFiltar } from "../../../../lib/admin/vlasnistvo";
 
-const z = await nadji(Number(Astro.params.id));
+// Tuđi zadatak (za logopeda) je 404, i za GET i za POST nacrta (odluka 8).
+const z = await nadji(Number(Astro.params.id), autorFiltar(Astro.locals.admin!));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
 let { naslov, uputa, sadrzaj } = z;
 if (Astro.request.method === "POST") {

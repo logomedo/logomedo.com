@@ -2,6 +2,7 @@
 # e2e pozivnice (docs/rbac, S2), samo lokalno. Pretpostavlja `npm run dev` na $BASE (astro dev, rpID localhost).
 # Tijek: superadmin (sesija upisana u lokalni D1) izda pozivnicu → browser s virtualnim WebAuthn
 # autentifikatorom (CDP, playwright-cli) otvori link → passkey → /admin → odjava → prijava passkeyem →
+# (S3) logoped: administracija 403, tuđi zadatak 404, vlastiti se sprema →
 # superadmin deaktivira → sljedeći zahtjev logopeda ide na prijavu, a njegovih sesija više nema.
 # Superadmin je prvi e-mail iz ADMIN_EMAILS u .dev.vars (ne ispisuje se). Logoped je e2e-<vrijeme>@primjer.hr.
 set -euo pipefail
@@ -81,6 +82,44 @@ ok "poziv.iskoristen u aktivnosti, sesija $M"
 STATUS=$(curl -s -o /dev/null -w '%{http_code}' -b "$KOLACIC=$LT" "$BASE/admin/passkeys")
 [ "$STATUS" = 200 ] || pao "logoped /admin/passkeys: $STATUS"
 ok "logoped vidi /admin/passkeys"
+
+# 3b. Ovlasti logopeda (S3): administracija 403, tuđi zadatak 404, vlastiti se sprema.
+LO=(-s -H "Origin: $BASE" -b "$KOLACIC=$LT")
+kod() { curl -s -o "$TMP/odg" -w '%{http_code}' "$@"; }
+for P in /admin/prompt /admin/red /admin/korisnici /admin/zvukovi/glasovi /admin/app/prijava '/admin%2Fprompt' /ADMIN/Prompt ; do
+  S=$(kod -b "$KOLACIC=$LT" "$BASE$P")
+  [ "$S" = 403 ] && grep -q "Natrag na katalog" "$TMP/odg" || pao "logoped GET $P: $S"  # stranica kroz rewrite, ne zamjenski HTML
+done
+S=$(kod -b "$KOLACIC=$LT" "$BASE//admin//red"); [ "$S" = 200 ] && pao "logoped //admin//red: 200"  # astro dev daje 404
+ok "logoped: administracija 403 (stranica „Nemaš pristup”)"
+for P in /admin/api/zvuk-proba /admin/api/app-kod /admin/korisnici; do
+  S=$(kod "${LO[@]}" -H 'content-type: application/json' --data '{}' "$BASE$P")
+  [ "$S" = 403 ] && grep -q forbidden "$TMP/odg" || pao "logoped POST $P: $S"
+done
+ok "logoped: POST na administraciju 403 JSON"
+S=$(kod -b "$KOLACIC=$LT" "$BASE/admin/zvukovi"); [ "$S" = 200 ] || pao "logoped /admin/zvukovi: $S"
+S=$(kod -b "$KOLACIC=$T" "$BASE/admin/prompt"); [ "$S" = 200 ] || pao "superadmin /admin/prompt: $S"
+ok "logoped /admin/zvukovi 200, superadmin /admin/prompt 200"
+
+novi_zadatak() {  # $1 = kolačić; ispisuje id iz 303 Location
+  curl -s -o /dev/null -w '%{redirect_url}' -H "Origin: $BASE" -b "$KOLACIC=$1" --data-urlencode vrsta=odabir "$BASE/admin/api/zadatak" | sed -n 's#.*/admin/zadaci/\([0-9]*\).*#\1#p'
+}
+TUDJI=$(novi_zadatak "$T"); [ -n "$TUDJI" ] || pao "superadmin nije napravio zadatak"
+MOJ=$(novi_zadatak "$LT"); [ -n "$MOJ" ] || pao "logoped nije napravio zadatak"
+for P in "/admin/zadaci/$TUDJI" "/admin/zadaci/$TUDJI/dijete"; do
+  S=$(kod -b "$KOLACIC=$LT" "$BASE$P"); [ "$S" = 404 ] || pao "logoped GET $P: $S"
+done
+TIJELO='{"naslov":"E2E svoj","uputa":"","podrucje_id":null,"stil":"","sadrzaj":{}}'
+S=$(kod "${LO[@]}" -H 'content-type: application/json' --data "$TIJELO" "$BASE/admin/api/zadatak/$TUDJI"); [ "$S" = 404 ] || pao "logoped sprema tuđi: $S"
+S=$(kod "${LO[@]}" --data-urlencode akcija=obrisi "$BASE/admin/api/zadatak/$TUDJI"); [ "$S" = 404 ] || pao "logoped briše tuđi: $S"
+S=$(kod -b "$KOLACIC=$LT" "$BASE/admin/zadaci"); grep -q "/admin/zadaci/$TUDJI\"" "$TMP/odg" && pao "tuđi zadatak na logopedovom popisu"
+ok "tuđi zadatak $TUDJI: 404 (otvaranje, dijete, spremanje, brisanje), nije na popisu"
+S=$(kod "${LO[@]}" -H 'content-type: application/json' --data "$TIJELO" "$BASE/admin/api/zadatak/$MOJ"); [ "$S" = 200 ] || pao "logoped sprema svoj: $S"
+N=$(d1 "SELECT COUNT(*) AS n FROM zadaci WHERE id=$MOJ AND naslov='E2E svoj'" | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$')
+[ "$N" = 1 ] || pao "vlastiti zadatak nije spremljen"
+S=$(kod -b "$KOLACIC=$T" "$BASE/admin/zadaci/$MOJ"); [ "$S" = 200 ] || pao "superadmin ne vidi logopedov zadatak: $S"
+ok "vlastiti zadatak $MOJ spremljen (200), superadmin ga vidi"
+d1 "UPDATE zadaci SET obrisan_at=datetime('now') WHERE id IN ($TUDJI,$MOJ)" >/dev/null
 
 # 4. Superadmin deaktivira; logopedov sljedeći zahtjev ide na prijavu.
 ID=$(d1 "SELECT id FROM korisnici WHERE email='$LOGOPED' AND uloga='logoped' AND aktivan=1" | grep -o '"id": *[0-9]*' | grep -o '[0-9]*$')
