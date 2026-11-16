@@ -2,12 +2,15 @@
 // omm.domovina.ai i pay.domovina.ai). /api/runner/*: lokalni runner s bearer tokenom.
 // Razlika od omm: uloge (docs/rbac/). Sesija nosi ulogu; rute iz lib/admin/rute.ts smije samo
 // superadmin (logoped: 403), a vlasništvo zadataka, bilježnica i aktivnosti provjerava lib/admin/vlasnistvo.ts.
+// Druga razlika: `KvotaPrekoracena` (AI kvota, lib/kvota.ts) iz stranice ili rute hvata se ovdje (`sKvotom`):
+// JSON 429 za API i fetch, inače 303 natrag s `?kvota=` (prikazuje AdminOkvir).
 import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSession } from "./lib/admin/sesija";
 import { rutaSamoSuperadmin } from "./lib/admin/rute";
 import { runnerOk } from "./lib/runner-auth";
 import { appSesija } from "./lib/app/sesija";
+import { KvotaPrekoracena, odgovorNaKvotu } from "./lib/kvota";
 
 const JAVNO = new Set([
   "/admin/login",
@@ -69,8 +72,18 @@ export const onRequest = defineMiddleware(async ({ request, url, locals }, next)
     }
   }
 
-  return zastiti(await next(), true);
+  return zastiti(await sKvotom(request, url, next), true);
 });
+
+/** Prekoračena AI kvota je odbijen zahtjev (odluka 10), ne 500: ništa nije upisano. */
+async function sKvotom(request: Request, url: URL, next: () => Promise<Response>): Promise<Response> {
+  try {
+    return await next();
+  } catch (e) {
+    if (e instanceof KvotaPrekoracena) return odgovorNaKvotu(e, request, url);
+    throw e;
+  }
+}
 
 /**
  * Stranica „Nemaš pristup” (src/pages/admin/nemas-pristup.astro) kroz rewrite, sa sesijom u `locals`.
@@ -104,7 +117,7 @@ async function apiV1(request: Request, url: URL, locals: App.Locals, next: () =>
     if (url.pathname.startsWith("/api/v1/admin/") && s.uloga !== "admin") return json({ error: "forbidden" }, 403);
     locals.app = s;
   }
-  const odgovor = await next();
+  const odgovor = await sKvotom(request, url, next);
   const h = new Headers(odgovor.headers);
   h.set("x-content-type-options", "nosniff");
   h.set("x-robots-tag", "noindex");

@@ -4,6 +4,7 @@ import { env } from "cloudflare:workers";
 import { redPauziran } from "./postavke";
 import { stvori, ucitajSliku, type Orijentacija } from "./pozadine";
 import { zazvoni } from "./runner-zvono";
+import { batchSKvotom, provjeri } from "./kvota";
 
 const DB = () => env.DB;
 const ZASTARIO_MIN = 15;
@@ -59,7 +60,9 @@ export async function zadnjiPoslovi(): Promise<Map<number, PosaoPozadine>> {
   return new Map(results.map((p) => [p.pozadina_id, p]));
 }
 
-/** U red: generiraj orijentaciju koja nedostaje iz one koja postoji. */
+const NIJE_U_REDU = "NOT EXISTS (SELECT 1 FROM pozadina_generiranja WHERE pozadina_id = ? AND status IN ('ceka', 'radi'))";
+
+/** U red: generiraj orijentaciju koja nedostaje iz one koja postoji. Kvota: lib/kvota.ts. */
 export async function zatrazi(pozadinaId: number, email: string): Promise<{ ok: true; u: Orijentacija } | { greska: string }> {
   const { results: slike } = await DB().prepare(
     `SELECT s.orijentacija, s.r2_kljuc, s.sirina, s.visina, p.naziv, p.opis FROM pozadina_slike s
@@ -69,11 +72,13 @@ export async function zatrazi(pozadinaId: number, email: string): Promise<{ ok: 
   const iz = slike[0];
   const u: Orijentacija = iz.orijentacija === "uspravno" ? "vodoravno" : "uspravno";
   const aspekt = ciljniAspekt(iz.sirina, iz.visina);
-  const r = await DB().prepare(
-    `INSERT INTO pozadina_generiranja (pozadina_id, iz, u, izvor_kljuc, aspekt, prompt, zatrazio)
-     SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
-     WHERE NOT EXISTS (SELECT 1 FROM pozadina_generiranja WHERE pozadina_id = ?1 AND status IN ('ceka', 'radi'))`,
-  ).bind(pozadinaId, iz.orijentacija, u, iz.r2_kljuc, aspekt, promptZa(u, aspekt, iz.naziv, iz.opis), email).run();
+  // Kvota s istim uvjetom kao upis: „već u redu” ne naplaćuje.
+  const [r] = await batchSKvotom(email, "slike", { sql: `SELECT COUNT(*) WHERE ${NIJE_U_REDU}`, args: [pozadinaId] }, `situacija ${pozadinaId}`, [
+    DB().prepare(
+      `INSERT INTO pozadina_generiranja (pozadina_id, iz, u, izvor_kljuc, aspekt, prompt, zatrazio)
+       SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${NIJE_U_REDU}`,
+    ).bind(pozadinaId, iz.orijentacija, u, iz.r2_kljuc, aspekt, promptZa(u, aspekt, iz.naziv, iz.opis), email, pozadinaId),
+  ]);
   if (!r.meta.changes) return { greska: "Generiranje je već u redu." };
   await zazvoni();
   return { ok: true, u };
@@ -93,6 +98,8 @@ export async function dupliciraj(pozadinaId: number, o: Orijentacija, uputa: str
   uputa = uputa.trim().slice(0, 1000);
   const iz = slike.find((s) => s.orijentacija === o);
   if (uputa && !iz) return { greska: `Situacija nema ${o === "uspravno" ? "uspravnu" : "vodoravnu"} sliku.` };
+  // Kopija s uputom je posao: bez kredita se ne stvara ni kopija (odluka 10).
+  if (uputa) await provjeri(email, "slike", 1);
   const naziv = `${p.naziv.slice(0, 110)} (kopija)`;
   const id = await stvori(naziv, p.opis ?? "", autorId);
   if (!uputa) {
@@ -103,20 +110,22 @@ export async function dupliciraj(pozadinaId: number, o: Orijentacija, uputa: str
     return { id, generira: false };
   }
   const aspekt = najbliziAspekt(iz!.sirina, iz!.visina);
-  await DB().prepare(
+  await batchSKvotom(email, "slike", 1, `situacija ${id}`, [DB().prepare(
     "INSERT INTO pozadina_generiranja (pozadina_id, iz, u, izvor_kljuc, aspekt, prompt, zatrazio) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  ).bind(id, o, o, iz!.r2_kljuc, aspekt, promptIzmjene(o, aspekt, uputa, p.naziv, p.opis), email).run();
+  ).bind(id, o, o, iz!.r2_kljuc, aspekt, promptIzmjene(o, aspekt, uputa, p.naziv, p.opis), email)]);
   await zazvoni();
   return { id, generira: true };
 }
 
 /** Ponovi zadnji neuspjeli posao situacije (isti predložak i prompt). */
 export async function ponovi(pozadinaId: number, email: string): Promise<boolean> {
-  const r = await DB().prepare(
-    `INSERT INTO pozadina_generiranja (pozadina_id, iz, u, izvor_kljuc, aspekt, prompt, zatrazio)
-     SELECT pozadina_id, iz, u, izvor_kljuc, aspekt, prompt, ?2 FROM pozadina_generiranja
-     WHERE id = (SELECT MAX(id) FROM pozadina_generiranja WHERE pozadina_id = ?1) AND status = 'greska'`,
-  ).bind(pozadinaId, email).run();
+  const zadnjiNeuspio = "FROM pozadina_generiranja WHERE id = (SELECT MAX(id) FROM pozadina_generiranja WHERE pozadina_id = ?) AND status = 'greska'";
+  const [r] = await batchSKvotom(email, "slike", { sql: `SELECT COUNT(*) ${zadnjiNeuspio}`, args: [pozadinaId] }, `situacija ${pozadinaId}`, [
+    DB().prepare(
+      `INSERT INTO pozadina_generiranja (pozadina_id, iz, u, izvor_kljuc, aspekt, prompt, zatrazio)
+       SELECT pozadina_id, iz, u, izvor_kljuc, aspekt, prompt, ? ${zadnjiNeuspio}`,
+    ).bind(email, pozadinaId),
+  ]);
   if (r.meta.changes) await zazvoni();
   return !!r.meta.changes;
 }

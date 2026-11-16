@@ -155,7 +155,7 @@ const results = await kandidati(glas);
     if (r.status === 401) throw new Error("Sesija je istekla, prijavi se ponovno.");
     const j: any = await r.json().catch(() => ({}));
     if (r.status === 409 && j.vec) return { vec: j.vec as Odluka };
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) throw new Error(j.poruka ?? `HTTP ${r.status}`);   // 429: AI kvota (lib/kvota.ts)
     return { vec: null, generira: !!j.generira };
   }
 

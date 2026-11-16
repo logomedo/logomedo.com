@@ -14,6 +14,8 @@ interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlo
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
+/** Odbijen zahtjev zbog AI kvote (middleware, lib/kvota.ts: 303 natrag s `?kvota=`). */
+const kvota = admin ? Astro.url.searchParams.get("kvota")?.slice(0, 300) : null;
 
 let brojevi = { kandidata: 0, uRedu: 0, gresaka: 0, zvukova: 0 };
 if (admin) {
@@ -113,7 +115,10 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
         </div>
       </aside>
     )}
-    <main class:list={["sadrzaj", { puno }]}><slot /></main>
+    <main class:list={["sadrzaj", { puno }]}>
+      {kvota && <p class="kvota-poruka" role="alert">{kvota}</p>}
+      <slot />
+    </main>
     <script>
       // Tražilica riječi: indeks se dohvati jednom (na prvi fokus), filtrira se lokalno.
       // Bez dijakritika (c = č/ć, dj = đ), prvo riječi koje počinju upitom.
@@ -227,6 +232,7 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
         color: var(--blijedo); cursor: pointer; }
       .ikona-gumb:hover { background: var(--povrsina-2); color: var(--tinta); }
       .sadrzaj { padding: 40px clamp(20px, 4vw, 56px) 80px; max-width: 1360px; width: 100%; }
+      .kvota-poruka { margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; background: var(--greska-blago); color: var(--greska); font-weight: 600; }
       .sadrzaj.puno { max-width: none; padding: 0; }
 
       @media (max-width: 860px) {

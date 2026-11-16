@@ -9,6 +9,7 @@ import { aktivnaSistemska, postavka, redPauziran } from "./postavke";
 import { blokIspravaka, spojiPrompt, type Ispravak } from "./prompt";
 import { pojave, slug as uSlug } from "./fonemi";
 import { dimenzije } from "./dimenzije";
+import { batchSKvotom, provjeri } from "./kvota";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
@@ -24,14 +25,19 @@ export function sloziPrompt(stil: Stil, r: { rijec: string; opis_za_sliku: strin
   return ispravci ? `${glavni}\n\n${ispravci}` : glavni;
 }
 
-/** Dodaje posao za svaku riječ koja ga već nema u redu. Vraća broj dodanih. `grupa`: dio veće radnje u dnevniku. */
+/**
+ * Dodaje posao za svaku riječ koja ga već nema u redu. Vraća broj dodanih. `grupa`: dio veće radnje u dnevniku.
+ * Cijeli zahtjev je jedan batch s jednom naredbom kvote (lib/kvota.ts) za ukupni broj: prekoračenje
+ * odbija sve (`KvotaPrekoracena`), ne samo dio.
+ */
 export async function dodajURed(stil: Stil, rijecIds: number[], email: string, napomena?: string, grupa = novaGrupa()): Promise<number> {
+  rijecIds = [...new Set(rijecIds)];
   if (!rijecIds.length) return 0;
   const db = env.DB;
-  let dodano = 0;
+  const rijeci: { id: number; rijec: string; opis_za_sliku: string | null; razlozi: string; odbijena: number }[] = [];
   for (let i = 0; i < rijecIds.length; i += 50) {
     const dio = rijecIds.slice(i, i + 50);
-    const { results: rijeci } = await db.prepare(
+    const { results } = await db.prepare(
       `SELECT r.id, r.rijec, r.opis_za_sliku,
          (SELECT json_group_array(json_object('ne', x.razlog, 'da', x.dorada)) FROM (SELECT s.razlog, s.dorada FROM slike s
            WHERE s.rijec_id = r.id AND s.stil_id = ?1 AND s.status = 'odbijena' AND (s.razlog IS NOT NULL OR s.dorada IS NOT NULL)
@@ -40,22 +46,33 @@ export async function dodajURed(stil: Stil, rijecIds: number[], email: string, n
        FROM rijeci r WHERE r.id IN (${dio.map((_, j) => `?${j + 2}`).join(",")})
          AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = r.id AND q.stil_id = ?1 AND q.status IN ('ceka','radi'))`,
     ).bind(stil.id, ...dio).all<{ id: number; rijec: string; opis_za_sliku: string | null; razlozi: string; odbijena: number }>();
-    if (!rijeci.length) continue;
-    await db.batch([
-      ...rijeci.map((r) =>
-        // Riječ s odbijenom slikom u ovom stilu ide ispred backfilla (prioritet 1, migracija 0015).
-        db.prepare(`INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija, prioritet)
-                      VALUES (?1, ?2, ?3, ?4, (SELECT predlozak_verzija FROM stilovi WHERE id = ?2), ?5)`)
-          .bind(r.id, stil.id, sloziPrompt(stil, r, JSON.parse(r.razlozi ?? "[]").slice(-3), napomena), email,
-            r.odbijena ? 1 : 0)),
-      // Batch je transakcija, pa su zadnjih n poslova upravo ovi.
-      zapisNastalih({ tko: email, radnja: "generiranje.zatrazeno", tablica: "generiranja", grupa },
-        { sql: "x.id IN (SELECT id FROM generiranja ORDER BY id DESC LIMIT ?)", args: [rijeci.length] }),
-    ]);
-    dodano += rijeci.length;
+    rijeci.push(...results);
   }
-  if (dodano) await zazvoni();
-  return dodano;
+  if (!rijeci.length) return 0;
+  // Upisi su bezuvjetni, pa je naplaćeno točno onoliko koliko je upisano.
+  await batchSKvotom(email, "slike", rijeci.length, rijeci.length === 1 ? `riječ ${rijeci[0].id}` : `${rijeci.length} riječi`, [
+    ...rijeci.map((r) =>
+      // Riječ s odbijenom slikom u ovom stilu ide ispred backfilla (prioritet 1, migracija 0015).
+      db.prepare(`INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija, prioritet)
+                    VALUES (?1, ?2, ?3, ?4, (SELECT predlozak_verzija FROM stilovi WHERE id = ?2), ?5)`)
+        .bind(r.id, stil.id, sloziPrompt(stil, r, JSON.parse(r.razlozi ?? "[]").slice(-3), napomena), email,
+          r.odbijena ? 1 : 0)),
+    // Batch je transakcija, pa su zadnjih n poslova upravo ovi.
+    zapisNastalih({ tko: email, radnja: "generiranje.zatrazeno", tablica: "generiranja", grupa },
+      { sql: "x.id IN (SELECT id FROM generiranja ORDER BY id DESC LIMIT ?)", args: [rijeci.length] }),
+  ]);
+  await zazvoni();
+  return rijeci.length;
+}
+
+/** /admin/red „Pokušaj ponovo”: neuspjeli poslovi natrag u red (novi Vertex pozivi), naplaćeno onome tko klikne. */
+export async function neuspjeleURed(email: string): Promise<number> {
+  const [r] = await batchSKvotom(email, "slike", { sql: "SELECT COUNT(*) FROM generiranja WHERE status = 'greska'", args: [] }, "ponovo neuspjeli poslovi", [
+    env.DB.prepare("UPDATE generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska'"),
+  ]);
+  const n = r?.meta.changes ?? 0;
+  if (n) await zazvoni();
+  return n;
 }
 
 /** Za posao `x` već postoji odobrena slika ili kandidat istog stila, nastao nakon posla. */
@@ -273,6 +290,8 @@ export interface Dorada {
  * stvara novog, i tako u krug (astronaut, 31. 10.).
  */
 export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" | "vrati", email: string, razlog?: string, ponovi = false, d: Dorada = {}) {
+  // Kvota unaprijed: bez kredita se ne odbija ni slika (odluka 10: zahtjev se odbija cijeli).
+  if (akcija === "odbij" && ponovi && (await trebaNova(slikaId))) await provjeri(email, "slike", 1);
   const grupa = novaGrupa();
   const ishod = await odluci(slikaId, akcija, email, razlog, grupa, akcija === "odbij" ? d.dorada : undefined);
   let generira = false;
@@ -281,6 +300,15 @@ export async function odluciIPonovi(slikaId: number, akcija: "odobri" | "odbij" 
     if (ponovi) generira = await ponoviZa(slikaId, email, grupa);
   }
   return { ...ishod, generira };
+}
+
+/** Hoće li `ponoviZa` dodati posao kad se ova slika makne (nema druge odobrene, kandidata ni posla). */
+async function trebaNova(slikaId: number): Promise<boolean> {
+  return !!(await env.DB.prepare(
+    `SELECT 1 FROM slike s WHERE s.id = ?
+       AND NOT EXISTS (SELECT 1 FROM slike o WHERE o.rijec_id = s.rijec_id AND o.stil_id = s.stil_id AND o.id != s.id AND o.status IN ('odobrena', 'kandidat'))
+       AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = s.rijec_id AND q.stil_id = s.stil_id AND q.status IN ('ceka', 'radi'))`,
+  ).bind(slikaId).first());
 }
 
 async function ponoviZa(slikaId: number, email: string, grupa: ReturnType<typeof novaGrupa>) {
@@ -331,6 +359,7 @@ export async function premjesti(slikaId: number, cilj: string, email: string, o:
   if (!s) return { ok: false as const, nema: true };
   if (s.status !== "kandidat") return { ok: false as const, vec: { status: s.status, pregledao: s.pregledao } };
   if (rijec === s.izvorna) return { ok: false as const, greska: "To je ista riječ." };
+  if (o.ponovi && (await trebaNova(s.id))) await provjeri(email, "slike", 1);
 
   const grupa = novaGrupa();
   let r = await db.prepare("SELECT id, slug, aktivna FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string; aktivna: number }>();

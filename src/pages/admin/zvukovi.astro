@@ -12,6 +12,7 @@ import {
   brojeviIzgovora, greskeIzgovora, greskeURed, odbijZvukove, odobriZvuk, ponoviZvuk, posaljiZaglavljene, skupineIzgovora,
   type TabIzgovora,
 } from "../../lib/zvukovi";
+import { KvotaPrekoracena } from "../../lib/kvota";
 
 const email = Astro.locals.admin!.email;
 const TABOVI: { kod: TabIzgovora; tekst: string }[] = [
@@ -27,24 +28,30 @@ if (Astro.request.method === "POST") {
   const a = String(f.get("akcija") ?? "");
   const ajax = Astro.request.headers.get("x-ajax") === "1";
   let ok = true, makni = false, poruka = "";
-  if (a === "odobri") {
-    ok = await odobriZvuk(Number(f.get("id")), email);
-    makni = true;
-    if (!ok) poruka = "Ta snimka više ne čeka (netko je bio brži).";
+  // Kvota (lib/kvota.ts): prekoračenje odbija cijelu radnju; poruka ide kroz isti put kao ostale.
+  try {
+    if (a === "odobri") {
+      ok = await odobriZvuk(Number(f.get("id")), email);
+      makni = true;
+      if (!ok) poruka = "Ta snimka više ne čeka (netko je bio brži).";
+    }
+    if (a === "odbij" || a === "odbij-samo") {
+      const ids = String(f.get("ids") ?? "").split(",").map(Number).filter(Boolean);
+      ok = (await odbijZvukove(ids, email, { razlog: String(f.get("razlog") ?? ""), izgovor: String(f.get("izgovor") ?? ""), ponovo: a === "odbij" })) > 0;
+      makni = a === "odbij-samo";
+      if (!ok) poruka = "Te snimke više ne čekaju (netko je bio brži).";
+    }
+    if (a === "ponovi") {
+      ok = await ponoviZvuk(String(f.get("kljuc") ?? ""), email, String(f.get("izgovor") ?? ""));
+      makni = ok && tab === "odbijeno";
+      poruka = ok ? "Snimaju se tri nove varijante. Čekaju te u tabu Čeka." : "Taj tekst već ima snimku koja čeka ili se snima.";
+    }
+    if (a === "zaglavljeni") poruka = `Ponovno poslano u red: ${await posaljiZaglavljene()}.`;
+    if (a === "greske") poruka = `Ponovno poslano u red: ${await greskeURed(email)}.`;
+  } catch (e) {
+    if (!(e instanceof KvotaPrekoracena)) throw e;
+    ok = false; makni = false; poruka = e.poruka;
   }
-  if (a === "odbij" || a === "odbij-samo") {
-    const ids = String(f.get("ids") ?? "").split(",").map(Number).filter(Boolean);
-    ok = (await odbijZvukove(ids, email, { razlog: String(f.get("razlog") ?? ""), izgovor: String(f.get("izgovor") ?? ""), ponovo: a === "odbij" })) > 0;
-    makni = a === "odbij-samo";
-    if (!ok) poruka = "Te snimke više ne čekaju (netko je bio brži).";
-  }
-  if (a === "ponovi") {
-    ok = await ponoviZvuk(String(f.get("kljuc") ?? ""), email, String(f.get("izgovor") ?? ""));
-    makni = ok && tab === "odbijeno";
-    poruka = ok ? "Snimaju se tri nove varijante. Čekaju te u tabu Čeka." : "Taj tekst već ima snimku koja čeka ili se snima.";
-  }
-  if (a === "zaglavljeni") poruka = `Ponovno poslano u red: ${await posaljiZaglavljene()}.`;
-  if (a === "greske") poruka = `Ponovno poslano u red: ${await greskeURed()}.`;
   if (ajax) return Response.json({ ok, makni, poruka, brojevi: await brojeviIzgovora() });
   const u = new URL(Astro.url);
   if (poruka) u.searchParams.set("p", poruka);

@@ -6,6 +6,7 @@
 import { env } from "cloudflare:workers";
 import { uskladiJavno } from "./generiranje";
 import { zazvoni } from "./runner-zvono";
+import { batchSKvotom, NAPLATA, type Kolicina } from "./kvota";
 import { jeVrativo, type StavkaPrikaz } from "./aktivnost-prikaz";
 
 export type Tablica = "rijeci" | "slike" | "generiranja" | "biljeznice" | "korisnici" | "pozivi";
@@ -163,7 +164,7 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string, samo: st
 
   // Zapisi o korisnicima i pozivnicama se ne vraćaju (pozivnica se ne „odtroši”, deaktivacija ne vraća sesije).
   redovi = redovi.filter((r) => jeVrativo(r.tablica));
-  const naredbe: D1PreparedStatement[] = [];
+  const naredbe: (D1PreparedStatement | typeof NAPLATA)[] = [];
   const slike: number[] = [];
   for (const r of redovi.filter((r) => r.tablica !== "generiranja")) {
     const s = cilj(r);
@@ -217,17 +218,23 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string, samo: st
       { sql: "x.status = 'ceka' AND x.id IN (SELECT value FROM json_each(?))", args: [JSON.stringify(makni)] },
       [db.prepare("DELETE FROM generiranja WHERE status = 'ceka' AND id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(makni))]));
   }
+  // Ponovni posao je novi Vertex poziv: kvota (lib/kvota.ts) za točno one retke koje INSERT upiše,
+  // izračunata na mjestu NAPLATA, tj. nakon brisanja iz reda u istom batchu.
+  let naplata: Kolicina = 0;
   if (vratiURed.length) {
     const stupac = smjer === "ponisti" ? "prije" : "poslije";
     const najvisi = (await db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM generiranja").first<{ n: number }>())!.n;
+    const izvori = `FROM aktivnost a WHERE a.id IN (SELECT value FROM json_each(?))
+           AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = json_extract(a.${stupac}, '$.rijec_id')
+             AND q.stil_id = json_extract(a.${stupac}, '$.stil_id') AND q.status IN ('ceka', 'radi'))`;
+    naplata = { sql: `SELECT COUNT(*) ${izvori}`, args: [JSON.stringify(vratiURed)] };
     naredbe.push(
+      NAPLATA,
       db.prepare(
         `INSERT INTO generiranja (rijec_id, stil_id, prompt, zatrazio, predlozak_verzija)
-         SELECT json_extract(a.${stupac}, '$.rijec_id'), json_extract(a.${stupac}, '$.stil_id'), json_extract(a.${stupac}, '$.prompt'), ?1,
+         SELECT json_extract(a.${stupac}, '$.rijec_id'), json_extract(a.${stupac}, '$.stil_id'), json_extract(a.${stupac}, '$.prompt'), ?,
            json_extract(a.${stupac}, '$.predlozak_verzija')
-         FROM aktivnost a WHERE a.id IN (SELECT value FROM json_each(?2))
-           AND NOT EXISTS (SELECT 1 FROM generiranja q WHERE q.rijec_id = json_extract(a.${stupac}, '$.rijec_id')
-             AND q.stil_id = json_extract(a.${stupac}, '$.stil_id') AND q.status IN ('ceka', 'radi'))`,
+         ${izvori}`,
       ).bind(tko, JSON.stringify(vratiURed)),
       zapisNastalih(z("generiranja", "generiranje.zatrazeno"), { sql: "x.id > ? AND x.zatrazio = ? AND x.status = 'ceka'", args: [najvisi, tko] }),
     );
@@ -235,7 +242,7 @@ export async function vrati(zapisId: number, smjer: Smjer, tko: string, samo: st
 
   if (!naredbe.length) return { ok: false, greska: "Ovdje se nema što vratiti." };
   try {
-    await db.batch(naredbe);
+    await batchSKvotom(tko, "slike", naplata, `vraćeno iz aktivnosti ${zapisId}`, naredbe);
   } catch (e) {
     const poruka = String((e as Error).message ?? e);
     if (/UNIQUE/i.test(poruka)) return { ok: false, greska: "Ne može: riječ ili adresa s tim imenom već postoji (možda je u međuvremenu dodana)." };

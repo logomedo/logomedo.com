@@ -7,6 +7,7 @@ import { ekrani, uputaZa, type ZadatakZaIgru } from "./biljeznice-ekrani";
 import { UPUTE_PRVOG_GLASA } from "./zadaci/vrste";
 import { izgovorZa, kljucZvuka, naciniZa, prolazi, slicnost } from "./zvukovi-tekst";
 import { javniUrl, ocistiCache } from "./generiranje";
+import { batchSKvotom, type Kolicina } from "./kvota";
 
 /** TTS poziva po poslu: STT razlika = još jedan pokušaj, zadnji ide čovjeku s oznakom „razlika”. */
 export const MAX_POKUSAJA = 3;
@@ -65,19 +66,30 @@ export async function stanjeZvukova(kljucevi: string[]): Promise<StanjeZvuka[]> 
 
 // ── Red ──────────────────────────────────────────────────────────────────────────────────────
 
-/** Posao za svaki ključ bez odobrene snimke, kandidata, posla u redu i „samo odbij”. Vraća broj dodanih. */
+/**
+ * Posao za svaki ključ bez odobrene snimke, kandidata, posla u redu i „samo odbij”. Vraća broj dodanih.
+ * Jedan batch s kvotom (lib/kvota.ts) za sve; u Queue idu tek nakon uspješnog batcha.
+ */
 export async function dodajZvukove(kljucevi: string[], email: string): Promise<number> {
   const trebaju = (await stanjeZvukova(kljucevi.map(kljucZvuka))).filter((s) => !s.odobren && !s.kandidata && !s.u_redu && !s.bez_ponavljanja);
-  const ids: number[] = [];
-  for (const s of trebaju) ids.push(await novPosao(s.kljuc, izgovorZa(s.kljuc), email));
+  if (!trebaju.length) return 0;
+  const ids = await upisiPoslove(email, trebaju.length, trebaju.length === 1 ? `izgovor ${trebaju[0].kljuc}` : `${trebaju.length} izgovora`,
+    trebaju.map((s) => novPosao(s.kljuc, izgovorZa(s.kljuc), email)));
   await posalji(ids);
   return ids.length;
 }
 
-async function novPosao(kljuc: string, izgovor: string, email: string, varijante = false): Promise<number> {
-  const r = await env.DB.prepare("INSERT INTO zvuk_generiranja (kljuc, izgovor, zatrazio, varijante) VALUES (?, ?, ?, ?) RETURNING id")
-    .bind(kljuc, izgovor, email, varijante ? 1 : 0).first<{ id: number }>();
-  return r!.id;
+/** INSERT posla (bezuvjetan, ili uz `uvjet` nad ključem: tada `kolicina` mora brojati isti uvjet). */
+function novPosao(kljuc: string, izgovor: string, email: string, varijante = false, uvjet?: { sql: string; args: unknown[] }): D1PreparedStatement {
+  return env.DB.prepare(
+    `INSERT INTO zvuk_generiranja (kljuc, izgovor, zatrazio, varijante) SELECT ?, ?, ?, ?${uvjet ? ` WHERE ${uvjet.sql}` : ""} RETURNING id`,
+  ).bind(kljuc, izgovor, email, varijante ? 1 : 0, ...(uvjet?.args ?? []));
+}
+
+/** Batch [kvota, ...upisi]; vraća id-ove upisanih poslova. */
+async function upisiPoslove(email: string, kolicina: Kolicina, izvor: string, upisi: D1PreparedStatement[], prije: D1PreparedStatement[] = []): Promise<number[]> {
+  const rez = await batchSKvotom(email, "zvukovi", kolicina, izvor, [...prije, ...upisi]);
+  return rez.slice(prije.length).flatMap((r) => (r.results as { id: number }[]).map((x) => x.id));
 }
 
 async function posalji(ids: number[]) {
@@ -96,12 +108,18 @@ export async function posaljiZaglavljene(): Promise<number> {
   return results.length;
 }
 
-export async function greskeURed(): Promise<number> {
-  const { results } = await env.DB.prepare(
-    "UPDATE zvuk_generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska' RETURNING id",
-  ).all<{ id: number }>();
-  await posalji(results.map((r) => r.id));
-  return results.length;
+/**
+ * /admin/zvukovi „Pokušaj ponovo”: neuspjeli poslovi natrag u red (`pokusaji = 0`, novi ElevenLabs
+ * pozivi), naplaćeno onome tko klikne, za točno one vraćene.
+ */
+export async function greskeURed(email: string): Promise<number> {
+  const [r] = await batchSKvotom(email, "zvukovi", { sql: "SELECT COUNT(*) FROM zvuk_generiranja WHERE status = 'greska'", args: [] },
+    "ponovo neuspjeli izgovori", [
+      env.DB.prepare("UPDATE zvuk_generiranja SET status = 'ceka', pokusaji = 0, greska = NULL WHERE status = 'greska' RETURNING id"),
+    ]);
+  const ids = (r.results as { id: number }[]).map((x) => x.id);
+  await posalji(ids);
+  return ids.length;
 }
 
 async function hash16(b: ArrayBuffer) {
@@ -281,24 +299,42 @@ export async function odobriZvuk(id: number, email: string): Promise<boolean> {
  */
 export async function odbijZvukove(ids: number[], email: string, o: { razlog?: string; izgovor?: string; ponovo?: boolean } = {}): Promise<number> {
   const db = env.DB;
-  const { results } = await db.prepare(
+  const odbij = db.prepare(
     `UPDATE zvukovi SET status = 'odbijen', razlog = ?, bez_ponavljanja = ?, pregledao = ?, pregledano_at = datetime('now')
      WHERE id IN (SELECT value FROM json_each(?)) AND status = 'kandidat' RETURNING kljuc, izgovor`,
-  ).bind(o.razlog?.trim() || null, o.ponovo === false ? 1 : 0, email, JSON.stringify(ids)).all<{ kljuc: string; izgovor: string }>();
-  if (o.ponovo === false) return results.length;
-  const kljucevi = [...new Map(results.map((r) => [r.kljuc, r.izgovor])).entries()];
-  for (const [kljuc, izgovor] of kljucevi) {
-    const [s] = await stanjeZvukova([kljuc]);
-    if (!s.odobren && !s.kandidata && !s.u_redu) await posalji([await novPosao(kljuc, o.izgovor?.trim() || izgovor, email, true)]);
-  }
-  return results.length;
+  ).bind(o.razlog?.trim() || null, o.ponovo === false ? 1 : 0, email, JSON.stringify(ids));
+  if (o.ponovo === false) return (await odbij.all()).results.length;
+  // Odbijanje i novi poslovi u istom batchu s kvotom: bez kredita se ne odbija ni snimka (odluka 10).
+  // Posao nastaje za tekst koji poslije odbijanja nema ni odobrene, ni kandidata, ni posla; kvota broji
+  // isti uvjet unaprijed (kandidati iz `ids` se tada još ne računaju, jer ih ovaj batch odbija).
+  const { results: kandidati } = await db.prepare(
+    "SELECT kljuc, izgovor FROM zvukovi WHERE id IN (SELECT value FROM json_each(?)) AND status = 'kandidat' ORDER BY id",
+  ).bind(JSON.stringify(ids)).all<{ kljuc: string; izgovor: string }>();
+  const kljucevi = [...new Map(kandidati.map((r) => [r.kljuc, r.izgovor])).entries()];
+  const nema = (k: string) => ({
+    sql: `NOT EXISTS (SELECT 1 FROM zvukovi z WHERE z.kljuc = ? AND (z.status = 'odobren' OR (z.status = 'kandidat' AND z.id NOT IN (SELECT value FROM json_each(?)))))
+      AND NOT EXISTS (SELECT 1 FROM zvuk_generiranja q WHERE q.kljuc = ? AND q.status IN ('ceka', 'radi'))`,
+    args: [k, JSON.stringify(ids), k],
+  });
+  const kolicina = {
+    sql: `SELECT COUNT(*) FROM json_each(?) k WHERE NOT EXISTS (SELECT 1 FROM zvukovi z WHERE z.kljuc = k.value
+        AND (z.status = 'odobren' OR (z.status = 'kandidat' AND z.id NOT IN (SELECT value FROM json_each(?)))))
+      AND NOT EXISTS (SELECT 1 FROM zvuk_generiranja q WHERE q.kljuc = k.value AND q.status IN ('ceka', 'radi'))`,
+    args: [JSON.stringify(kljucevi.map(([k]) => k)), JSON.stringify(ids)],
+  };
+  const rez = await batchSKvotom(email, "zvukovi", kljucevi.length ? kolicina : 0, `odbijeno ${kljucevi.length}`, [
+    odbij,
+    ...kljucevi.map(([kljuc, izgovor]) => novPosao(kljuc, o.izgovor?.trim() || izgovor, email, true, nema(kljuc))),
+  ]);
+  await posalji(rez.slice(1).flatMap((r) => (r.results as { id: number }[]).map((x) => x.id)));
+  return rez[0].results.length;
 }
 
 /** Tekst ponovno (odobren ili odbijen): posao s varijantama. Stara odobrena ostaje dok nova ne bude odobrena. */
 export async function ponoviZvuk(kljuc: string, email: string, izgovor?: string): Promise<boolean> {
   const [s] = await stanjeZvukova([kljuc]);
   if (s.u_redu || s.kandidata) return false;
-  await posalji([await novPosao(kljuc, izgovor?.trim() || izgovorZa(kljuc), email, true)]);
+  await posalji(await upisiPoslove(email, 1, `izgovor ${kljuc}`, [novPosao(kljuc, izgovor?.trim() || izgovorZa(kljuc), email, true)]));
   return true;
 }
 

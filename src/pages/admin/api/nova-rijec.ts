@@ -4,6 +4,7 @@ import { pojave, slug } from "../../../lib/fonemi";
 import { dodajURed } from "../../../lib/generiranje";
 import { stil } from "../../../lib/katalog";
 import { novaGrupa, sZapisom } from "../../../lib/aktivnost";
+import { KvotaPrekoracena, provjeri } from "../../../lib/kvota";
 
 const DOPUSTENO = /^[a-zčćđšž]+(?:[ -][a-zčćđšž]+)*$/;
 
@@ -37,6 +38,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const rima = t("rima", 12)?.replace(/^-/, "").toLocaleUpperCase("hr") ?? null;
 
   // Neaktivna (npr. prije maknuta) se vraća i dobiva nove podatke; inače nova, izvor 'admin'.
+  const stiloviZaRed = [...new Set(f.getAll("generiraj").map(String))];
+  // Kvota unaprijed (lib/kvota.ts): bez kredita se ne dodaje ni riječ, a forma ostaje popunjena.
+  try {
+    await provjeri(locals.admin!.email, "slike", stiloviZaRed.length);
+  } catch (e) {
+    if (e instanceof KvotaPrekoracena) return natrag(e.poruka);
+    throw e;
+  }
+
   // Riječ, glasovi i poslovi u redu su jedna grupa u dnevniku: „Poništi” ih vraća zajedno.
   const email = locals.admin!.email;
   const grupa = novaGrupa();
@@ -55,8 +65,18 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!r) return natrag(`Adresa „${slug(rijec)}” je već zauzeta drugom riječju.`);
 
   let uRed = 0;
-  for (const kod of f.getAll("generiraj").map(String)) {
-    uRed += await dodajURed(await stil(kod), [r.id], email, undefined, grupa).catch(() => 0);
+  let kvota = "";
+  for (const kod of stiloviZaRed) {
+    try {
+      uRed += await dodajURed(await stil(kod), [r.id], email, undefined, grupa);
+    } catch (e) {
+      // Riječ je već spremljena (utrka s drugom potrošnjom): pokaži poruku na njenoj stranici.
+      if (e instanceof KvotaPrekoracena) { kvota = e.poruka; break; }
+      // Nepoznat stil i slično: riječ ostaje, posao ne (kao prije).
+    }
   }
-  return new Response(null, { status: 303, headers: { location: `/admin/rijec/${r.slug}?nova=1${uRed ? `&dodano=${uRed}` : ""}` } });
+  const q = new URLSearchParams({ nova: "1" });
+  if (uRed) q.set("dodano", String(uRed));
+  if (kvota) q.set("kvota", kvota);
+  return new Response(null, { status: 303, headers: { location: `/admin/rijec/${r.slug}?${q}` } });
 };
