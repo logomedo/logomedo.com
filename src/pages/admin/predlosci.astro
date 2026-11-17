@@ -14,7 +14,7 @@ const pozicije = [["", "Bilo gdje u riječi"], ["inicijalna", "Inicijalna (poče
 const listovi = podrucja.filter((p) => p.roditelj_id !== null);
 const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas", slogovi: "slogovi", razvrstavanje: "razvrstavanje" };
 // Vrsta u izradi (editor, ispis i igra još nisu gotovi) se ne nudi.
-const U_IZRADI: Vrsta[] = ["razvrstavanje"];
+const U_IZRADI: Vrsta[] = [];
 const vrste = (Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][]).filter(([kod]) => !U_IZRADI.includes(kod));
 // Svaka vrsta ide u svoje podpodručje (ono je samo oznaka; mijenja se u uređivaču), a gumbi su njezine inačice.
 const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
