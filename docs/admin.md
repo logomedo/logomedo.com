@@ -102,6 +102,8 @@ Kolačić se u Braveu postavi na `http://localhost:4321/admin/login` kroz konzol
 localhostu). Prije toga `npx wrangler d1 migrations apply logomedo --local`. Lokalna baza ima tek 2 riječi sa
 slikom, pa brojeve (npr. listić po glasovima) provjeravati istim upitom na `--remote` (samo čitanje).
 `npm run dev` se odvoji kao pozadinski proces; gasi se s `npx astro dev stop`.
+E-mail za lokalnu sesiju ne vadi `grep`-om iz `.dev.vars`: vrijednost `ADMIN_EMAILS` je u navodnicima, pa sesija dobije
+e-mail s `"` i stranica ne prepozna admina.
 
 Kad je sesija svježa (`method = 'access'`, < 10 min), na `/admin/passkeys` se može dodati
 lokalni passkey (rpID `localhost`, ne vrijedi za produkciju).
@@ -113,3 +115,11 @@ Izgovor = `/admin/zvukovi`, s brojem onoga što čeka), **Sadržaj** (Katalog; R
 **Vježbe** (Novi zadatak = `/admin/predlosci`, Zadaci, Bilježnice), a dolje bez okvira Red generiranja, Prompt, Aktivnost
 i Ključevi. Prvi korak redizajna admina prema dizajnu u Claude artefaktu (poveznica u lokalnoj memoriji, ne ovdje).
 Iz dizajna još nije napravljena „Početna” (pregled onoga što čeka), pa `/admin` ostaje Katalog.
+
+**Scroll i sklapanje (17. 11. 2026.):** `nav` u traci ima vlastiti `overflow-y: auto`, pa logo, tražilica gore i
+račun dolje ostaju na mjestu, a stavke se scrollaju (na prozoru visine 560 px izbornik ima 629 px sadržaja u 165 px).
+Gumb `.sklopi` uz logo ili tipka `[` sklapa traku na 68 px (samo ikone; naziv u `title`, broj kao značka). Stanje je
+`data-traka="uska"` na `<html>`, a pamti se u localStorage `logomedo-traka`; inline skripta u `<head>` ga postavlja prije
+crtanja da ne trepne. U uskoj traci tražilica je gumb (ikona `trazi`) koji proširi traku i fokusira polje; `/` isto.
+Na ≤ 860 px (mobitel, vodoravna traka) sklapanja nema. Oznaka „admin” uz logo je iz trake maknuta jer s gumbom ne stane
+u 236 px; uloga piše dolje uz e-mail.
