@@ -8,6 +8,7 @@ import { izmjenaCss, UPUTE_PRVOG_GLASA, BOJE_DULJINE, jeDuga, type Polje } from 
 import { iskocenoSlovo, koloSlova, znackaSlova } from "./kolo-slova.ts";
 import { kljucZvuka } from "./zvukovi-tekst.ts";
 import { mapaRijeci } from "./zadaci/napisano.ts";
+import { spremnikSvg } from "./spremnici.ts";
 
 interface Podaci {
   naslov: string; podnaslov: string | null;
@@ -380,6 +381,88 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return { cvorovi: [q.el, platno], tekst, gumb: q.gumb };
   }
 
+  /**
+   * Razvrstavanje: slike gore, spremnici (vreće, košare, kutije) s oznakom dolje. Dijete sliku povuče prstom
+   * u spremnik, ili dodirne sliku pa spremnik. Prava uleti u spremnik (broj na njemu raste), kriva se vrati
+   * na mjesto. Dodir slike izgovori riječ. Kad su sve razvrstane, ekran je riješen.
+   */
+  function ekranRazvrstavanje(e: Extract<Ekran, { vrsta: "razvrstavanje" }>) {
+    const tekst = uputaZa(e.uputa, null);
+    const q = pitanje(tekst);
+    const s = e.s;
+    const slike = s.slike.filter((x) => x.rijec_id !== null);
+    let ostalo = slike.length;
+    let odabrana: number | null = null;
+    const spremnici = s.kategorije.map((oznaka, j) => {
+      const b = h("button", { type: "button", class: "spremnik", "aria-label": oznaka ?? "" });
+      b.innerHTML = spremnikSvg(s.tema, oznaka);
+      const broj = h("span", { class: "spremnik-broj" });
+      dodaj(b, broj);
+      b.addEventListener("click", () => { if (!zakljucano && odabrana !== null) stavi(odabrana, j); });
+      return { b, broj, n: 0 };
+    });
+    const vrati = (k: HTMLElement) => {
+      k.style.transition = "translate .3s ease-out"; k.style.translate = "";
+      setTimeout(() => { k.style.transition = ""; }, 320);
+    };
+    function stavi(i: number, j: number) {
+      const k = kartice[i], x = slike[i];
+      odabrana = null; kartice.forEach((c) => c.classList.remove("odabrana"));
+      if (x.kategorija !== j) { vrati(k); tresi(k); return; }
+      // Uleti u spremnik: pomak do njegova središta, smanjenje, nestane (mjesto ostaje, mreža ne skače).
+      const a = k.getBoundingClientRect(), c = spremnici[j].b.getBoundingClientRect();
+      const [dx, dy] = (k.style.translate || "0px 0px").split(" ").map((v) => parseFloat(v) || 0);
+      k.classList.add("spremljena");
+      k.style.transition = "translate .35s ease-in, scale .35s ease-in, opacity .35s ease-in";
+      k.style.translate = `${dx + c.left + c.width / 2 - (a.left + a.width / 2)}px ${dy + c.top + c.height / 2 - (a.top + a.height / 2)}px`;
+      k.style.scale = ".15"; k.style.opacity = "0";
+      const sp = spremnici[j];
+      sp.n++;
+      setTimeout(() => { sp.broj.textContent = String(sp.n); sp.b.classList.remove("poskok"); void sp.b.offsetWidth; sp.b.classList.add("poskok"); }, 300);
+      if (--ostalo === 0) setTimeout(rijeseno, 400); else mekiPogodak();
+    }
+    const kartice = slike.map((x, i) => {
+      const k = karticaBezRijeci(x.rijec_id!, undefined, "razvrstaj-kartica");
+      // Povlačenje: pomak preko 8 px je vučenje, inače dodir (odabir + izgovor).
+      let start: { x: number; y: number; id: number } | null = null, vuce = false;
+      const ispod = (cx: number, cy: number) => spremnici.findIndex(({ b }) => { const r = b.getBoundingClientRect(); return cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom; });
+      k.addEventListener("pointerdown", (ev) => {
+        if (zakljucano || k.classList.contains("spremljena") || (ev.target as Element).closest(".zvucnik")) return;
+        start = { x: ev.clientX, y: ev.clientY, id: ev.pointerId }; vuce = false;
+        k.setPointerCapture(ev.pointerId);
+      });
+      k.addEventListener("pointermove", (ev) => {
+        if (!start || ev.pointerId !== start.id) return;
+        const dx = ev.clientX - start.x, dy = ev.clientY - start.y;
+        if (!vuce && Math.hypot(dx, dy) < 8) return;
+        if (!vuce) { vuce = true; k.classList.add("vuce"); odabrana = null; kartice.forEach((c) => c.classList.remove("odabrana")); }
+        k.style.translate = `${dx}px ${dy}px`;
+        const j = ispod(ev.clientX, ev.clientY);
+        spremnici.forEach((sp, m) => sp.b.classList.toggle("cilj", m === j));
+      });
+      const pusti = (ev: PointerEvent) => {
+        if (!start || ev.pointerId !== start.id) return;
+        start = null;
+        spremnici.forEach((sp) => sp.b.classList.remove("cilj"));
+        if (!vuce) {
+          // Dodir: odabir (pa dodir spremnika) i izgovor riječi.
+          odabrana = odabrana === i ? null : i;
+          kartice.forEach((c, m) => c.classList.toggle("odabrana", m === odabrana));
+          if (odabrana !== null) govori(ime(x.rijec_id));
+          return;
+        }
+        k.classList.remove("vuce");
+        const j = ev.type === "pointerup" ? ispod(ev.clientX, ev.clientY) : -1;
+        if (j < 0 || zakljucano) vrati(k); else stavi(i, j);
+      };
+      k.addEventListener("pointerup", pusti);
+      k.addEventListener("pointercancel", pusti);
+      return k;
+    });
+    const mreza = h("div", { class: `razvrstaj-slike${slike.length > 8 ? " puno" : slike.length > 4 ? " srednje" : ""}` }, ...kartice);
+    return { cvorovi: [q.el, mreza, h("div", { class: "spremnici" }, ...spremnici.map((x) => x.b))], tekst, gumb: q.gumb };
+  }
+
   /** Scena preko cijelog ekrana; orijentacija prati uređaj, pogođeni gumbi ostaju pri okretanju. */
   let makniScenu: (() => void) | null = null;
   function ekranScena(e: Extract<Ekran, { vrsta: "scena" }>) {
@@ -415,7 +498,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return;
     }
     const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : e.vrsta === "percepcija" ? ekranPercepcija(e)
-      : e.vrsta === "prvi_glas" ? ekranPrviGlas(e) : e.vrsta === "slogovi" ? ekranSlogovi(e)
+      : e.vrsta === "prvi_glas" ? ekranPrviGlas(e) : e.vrsta === "slogovi" ? ekranSlogovi(e) : e.vrsta === "razvrstavanje" ? ekranRazvrstavanje(e)
       : ekranPovezi(e as Extract<Ekran, { vrsta: "povezivanje" }>);
     zamijeni(korijen, ...x.cvorovi);
     setTimeout(() => govori(x.tekst, x.gumb), 350);

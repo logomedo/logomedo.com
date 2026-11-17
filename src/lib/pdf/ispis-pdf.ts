@@ -13,7 +13,7 @@ import { TEME } from "../teme.ts";
 import { GRANCICA } from "../ukrasi.ts";
 import { podrucje, RUB_KARTICE, slojevi } from "../okviri.ts";
 import { rasporedRazvrstavanja, type DokumentPdf, type SlikaPdf, type StranicaPdf } from "./model.ts";
-import { OZNAKA, SPREMNIK_VB, spremnikOblik, velicinaOznake } from "../spremnici.ts";
+import { OZNAKA, SPREMNICI, SPREMNIK_VB, spremnikOblik, velicinaOznake } from "../spremnici.ts";
 import { nacrtajSvg, omjer } from "./svg.ts";
 
 /** `znak`: Andika (font za početno čitanje) za slova i brojke iz kataloga znakova; bez njega znak ide naslovnim fontom. */
@@ -360,9 +360,13 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
       const xs = L + (W - (t.kategorije.length * r.S + (t.kategorije.length - 1) * r.gs)) / 2;
       for (const [i, k] of t.kategorije.entries()) {
         const x = xs + i * (r.S + r.gs);
-        nacrtajSvg(p.page, spremnikOblik(t.tema), { x: p.X(x), y: p.Y(ys), sirina: r.S * MM });
+        // Slika iz Vertexa (public/spremnici); ako ne stigne, vektorski oblik s istim krugom.
+        const img = await ugradi(SPREMNICI[t.tema].src);
+        const o = img ? SPREMNICI[t.tema].oznaka : OZNAKA;
+        if (img) p.slika(img, x, ys, r.S, r.S);
+        else nacrtajSvg(p.page, spremnikOblik(t.tema), { x: p.X(x), y: p.Y(ys), sirina: r.S * MM });
         const k1 = r.S / SPREMNIK_VB;
-        p.znak(k, x + OZNAKA.cx * k1, ys + OZNAKA.cy * k1, (velicinaOznake(k) * k1) / (25.4 / 72));
+        p.znak(k, x + o.cx * k1, ys + o.cy * k1, velicinaOznake(k, o.r) * k1 * MM);
         p.tocka(x + r.S / 2, ys - 3, 1.6);
       }
     }

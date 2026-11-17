@@ -1,13 +1,21 @@
-// Spremnici za razvrstavanje (vreća, košara, kutija): jednostavan SVG bez teksta, isti u editoru, HTML ispisu,
-// igri i PDF-u (pdf/svg.ts zna path, rect, circle). Oznaka (slovo ili broj) se piše u bijeli krug `OZNAKA`
-// posebno: u pregledniku kao <text>, u PDF-u fontom Andika. Bez generiranja slika (Vertex se plaća).
+// Spremnici za razvrstavanje (vreća, košara, kutija): slika iz Vertexa u stilu `ilustracija`
+// (scripts/spremnici-slike.sh → spremnici-obrada.py → public/spremnici/<tema>.png) s praznim bijelim krugom
+// na prednjoj strani. Oznaka (slovo ili broj) se piše u taj krug: u pregledniku kao <text> u SVG-u preko slike,
+// u PDF-u fontom Andika. Isto u editoru, HTML ispisu, igri i PDF-u. Ako slika ne stigne, PDF crta
+// jednostavan vektorski oblik (`spremnikOblik`, pdf/svg.ts zna path, rect, circle).
 
 import type { TemaRazvrstavanja } from "./zadaci/vrste.ts";
 
-/** viewBox spremnika: 100 × 100. */
+/** viewBox spremnika: 100 × 100 (slika je kvadrat 480 px, pa su postoci isto što i jedinice). */
 export const SPREMNIK_VB = 100;
-/** Krug za oznaku (u jedinicama viewBoxa). */
+/** Krug za oznaku u vektorskom obliku (rezerva za PDF). */
 export const OZNAKA = { cx: 50, cy: 68, r: 19 } as const;
+/** Slika i bijeli krug na njoj (izmjerio spremnici-obrada.py, % stranice). */
+export const SPREMNICI: Record<TemaRazvrstavanja, { src: string; oznaka: { cx: number; cy: number; r: number } }> = {
+  vrece: { src: "/spremnici/vrece.png", oznaka: { cx: 49.9, cy: 63.2, r: 19.3 } },
+  kosare: { src: "/spremnici/kosare.png", oznaka: { cx: 49.8, cy: 71.4, r: 16.4 } },
+  kutije: { src: "/spremnici/kutije.png", oznaka: { cx: 49.8, cy: 66.9, r: 18.7 } },
+};
 
 const OBLICI: Record<TemaRazvrstavanja, string> = {
   // Božićna vreća: crvena, vezana zlatnom vrpcom, bijeli rub na vratu.
@@ -34,14 +42,15 @@ const KRUG = `<circle cx="${OZNAKA.cx}" cy="${OZNAKA.cy}" r="${OZNAKA.r}" fill="
 export const spremnikOblik = (tema: TemaRazvrstavanja) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SPREMNIK_VB} ${SPREMNIK_VB}">${OBLICI[tema]}${KRUG}</svg>`;
 
-/** Veličina slova oznake u jedinicama viewBoxa: dvoslov (LJ) i dvoznamenkasti broj su manji. */
-export const velicinaOznake = (oznaka: string) => ([...oznaka].length > 1 ? 21 : 28);
+/** Veličina slova oznake u jedinicama viewBoxa za krug polumjera `r`: dvoslov (LJ) i dvoznamenkasti broj su manji. */
+export const velicinaOznake = (oznaka: string, r: number = OZNAKA.r) => r * ([...oznaka].length > 1 ? 1.1 : 1.45);
 
 const bijeg = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
-/** Cijeli spremnik s oznakom (preglednik). `null` oznaka je upitnik. */
+/** Cijeli spremnik s oznakom (preglednik): slika i slovo u njezinom bijelom krugu. `null` oznaka je upitnik. */
 export function spremnikSvg(tema: TemaRazvrstavanja, oznaka: string | null): string {
-  const t = oznaka ?? "?";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SPREMNIK_VB} ${SPREMNIK_VB}" role="img" aria-label="${bijeg(t)}">${OBLICI[tema]}${KRUG}`
-    + `<text x="${OZNAKA.cx}" y="${OZNAKA.cy}" text-anchor="middle" dominant-baseline="central" font-family="Andika, sans-serif" font-weight="700" font-size="${velicinaOznake(t)}" fill="#2b2118">${bijeg(t)}</text></svg>`;
+  const t = oznaka ?? "?", { src, oznaka: o } = SPREMNICI[tema];
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SPREMNIK_VB} ${SPREMNIK_VB}" role="img" aria-label="${bijeg(t)}">`
+    + `<image href="${src}" x="0" y="0" width="${SPREMNIK_VB}" height="${SPREMNIK_VB}"/>`
+    + `<text x="${o.cx}" y="${o.cy}" text-anchor="middle" dominant-baseline="central" font-family="Andika, sans-serif" font-weight="700" font-size="${velicinaOznake(t, o.r).toFixed(1)}" fill="#2b2118">${bijeg(t)}</text></svg>`;
 }

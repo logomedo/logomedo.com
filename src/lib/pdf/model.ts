@@ -7,6 +7,7 @@ import { prelomi, sirinaTeksta } from "./sirine.ts";
 import type { Tema } from "../teme.ts";
 import { imaOkvir, podrucje, slojevi, type Okvir, type Podrucje } from "../okviri.ts";
 import { TEME } from "../teme.ts";
+import { SPREMNICI } from "../spremnici.ts";
 import { rasporedListica, poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Razvrstavanje, type TemaRazvrstavanja, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
@@ -324,6 +325,7 @@ export function slikeDokumenta(d: DokumentPdf): string[] {
     if (t.vrsta === "odabir") t.redovi.forEach((r) => [r.zadana, ...r.ponudeno].forEach(dodaj));
     if (t.vrsta === "uljez" || t.vrsta === "percepcija") t.redovi.flat().forEach(dodaj);
     if (t.vrsta === "prvi_glas" || t.vrsta === "slogovi" || t.vrsta === "razvrstavanje") t.slike.forEach(dodaj);
+    if (t.vrsta === "razvrstavanje") out.add(SPREMNICI[t.tema].src);
     if (t.vrsta === "povezivanje") [...t.lijevo, ...t.desno].forEach(dodaj);
     if (t.vrsta === "listic") t.kartice.forEach((k) => dodaj(k.slika));
     if (t.vrsta === "scena") { if (t.pozadina) out.add(t.pozadina); t.gumbi.forEach(dodaj); }

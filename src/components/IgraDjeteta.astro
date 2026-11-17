@@ -246,6 +246,21 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   @keyframes palica-l { 0% { transform: rotate(-14deg); } 40% { transform: rotate(4deg); } }
   @keyframes palica-d { 0% { transform: rotate(14deg); } 40% { transform: rotate(-4deg); } }
   @keyframes poskoci { 40% { transform: translateY(-3vh); } }
+  /* Razvrstavanje: slike gore (vuku se prstom: translate, ne transform, da ne smeta .odabrana), spremnici dolje. */
+  .razvrstaj-slike { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.6vh 1.6vw; max-width: 94vw; }
+  .razvrstaj-slike .kartica { --s: min(24vh, 17vw); touch-action: none; user-select: none; -webkit-user-select: none; }
+  .razvrstaj-slike.srednje .kartica { --s: min(19vh, 14vw); }
+  .razvrstaj-slike.puno .kartica { --s: min(15vh, 12vw); }
+  .razvrstaj-kartica.vuce { z-index: 20; cursor: grabbing; scale: 1.08; box-shadow: inset 0 0 0 2px #a07a4c, 0 14px 28px rgb(60 40 20 / .4); }
+  .razvrstaj-kartica.spremljena { pointer-events: none; z-index: 20; }
+  .spremnici { display: flex; justify-content: center; gap: 5vw; margin-top: 1vh; }
+  .spremnik { position: relative; width: min(21vh, 22vw); padding: 0; border: 0; background: none; cursor: pointer; transition: scale .15s; }
+  .spremnik svg { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 8px rgb(60 40 20 / .3)); }
+  .spremnik.cilj { scale: 1.12; }
+  .spremnik.poskok { animation: poskoci .4s; }
+  .spremnik-broj { position: absolute; top: 4%; right: 0; min-width: 4.4vh; height: 4.4vh; padding: 0 1vh; border-radius: 2.2vh; background: var(--zeleno); color: #fff;
+    font-weight: 900; font-size: 2.6vh; display: grid; place-items: center; box-shadow: 0 2px 6px rgb(0 0 0 / .3); }
+  .spremnik-broj:empty { display: none; }
   .gumb-gotovo { font: inherit; font-weight: 900; font-size: 4vh; padding: 1vh 5vh; border: 0; border-radius: 99px; background: var(--zeleno); color: #fff; box-shadow: 0 5px 0 #1d6b33; cursor: pointer; }
   .povezi { position: relative; display: flex; justify-content: space-between; width: min(100%, 92vh); }
   .stupac { display: flex; flex-direction: column; gap: 1.4vh; position: relative; z-index: 1; }

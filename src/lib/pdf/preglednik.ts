@@ -52,8 +52,8 @@ async function smanji(url: string, najvise = NAJVISE_PX): Promise<Uint8Array | n
     const c = document.createElement("canvas");
     c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
     const g = c.getContext("2d")!;
-    // PNG s prozirnošću → bijela podloga; ukrasi okvira ostaju prozirni (leže na uzorku ruba).
-    const proziran = jeUkrasUrl(url);
+    // PNG s prozirnošću → bijela podloga; ukrasi okvira i spremnici razvrstavanja ostaju prozirni.
+    const proziran = jeUkrasUrl(url) || url.startsWith("/spremnici/");
     if (!proziran) { g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height); }
     g.drawImage(bmp, 0, 0, c.width, c.height);
     bmp.close();
