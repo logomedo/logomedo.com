@@ -221,6 +221,9 @@ riječ `id` iz kataloga, napisana. Odnosi i provjere rade kao za sliku (KRAVA na
 HTML ispis bez natpisa ispod, PDF Andikom (`SlikaPdf.napisano`). U editoru: „Aa napiši” ispod svakog polja i
 „Zadane / Ponuđene / Lijevi stupac / Desni stupac / Sva polja: napisano” odjednom; nova riječ u napisanom polju
 ostaje napisana, „Složi automatski” zadržava napisane skupine. Brojke i slova nisu napisane riječi, nego znakovi.
+Prazno polje (novi red, „+ Dodaj red/par”) preuzima oblik svoje skupine (`novoPoljeNapisano`): napisana skupina →
+napisana riječ; mješovita skupina → slika; prazan zadatak „Riječ i slika” → zadane i desni stupac napisani. Do
+17. 11. 2026. novi red je uvijek dobivao sliku (zadatak 141, peti red, `zadana: 7` umjesto `-7`).
 Flutter app napisana polja još ne crta (ionako crta samo scenu).
 
 **Odnos „Riječ i slika”** (`ista_rijec`, 16. 11. 2026., na traženje nakon isprobavanja): par je napisana riječ i
