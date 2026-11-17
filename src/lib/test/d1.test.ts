@@ -11,7 +11,7 @@ test("sve migracije se primijene, redom kao wrangler", async () => {
   const imena = migracije();
   assert.ok(imena.length >= 33);
   assert.ok(imena.indexOf("0030_okvir_zadatka.sql") < imena.indexOf("0030_zvuk_nacini_probe.sql"));
-  assert.equal(imena.at(-1), "0033_pozivi_aktivnost.sql");
+  assert.equal(imena.at(-1), "0034_razvrstavanje.sql");
   const db = napraviD1();
   const t = await db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table'").first<number>("n");
   assert.ok(t! > 10);
@@ -100,4 +100,14 @@ test("šav: produkcijski moduli čitaju env iz stuba", async () => {
   await assert.rejects(korisnikId("l@primjer.hr"));
   const id = await korisnikId("sa@primjer.hr");
   assert.deepEqual(await ulogaZa("sa@primjer.hr"), { uloga: "superadmin", korisnikId: id });
+});
+
+test("0034: zadaci zadržavaju okvir, vrsta razvrstavanje prolazi CHECK, područje pod predvještinama", async () => {
+  const db = napraviD1();
+  assert.ok((await stupci(db, "zadaci")).includes("okvir"));
+  const p = await db.prepare("SELECT p.naziv, r.slug AS roditelj FROM podrucja p JOIN podrucja r ON r.id = p.roditelj_id WHERE p.slug = 'razvrstavanje'").first<{ naziv: string; roditelj: string }>();
+  assert.deepEqual({ ...p }, { naziv: "Razvrstavanje", roditelj: "predvjestine" });
+  const k = await db.prepare("INSERT INTO korisnici (email, uloga) VALUES ('t@t', 'admin') RETURNING id").first<number>("id");
+  await db.prepare("INSERT INTO zadaci (autor_id, vrsta, okvir) VALUES (?, 'razvrstavanje', '{}')").bind(k).run();
+  await assert.rejects(db.prepare("INSERT INTO zadaci (autor_id, vrsta) VALUES (?, 'nesto')").bind(k).run());
 });

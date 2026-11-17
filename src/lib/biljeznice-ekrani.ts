@@ -1,7 +1,7 @@
 // Ekrani bilježnice: svaka stavka odabira i uljeza je jedan ekran, povezivanje je jedan
 // ekran, listić se u igri preskače. Broj ekrana = broj lampica na boru. Čisti TS: server
 // (broj lampica, ispis), preglednik (igra) i testovi.
-import { UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, UPUTE_SLOGOVA, type Slogovi, type SlikaSlogova, krugUIgri, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
+import { uputeRazvrstavanja, type Razvrstavanje, UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, UPUTE_SLOGOVA, type Slogovi, type SlikaSlogova, krugUIgri, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
 
 export interface ZadatakZaIgru { vrsta: Vrsta; uputa: string | null; sadrzaj: Sadrzaj }
 export type Ekran =
@@ -11,9 +11,10 @@ export type Ekran =
   | { vrsta: "scena"; uputa: string; s: Scena }
   | { vrsta: "percepcija"; uputa: string; trazi: Percepcija["trazi"]; stavka: Percepcija["stavke"][0] }
   | { vrsta: "slogovi"; uputa: string; nacin: Slogovi["nacin"]; krugova: number; slike: SlikaSlogova[] }
-  | { vrsta: "prvi_glas"; uputa: string; kolo: string[]; boje: PrviGlas["boje"]; krug: Krug };
+  | { vrsta: "prvi_glas"; uputa: string; kolo: string[]; boje: PrviGlas["boje"]; krug: Krug }
+  | { vrsta: "razvrstavanje"; uputa: string; s: Razvrstavanje };
 
-const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija" | "prvi_glas" | "slogovi">, string> = {
+const UPUTE: Record<Exclude<Vrsta, "listic" | "percepcija" | "prvi_glas" | "slogovi" | "razvrstavanje">, string> = {
   odabir: "Što se rimuje s riječi {zadana}?",
   uljez: "Koja se riječ ne rimuje s ostalima?",
   povezivanje: "Poveži riječi koje se rimuju.",
@@ -46,6 +47,13 @@ export function ekrani(zadaci: ZadatakZaIgru[]): Ekran[] {
       const s = z.sadrzaj as PrviGlas;
       const uputa = !z.uputa?.trim() || z.uputa.trim() === UPUTE_PRVOG_GLASA.ispis ? UPUTE_PRVOG_GLASA.ekran : z.uputa.trim();
       for (const k of s.krugovi) if (krugUIgri(s, k)) out.push({ vrsta: "prvi_glas", uputa, kolo: s.kolo, boje: s.boje, krug: k });
+      continue;
+    }
+    if (z.vrsta === "razvrstavanje") {
+      // Jedan ekran: sve slike gore, vreće dolje. Treba barem jednu sliku i sve kategorije s oznakom.
+      const s = z.sadrzaj as Razvrstavanje, u = uputeRazvrstavanja(s);
+      const uputa = !z.uputa?.trim() || z.uputa.trim() === u.ispis ? u.ekran : z.uputa.trim();
+      if (s.kategorije.every((k) => k !== null) && s.slike.some((x) => x.rijec_id !== null)) out.push({ vrsta: "razvrstavanje", uputa, s });
       continue;
     }
     const uputa = z.uputa?.trim() || UPUTE[z.vrsta];

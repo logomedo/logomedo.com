@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BROJ_STAVKI, brojStavki, brojUZadatku, normaliziraj, ocijeni, provjeri, slikaUStilu, slozi, slozRed, type Izmjena, type Odabir, type Percepcija, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
+import { BROJ_STAVKI, brojStavki, brojUZadatku, normaliziraj, ocijeni, provjeri, slikaUStilu, slozi, slozRed, type Izmjena, type Odabir, type Percepcija, type Povezivanje, type Razvrstavanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
 import { brojSlogova, izvediRimu } from "./rima.ts";
 
 const popis = ["krava", "trava", "glava", "dabar", "ormar", "pehar", "lonac", "palac", "madrac", "sat", "brat", "vrat", "miš", "kiš", "riba", "lisica"];
@@ -339,4 +339,63 @@ test("generator po glasovima: riječ s glasom je zadana / lijeva, prebrajanje sa
   assert.ok(sl.slike.every((x) => sR(M.get(x.rijec_id)!)));
   const pg = slozi("prvi_glas", R, { stavki: 4, slova: ["L", "M", "Ž"] }, rnd) as PrviGlas;
   assert.deepEqual(pg.krugovi.map((k) => k.slovo), ["L", "M"]);
+});
+
+test("razvrstavanje: kategorija riječi po pravilu (LJ je jedan glas, LJUTO ima 4 glasa)", async () => {
+  const { kategorijaRijeci } = await import("./vrste.ts");
+  assert.equal(kategorijaRijeci("prvi_glas", "ljuljačka"), "LJ");
+  assert.equal(kategorijaRijeci("zadnji_glas", "konj"), "NJ");
+  assert.equal(kategorijaRijeci("glasovi", "ljuto"), "4");
+  assert.equal(kategorijaRijeci("slogovi", "kornjača"), "3");
+  assert.equal(kategorijaRijeci("prvi_glas", "čarobni štapić"), null);
+});
+
+test("razvrstavanje: normalizacija drži 2–3 različite oznake po pravilu i slike unutar granica", async () => {
+  const { normaliziraj } = await import("./vrste.ts");
+  const r = normaliziraj("razvrstavanje", { pravilo: "slogovi", tema: "kosare", kategorije: ["2", "2", "X", "3"], slike: Array.from({ length: 20 }, () => ({ rijec_id: 5, kategorija: 7 })) }) as Razvrstavanje;
+  assert.equal(r.pravilo, "slogovi");
+  assert.equal(r.tema, "kosare");
+  assert.deepEqual(r.kategorije, ["2", null, null]);
+  assert.equal(r.slike.length, 12);
+  assert.ok(r.slike.every((x) => x.kategorija === 0));
+  const p = normaliziraj("razvrstavanje", { pravilo: "?", kategorije: ["C"] }) as Razvrstavanje;
+  assert.deepEqual([p.pravilo, p.tema, p.kategorije], ["prvi_glas", "vrece", ["C", null]]);
+});
+
+test("razvrstavanje: generator po svakom pravilu prolazi provjeru, slike ravnomjerno", async () => {
+  const { slozRazvrstavanje, kategorijaRijeci } = await import("./vrste.ts");
+  const rij = ["sat", "sir", "sova", "sok", "miš", "mak", "more", "mama", "lav", "lopta", "lonac", "list", "kuća", "konj", "kruška", "kornjača", "ljuljačka", "leptir", "jabuka", "papiga", "tikva", "ruka", "noga", "vaza", "kit", "put", "cvijet", "mrak", "vuk", "kip"]
+    .map((r, i) => ({ id: 500 + i, rijec: r, rima: null, slogova: brojSlogova(r), slika: `/s/${i}.jpg` }));
+  const RM = new Map(rij.map((r) => [r.id, r]));
+  for (const pravilo of ["prvi_glas", "zadnji_glas", "slogovi", "glasovi"] as const) {
+    for (let i = 0; i < 10; i++) {
+      const s = slozRazvrstavanje(pravilo, rij, 8, {}, rnd);
+      assert.equal(s.slike.length, 8, pravilo);
+      assert.equal(s.kategorije.length, 2);
+      assert.deepEqual(provjeri("razvrstavanje", s, RM), [], `${pravilo}: ${JSON.stringify(s)}`);
+      assert.ok(s.slike.every((x) => kategorijaRijeci(pravilo, RM.get(x.rijec_id!)!.rijec) === s.kategorije[x.kategorija]));
+      assert.deepEqual([0, 1].map((k) => s.slike.filter((x) => x.kategorija === k).length), [4, 4]);
+    }
+  }
+  const tri = slozRazvrstavanje("slogovi", rij, 9, {}, rnd);
+  assert.deepEqual(tri.kategorije, ["1", "2", "3"]);
+  // Po glasovima: odabrana slova su kategorije, redom.
+  const pg = slozi("razvrstavanje", rij, { stavki: 8, nacin: "prvi_glas", slova: ["L", "M"] }, rnd) as Razvrstavanje;
+  assert.deepEqual(pg.kategorije, ["L", "M"]);
+  const jedno = slozRazvrstavanje("prvi_glas", rij, 8, { slova: ["K"] }, rnd);
+  assert.equal(jedno.kategorije[0], "K");
+  assert.equal(jedno.kategorije.length, 2);
+});
+
+test("razvrstavanje: provjera javlja krivu kategoriju, praznu kategoriju i ponovljenu sliku; ocjena prvog pokušaja", () => {
+  const rij = ["sat", "sova", "miš", "mak"].map((r, i) => ({ id: 600 + i, rijec: r, rima: null, slogova: brojSlogova(r), slika: null }));
+  const RM = new Map(rij.map((r) => [r.id, r]));
+  const s: Razvrstavanje = { pravilo: "prvi_glas", tema: "vrece", kategorije: ["S", "M", "K"], slike: [{ rijec_id: 600, kategorija: 0 }, { rijec_id: 602, kategorija: 0 }, { rijec_id: 603, kategorija: 1 }, { rijec_id: 603, kategorija: 1 }] };
+  const poruke = provjeri("razvrstavanje", s, RM).map((x) => x.poruka).join("\n");
+  assert.match(poruke, /MIŠ je u kategoriji S, a prema prvom glasu ide u M/);
+  assert.match(poruke, /U kategoriji K nema nijedne slike/);
+  assert.match(poruke, /MAK je dvaput/);
+  assert.deepEqual(ocijeni("razvrstavanje", s, [{ stavka: 0, odabrano: 0 }, { stavka: 1, odabrano: 1 }, { stavka: 1, odabrano: 0 }, { stavka: 2, odabrano: 1 }]), { tocnih: 2, ukupno: 4 });
+  assert.equal(zadanaUputa("razvrstavanje", { ...s, tema: "kosare", pravilo: "glasovi" }), "Razvrstaj slike u košare prema broju glasova. Poveži svaku sliku crtom s košarom.");
+  assert.equal(brojUZadatku("razvrstavanje", s), 4);
 });

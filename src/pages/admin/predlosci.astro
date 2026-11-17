@@ -3,7 +3,7 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import { logopedskiMod, podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
 import { BROJEVI_LISTICA, jePoGlasovima, ZADANO_SLIKA } from "../../lib/zadaci/listic-glas";
 import { ODNOSI, ODNOSI_POPIS, odnosiZa, type Odnos } from "../../lib/zadaci/odnosi";
-import { ABECEDA, BROJ_STAVKI, VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
+import { ABECEDA, BROJ_STAVKI, PRAVILA_RAZVRSTAVANJA, VRSTE, type PraviloRazvrstavanja, type Vrsta } from "../../lib/zadaci/vrste";
 
 const [podrucja, listic, mod] = await Promise.all([svaPodrucja(), zaListic(), logopedskiMod(Astro.locals.admin!.email)]);
 // Isključuju se suglasnici (po fonemima, pa „bez L” ne dira LJ).
@@ -12,8 +12,10 @@ const listicJson = JSON.stringify(listic.rijeci).replace(/</g, "\\u003c");
 const prazno = Astro.url.searchParams.has("prazno");
 const pozicije = [["", "Bilo gdje u riječi"], ["inicijalna", "Inicijalna (početak)"], ["medijalna", "Medijalna (sredina)"], ["finalna", "Finalna (kraj)"], ["skupina", "Skupine"]];
 const listovi = podrucja.filter((p) => p.roditelj_id !== null);
-const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas", slogovi: "slogovi" };
-const vrste = Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][];
+const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas", slogovi: "slogovi", razvrstavanje: "razvrstavanje" };
+// Vrsta u izradi (editor, ispis i igra još nisu gotovi) se ne nudi.
+const U_IZRADI: Vrsta[] = ["razvrstavanje"];
+const vrste = (Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][]).filter(([kod]) => !U_IZRADI.includes(kod));
 // Svaka vrsta ide u svoje podpodručje (ono je samo oznaka; mijenja se u uređivaču), a gumbi su njezine inačice.
 const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
   listic: [{ tekst: "Iz cijelog kataloga" }],
@@ -22,6 +24,7 @@ const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
   ...Object.fromEntries((["odabir", "povezivanje", "uljez"] as const).map((v) => [v, odnosiZa(v).map((o) => ({ tekst: ODNOSI[o].naziv, nacin: o }))])) as Record<"odabir" | "povezivanje" | "uljez", { tekst: string; nacin: string }[]>,
   percepcija: [{ tekst: "Nađi različitu", nacin: "razlicitu" }, { tekst: "Nađi dvije iste", nacin: "par" }],
   prvi_glas: [{ tekst: "Kolo slova" }], scena: [{ tekst: "Nova scena" }],
+  razvrstavanje: (Object.keys(PRAVILA_RAZVRSTAVANJA) as PraviloRazvrstavanja[]).map((nacin) => ({ tekst: PRAVILA_RAZVRSTAVANJA[nacin].naziv, nacin })),
 };
 const podrucjeVrste = (kod: Vrsta) => listovi.find((p) => p.slug === zadano[kod]);
 // Odnos ima svoje podpodručje (rima u „Prepoznavanje rime”, prvi glas u „Prvi glas u riječi”…); bez para ostaje prazno.
@@ -37,6 +40,7 @@ const naslovDijaloga: Record<string, string> = {
 
 // Mala shema rasporeda svake vrste (kvadratići = slike).
 const shema: Record<Vrsta, string> = {
+  razvrstavanje: `<rect x="8" y="4" width="14" height="14" rx="3" class="s-med"/><rect x="26" y="4" width="14" height="14" rx="3"/><rect x="44" y="4" width="14" height="14" rx="3" class="s-med"/><rect x="62" y="4" width="14" height="14" rx="3"/><path d="M12 54c-3-10 0-18 6-20h12c6 2 9 10 6 20zM52 54c-3-10 0-18 6-20h12c6 2 9 10 6 20z"/><path d="M15 18l9 18M51 18l-21 18" class="s-crta"/>`,
   odabir: `<rect x="34" y="4" width="20" height="20" rx="4" class="s-jaka"/><rect x="6" y="34" width="20" height="20" rx="4"/><rect x="34" y="34" width="20" height="20" rx="4" class="s-med"/><rect x="62" y="34" width="20" height="20" rx="4"/>`,
   povezivanje: `<rect x="8" y="4" width="16" height="16" rx="3"/><rect x="8" y="23" width="16" height="16" rx="3"/><rect x="8" y="42" width="16" height="16" rx="3"/><rect x="64" y="4" width="16" height="16" rx="3"/><rect x="64" y="23" width="16" height="16" rx="3"/><rect x="64" y="42" width="16" height="16" rx="3"/><path d="M26 12 62 31M26 31 62 50M26 50 62 12" class="s-crta"/>`,
   uljez: `<rect x="4" y="20" width="17" height="17" rx="3"/><rect x="25" y="20" width="17" height="17" rx="3"/><rect x="46" y="20" width="17" height="17" rx="3" class="s-med"/><rect x="67" y="20" width="17" height="17" rx="3"/><path d="M48 22l13 13M61 22 48 35" class="s-crta"/>`,
