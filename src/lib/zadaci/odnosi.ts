@@ -10,6 +10,7 @@
 
 import { fonemi } from "../fonemi.ts";
 import { jezgre } from "./rima.ts";
+import { slogovi } from "./slogovi.ts";
 
 export type Odnos = "rima" | "pocetni_glas" | "pocetni_slog" | "zavrsni_glas" | "ista_rijec";
 export const ODNOSI_POPIS: Odnos[] = ["rima", "pocetni_glas", "pocetni_slog", "zavrsni_glas", "ista_rijec"];
@@ -25,17 +26,14 @@ const VELIKO = (s: string) => s.toLocaleUpperCase("hr");
 const jedna = (s: string) => (/[\s-]/.test(s.trim()) ? null : VELIKO(s).replace(/[^A-ZČĆĐŠŽ]/g, "") || null);
 
 /**
- * Prvi slog: jednosložna riječ je cijela (LAV), inače početak do prvog samoglasnika, otvoreni slog
- * (MA-ČKA, KO-ZA, RIJE-KA, KR-TICA). Tako MAČKA i MAJMUN dijele MA-, a LAV i LAMA ne.
+ * Prvi slog po pravilima rastavljanja (slogovi.ts): jednosložna riječ je cijela (LAV), slog može biti
+ * zatvoren (MAČ-KA, MAJ-MUN, POŠ-TAR) ili otvoren (MA-MA, KO-ZA, RIJE-KA, I-GRA). Tako MAMA i MACA
+ * dijele MA-, a MAČKA i MAJMUN ne.
  */
 export function prviSlog(rijec: string): string | null {
   const s = jedna(rijec);
-  if (!s) return null;
-  const j = jezgre(s);
-  if (!j.length) return null;
-  if (j.length === 1) return s;
-  // IJE: jezgra je na E, pa slog uključuje cijeli dvoglas.
-  return s.slice(0, j[0] + 1);
+  if (!s || !jezgre(s).length) return null;
+  return slogovi(s)[0];
 }
 
 /** Ključ riječi za odnos, ili null ako riječ nije za taj odnos. */

@@ -6,9 +6,12 @@ import { brojSlogova, izvediRimu } from "./rima.ts";
 
 const r = (rijec: string, id = 1) => ({ id, rijec, rima: izvediRimu(rijec) });
 
-test("prvi slog: otvoreni slog, jednosložna riječ cijela, IJE i slogotvorno R", () => {
-  assert.equal(prviSlog("mačka"), "MA");
-  assert.equal(prviSlog("majmun"), "MA");
+test("prvi slog: zatvoreni ili otvoreni, jednosložna riječ cijela, IJE i slogotvorno R", () => {
+  assert.equal(prviSlog("mačka"), "MAČ");
+  assert.equal(prviSlog("majmun"), "MAJ");
+  assert.equal(prviSlog("poštar"), "POŠ");
+  assert.equal(prviSlog("mama"), "MA");
+  assert.equal(prviSlog("igra"), "I");
   assert.equal(prviSlog("lav"), "LAV");
   assert.equal(prviSlog("lama"), "LA");
   assert.equal(prviSlog("rijeka"), "RIJE");
@@ -24,14 +27,15 @@ test("prvi i zadnji glas po fonemima (LJ, NJ, DŽ su jedan glas)", () => {
   assert.equal(kljuc("zavrsni_glas", r("krava")), "A");
   assert.equal(kljuc("pocetni_glas", r("luk-strijela")), null);
   assert.ok(!uOdnosu("pocetni_glas", r("ljuljačka", 1), r("lopta", 2)));
-  assert.ok(uOdnosu("pocetni_slog", r("mačka", 1), r("majmun", 2)));
+  assert.ok(!uOdnosu("pocetni_slog", r("mačka", 1), r("majmun", 2)));
+  assert.ok(uOdnosu("pocetni_slog", r("maca", 1), r("mama", 2)));
   assert.ok(!uOdnosu("pocetni_slog", r("lav", 1), r("lama", 2)));
   assert.ok(!uOdnosu("rima", r("krava", 1), r("krava", 1)));
-  assert.equal(oznakaKljuca("pocetni_slog", r("mačka")), "ma-");
+  assert.equal(oznakaKljuca("pocetni_slog", r("mačka")), "mač-");
   assert.equal(oznakaKljuca("zavrsni_glas", r("konj")), "-nj");
 });
 
-const popis = ["mačka", "majmun", "maca", "lopta", "lav", "lama", "list", "pas", "patka", "papiga", "sat", "sova", "sir", "riba", "ruka", "konj", "slon", "vrat", "kruh", "nos", "lampa", "sokol"];
+const popis = ["mačka", "majmun", "maca", "lopta", "lav", "lama", "list", "pas", "patka", "papiga", "sat", "sova", "sir", "riba", "ruka", "konj", "slon", "vrat", "kruh", "nos", "lampa", "sokol", "mama", "malina", "soba", "paprika"];
 const R: RijecZadatka[] = popis.map((x, i) => ({ id: i + 1, rijec: x, rima: izvediRimu(x), slogova: brojSlogova(x), slika: null }));
 const M = new Map(R.map((x) => [x.id, x]));
 let sjeme = 7;

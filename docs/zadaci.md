@@ -464,12 +464,15 @@ Nakon isprobavanja odnosa logopedica je javila dvije greške. Ništa još nije p
    za ispravak (sumnjive, tj. iste po slovima a možda različite po naglasku, prve). Ključ rime
    onda ide od naglašenog samoglasnika do kraja; ručni `rijeci.rima` ostaje jači. Treba D1
    migraciju (novi stupac) i upis prijedloga: na produkciji tek uz dopuštenje.
-2. **Prvi slog je uvijek otvoren.** `prviSlog()` u `odnosi.ts` reže do prve jezgre, pa MAJMUN
-   daje `MA` (test `odnosi.test.ts` to čak tvrdi, krivo). Predloženo pravilo: između samoglasnika
-   sonant (J, L, LJ, M, N, NJ, R, V) ostaje u prvom slogu (MAJ-MUN, LAM-PA, KOR-PA, ŠUN-KA),
-   ostale skupine idu u sljedeći (MA-ČKA, SE-STRA, PA-TKA). Pitano je je li to pravilo iz njezine
-   prakse i za primjere krivo rastavljenih riječi. Brojanje slogova (`brojSlogova`) to ne dira,
-   samo „Isti prvi slog”.
+2. **Prvi slog je uvijek bio otvoren** (MAJMUN → `MA`). **Riješeno 17. 11. 2026.**: logopedica je
+   potvrdila da hrvatski ima zatvorene slogove (POŠ-TAR) i uputila na nastava.hr/slogovi.
+   Rastavljanje je u `src/lib/zadaci/slogovi.ts` (`slogovi()`), a `prviSlog()` uzima prvi slog:
+   jedan suglasnik između samoglasnika ide u sljedeći slog (MA-MA), šumnik + zvonačnik oba u
+   sljedeći (I-GRA, VE-SLO, PI-SMO), inače prvi suglasnik zatvara slog (POŠ-TAR, MAČ-KA, MAJ-MUN,
+   SES-TRA), a iza prefiksa POD-, NAD-, OD-, IZ-, RAZ-, BEZ-, PRED- granica je na prefiksu
+   (POD-MOR-NI-CA). IJE je jedan slog (ZVIJEZ-DA). Na katalogu (669 riječi) se prvi slog promijenio
+   kod 100 riječi; u zadacima 103, 104, 112 i 135 („Isti prvi slog”) neki parovi po novom nisu par
+   (npr. POŠ-TAR / POS-TE-LJA), editor ih označi, a podatke nismo dirali.
 
 Usput otvoreno: `zavrsni_glas` nema podpodručje (dodavanje je insert u produkcijski D1, pitati);
 odnosi po značenju (tko što jede, suprotnosti) trebaju tablicu parova riječi.
