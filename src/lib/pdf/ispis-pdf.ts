@@ -12,7 +12,8 @@ import { prelomi } from "./sirine.ts";
 import { TEME } from "../teme.ts";
 import { GRANCICA } from "../ukrasi.ts";
 import { podrucje, RUB_KARTICE, slojevi } from "../okviri.ts";
-import type { DokumentPdf, SlikaPdf, StranicaPdf } from "./model.ts";
+import { rasporedRazvrstavanja, type DokumentPdf, type SlikaPdf, type StranicaPdf } from "./model.ts";
+import { OZNAKA, SPREMNIK_VB, spremnikOblik, velicinaOznake } from "../spremnici.ts";
 import { nacrtajSvg, omjer } from "./svg.ts";
 
 /** `znak`: Andika (font za početno čitanje) za slova i brojke iz kataloga znakova; bez njega znak ide naslovnim fontom. */
@@ -341,6 +342,28 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
         const red = Math.floor(i / poRedu), u = Math.min(poRedu, t.gumbi.length - red * poRedu);
         const x0 = L + (W - (u * s5 + (u - 1) * g)) / 2;
         await slikaUOkviru(p, sl, x0 + (i % poRedu) * (s5 + g), y0 + red * (s5 + nat + g), s5);
+      }
+    }
+
+    if (t.vrsta === "razvrstavanje") {
+      // Slike gore, spremnici dolje (točka iznad svakoga), sve centrirano; između je mjesto za crte.
+      const r = rasporedRazvrstavanja(t.slike.length, t.kategorije.length, W, H);
+      const visina = r.redova * r.s + (r.redova - 1) * r.g + r.G + r.S;
+      const y0 = vrh + Math.max(0, (H - visina) / 2);
+      const x0 = L + (W - (r.stupaca * r.s + (r.stupaca - 1) * r.g)) / 2;
+      for (const [i, sl] of t.slike.entries()) {
+        const red = Math.floor(i / r.stupaca), u = Math.min(r.stupaca, t.slike.length - red * r.stupaca);
+        const x = x0 + ((r.stupaca - u) * (r.s + r.g)) / 2 + (i % r.stupaca) * (r.s + r.g), y = y0 + red * (r.s + r.g);
+        await slikaUOkviru(p, sl, x, y, r.s);
+      }
+      const ys = y0 + r.redova * r.s + (r.redova - 1) * r.g + r.G;
+      const xs = L + (W - (t.kategorije.length * r.S + (t.kategorije.length - 1) * r.gs)) / 2;
+      for (const [i, k] of t.kategorije.entries()) {
+        const x = xs + i * (r.S + r.gs);
+        nacrtajSvg(p.page, spremnikOblik(t.tema), { x: p.X(x), y: p.Y(ys), sirina: r.S * MM });
+        const k1 = r.S / SPREMNIK_VB;
+        p.znak(k, x + OZNAKA.cx * k1, ys + OZNAKA.cy * k1, (velicinaOznake(k) * k1) / (25.4 / 72));
+        p.tocka(x + r.S / 2, ys - 3, 1.6);
       }
     }
 

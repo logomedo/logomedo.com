@@ -157,6 +157,11 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-slog-slot { width: 120px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .z-slog-slot .z-slot { width: 100%; }
   .z-slog-slot .z-red-gumbi { margin: 0; }
+  .z-razvrstaj-kategorije { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end; }
+  .z-kategorija { width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .z-spremnik { width: 104px; }
+  .z-kat-slike { gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .z-kat-slike .z-tocno { min-width: 2.4em; padding: 2px 8px; }
   .z-slog-broj { white-space: nowrap; display: flex; align-items: center; gap: 4px; font-size: .84rem; font-weight: 650; }
   .z-duljina { font-size: .8rem; font-weight: 750; color: #fff; background: var(--b); border-radius: 999px; padding: 2px 10px; }
   .z-slog-krugovi { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
@@ -327,6 +332,14 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-slogovi.analiza .a4-slogovi-mreza { grid-template-columns: repeat(3, var(--s, 46mm)); gap: 8mm 10mm; }
   .a4-krugovi { display: grid; justify-content: center; gap: 2.5mm; margin-top: 3mm; }
   .a4-krugovi i { width: min(8mm, calc((36mm - (var(--k) - 1) * 2.5mm) / var(--k))); aspect-ratio: 1; border: 2px solid #000; border-radius: 50%; }
+  /* Razvrstavanje: isto kao PDF (model.ts rasporedRazvrstavanja): mreža 8 mm, pojas za crte 32 mm, spremnici 14 mm razmaka. */
+  .a4-razvrstaj { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 32mm; }
+  .a4-razvrstaj-slike { display: flex; flex-wrap: wrap; justify-content: center; gap: 8mm; margin: 0 auto; max-width: calc(var(--stupaca) * var(--s) + (var(--stupaca) - 1) * 8mm + 1mm); }
+  .a4-razvrstaj-slike > * { width: var(--s); }
+  .a4-razvrstaj-spremnici { display: flex; justify-content: center; gap: 14mm; }
+  .a4-spremnik { position: relative; width: var(--S); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .a4-spremnik .a4-tocka { position: absolute; width: 3.2mm; height: 3.2mm; top: -4.6mm; left: calc(50% - 1.6mm); }
+  .a4-spremnik-crtez svg, .z-spremnik svg { display: block; width: 100%; height: auto; }
   .a4-povezi { display: flex; justify-content: space-between; padding: 0 6mm; }
   .a4-stupac { display: flex; flex-direction: column; gap: 6mm; }
   .a4-par { display: flex; align-items: center; gap: 4mm; } .a4-par .z-slika { width: var(--s, 36mm); }

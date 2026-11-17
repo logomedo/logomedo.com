@@ -175,3 +175,18 @@ test("slogovi: redova koliko stane bez smanjivanja slika (duljina 4 u redu, anal
   assert.deepEqual(a.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [9, 9, 4]);
   assert.ok(a.stranice[0].tijelo.vrsta === "slogovi" && a.stranice[0].tijelo.krugova === 5 && !a.stranice[0].tijelo.legenda);
 });
+
+test("razvrstavanje: jedna stranica, slike bez natpisa, spremnici s oznakom; 12 slika stane bez smanjivanja ispod 30 mm", async () => {
+  const slike = Array.from({ length: 12 }, (_, i) => ({ rijec_id: (i % 4) + 1, kategorija: i % 3 }));
+  const d = dokumentZadatka({ vrsta: "razvrstavanje", naslov: "Vreće", uputa: "Razvrstaj", sadrzaj: { pravilo: "prvi_glas", tema: "vrece", kategorije: ["Š", "LJ", null], slike: [...slike, { rijec_id: null, kategorija: 0 }] } }, rijeci, true);
+  assert.equal(d.stranice.length, 1);
+  const t = d.stranice[0].tijelo;
+  assert.ok(t.vrsta === "razvrstavanje" && t.slike.length === 12 && t.slike.every((x) => !x.natpis));
+  assert.ok(t.vrsta === "razvrstavanje" && t.kategorije.join() === "Š,LJ,?");
+  assert.deepEqual(d.stranice[0].indeksi, Array.from({ length: 12 }, (_, i) => i));
+  assert.ok(d.stranice[0].velicina! >= 30, String(d.stranice[0].velicina));
+  for (const tema of ["vrece", "kosare", "kutije"] as const) {
+    const pdf = await napraviPdf({ ...d, stranice: d.stranice.map((s) => ({ ...s, tijelo: { ...t, tema } as typeof t })) }, new Map(), { ...fontovi, znak: fontovi.naslov });
+    assert.equal((await PDFDocument.load(pdf)).getPageCount(), 1);
+  }
+});

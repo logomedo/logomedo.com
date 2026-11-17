@@ -7,7 +7,7 @@ import { prelomi, sirinaTeksta } from "./sirine.ts";
 import type { Tema } from "../teme.ts";
 import { imaOkvir, podrucje, slojevi, type Okvir, type Podrucje } from "../okviri.ts";
 import { TEME } from "../teme.ts";
-import { rasporedListica, poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
+import { rasporedListica, poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Razvrstavanje, type TemaRazvrstavanja, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
 /** `znak`: slovo ili brojka iz kataloga znakova, crta se kao znak u okviru (s izmjenom), ne kao riječ. */
@@ -25,6 +25,8 @@ export type TijeloPdf =
   /** `legenda` (duljina): boje bojica; `krugova` (analiza): prazni krugovi ispod svake slike. */
   | { vrsta: "slogovi"; legenda?: { naziv: string; boja: string; duga: boolean }[]; krugova: number; slike: SlikaPdf[] }
   | { vrsta: "povezivanje"; lijevo: SlikaPdf[]; desno: SlikaPdf[] }
+  /** Slike gore, spremnici (vreće…) s oznakom dolje; dijete povlači crtu od slike do spremnika. */
+  | { vrsta: "razvrstavanje"; tema: TemaRazvrstavanja; kategorije: string[]; slike: SlikaPdf[] }
   | { vrsta: "listic"; kartice: { slika: SlikaPdf | null; tekst: string }[]; raspored?: RasporedListica }
   | { vrsta: "scena"; pozadina: string | null; gumbi: SlikaPdf[] };
 
@@ -142,6 +144,12 @@ export function straniceZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Ri
     const puna = (k: { x: { rijec_id: number | null } }[]) => prostor ? najmanjaSlika(u(k.slice(0, po).map((y) => y.x)), prostor.W, 1e4) - 0.05 : 0;
     return lomi(pune, po * 3, (k) => u(k.map((y) => y.x)), po, puna).map((d) => ({ tijelo: d.tijelo, indeksi: d.indeksi.map((j) => pune[j].i) }));
   }
+  if (vrsta === "razvrstavanje") {
+    // Jedna stranica (do 12 slika). Natpis bi odao glas ili broj, pa ga nema; prazne slike se preskaču.
+    const r = s as Razvrstavanje;
+    const ind = r.slike.map((x, i) => ({ x, i })).filter((y) => y.x.rijec_id !== null);
+    return [{ tijelo: { vrsta: "razvrstavanje", tema: r.tema, kategorije: r.kategorije.map((k) => k ?? "?"), slike: ind.map((y) => ({ ...sl(y.x.rijec_id), natpis: "" })) }, indeksi: ind.map((y) => y.i) }];
+  }
   if (vrsta === "povezivanje") {
     // Svaka stranica je zaseban zadatak (lijevo i desno isti parovi). Bez prostora jedna stranica; inače
     // najmanje stranica s jednakim brojem parova u kojima slika ne pada ispod NAJMANJA_SLIKA.
@@ -242,6 +250,7 @@ export function najmanjaSlika(t: TijeloPdf, W: number, H: number): number {
     const po = Math.min(5, Math.max(1, t.gumbi.length));
     return Math.min(32, (W - (po - 1) * 5) / po);
   }
+  if (t.vrsta === "razvrstavanje") return rasporedRazvrstavanja(t.slike.length, t.kategorije.length, W, H).s;
   if (t.vrsta === "slogovi") {
     const st = t.krugova ? 3 : 4, red = Math.max(1, Math.ceil(t.slike.length / st));
     const redKrugova = t.krugova * 10.5 - 2.5 <= 46 ? 1 : 2, kr = t.krugova ? (redKrugova === 1 ? 12 : 21) : 0, g = t.krugova ? 9 : 6;
@@ -250,6 +259,18 @@ export function najmanjaSlika(t: TijeloPdf, W: number, H: number): number {
   const g = 7, tekst = t.kartice.some((k) => k.tekst) ? 9 : 0;
   const r = rasporedListica(t.kartice.length, t.raspored, W, H, g, tekst);
   return Math.min(r.s, (W - (r.stupaca - 1) * g) / r.stupaca);
+}
+
+/**
+ * Raspored razvrstavanja na papiru (mm), isti za PDF i HTML ispis: mreža slika gore (do 4 u redu, 5–6 slika
+ * 3 u redu), prazan pojas za crte `G`, spremnici veličine `S` u redu dolje.
+ */
+export function rasporedRazvrstavanja(n: number, kategorija: number, W: number, H: number) {
+  const stupaca = n <= 4 ? Math.max(1, n) : n <= 6 ? 3 : 4, redova = Math.max(1, Math.ceil(n / stupaca));
+  const g = 8, gs = 14, G = 32;
+  const S = Math.min(56, (W - (kategorija - 1) * gs) / kategorija);
+  const s = Math.max(0, Math.min(40, (W - (stupaca - 1) * g) / stupaca, (H - S - G - (redova - 1) * g) / redova));
+  return { stupaca, redova, g, gs, G, S, s };
 }
 
 /**
@@ -302,7 +323,7 @@ export function slikeDokumenta(d: DokumentPdf): string[] {
   for (const { tijelo: t } of d.stranice) {
     if (t.vrsta === "odabir") t.redovi.forEach((r) => [r.zadana, ...r.ponudeno].forEach(dodaj));
     if (t.vrsta === "uljez" || t.vrsta === "percepcija") t.redovi.flat().forEach(dodaj);
-    if (t.vrsta === "prvi_glas" || t.vrsta === "slogovi") t.slike.forEach(dodaj);
+    if (t.vrsta === "prvi_glas" || t.vrsta === "slogovi" || t.vrsta === "razvrstavanje") t.slike.forEach(dodaj);
     if (t.vrsta === "povezivanje") [...t.lijevo, ...t.desno].forEach(dodaj);
     if (t.vrsta === "listic") t.kartice.forEach((k) => dodaj(k.slika));
     if (t.vrsta === "scena") { if (t.pozadina) out.add(t.pozadina); t.gumbi.forEach(dodaj); }
