@@ -53,3 +53,23 @@ Ključ riječi: `prvi_glas` / `zadnji_glas` iz `fonemi()` (isto kao odnosi `poce
    prvi/zadnji glas.
 6. `zvukovi.ts`: izgovor uputa i slova/brojeva ako treba.
 7. `docs/zadaci.md`: odjeljak `### razvrstavanje`. Flutter app: ne (crta samo scenu).
+
+## Stanje (17. 11. 2026. kasno)
+
+Gotovo i deployano (kartica u Predlošcima još **skrivena**, `U_IZRADI` u `predlosci.astro`):
+
+- model, provjere, ocjena, generator (`vrste.ts`, testovi), ekran igre (`biljeznice-ekrani.ts`)
+- migracija `0034_razvrstavanje.sql` (CHECK + područje „Razvrstavanje” pod predvještinama): lokalno primijenjena,
+  **na produkciji nije** (`npm run db:migrate` tek uz Matijin pristanak)
+- editor, HTML ispis, PDF, javni ispis bilježnice
+- igra: povlačenje prstom u spremnik / dodir slike pa spremnika (`biljeznice-igra.ts`, CSS u `IgraDjeteta.astro`)
+- spremnici kao slike iz Vertexa (`scripts/spremnici-slike.sh` + `spremnici-obrada.py`, `public/spremnici/`,
+  krug za oznaku izmjeren u `SPREMNICI` u `spremnici.ts`); vektorski oblik je rezerva u PDF-u
+
+Preostalo:
+
+1. Igru isprobati u pregledniku (lokalno `/admin/zadaci/<id>/dijete`: povlačenje, kriva se vraća, Bravo).
+2. Migracija na produkciji (pitati), pa maknuti `razvrstavanje` iz `U_IZRADI` u `predlosci.astro`.
+3. Predložak „Po glasovima…” za prvi/zadnji glas (`api/zadatak/index.ts`: `slova` iz oznaka kao kod `prvi_glas`,
+   `naslovDijaloga`, `jePoGlasovima` u `listic-glas.ts`).
+4. `docs/zadaci.md`: odjeljak `### razvrstavanje`.
