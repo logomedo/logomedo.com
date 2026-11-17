@@ -316,25 +316,28 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-uljez .a4-red { justify-content: space-between; } .a4-uljez .a4-izbor { width: 38mm; }
   .a4-krug { break-inside: avoid; display: flex; flex-direction: column; align-items: center; gap: 5mm; margin-bottom: 9mm; }
   .a4-slovo { width: 28mm; height: 28mm; border: 2.5px solid #000; border-radius: 50%; display: grid; place-items: center; font-size: 46pt; font-weight: 900; line-height: 1; }
-  .a4-krug-slike { display: grid; grid-template-columns: repeat(var(--stupaca), 31mm); gap: 5mm; justify-content: center; }
+  .a4-krug-slike { display: grid; grid-template-columns: repeat(var(--stupaca), var(--s, 31mm)); gap: 5mm; justify-content: center; }
   .a4-percepcija .a4-red { justify-content: center; gap: 5mm; } .a4-percepcija .a4-izbor { width: min(38mm, calc((170mm - (var(--n) - 1) * 5mm) / var(--n))); }
   .a4-legenda { display: flex; justify-content: center; gap: 14mm; margin-bottom: 7mm; font-size: 14pt; font-weight: 800; }
   .a4-legenda span { display: flex; align-items: center; gap: 3mm; }
   .a4-krug-boje { display: inline-block; box-sizing: border-box; width: 9mm; height: 9mm; border-radius: 50%; border: 1.8mm solid var(--b); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .a4-slogovi-mreza { display: grid; grid-template-columns: repeat(4, 38mm); gap: 7mm 5mm; justify-content: center; }
-  .a4-slogovi.analiza .a4-slogovi-mreza { grid-template-columns: repeat(3, 46mm); gap: 8mm 10mm; }
+  .a4-slogovi-mreza { display: grid; grid-template-columns: repeat(4, var(--s, 38mm)); gap: 7mm 5mm; justify-content: center; }
+  .a4-slogovi.analiza .a4-slogovi-mreza { grid-template-columns: repeat(3, var(--s, 46mm)); gap: 8mm 10mm; }
   .a4-krugovi { display: grid; justify-content: center; gap: 2.5mm; margin-top: 3mm; }
   .a4-krugovi i { width: min(8mm, calc((36mm - (var(--k) - 1) * 2.5mm) / var(--k))); aspect-ratio: 1; border: 2px solid #000; border-radius: 50%; }
   .a4-povezi { display: flex; justify-content: space-between; padding: 0 6mm; }
   .a4-stupac { display: flex; flex-direction: column; gap: 6mm; }
-  .a4-par { display: flex; align-items: center; gap: 4mm; } .a4-par .z-slika { width: 36mm; }
+  .a4-par { display: flex; align-items: center; gap: 4mm; } .a4-par .z-slika { width: var(--s, 36mm); }
   .a4-tocka { width: 4mm; height: 4mm; border-radius: 9px; background: #000; }
   .a4-scena { display: flex; flex-direction: column; gap: 6mm; }
   .a4-pozadina { width: 100%; max-height: 165mm; object-fit: contain; border-radius: 3mm; border: 1.5px solid #000; }
   .a4-scena-gumbi { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4mm; }
   .a4 .z-listic { grid-template-columns: repeat(3, 1fr); gap: 7mm; } .a4 .z-listic figcaption { font-size: 12pt; }
   /* Listić po stranicama: svaka A4 stranica zasebno, na ekranu s razmakom, na papiru nova stranica. */
-  .a4-listic { height: 297mm; overflow: hidden; }
+  .a4-listic, .a4-stranica { height: 297mm; overflow: hidden; }
+  /* Stranica kao PDF (model.ts dokumentZadatka): redovi raspoređeni po visini (PDF `raspodijeli`), slike koje PDF smanjuje iz --s. */
+  .a4-stranica > .a4-odabir, .a4-stranica > .a4-uljez, .a4-stranica > .a4-povezi .a4-stupac { flex: 1; min-height: 0; justify-content: space-around; gap: 0; }
+  .a4-stranica > .a4-povezi { flex: 1; min-height: 0; }
   .a4 + .a4 { margin-top: 10mm; }
 
   @media print {
@@ -345,6 +348,6 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
     .a4-okvir { padding: 0; background: none; border-radius: 0; }
     .a4 { box-shadow: none; margin: 0; }
     .a4 + .a4 { margin-top: 0; break-before: page; }
-    .a4-listic { height: 296mm; }
+    .a4-listic, .a4-stranica { height: 296mm; }
   }
 </style>

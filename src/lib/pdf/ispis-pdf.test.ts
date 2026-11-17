@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PDFDocument } from "pdf-lib";
 import { napraviPdf, prelomi, smjestiSliku } from "./ispis-pdf.ts";
-import { dokumentBiljeznice, dokumentZadatka, slikeDokumenta, velikeSlike, type RijecPdf } from "./model.ts";
+import { dokumentBiljeznice, dokumentZadatka, slikeDokumenta, velikeSlike, visinaZaglavlja, type RijecPdf } from "./model.ts";
+import { podrucje } from "../okviri.ts";
 import { prazno, type Izmjena } from "../zadaci/vrste.ts";
 
 const fontovi = {
@@ -94,12 +95,13 @@ test("percepcija: izmjena okreće sliku oko središta i ostaje u okviru", () => 
   assert.ok(smjestiSliku(400, 200, o, "zrcalo").width < 0);
 });
 
-test("percepcija: 4 reda po stranici, bez natpisa, siva slika ima svoj URL", async () => {
+test("percepcija: redova koliko stane, bez natpisa, siva slika ima svoj URL", async () => {
   const red = (izmjene: Izmjena[]) => ({ polja: izmjene.map((izmjena) => ({ rijec_id: 1, izmjena })), tocno: [0] });
   const d = dokumentZadatka({ vrsta: "percepcija", naslov: "", uputa: "Prekriži", sadrzaj: { trazi: "razlicitu", stavke: [
     red(["siva", "", "", ""]), red(["zrcalo", "", "", "", "", ""]), red(["lijevo", "", ""]), red(["mala", "", "", ""]), red(["naopako", "", "", "", ""]),
+    red(["", "", "siva"]), red(["", "zrcalo", ""]),
   ] } }, rijeci, true);
-  assert.equal(d.stranice.length, 2);
+  assert.deepEqual(d.stranice.map((s) => s.indeksi), [[0, 1, 2, 3, 4], [5, 6]]);
   assert.deepEqual(slikeDokumenta(d).sort(), ["https://cdn.example/1.jpg", "https://cdn.example/1.jpg#siva"]);
   const t = d.stranice[0].tijelo;
   assert.ok(t.vrsta === "percepcija" && t.redovi.flat().every((x) => x.natpis === ""));
@@ -107,12 +109,49 @@ test("percepcija: 4 reda po stranici, bez natpisa, siva slika ima svoj URL", asy
   assert.equal((await PDFDocument.load(b)).getPageCount(), 2);
 });
 
-test("samostalan zadatak: prva stranica 3 reda odabira, ostale 4 (bez zaglavlja)", async () => {
+test("samostalan zadatak: na stranicu redova koliko stane (prva ima zaglavlje), PDF ima iste stranice", async () => {
   const stavke = Array.from({ length: 11 }, () => ({ zadana: 1, ponudeno: [2, 3, 4], tocno: 0 }));
   const d = dokumentZadatka({ vrsta: "odabir", naslov: "Uparivanje", uputa: "Zaokruži", sadrzaj: { odnos: "rima", stavke } }, rijeci, true);
-  assert.deepEqual(d.stranice.map((s) => (s.tijelo as { redovi: unknown[] }).redovi.length), [3, 4, 4]);
+  assert.deepEqual(d.stranice.map((s) => (s.tijelo as { redovi: unknown[] }).redovi.length), [4, 5, 2]);
+  assert.deepEqual(d.stranice[1].indeksi, [4, 5, 6, 7, 8]);
+  assert.equal((await PDFDocument.load(await napraviPdf(d, new Map(), fontovi))).getPageCount(), 3);
+  // 7 redova rime: 4 + 3 (ne 3 + 4).
+  const r = dokumentZadatka({ vrsta: "odabir", naslov: "Rima", uputa: "Zaokruži sliku koja se rimuje.", sadrzaj: { odnos: "rima", stavke: stavke.slice(0, 7) } }, rijeci, true);
+  assert.deepEqual(r.stranice.map((s) => s.indeksi?.length), [4, 3]);
+  // Bez riječi ispod slika red je niži, pa stane red više.
+  const bez = dokumentZadatka({ vrsta: "odabir", naslov: "Rima", uputa: "Zaokruži", sadrzaj: { odnos: "rima", stavke } }, rijeci, false);
+  assert.deepEqual(bez.stranice.map((s) => s.indeksi?.length), [5, 5, 1]);
   const u = dokumentZadatka({ vrsta: "uljez", naslov: "", uputa: "", sadrzaj: { odnos: "rima", stavke: Array.from({ length: 9 }, () => ({ slike: [1, 2, 3, 4], uljez: 0 })) } }, rijeci, true);
   assert.deepEqual(u.stranice.map((s) => (s.tijelo as { redovi: unknown[] }).redovi.length), [4, 5]);
+});
+
+test("zaglavlje: procjena visine nije manja od stvarne (Nunito, prijelom po riječima)", async () => {
+  const pdf = await PDFDocument.create();
+  pdf.registerFontkit((await import("@pdf-lib/fontkit")).default);
+  const naslovF = await pdf.embedFont(fontovi.naslov), tekstF = await pdf.embedFont(fontovi.tekst);
+  const MM = 72 / 25.4;
+  const naslovi = ["Rima", "Uparivanje", "Izbaci uljeza: glas R na početku riječi", "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM", "Vizualna percepcija · pronađi različitu sliku u svakom redu i zaokruži je"];
+  const upute = ["Zaokruži", "Zaokruži sliku koja se rimuje sa zadanom slikom. Pazi na zadnji slog!", "W ".repeat(80), "Pogledaj sve slike u redu. Prekriži onu koja se razlikuje od ostalih. Ako ne znaš, pitaj odraslu osobu da ti pročita riječ, pa probaj ponovno."];
+  for (const okvir of [null, { rub: "kocke-crvene", masna: null, kutovi: ["a", null, null, null] }] as const) {
+    const o = podrucje(okvir as never), sirina = o.sredina ? 140 : o.D - o.L;
+    for (const naslov of naslovi) for (const uputa of upute) {
+      const redaka = (t: string, f: typeof naslovF, pt: number) => prelomi(t, (x) => f.widthOfTextAtSize(x, pt) / MM, sirina).length;
+      const stvarno = redaka(naslov, naslovF, 22) * 22 * 1.25 / MM + 1 + redaka(uputa, tekstF, 13) * 13 * 1.25 / MM + 1 + 10 + 8;
+      assert.ok(visinaZaglavlja({ naslov, uputa, ime: true }, o) >= stvarno - 0.01, `${naslov} / ${uputa.slice(0, 20)}: ${visinaZaglavlja({ naslov, uputa, ime: true }, o)} < ${stvarno}`);
+    }
+  }
+});
+
+test("povezivanje: previše parova za jednu stranicu → stranice s jednakim brojem, desno samo svoji parovi", () => {
+  const parovi = Array.from({ length: 8 }, (_, i) => ({ lijevo: (i % 4) + 1, desno: ((i + 1) % 4) + 1 }));
+  const desno_redoslijed = [7, 2, 5, 0, 3, 6, 1, 4];
+  const d = dokumentZadatka({ vrsta: "povezivanje", naslov: "", uputa: "Poveži", sadrzaj: { odnos: "rima", parovi, desno_redoslijed } }, rijeci, true);
+  assert.deepEqual(d.stranice.map((s) => s.indeksi), [[0, 1, 2, 3], [4, 5, 6, 7]]);
+  assert.ok(d.stranice.every((s) => (s.velicina ?? 0) >= 30));
+  const t = d.stranice[1].tijelo;
+  assert.ok(t.vrsta === "povezivanje" && t.desno.length === 4);
+  const m = dokumentZadatka({ vrsta: "povezivanje", naslov: "", uputa: "Poveži", sadrzaj: { odnos: "rima", parovi: parovi.slice(0, 4), desno_redoslijed: [2, 0, 3, 1] } }, rijeci, true);
+  assert.equal(m.stranice.length, 1);
 });
 
 test("prvi glas: stranica po krugu, slovo i slike bez natpisa", () => {
@@ -124,13 +163,14 @@ test("prvi glas: stranica po krugu, slovo i slike bez natpisa", () => {
   assert.ok(t.vrsta === "prvi_glas" && t.slovo === "L" && t.slike.length === 3 && t.slike.every((x) => x.natpis === ""));
 });
 
-test("slogovi: duljina s legendom 12 po stranici, analiza s krugovima 9", () => {
-  const rijeci = Array.from({ length: 14 }, (_, i) => ({ id: i + 1, rijec: `r${i}`, slika: null }));
+test("slogovi: redova koliko stane bez smanjivanja slika (duljina 4 u redu, analiza 3)", () => {
+  const rijeci = Array.from({ length: 22 }, (_, i) => ({ id: i + 1, rijec: `r${i}`, slika: null }));
   const slike = rijeci.map((r) => ({ rijec_id: r.id, slogova: 2 }));
   const d = dokumentZadatka({ vrsta: "slogovi", naslov: "", uputa: "", sadrzaj: { nacin: "duljina", krugova: 4, slike } }, rijeci, false);
-  assert.deepEqual(d.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [12, 2]);
+  assert.deepEqual(d.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [16, 6]);
+  assert.ok(d.stranice.every((s) => (s.velicina ?? 0) >= 40));
   assert.ok(d.stranice[0].tijelo.vrsta === "slogovi" && d.stranice[0].tijelo.legenda?.length === 2 && d.stranice[0].tijelo.krugova === 0);
   const a = dokumentZadatka({ vrsta: "slogovi", naslov: "", uputa: "", sadrzaj: { nacin: "analiza", krugova: 5, slike } }, rijeci, false);
-  assert.deepEqual(a.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [9, 5]);
+  assert.deepEqual(a.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [9, 9, 4]);
   assert.ok(a.stranice[0].tijelo.vrsta === "slogovi" && a.stranice[0].tijelo.krugova === 5 && !a.stranice[0].tijelo.legenda);
 });
