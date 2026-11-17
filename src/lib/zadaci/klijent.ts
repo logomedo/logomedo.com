@@ -625,7 +625,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const krugovi = ind ? izbor((sadrzaj as PrviGlas).krugovi, ind) : (sadrzaj as PrviGlas).krugovi.filter((k) => k.slovo);
       return h("div", { class: "a4-prvi-glas" }, ...krugovi.map((k) => h("section", { class: "a4-krug" },
         h("div", { class: "a4-slovo" }, k.slovo ?? "?"),
-        h("div", { class: "a4-krug-slike", style: `--stupaca:${k.slike.filter((x) => x !== null).length > 12 ? 5 : 4};${velicina ? `--s:${mm(Math.min(velicina, 31))}` : ""}` },
+        h("div", { class: "a4-krug-slike", style: `--stupaca:${k.slike.filter((x) => x !== null).length > 12 ? 5 : 4};${velicina ? `--s:${mm(velicina)}` : ""}` },
           ...k.slike.filter((x) => x !== null).map((id) => h("div", { class: "a4-izbor" }, slika(id, "", false)))))));
     }
     if (vrsta === "slogovi") {

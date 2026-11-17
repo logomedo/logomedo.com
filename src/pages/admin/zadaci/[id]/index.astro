@@ -338,6 +338,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   /* Stranica kao PDF (model.ts dokumentZadatka): redovi raspoređeni po visini (PDF `raspodijeli`), slike koje PDF smanjuje iz --s. */
   .a4-stranica > .a4-odabir, .a4-stranica > .a4-uljez { flex: 1; min-height: 0; justify-content: space-around; gap: 0; }
   .a4-stranica > .a4-povezi { flex: 1; min-height: 0; padding: 0 8mm; }
+  .a4-stranica .a4-krug { margin-bottom: 0; gap: 10mm; } .a4-stranica .a4-slovo { width: 30mm; height: 30mm; } .a4-stranica .a4-krug-slike { gap: 6mm; }
   .a4-stranica > .a4-povezi .a4-stupac { justify-content: space-around; gap: 0; }
   .a4 + .a4 { margin-top: 10mm; }
 
