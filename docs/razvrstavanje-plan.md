@@ -9,9 +9,9 @@ Odluke (17. 11. 2026., odgovori u razgovoru):
   „Dijete rješava”: slika se povuče prstom (pointer events) u vreću, kriva se vrati na mjesto.
 - **Izgled:** tema se bira po zadatku: `vrece` (božićna), `kosare`, `kutije`. Crtež je jednostavan inline
   SVG s oznakom (slovo ili broj) na sredini, bez generiranja slika (Vertex se plaća).
-- **Pravila** (sva odmah): `prvi_glas`, `zadnji_glas`, `slogovi` (broj slogova), `glasovi` (brojanje
-  slova, tj. broj glasova: LJ, NJ, DŽ su jedan glas, kao „Prebrajanje”, `brojGlasova`). Ako logopedica pod
-  „brojanjem slova” misli na slova a ne glasove (LJUTO = 5 slova, 4 glasa), to je jedna funkcija: pitati.
+- **Pravila** (sva odmah): `prvi_glas`, `zadnji_glas`, `slogovi` (broj slogova), `glasovi` (broj glasova:
+  LJ, NJ, DŽ su jedan glas, LJUTO = 4, kao „Prebrajanje”, `brojGlasova`; potvrđeno 17. 11. 2026.: „broj glasova”,
+  ne broj slova).
 
 ## Model (prijedlog)
 
