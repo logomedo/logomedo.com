@@ -66,3 +66,14 @@ export function ulogaNapisana(u: UlogaNapisano, jeZnak: (id: number) => boolean 
 export function postaviUlogu(u: UlogaNapisano, napisano: boolean, jeZnak: (id: number) => boolean = () => false): void {
   for (const p of u.polja) { const id = p.daj(); if (id !== null && !jeZnak(id)) p.postavi(uObliku(id, napisano)); }
 }
+
+/**
+ * Riječ odabrana u prazno polje (novi red): napisana kad je napisana njezina uloga (npr. zadane), a uloga
+ * bez ijedne riječi u „Riječ i slika” (`ista_rijec`) je napisana za zadane i desni stupac.
+ */
+export function novoPoljeNapisano(v: Vrsta, s: unknown, kljuc: string, odnos: string, jeZnak: (id: number) => boolean = () => false): boolean {
+  const u = ulogeNapisano(v, s).find((x) => x.kljuc === kljuc);
+  if (!u) return false;
+  if (u.polja.some((p) => { const id = p.daj(); return id !== null && !jeZnak(id); })) return ulogaNapisana(u, jeZnak);
+  return odnos === "ista_rijec" && (kljuc === "zadana" || kljuc === "desno");
+}

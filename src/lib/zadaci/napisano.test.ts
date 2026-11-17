@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mapaRijeci, postaviUlogu, ulogaNapisana, ulogeNapisano } from "./napisano.ts";
+import { mapaRijeci, novoPoljeNapisano, postaviUlogu, ulogaNapisana, ulogeNapisano } from "./napisano.ts";
 import { normaliziraj, provjeri, rijeciU, slozi, type Odabir, type Povezivanje, type RijecZadatka, type Uljez } from "./vrste.ts";
 import { tijelaZadatka } from "../pdf/model.ts";
 import { izvediRimu } from "./rima.ts";
@@ -73,4 +73,25 @@ test("Riječ i slika: povezivanje slika lijevo, ista riječ napisana desno", () 
   assert.equal(p.parovi.length, 4);
   assert.ok(p.parovi.every((x) => x.lijevo! > 0 && x.desno === -x.lijevo!));
   assert.deepEqual(provjeri("povezivanje", p, M), []);
+});
+
+test("novi red: prazno polje preuzima oblik uloge (zadatak 141, peti red bio slika)", () => {
+  const s: Odabir = { odnos: "ista_rijec", stavke: [
+    { zadana: -1, ponudeno: [4, 1, 6], tocno: 1 },
+    { zadana: -2, ponudeno: [2, 5, 3], tocno: 0 },
+    { zadana: null, ponudeno: [null, null, null], tocno: 0 },
+  ] };
+  assert.equal(novoPoljeNapisano("odabir", s, "zadana", s.odnos), true);
+  assert.equal(novoPoljeNapisano("odabir", s, "ponudeno", s.odnos), false);
+  // Mješovita uloga (jedna zadana slika): novo polje je slika.
+  s.stavke[1].zadana = 2;
+  assert.equal(novoPoljeNapisano("odabir", s, "zadana", s.odnos), false);
+  // Prazan zadatak „Riječ i slika”: zadane i desni stupac napisani, ostalo slike.
+  const prazno: Povezivanje = { odnos: "ista_rijec", parovi: [{ lijevo: null, desno: null }], desno_redoslijed: [0] };
+  assert.equal(novoPoljeNapisano("povezivanje", prazno, "desno", prazno.odnos), true);
+  assert.equal(novoPoljeNapisano("povezivanje", prazno, "lijevo", prazno.odnos), false);
+  assert.equal(novoPoljeNapisano("povezivanje", { ...prazno, odnos: "rima" }, "desno", "rima"), false);
+  // Uljez s napisanim poljima: novo polje napisano.
+  const u: Uljez = { odnos: "rima", stavke: [{ slike: [-1, -2, -3, -4], uljez: 0 }, { slike: [null, null, null, null], uljez: 0 }] };
+  assert.equal(novoPoljeNapisano("uljez", u, "sve", u.odnos), true);
 });

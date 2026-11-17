@@ -15,7 +15,7 @@ import {
   type GlasoviZadatka, type Izmjena, type Listic, type Odabir, type Percepcija, type Polje, type Povezivanje, type RijecZadatka, type Sadrzaj, type Scena, type Trazi, type Uljez, type Vrsta, zaGenerator,
 } from "./vrste.ts";
 import { usporediZnakove } from "../znakovi.ts";
-import { izvorni, jeNapisano, mapaRijeci, postaviUlogu, uObliku, ulogaNapisana, ulogeNapisano, VRSTE_NAPISANO } from "./napisano.ts";
+import { izvorni, jeNapisano, mapaRijeci, novoPoljeNapisano, postaviUlogu, uObliku, ulogaNapisana, ulogeNapisano, VRSTE_NAPISANO } from "./napisano.ts";
 import { slikaZa, vidljiviGumbi, type PozadinaPrikaz } from "../scena-prikaz.ts";
 import { A4 as A4_MM, GOTOVI, imaOkvir, isti, KUTOVI, MASNE, normalizirajOkvir, okvirSvg, podrucje as podrucjeOkvira, RUBOVI, UKRASI, urlUkrasa, type Kutovi, type Okvir } from "../okviri.ts";
 
@@ -193,11 +193,16 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     dlg.showModal();
   }
 
-  /** Slot u editoru: klik otvara birač. */
-  function slot(id: number | null, postavi: (id: number | null) => void, o: { uzor?: number | null; nacin?: "rima" | "ne-rima"; tocno?: boolean; naTocno?: () => void; oznakaTocno?: string } = {}) {
+  /** Prazno polje (novi red) preuzima oblik svoje uloge (napisano.ts, novoPoljeNapisano). */
+  const ulogaJeNapisana = (kljuc: string) => novoPoljeNapisano(vrsta, sadrzaj, kljuc, odnos(), jeZnakId);
+
+  /** Slot u editoru: klik otvara birač. `uloga`: kojoj skupini polje pripada (ulogeNapisano). */
+  function slot(id: number | null, postavi: (id: number | null) => void, o: { uzor?: number | null; nacin?: "rima" | "ne-rima"; tocno?: boolean; naTocno?: () => void; oznakaTocno?: string; uloga?: string } = {}) {
     const r = R(id);
-    // Nova riječ u napisanom polju ostaje napisana; znak (slovo, brojka) je uvijek znak.
-    const uPolje = (n: number | null) => (n !== null && jeNapisano(id) && !jeZnakId(n) ? uObliku(n, true) : n);
+    // Nova riječ u napisanom polju ostaje napisana, u praznom polju preuzima oblik svoje uloge (novi red
+    // u napisanom stupcu je napisan); znak (slovo, brojka) je uvijek znak.
+    const napisanoPolje = () => (id === null ? !!o.uloga && smijeNapisano && ulogaJeNapisana(o.uloga) : jeNapisano(id));
+    const uPolje = (n: number | null) => (n !== null && !jeZnakId(n) && napisanoPolje() ? uObliku(n, true) : n);
     return h("div", { class: `z-slot${o.tocno ? " tocno" : ""}` },
       h("button", { type: "button", class: "z-slot-slika", title: "Promijeni sliku",
         onclick: () => biraj(id, o.uzor ?? null, o.nacin ?? null, (n) => { postavi(uPolje(n)); oznaci(); osvjezi(); }) },
@@ -484,10 +489,10 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return h("div", { class: "z-uredi" }, prekidacOdnosa(s),
         ...s.stavke.map((x, i) => h("div", { class: "ploha z-red-uredi" },
           h("div", { class: "z-red-broj" }, String(i + 1)),
-          h("div", { class: "z-odabir-zadana" }, h("small", {}, "Zadana"), slot(x.zadana, (n) => (x.zadana = n), { uzor: x.ponudeno[x.tocno], nacin: "rima" })),
+          h("div", { class: "z-odabir-zadana" }, h("small", {}, "Zadana"), slot(x.zadana, (n) => (x.zadana = n), { uzor: x.ponudeno[x.tocno], nacin: "rima", uloga: "zadana" })),
           h("div", { class: "z-strelica" }, "→"),
           h("div", { class: "z-ponudeno" }, ...x.ponudeno.map((pid, j) => slot(pid, (n) => (x.ponudeno[j] = n), {
-            uzor: x.zadana, nacin: j === x.tocno ? "rima" : "ne-rima", tocno: j === x.tocno, naTocno: () => (x.tocno = j), oznakaTocno: ODNOSI[s.odnos].oznakaTocno,
+            uzor: x.zadana, nacin: j === x.tocno ? "rima" : "ne-rima", tocno: j === x.tocno, naTocno: () => (x.tocno = j), oznakaTocno: ODNOSI[s.odnos].oznakaTocno, uloga: "ponudeno",
           }))),
           redGumbi(s.stavke, i))),
         h("button", { type: "button", class: "gumb", disabled: s.stavke.length >= MAX_REDOVA, title: s.stavke.length >= MAX_REDOVA ? `Najviše ${MAX_REDOVA} redova` : undefined, onclick: () => { s.stavke.push({ zadana: null, ponudeno: Array(PONUDENIH).fill(null), tocno: 0 }); oznaci(); osvjezi(); } }, "+ Dodaj red"));
@@ -501,7 +506,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
             h("div", { class: "z-red-broj" }, String(i + 1)),
             h("div", { class: "z-cetiri" }, ...x.slike.map((pid, j) => slot(pid, (n) => (x.slike[j] = n), {
               uzor: j === x.uljez ? uzor : x.slike.find((id, k) => k !== j && k !== x.uljez && id !== null) ?? null,
-              nacin: j === x.uljez ? "ne-rima" : "rima", tocno: j === x.uljez, naTocno: () => (x.uljez = j), oznakaTocno: "uljez",
+              nacin: j === x.uljez ? "ne-rima" : "rima", tocno: j === x.uljez, naTocno: () => (x.uljez = j), oznakaTocno: "uljez", uloga: "sve",
             }))),
             redGumbi(s.stavke, i));
         }),
@@ -519,9 +524,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         ...s.parovi.map((x, i) => h("div", { class: "ploha z-red-uredi" },
           h("div", { class: "z-red-broj" }, String(i + 1)),
           // Obje strane se ravnaju jedna po drugoj: koja je prva odabrana, druga nudi riječi u odnosu s njom.
-          slot(x.lijevo, (n) => (x.lijevo = n), { uzor: x.desno, nacin: "rima" }),
+          slot(x.lijevo, (n) => (x.lijevo = n), { uzor: x.desno, nacin: "rima", uloga: "lijevo" }),
           h("div", { class: "z-strelica" }, "⟷"),
-          slot(x.desno, (n) => (x.desno = n), { uzor: x.lijevo, nacin: "rima" }),
+          slot(x.desno, (n) => (x.desno = n), { uzor: x.lijevo, nacin: "rima", uloga: "desno" }),
           h("div", { class: "z-red-gumbi" }, h("button", { type: "button", class: "gumb mali tihi opasno", title: "Makni par", onclick: () => makni(i) }, "×")))),
         h("div", { class: "z-gumbi" },
           s.parovi.length < 8 ? h("button", { type: "button", class: "gumb", onclick: () => { s.parovi.push({ lijevo: null, desno: null }); s.desno_redoslijed.push(s.parovi.length - 1); oznaci(); osvjezi(); } }, "+ Dodaj par") : null,
