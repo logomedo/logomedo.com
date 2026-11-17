@@ -336,8 +336,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   /* Listić po stranicama: svaka A4 stranica zasebno, na ekranu s razmakom, na papiru nova stranica. */
   .a4-listic, .a4-stranica { height: 297mm; overflow: hidden; }
   /* Stranica kao PDF (model.ts dokumentZadatka): redovi raspoređeni po visini (PDF `raspodijeli`), slike koje PDF smanjuje iz --s. */
-  .a4-stranica > .a4-odabir, .a4-stranica > .a4-uljez, .a4-stranica > .a4-povezi .a4-stupac { flex: 1; min-height: 0; justify-content: space-around; gap: 0; }
-  .a4-stranica > .a4-povezi { flex: 1; min-height: 0; }
+  .a4-stranica > .a4-odabir, .a4-stranica > .a4-uljez { flex: 1; min-height: 0; justify-content: space-around; gap: 0; }
+  .a4-stranica > .a4-povezi { flex: 1; min-height: 0; padding: 0 8mm; }
+  .a4-stranica > .a4-povezi .a4-stupac { justify-content: space-around; gap: 0; }
   .a4 + .a4 { margin-top: 10mm; }
 
   @media print {
