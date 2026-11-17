@@ -153,11 +153,13 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         !zn.length ? h("p", { class: "blijedo" }, "Nema takvog znaka. Novi znak dodaje se u Katalog › Znakovi.") : null);
         return;
       }
+      // „Riječ i slika”: uz sliku BAZEN nudi se ista riječ iz kataloga (u polju postaje napisana, slot → uPolje),
+      // iako uOdnosu istu riječ ne broji (zadatak 143: desno polje uz sliku bilo je prazno).
       const svi = p.rijeci.filter((r) => !r.znak && (!samoJedne || jednaRijec(r.rijec)) &&
         (!q || (rima ? r.rima?.endsWith(rima) : r.rijec.toLocaleLowerCase("hr").includes(q))) &&
         (!samoSlika || r.slika) &&
         (!poGlasu || odgovara(sGlasovima(r), pg!)) &&
-        (!u || filtar === "sve" || (filtar === "rima" ? uOdnosu(odnos(), u, r) : !uOdnosu(odnos(), u, r) && r.id !== izvorni(u.id))));
+        (!u || filtar === "sve" || (filtar === "rima" ? uOdnosu(odnos(), u, r) || (odnos() === "ista_rijec" && r.id === izvorni(u.id)) : !uOdnosu(odnos(), u, r) && r.id !== izvorni(u.id))));
       const pozicija = lista.scrollTop;
       zamijeni(lista, 
         ...svi.slice(0, koliko).map((r) => h("button", {
