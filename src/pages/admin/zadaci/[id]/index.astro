@@ -320,8 +320,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-percepcija .a4-red { justify-content: center; gap: 5mm; } .a4-percepcija .a4-izbor { width: min(38mm, calc((170mm - (var(--n) - 1) * 5mm) / var(--n))); }
   .a4-legenda { display: flex; justify-content: center; gap: 14mm; margin-bottom: 7mm; font-size: 14pt; font-weight: 800; }
   .a4-legenda span { display: flex; align-items: center; gap: 3mm; }
-  .a4-crta-boje { display: inline-block; height: 4mm; border-radius: 0 2mm 2mm 0; background: var(--b); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .a4-crta-boje.duga { width: 30mm; } .a4-crta-boje.kratka { width: 11mm; }
+  .a4-krug-boje { display: inline-block; box-sizing: border-box; width: 9mm; height: 9mm; border-radius: 50%; border: 1.8mm solid var(--b); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .a4-slogovi-mreza { display: grid; grid-template-columns: repeat(4, 38mm); gap: 7mm 5mm; justify-content: center; }
   .a4-slogovi.analiza .a4-slogovi-mreza { grid-template-columns: repeat(3, 46mm); gap: 8mm 10mm; }
   .a4-krugovi { display: grid; justify-content: center; gap: 2.5mm; margin-top: 3mm; }

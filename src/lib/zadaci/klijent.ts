@@ -611,7 +611,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const s = sadrzaj as Slogovi;
       const pune = s.slike.filter((x) => x.rijec_id !== null);
       tijelo = h("div", { class: `a4-slogovi ${s.nacin}` },
-        s.nacin === "duljina" ? h("div", { class: "a4-legenda" }, ...(["duga", "kratka"] as const).map((k) => h("span", { style: `--b:${BOJE_DULJINE[k].boja}` }, h("i", { class: `a4-crta-boje ${k}` }), BOJE_DULJINE[k].naziv))) : null,
+        s.nacin === "duljina" ? h("div", { class: "a4-legenda" }, ...(["duga", "kratka"] as const).map((k) => h("span", { style: `--b:${BOJE_DULJINE[k].boja}` }, h("i", { class: "a4-krug-boje" }), BOJE_DULJINE[k].naziv))) : null,
         h("div", { class: "a4-slogovi-mreza" }, ...pune.map((x) => h("div", { class: "a4-izbor" }, slika(x.rijec_id, "", sRijecima),
           s.nacin !== "duljina" ? kruzici(s.krugova, 0, "a4-krugovi") : null))));
     } else if (vrsta === "povezivanje") {

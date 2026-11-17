@@ -354,16 +354,16 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
     }
 
     if (t.vrsta === "slogovi") {
-      // Legenda bojica (dugačka crta crvena, kratka plava), pa mreža; u analizi krugovi ispod slike.
+      // Legenda bojica: krug u boji (crveni = dugačka, plavi = kratka), kao trag kojim dijete zaokruži sliku.
       let y0 = vrh;
       if (t.legenda) {
-        const pt = 13, duz = (d: boolean) => (d ? 30 : 11);
-        const sirine = t.legenda.map((x) => duz(x.duga) + 3 + p.sirina(x.naziv, pt));
+        const pt = 13, d = 9;
+        const sirine = t.legenda.map((x) => d + 3 + p.sirina(x.naziv, pt));
         let x = L + (W - sirine.reduce((a, b) => a + b, 0) - 14 * (sirine.length - 1)) / 2;
         for (const [i, l] of t.legenda.entries()) {
           const c = parseInt(l.boja.slice(1), 16);
-          p.page.drawRectangle({ x: p.X(x), y: p.Y(y0 + 5), width: duz(l.duga) * MM, height: 4 * MM, color: rgb((c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255) });
-          p.tekst(l.naziv, x + duz(l.duga) + 3, y0 + 1.2, pt, { poravnanje: "l" });
+          p.page.drawCircle({ x: p.X(x + d / 2), y: p.Y(y0 + 3), size: (d / 2 - 0.9) * MM, borderColor: rgb((c >> 16) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255), borderWidth: 1.8 * MM });
+          p.tekst(l.naziv, x + d + 3, y0 + 1.2, pt, { poravnanje: "l" });
           x += sirine[i] + 14;
         }
         y0 += 14;
