@@ -2,9 +2,10 @@
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import KatalogKartice from "../../components/KatalogKartice.astro";
-import { glasovi, stilIzUrla, stiloviAktivni, ukupno, ukupnoSvihStilova } from "../../lib/katalog";
+import { glasovi, stilIzUrla, zapamtiStil, stiloviAktivni, ukupno, ukupnoSvihStilova } from "../../lib/katalog";
 
 const s = await stilIzUrla(Astro.url);
+zapamtiStil(Astro.cookies, s.kod);
 const [lista, u, svi, stilovi] = await Promise.all([glasovi(s.id), ukupno(s.id), ukupnoSvihStilova(), stiloviAktivni()]);
 const uzStil = (href: string) => (s.kod === "bojanka" ? href : `${href}?stil=${s.kod}`);
 // Ispod brojke: koliko je u svim stilovima, ako se razlikuje (bočna traka broji sve stilove).

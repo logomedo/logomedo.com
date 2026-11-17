@@ -35,6 +35,15 @@ export async function stilIzUrla(url: URL): Promise<Stil> {
   return (kod && (await DB().prepare("SELECT id, kod, naziv, predlozak, model FROM stilovi WHERE kod = ?").bind(kod).first<Stil>())) || stil();
 }
 
+/**
+ * Zadnji stil odabran u katalogu (kolačić): stranica riječi otvara sliku u tom stilu, i kad se do nje dođe
+ * tražilicom (17. 11. 2026.: nakon „Ilustracija” u katalogu riječ se svejedno otvarala na bojanci).
+ */
+export const KOLACIC_STILA = "katalog_stil";
+export function zapamtiStil(cookies: { set: (k: string, v: string, o: Record<string, unknown>) => void }, kod: string) {
+  cookies.set(KOLACIC_STILA, kod, { path: "/admin", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", secure: true, httpOnly: true });
+}
+
 export async function glasovi(stilId: number): Promise<GlasPregled[]> {
   const { results } = await DB().prepare(
     `SELECT g.id, g.oznaka, g.slug, g.skupina, g.skupine,

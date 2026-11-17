@@ -1,13 +1,14 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
-import { glas as nadjiGlas, rijeciGlasa, stilIzUrla, NAZIV_POZICIJE } from "../../../lib/katalog";
+import { glas as nadjiGlas, rijeciGlasa, stilIzUrla, zapamtiStil, NAZIV_POZICIJE } from "../../../lib/katalog";
 import { POZICIJE, type Pozicija } from "../../../lib/fonemi";
 import { smijeNa } from "../../../lib/admin/rute";
 
 const g = await nadjiGlas(Astro.params.slug!);
 if (!g) return new Response("Nema tog glasa", { status: 404 });
 const s = await stilIzUrla(Astro.url);
+zapamtiStil(Astro.cookies, s.kod);
 const sve = await rijeciGlasa(g.id, s.id);
 
 const pozicije = POZICIJE.filter((p) => p.kod !== "skupina" || g.skupine || sve.some((r) => r.pozicija === "skupina"));
