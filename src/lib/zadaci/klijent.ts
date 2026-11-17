@@ -8,7 +8,7 @@ import { brojSlogova, izvediRimu } from "./rima.ts";
 import { ciljeviGlasova, naslovListica, odgovara, redovaZaGlasove, type RijecGlasova, type VrstaOdnosa } from "./listic-glas.ts";
 import { jeZadanaUputa, ODNOSI, odnosiZa, oznakaKljuca, uOdnosu, type Odnos } from "./odnosi.ts";
 import {
-  odnosOd, provjeri, rijeciU, zadanaUputa, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
+  BROJ_STAVKI, brojStavki, brojUZadatku, odnosOd, provjeri, rijeciU, zadanaUputa, slikaUStilu, slozi, slozRed, tocnaPolja, izmjenaCss, VRSTE, IZMJENE, PONUDENIH, U_REDU, MAX_GUMBA, MAX_REDOVA, POLJA_MIN, POLJA_MAX, UPUTE_PERCEPCIJE,
   BOJE_DULJINE, DUGA_OD, izbroji, jedinica, krugovaZa, KRUGOVA_MIN, KRUGOVA_MAX, SLOGOVA_MAX, SLOGOVI_SLIKA_MAX, UPUTE_SLOGOVA, jeDuga, slozSlogove, type NacinSlogova, type Slogovi,
   LISTIC_PO_STRANICI, MREZA_MAX, MREZE_LISTICA, mrezaListica, poStraniciListica, rasporedListica, type RasporedListica,
   ABECEDA, BOJE_KOLA, jednaRijec, SLIKA_MIN, SLIKA_MAX, prviGlas, slozKrug, tocneSlike, type Krug, type PrviGlas,
@@ -69,7 +69,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   let promijenjeno = false;
   let sRijecima = false;
   const glasovaZadatka = VRSTE[vrsta].odnos ? (sadrzaj as Odabir).po_glasovima?.glasovi.length ?? 0 : 0;
-  const postavke = { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : glasovaZadatka ? redovaZaGlasove(vrsta as VrstaOdnosa, glasovaZadatka) : 4, maxSlogova: 3, samoSaSlikom: false };
+  // „Složi automatski” zadrži broj redova (parova, slika…) koji zadatak već ima.
+  const postavke = { stavki: glasovaZadatka ? redovaZaGlasove(vrsta as VrstaOdnosa, glasovaZadatka, brojUZadatku(vrsta, sadrzaj)) : brojUZadatku(vrsta, sadrzaj), maxSlogova: 3, samoSaSlikom: false };
 
   /** Slike svih riječi u stilu zadatka (riječ bez slike u njemu uzima drugi stil). */
   function postaviStil(kod: string) {
@@ -833,7 +834,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   function ploca(): HTMLElement {
     const upozorenja = upozorenjaSvih();
-    const brojStavki = h("input", { type: "number", min: 1, max: 12, value: postavke.stavki, oninput: (e: Event) => (postavke.stavki = Number((e.target as HTMLInputElement).value) || 4) });
+    const granice = BROJ_STAVKI[vrsta];
+    const poljeBroja = h("input", { type: "number", min: granice?.min ?? 1, max: granice?.max ?? 12, value: postavke.stavki, oninput: (e: Event) => (postavke.stavki = brojStavki(vrsta, (e.target as HTMLInputElement).value)) });
     return plocaEl = h("aside", { class: "z-ploca" },
       h("div", { class: "ploha z-polja" },
         h("label", {}, "Naslov"),
@@ -860,7 +862,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         : h("div", { class: "ploha z-upozorenja ok" }, "✓ Zadatak je ispravan."),
       VRSTE[vrsta].odnos || vrsta === "listic" || vrsta === "percepcija" || vrsta === "prvi_glas" || vrsta === "slogovi" ? h("details", { class: "ploha z-slozi" },
         h("summary", {}, "Složi automatski iz kataloga"),
-        h("label", {}, vrsta === "povezivanje" ? "Parova" : vrsta === "listic" ? "Kartica (do 12)" : vrsta === "prvi_glas" ? "Krugova (do 6)" : vrsta === "slogovi" ? "Slika (do 12)" : "Redova"), brojStavki,
+        h("label", {}, `${granice?.naziv ?? "Broj redova"} (do ${granice?.max ?? 12})`), poljeBroja,
         vrsta === "slogovi" ? h("p", { class: "sitno blijedo" }, (sadrzaj as Slogovi).nacin === "duljina" ? "Pola kratkih (1–2 sloga), pola dugačkih (3 i više) riječi sa slikom." : (sadrzaj as Slogovi).nacin === "glasovi" ? "Podjednako riječi od 3 do 7 glasova; krugova koliko treba najduža." : "Podjednako riječi od 1 sloga do broja krugova; krugova koliko treba najduža.") : null,
         vrsta === "percepcija" ? h("p", { class: "sitno blijedo" }, "Nasumične riječi sa slikom, po jedna u redu.") : null,
         vrsta === "prvi_glas" ? h("p", { class: "sitno blijedo" }, `Nasumična slova s kola, svako s ${SLIKA_MIN} slika: 3–5 počinje tim glasom, ostale ne.`) : null,

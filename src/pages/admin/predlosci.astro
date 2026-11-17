@@ -3,7 +3,7 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import { logopedskiMod, podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
 import { BROJEVI_LISTICA, jePoGlasovima, ZADANO_SLIKA } from "../../lib/zadaci/listic-glas";
 import { ODNOSI, ODNOSI_POPIS, odnosiZa, type Odnos } from "../../lib/zadaci/odnosi";
-import { ABECEDA, VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
+import { ABECEDA, BROJ_STAVKI, VRSTE, type Vrsta } from "../../lib/zadaci/vrste";
 
 const [podrucja, listic, mod] = await Promise.all([svaPodrucja(), zaListic(), logopedskiMod(Astro.locals.admin!.email)]);
 // Isključuju se suglasnici (po fonemima, pa „bez L” ne dira LJ).
@@ -67,6 +67,12 @@ const shema: Record<Vrsta, string> = {
               <b>{v.naziv}</b>
               <p>{v.opis}</p>
             </div>
+            {BROJ_STAVKI[kod] && (
+              <label class="broj">{BROJ_STAVKI[kod]!.naziv}
+                <input type="number" name="stavki" inputmode="numeric" required min={BROJ_STAVKI[kod]!.min} max={BROJ_STAVKI[kod]!.max} value={BROJ_STAVKI[kod]!.zadano} />
+                <span class="blijedo">do {BROJ_STAVKI[kod]!.max}</span>
+              </label>
+            )}
             <div class="gumbi">
               {gumbi[kod].map((g) => mod && VRSTE[kod].odnos
                 // Logopedski mod: odnos otvara izbor glasova (bez odabira glasa složi se iz cijelog kataloga).
@@ -85,7 +91,7 @@ const shema: Record<Vrsta, string> = {
       <input type="hidden" name="podrucje" value="" />
       <input type="hidden" name="po_glasovima" value="1" />
       <h2>Po glasovima</h2>
-      <p class="objasnjenje" data-za="odabir povezivanje uljez">Za svaki odabrani glas jedan red (par): zadana (lijeva) slika ima taj glas, ostale su bilo koje u tom odnosu. Bez odabira glasa: 4 nasumična iz cijelog kataloga.</p>
+      <p class="objasnjenje" data-za="odabir povezivanje uljez">Za svaki odabrani glas jedan red (par): zadana (lijeva) slika ima taj glas, ostale su bilo koje u tom odnosu. Bez odabira glasa: odabrani broj nasumičnih iz cijelog kataloga.</p>
       <p class="objasnjenje" data-za="prvi_glas">Svaki odabrani glas je jedan krug (najviše 6): kolo stane na njemu, a dijete traži slike koje počinju tim glasom.</p>
       <div class="glas">
         <label class="pozicija" data-za="odabir povezivanje uljez">Odnos
@@ -113,6 +119,9 @@ const shema: Record<Vrsta, string> = {
             <option value="duljina">Dugačke i kratke riječi</option>
           </select>
         </label>
+        <label class="pozicija" data-za="odabir povezivanje uljez slogovi"><span data-broj-naziv>Broj redova</span>
+          <input type="number" name="stavki" inputmode="numeric" required min="1" max="30" value="4" />
+        </label>
         <label class="pozicija" data-za="listic">Broj slika
           <select name="broj">
             {BROJEVI_LISTICA.map((n) => <option value={n} selected={n === ZADANO_SLIKA}>{n}</option>)}
@@ -134,7 +143,7 @@ const shema: Record<Vrsta, string> = {
   // „Po glasovima…”: isti dijalog za sve predloške koji ga imaju; vidljiva su polja te vrste (`data-za`),
   // a ispod piše koliko će građe biti (isto pravilo kao poslužitelj).
   import { brojSlika, moguce, naslovListica, poPrvomGlasu, rasporedOdnosa, type RijecGlasova, type VrstaPoGlasovima } from "../../lib/zadaci/listic-glas";
-  import { MAX_KARTICA_LISTICA } from "../../lib/zadaci/vrste";
+  import { brojStavki, MAX_KARTICA_LISTICA } from "../../lib/zadaci/vrste";
   import { ODNOSI, type Odnos } from "../../lib/zadaci/odnosi";
   // Gumb odnosa (Isti prvi glas…) šalje i podpodručje tog odnosa.
   document.querySelectorAll<HTMLButtonElement>("button[data-podrucje-gumba]").forEach((b) => b.addEventListener("click", () => {
@@ -174,15 +183,15 @@ const shema: Record<Vrsta, string> = {
           : n > zeli ? `${sto}: ${zeli} nasumičnih od ${n} slika.`
           : `${sto}: ${n === 1 ? "1 slika" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? `sve ${n} slike` : `svih ${n} slika`}, abecedno.`;
       } else if (vrsta === "slogovi") {
-        const n = moguce("slogovi", rijeci, f);
+        const n = moguce("slogovi", rijeci, f), zeli = brojStavki("slogovi", polje("stavki").value);
         moze = n >= 2;
         tekst = !n ? "Nijedna riječ sa slikom ne odgovara." : n < 2 ? `${sto}: samo 1 riječ, treba barem 2.`
-          : `${sto}: ${mnozina(Math.min(n, 8), "slika", "slike", "slika")}${n > 8 ? ` nasumično od ${n}` : ""}.`;
+          : `${sto}: ${mnozina(Math.min(n, zeli), "slika", "slike", "slika")}${n > zeli ? ` nasumično od ${n}` : ""}.`;
       } else {
         const izbor = forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement;
         const odnos = izbor.value as Odnos;
         polje("podrucje").value = izbor.selectedOptions[0]?.dataset.podrucje ?? "";
-        const { redova, mogucih, prazni } = rasporedOdnosa(vrsta, rijeci, f, odnos);
+        const { redova, mogucih, prazni } = rasporedOdnosa(vrsta, rijeci, f, odnos, brojStavki(vrsta, polje("stavki").value));
         const [jedan, dva, pet] = vrsta === "povezivanje" ? ["par", "para", "parova"] : ["red", "reda", "redova"];
         const skupina = ODNOSI[odnos].skupina, treba = vrsta === "uljez" ? "3 riječi" : "2 riječi";
         const bezGlasa = prazni.map((id) => oznake[g.findIndex((x) => Number(x.value) === id)]);
@@ -203,6 +212,12 @@ const shema: Record<Vrsta, string> = {
       forma.querySelector("h2")!.textContent = b.dataset.naslov ?? "Po glasovima";
       // „Riječ i slika” nema uljeza.
       forma.querySelectorAll<HTMLOptionElement>("option[data-bez-uljeza]").forEach((o) => { o.hidden = o.disabled = vrsta === "uljez"; });
+      // Broj redova (parova, slika) preuzme s kartice predloška, s njezinim granicama.
+      const sKartice = b.form?.querySelector<HTMLInputElement>("input[name=stavki]"), broj = polje("stavki") as HTMLInputElement;
+      if (sKartice) {
+        broj.min = sKartice.min; broj.max = sKartice.max; broj.value = sKartice.value;
+        forma.querySelector("[data-broj-naziv]")!.textContent = sKartice.closest("label")!.firstChild!.textContent!.trim();
+      }
       if (b.dataset.odnos) { (forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value = b.dataset.odnos; pozicijaOdnosa(); }
       forma.querySelectorAll<HTMLElement>("[data-za]").forEach((el) => {
         const vidi = el.dataset.za!.split(" ").includes(vrsta);
@@ -225,6 +240,7 @@ const shema: Record<Vrsta, string> = {
     }
     forma.querySelector("select[data-odnos]")?.addEventListener("change", pozicijaOdnosa);
     forma.addEventListener("change", osvjezi);
+    forma.addEventListener("input", (e) => { if ((e.target as HTMLInputElement).name === "stavki") osvjezi(); });
   }
 </script>
 
@@ -258,6 +274,9 @@ const shema: Record<Vrsta, string> = {
   .vrste { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
   .vrsta { margin: 0; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
   .vrsta p { margin: 4px 0 0; color: var(--blijedo); font-size: .86rem; }
+  .broj { display: flex; align-items: center; gap: 8px; margin: 0; font-size: .86rem; font-weight: 600; color: var(--tinta); }
+  .broj input, .pozicija input[type=number] { width: 72px; height: 32px; }
+  .broj .blijedo { font-weight: 500; }
   .shema { width: 100%; height: 74px; padding: 8px; border-radius: 10px; background: var(--povrsina-2); }
   .shema :global(rect) { fill: var(--povrsina); stroke: var(--rub-jak); stroke-width: 1.4; }
   .shema :global(.s-jaka) { fill: var(--med-blago); stroke: var(--med); }

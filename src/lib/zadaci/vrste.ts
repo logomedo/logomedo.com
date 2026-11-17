@@ -600,6 +600,33 @@ export interface Postavke {
 /** Povezivanje po glasovima: do 8 parova (koliko editor dopušta), inače generator slaže do 6. */
 export const MAX_PAROVA = 8;
 
+/**
+ * Koliko stavki složiti pri izradi iz predloška i u „Složi automatski” (redova, parova, slika, krugova).
+ * Granice su iste kao u `normaliziraj`, zadano stane na jednu stranicu. Scena nema broja: slaže je logoped.
+ */
+export const BROJ_STAVKI: Partial<Record<Vrsta, { naziv: string; min: number; max: number; zadano: number }>> = {
+  odabir: { naziv: "Broj redova", min: 1, max: MAX_REDOVA, zadano: 4 },
+  uljez: { naziv: "Broj redova", min: 1, max: MAX_REDOVA, zadano: 4 },
+  percepcija: { naziv: "Broj redova", min: 1, max: MAX_REDOVA, zadano: 4 },
+  povezivanje: { naziv: "Broj parova", min: 2, max: MAX_PAROVA, zadano: 4 },
+  prvi_glas: { naziv: "Broj krugova", min: 1, max: MAX_REDOVA, zadano: 4 },
+  slogovi: { naziv: "Broj slika", min: 2, max: SLOGOVI_SLIKA_MAX, zadano: 8 },
+  listic: { naziv: "Broj slika", min: 1, max: MAX_KARTICA_LISTICA, zadano: 12 },
+};
+/** Broj stavki iz obrasca, unutar granica vrste (prazno ili krivo = zadano). */
+export function brojStavki(v: Vrsta, ulaz: unknown): number {
+  const b = BROJ_STAVKI[v];
+  if (!b) return 4;
+  const n = Math.round(Number(ulaz));
+  return Number.isFinite(n) && n > 0 ? Math.max(b.min, Math.min(b.max, n)) : b.zadano;
+}
+/** Koliko stavki zadatak već ima (da „Složi” zadrži broj). */
+export function brojUZadatku(v: Vrsta, s: Sadrzaj): number {
+  const x = s as unknown as Record<string, unknown[] | undefined>;
+  const n = (v === "povezivanje" ? x.parovi : v === "listic" ? x.kartice : v === "prvi_glas" ? x.krugovi : v === "slogovi" ? x.slike : x.stavke)?.length ?? 0;
+  return n ? brojStavki(v, n) : BROJ_STAVKI[v]?.zadano ?? 4;
+}
+
 function promijesaj<T>(a: T[], rnd: () => number): T[] {
   const b = [...a];
   for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
@@ -619,7 +646,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   // Riječi skupine s glasom prve (zadana, lijeva), redom kako su izmiješane.
   const ciljPrvi = (g: RijecZadatka[]) => (cilj ? [...g.filter(cilj), ...g.filter((r) => !cilj(r))] : g);
   const izvan = (k: string, n: number) => promijesaj(dobre.filter((r) => K(r) !== k), rnd).slice(0, n);
-  const n = Math.max(1, Math.min(p.stavki, p.ciljevi?.length ? MAX_REDOVA : 12));
+  const n = brojStavki(v, p.stavki);
   // Skupine za redove: po odabranim glasovima (zadana slika ima glas tog reda) ili nasumične.
   const izbor = (min: number, koliko: number): [string, RijecZadatka[]][] => {
     const c = p.ciljevi;
@@ -639,7 +666,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     const ima = (sl: string, koliko: number) => izvor.filter((r) => prviGlas(r.rijec) === sl).length >= koliko;
     // Odabrana slova (po glasovima) redom kako su zadana, ako katalog ima barem jednu riječ; inače nasumična s 3+.
     const slova = p.slova ? ABECEDA.filter((sl) => p.slova!.includes(sl) && ima(sl, 1)).slice(0, 6)
-      : promijesaj(ABECEDA.filter((sl) => ima(sl, 3)), rnd).slice(0, Math.min(n, 6));
+      : promijesaj(ABECEDA.filter((sl) => ima(sl, 3)), rnd).slice(0, n);
     return { kolo: [...ABECEDA], krugovi: (slova.length ? slova : [null]).map((sl) => slozKrug(sl, izvor, SLIKA_MIN, rnd)) };
   }
   if (v === "percepcija") {
@@ -649,7 +676,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     return { trazi, stavke: (izbor.length ? izbor : [null]).map((r) => slozRed(r?.id ?? null, 4, trazi, rnd)) };
   }
   if (v === "listic") {
-    return { kartice: promijesaj(dobre, rnd).slice(0, Math.max(1, Math.min(p.stavki, 12))).map((r) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") })), raspored: "auto" };
+    return { kartice: promijesaj(dobre, rnd).slice(0, n).map((r) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") })), raspored: "auto" };
   }
   if (v === "odabir") {
     const stavke = izbor(2, n).map(([rima, g]) => {
@@ -661,7 +688,7 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     return { odnos, stavke };
   }
   if (v === "povezivanje") {
-    const parovi = izbor(2, Math.min(n, p.ciljevi?.length ? MAX_PAROVA : 6)).map(([, [a, b]]) => ({ lijevo: a.id, desno: ista ? -b.id : b.id }));
+    const parovi = izbor(2, n).map(([, [a, b]]) => ({ lijevo: a.id, desno: ista ? -b.id : b.id }));
     let red = promijesaj(parovi.map((_, i) => i), rnd);
     // Desni stupac ne smije biti u istom redoslijedu kao lijevi.
     if (red.length > 1 && red.every((x, i) => x === i)) red = [...red.slice(1), red[0]];

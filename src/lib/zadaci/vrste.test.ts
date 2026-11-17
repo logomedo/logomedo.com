@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normaliziraj, ocijeni, provjeri, slikaUStilu, slozi, slozRed, type Izmjena, type Odabir, type Percepcija, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
+import { BROJ_STAVKI, brojStavki, brojUZadatku, normaliziraj, ocijeni, provjeri, slikaUStilu, slozi, slozRed, type Izmjena, type Odabir, type Percepcija, type Povezivanje, type RijecZadatka, type Scena, type Uljez } from "./vrste.ts";
 import { brojSlogova, izvediRimu } from "./rima.ts";
 
 const popis = ["krava", "trava", "glava", "dabar", "ormar", "pehar", "lonac", "palac", "madrac", "sat", "brat", "vrat", "miš", "kiš", "riba", "lisica"];
@@ -24,6 +24,22 @@ test("generator: uljez i povezivanje prolaze provjeru", () => {
   assert.equal(p.parovi.length, 4);
   assert.deepEqual(provjeri("povezivanje", p, M), []);
   assert.notDeepEqual(p.desno_redoslijed, [0, 1, 2, 3]);
+});
+
+test("broj stavki: odabrani broj unutar granica vrste, prazno je zadano", () => {
+  assert.equal(brojStavki("odabir", "27"), 27);
+  assert.equal(brojStavki("odabir", "99"), BROJ_STAVKI.odabir!.max);
+  assert.equal(brojStavki("odabir", ""), 4);
+  assert.equal(brojStavki("povezivanje", "1"), 2);
+  assert.equal(brojStavki("slogovi", null), 8);
+  assert.equal(BROJ_STAVKI.scena, undefined);
+  // Generator složi koliko katalog ima skupina (ovdje manje od traženih 27), a više od starih 12 ne reže.
+  const veliki = Array.from({ length: 40 }, (_, i) => ({ id: 100 + i * 2, rijec: `r${i}`, rima: `x${i}`, slogova: 2, slika: null }))
+    .flatMap((r) => [r, { ...r, id: r.id + 1, rijec: `${r.rijec}b` }]);
+  const s = slozi("odabir", veliki, { stavki: 27 }, rnd) as Odabir;
+  assert.equal(s.stavke.length, 27);
+  assert.equal(brojUZadatku("odabir", s), 27);
+  assert.equal((slozi("povezivanje", veliki, { stavki: 27 }, rnd) as Povezivanje).parovi.length, BROJ_STAVKI.povezivanje!.max);
 });
 
 test("provjera: distraktor koji se rimuje je dva točna odgovora", () => {

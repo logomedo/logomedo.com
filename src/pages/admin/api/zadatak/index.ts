@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { korisnikId, logopedskiMod, stvori, sveRijeci, zaListic } from "../../../../lib/zadaci/baza";
 import { brojSlika, ciljeviGlasova, izaberi, jePoGlasovima, moguce, naslovListica, odgovara, POZICIJE_LISTICA, rasporedOdnosa, redovaZaGlasove, RIMA_MAX_SLOGOVA } from "../../../../lib/zadaci/listic-glas";
 import { jeOdnos } from "../../../../lib/zadaci/odnosi";
-import { ABECEDA, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type Odabir, type Sadrzaj } from "../../../../lib/zadaci/vrste";
+import { ABECEDA, brojStavki, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type Odabir, type Sadrzaj } from "../../../../lib/zadaci/vrste";
 
 const kartica = (r: { id: number; rijec: string }) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") });
 
@@ -22,7 +22,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const bez = f.getAll("bez").map(String).filter((x) => ABECEDA.includes(x));
   const poGlasovima = f.get("po_glasovima") === "1" && jePoGlasovima(vrsta) && pozicija in POZICIJE_LISTICA && await logopedskiMod(locals.admin!.email);
   const nacin = String(f.get("nacin") ?? "");
-  const zadano = { stavki: vrsta === "slogovi" ? 8 : vrsta === "listic" ? 12 : 4, maxSlogova: RIMA_MAX_SLOGOVA, nacin };
+  // Broj redova (parova, slika, krugova) s kartice predloška ili iz dijaloga; bez njega zadano vrste.
+  const zadano = { stavki: brojStavki(vrsta, f.get("stavki")), maxSlogova: RIMA_MAX_SLOGOVA, nacin };
   const prazno = () => new Response(null, { status: 303, headers: { location: "/admin/predlosci?prazno=1" } });
   if (poGlasovima) {
     const k = await zaListic();
@@ -50,9 +51,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
         sadrzaj = slozi(vrsta, rijeci, { ...zadano, cilj });
       } else {
         // Uparivanje, povezivanje, uljez: po jedan red (par) za svaki odabrani glas, redom (C, S, Z…).
-        if (!rasporedOdnosa(vrsta, k.rijeci, filtar, jeOdnos(nacin) ? nacin : "rima").redova) return prazno();
+        if (!rasporedOdnosa(vrsta, k.rijeci, filtar, jeOdnos(nacin) ? nacin : "rima", zadano.stavki).redova) return prazno();
         const ciljevi = ciljeviGlasova(filtar).map((c) => (r: { id: number }) => c(saSlikom.get(r.id)!));
-        sadrzaj = slozi(vrsta, rijeci, glasovi.length ? { ...zadano, stavki: redovaZaGlasove(vrsta, glasovi.length), ciljevi } : zadano);
+        sadrzaj = slozi(vrsta, rijeci, glasovi.length ? { ...zadano, stavki: redovaZaGlasove(vrsta, glasovi.length, zadano.stavki), ciljevi } : zadano);
         // Editor pamti odabir: birač slika nudi prvo riječi s tim glasovima, „Složi” slaže po njima.
         (sadrzaj as Odabir).po_glasovima = { glasovi, oznake, pozicija: filtar.pozicija, bez };
       }
