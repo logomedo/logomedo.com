@@ -3,6 +3,7 @@
 // fiksnom broju (odabir 3 reda, uljez i percepcija 4, slogovi 3 reda, povezivanje 1 stranica, listić 12 kartica).
 
 import { jeNapisano, mapaRijeci } from "../zadaci/napisano.ts";
+import { prelomi, sirinaTeksta } from "./sirine.ts";
 import type { Tema } from "../teme.ts";
 import { imaOkvir, podrucje, slojevi, type Okvir, type Podrucje } from "../okviri.ts";
 import { TEME } from "../teme.ts";
@@ -252,15 +253,13 @@ export function najmanjaSlika(t: TijeloPdf, W: number, H: number): number {
 }
 
 /**
- * Visina zaglavlja (naslov, uputa, ime) u mm, kao u ispis-pdf.ts (redak = 1,25 × pt, +1 iza naslova i
- * upute, ime 10, razmak 8). Broj redaka se procjenjuje sa strane sigurnosti (Nunito: naslov ~0,6 em,
- * tekst ~0,55 em po znaku, 85 % širine zbog prijeloma po riječima); test ga uspoređuje sa stvarnim fontom.
+ * Visina zaglavlja (naslov, uputa, ime) u mm, kao u ispis-pdf.ts: isti prijelom po riječima (širine slova
+ * Nunito iz sirine.ts), redak 1,25 × pt, +1 iza naslova i upute, ime 10, razmak 8.
  */
 export function visinaZaglavlja(s: Pick<StranicaPdf, "naslov" | "uputa" | "ime">, o: Podrucje = podrucje(null)): number {
   const sirina = o.sredina ? 140 : o.D - o.L;
-  const redaka = (t: string, pt: number, em: number) => Math.max(1, Math.ceil((t.length * pt * em * 25.4 / 72) / (sirina * 0.85)));
-  const visina = (t: string, pt: number, em: number) => (redaka(t, pt, em) * pt * 1.25 * 25.4) / 72 + 1;
-  return (s.naslov ? visina(s.naslov, 22, 0.6) : 0) + (s.uputa ? visina(s.uputa, 13, 0.55) : 0) + (s.ime ? 10 : 0) + 8;
+  const visina = (t: string, pt: number, naslov: boolean) => (prelomi(t, (x) => sirinaTeksta(x, pt, naslov), sirina).length * pt * 1.25 * 25.4) / 72 + 1;
+  return (s.naslov ? visina(s.naslov, 22, true) : 0) + (s.uputa ? visina(s.uputa, 13, false) : 0) + (s.ime ? 10 : 0) + 8;
 }
 
 /**

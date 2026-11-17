@@ -125,7 +125,7 @@ test("samostalan zadatak: na stranicu redova koliko stane (prva ima zaglavlje), 
   assert.deepEqual(u.stranice.map((s) => (s.tijelo as { redovi: unknown[] }).redovi.length), [4, 5]);
 });
 
-test("zaglavlje: procjena visine nije manja od stvarne (Nunito, prijelom po riječima)", async () => {
+test("zaglavlje: procjena visine kao stvarna (Nunito, prijelom po riječima), nikad manja", async () => {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit((await import("@pdf-lib/fontkit")).default);
   const naslovF = await pdf.embedFont(fontovi.naslov), tekstF = await pdf.embedFont(fontovi.tekst);
@@ -137,7 +137,8 @@ test("zaglavlje: procjena visine nije manja od stvarne (Nunito, prijelom po rije
     for (const naslov of naslovi) for (const uputa of upute) {
       const redaka = (t: string, f: typeof naslovF, pt: number) => prelomi(t, (x) => f.widthOfTextAtSize(x, pt) / MM, sirina).length;
       const stvarno = redaka(naslov, naslovF, 22) * 22 * 1.25 / MM + 1 + redaka(uputa, tekstF, 13) * 13 * 1.25 / MM + 1 + 10 + 8;
-      assert.ok(visinaZaglavlja({ naslov, uputa, ime: true }, o) >= stvarno - 0.01, `${naslov} / ${uputa.slice(0, 20)}: ${visinaZaglavlja({ naslov, uputa, ime: true }, o)} < ${stvarno}`);
+      const procjena = visinaZaglavlja({ naslov, uputa, ime: true }, o);
+      assert.ok(procjena >= stvarno - 0.01 && procjena - stvarno < 5, `${naslov} / ${uputa.slice(0, 20)}: ${procjena} ≠ ${stvarno}`);
     }
   }
 });

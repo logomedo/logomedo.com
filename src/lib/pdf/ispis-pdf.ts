@@ -8,6 +8,7 @@
 import { concatTransformationMatrix, degrees, LineCapStyle, popGraphicsState, pushGraphicsState, PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
 import { rasporedListica, type Izmjena } from "../zadaci/vrste.ts";
 import fontkit from "@pdf-lib/fontkit";
+import { prelomi } from "./sirine.ts";
 import { TEME } from "../teme.ts";
 import { GRANCICA } from "../ukrasi.ts";
 import { podrucje, RUB_KARTICE, slojevi } from "../okviri.ts";
@@ -119,17 +120,7 @@ export function smjestiSliku(sirina: number, visina: number, o: { x: number; y: 
   return { x: cx - (cos * sw - sin * sh) / 2, y: cy - (sin * sw + cos * sh) / 2, width: sw, height: sh, kut };
 }
 
-/** Prelamanje po riječima (naslovi i upute su kratki, pa jednostavno mjerenje dosta). */
-export function prelomi(t: string, mjeri: (s: string) => number, sirina: number): string[] {
-  const out: string[] = [];
-  let red = "";
-  for (const r of t.split(/\s+/).filter(Boolean)) {
-    const pokus = red ? `${red} ${r}` : r;
-    if (red && mjeri(pokus) > sirina) { out.push(red); red = r; } else red = pokus;
-  }
-  if (red) out.push(red);
-  return out.length ? out : [""];
-}
+export { prelomi } from "./sirine.ts";
 
 export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: FontoviPdf): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
