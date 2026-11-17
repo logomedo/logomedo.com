@@ -686,7 +686,14 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
     return { odnos, stavke };
   }
   if (v === "povezivanje") {
-    const parovi = izbor(2, n).map(([, [a, b]]) => ({ lijevo: a.id, desno: ista ? -b.id : b.id }));
+    let skup = izbor(2, n);
+    // Po glasovima: ako su svi parovi iz iste skupine (samo C, prvi glas), svaka lijeva ide uz svaku desnu i
+    // dijete može povezati bilo kako (zadatak 148). Tada jedan par s glasom, ostali iz drugih skupina.
+    if (p.ciljevi?.length && skup.length > 1 && new Set(skup.map(([k]) => k)).size < 2) {
+      const k0 = skup[0][0];
+      skup = promijesaj([skup[0], ...vecih(2).filter(([k]) => k !== k0).slice(0, n - 1).map(([k, g]) => [k, promijesaj(g, rnd)] as [string, RijecZadatka[]])], rnd);
+    }
+    const parovi = skup.map(([, [a, b]]) => ({ lijevo: a.id, desno: ista ? -b.id : b.id }));
     let red = promijesaj(parovi.map((_, i) => i), rnd);
     // Desni stupac ne smije biti u istom redoslijedu kao lijevi.
     if (red.length > 1 && red.every((x, i) => x === i)) red = [...red.slice(1), red[0]];

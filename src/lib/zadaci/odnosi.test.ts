@@ -104,3 +104,15 @@ test("poCiljevima: riječ s glasom ostaje za sljedeći red, nova skupina prije n
   const r = poCiljevima(sk, [(x: string) => x.startsWith("c")], 4, 2);
   assert.deepEqual(r.map((x) => x.skupina), [["cica", "vica"], ["cesta", "pesta"], ["cvica", "mica"]]);
 });
+
+test("povezivanje po jednom glasu: jedan par s glasom, ostali iz drugih skupina (zadatak 148)", () => {
+  const prvi = (sl: string) => (x: RijecZadatka) => x.rijec.toLocaleUpperCase("hr").startsWith(sl);
+  const p = slozi("povezivanje", R, { stavki: 4, nacin: "pocetni_glas", ciljevi: [prvi("L")] }, rnd) as Povezivanje;
+  const glasovi = p.parovi.map((x) => M.get(x.lijevo!)!.rijec[0].toUpperCase());
+  assert.equal(glasovi.filter((g) => g === "L").length, 1);
+  assert.equal(new Set(glasovi).size, glasovi.length);
+  assert.ok(p.parovi.length >= 2);
+  // Dva glasa: parovi istog glasa smiju se ponoviti (L, P, L, P).
+  const d = slozi("povezivanje", R, { stavki: 4, nacin: "pocetni_glas", ciljevi: [prvi("L"), prvi("P")] }, rnd) as Povezivanje;
+  assert.ok(d.parovi.every((x) => /^[lp]/.test(M.get(x.lijevo!)!.rijec)));
+});

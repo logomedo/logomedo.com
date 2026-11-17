@@ -206,7 +206,10 @@ reda iz bilo kojeg odabranog glasa, pa je za 6 glasova davalo „4 para od 6 mog
 Skupina se dijeli na više redova s različitim riječima (17. 11. 2026., `poCiljevima(…, velicina)`): prije je
 svaka skupina davala najviše jedan red, pa je uljez „Isti prvi glas” s C (sve riječi na C su jedna skupina) imao
 samo jedan red. Sad redova ima koliko traži „Broj redova”, dok ima neiskorištenih riječi s glasom; prvo idu
-nenačete skupine, a ostala mjesta u redu prvo dobiju riječi bez glasa.
+nenačete skupine, a ostala mjesta u redu prvo dobiju riječi bez glasa. Povezivanje iznimka: kad bi svi parovi bili
+iz iste skupine (samo C, prvi glas), svaka lijeva ide uz svaku desnu i dijete može povezati bilo kako (zadatak 148),
+pa je tada jedan par s glasom, a ostali iz drugih skupina (`slozi`, isto broji `rasporedOdnosa`). S više glasova
+(C, S) parovi istog glasa smiju se ponoviti.
 
 Odabir se sprema u sadržaj (`po_glasovima: { glasovi, oznake, pozicija, bez }`, samo za zadatke složene po
 glasovima). Editor tada pri biranju slike bez uzora (zadana, lijeva, nova u uljezu) uključi filtar tih glasova

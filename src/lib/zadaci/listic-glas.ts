@@ -101,8 +101,15 @@ export function rasporedOdnosa(vrsta: VrstaOdnosa, rijeci: RijecGlasova[], f: Fi
   for (const r of rijeci) if (K(r) && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez })) skupine.set(K(r)!, par ? [r, r] : [...(skupine.get(K(r)!) ?? []), r]);
   const velike = [...skupine.values()].filter((g) => g.length >= (vrsta === "uljez" ? 3 : 2));
   if (!f.glasovi.length) return { redova: Math.min(velike.length, redovaZaGlasove(vrsta, 0, zeljeno)), mogucih: velike.length, prazni: [] };
-  const r = poCiljevima(velike, ciljeviGlasova(f), redovaZaGlasove(vrsta, f.glasovi.length, zeljeno), vrsta === "uljez" ? 3 : 2);
-  return { redova: r.length, mogucih: r.length, prazni: f.glasovi.filter((_, i) => !r.some((x) => x.cilj === i)) };
+  const n = redovaZaGlasove(vrsta, f.glasovi.length, zeljeno);
+  const r = poCiljevima(velike, ciljeviGlasova(f), n, vrsta === "uljez" ? 3 : 2);
+  const prazni = f.glasovi.filter((_, i) => !r.some((x) => x.cilj === i));
+  // Povezivanje iz jedne skupine (samo C, prvi glas): jedan par s glasom, ostali iz drugih skupina (slozi u vrste.ts).
+  if (vrsta === "povezivanje" && r.length > 1 && new Set(r.map((x) => K(x.skupina[0]))).size < 2) {
+    const redova = 1 + Math.min(n - 1, velike.filter((g) => K(g[0]) !== K(r[0].skupina[0])).length);
+    return { redova, mogucih: redova, prazni };
+  }
+  return { redova: r.length, mogucih: r.length, prazni };
 }
 
 /** Prvi glas: koliko riječi počinje svakim slovom (slova kao u abecedi kola: LJ, DŽ…). */
