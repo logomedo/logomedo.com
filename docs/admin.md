@@ -97,6 +97,9 @@ npx wrangler d1 execute logomedo --local --command "INSERT INTO admin_sessions (
 echo "__Host-logomedo_admin=$T"   # kolačić za localhost:4321
 ```
 
+`ADMIN_EMAILS` u `.dev.vars` je u navodnicima: e-mail za sesiju upiši bez njih (s navodnikom sesija tiho
+ne vrijedi, `/admin` vraća na prijavu).
+
 Kolačić se u Braveu postavi na `http://localhost:4321/admin/login` kroz konzolu:
 `document.cookie = "__Host-logomedo_admin=<T>; path=/; secure; samesite=lax"` (Chromium dopušta `secure` na
 localhostu). Prije toga `npx wrangler d1 migrations apply logomedo --local`. Lokalna baza ima tek 2 riječi sa

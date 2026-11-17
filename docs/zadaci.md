@@ -660,3 +660,19 @@ PDF ima znak). Matija je pitao može li se birati font. Prijedlog: izbor **po za
 slika), zadano Andika, ponuda Andika / Playwrite HR (hrvatska pisana slova) / OpenDyslexic / Nunito,
 sve OFL. PDF treba TTF po fontu, učitan samo kad ga zadatak koristi. Font po bilježnici ili djetetu
 odgođen do profila djeteta. Čeka Matijin odgovor na skup fontova.
+
+### razvrstavanje (17. 11. 2026.)
+
+Dijete razvrstava 4–12 slika u 2–3 vreće, košare ili kutije s oznakom (`tema`). Pravilo (`pravilo`): prvi glas,
+zadnji glas (oznaka je slovo, LJ/NJ/DŽ su jedan glas), broj slogova ili broj glasova (oznaka je broj, LJUTO = 4).
+Kategorija slike je spremljena (`slike[].kategorija`), računa se iz riječi (`kategorijaRijeci`), logoped je može
+prepisati; upozorenje javlja sliku koja po pravilu ide drugamo. Izrazi od više riječi ne ulaze. Generator
+(`slozRazvrstavanje`): 2 kategorije, od 9 slika 3; kod brojeva susjedni (2 i 3 sloga); slike ravnomjerno.
+
+- Papir (PDF i HTML ispis, `rasporedRazvrstavanja` u `pdf/model.ts`): slike gore bez natpisa (natpis bi odao
+  glas), pojas za crte, spremnici s točkom dolje. Jedna stranica.
+- Igra: jedan ekran; slika se povuče prstom u spremnik ili dodir slike pa spremnika. Kriva se vrati, prava uleti.
+  Ocjena: prvi pokušaj po slici (`{stavka, odabrano}`).
+- Spremnici su slike iz Vertexa (`scripts/spremnici-slike.sh` → `spremnici-obrada.py` → `public/spremnici/`), s
+  praznim bijelim krugom; obrada ga izmjeri (`SPREMNICI` u `src/lib/spremnici.ts`), pa se slovo crta preko slike.
+  Nove slike: pokreni oba skripta i prepiši brojeve iz ispisa obrade. Plan i odluke: `docs/razvrstavanje-plan.md`.
