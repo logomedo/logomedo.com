@@ -218,7 +218,7 @@ svako polje može umjesto slike pokazati napisanu riječ (dijete čita). U sadr�
 riječ `id` iz kataloga, napisana. Odnosi i provjere rade kao za sliku (KRAVA napisano rimuje se s TRAVA), a
 `rijeciU` vraća id riječi. Prikazi traže riječ kroz `mapaRijeci()`, koja uz svaku riječ dodaje napisanu inačicu
 (`slika: null`, `napisano: true`): editor i igra je crtaju Andikom prema duljini riječi, igra bez zvučnika,
-HTML ispis bez natpisa ispod, PDF Andikom (`SlikaPdf.napisano`). U editoru: „Aa napiši” ispod svakog polja i
+HTML ispis bez natpisa ispod, PDF Andikom (`SlikaPdf.napisano`). U editoru: „Slika | Riječ” ispod svakog polja (do 17. 11. 2026. gumb „Aa napiši / Aa napisano”) i
 „Zadane / Ponuđene / Lijevi stupac / Desni stupac / Sva polja: napisano” odjednom; nova riječ u napisanom polju
 ostaje napisana, „Složi automatski” zadržava napisane skupine. Brojke i slova nisu napisane riječi, nego znakovi.
 Prazno polje (novi red, „+ Dodaj red/par”) preuzima oblik svoje skupine (`novoPoljeNapisano`): napisana skupina →

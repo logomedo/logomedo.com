@@ -212,9 +212,11 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       h("div", { class: "z-slot-dno" },
         h("span", { class: "z-rijec" }, r ? VELIKO(r.rijec) : "prazno"),
         r && !r.znak && (r.rima || odnos() !== "rima") ? h("span", { class: "z-rima" }, oznakaRijeci(r)) : null),
-      smijeNapisano && r && !r.znak ? h("button", { type: "button", class: `z-napisi${r.napisano ? " on" : ""}`,
-        title: r.napisano ? "Prikaži sliku umjesto napisane riječi" : "Prikaži napisanu riječ umjesto slike",
-        onclick: () => { postavi(uObliku(id!, !r.napisano)); oznaci(); osvjezi(); } }, r.napisano ? "Aa napisano" : "Aa napiši") : null,
+      // Slika | Riječ: označeno je ono što polje prikazuje, klik na drugo prebacuje.
+      smijeNapisano && r && !r.znak ? h("div", { class: "z-napisi", role: "group", "aria-label": "Prikaži kao" },
+        ...([[false, "Slika", "Prikaži sliku"], [true, "Riječ", "Prikaži napisanu riječ umjesto slike"]] as const).map(([n, t, title]) =>
+          h("button", { type: "button", class: !!r.napisano === n ? "on" : "", title, "aria-pressed": String(!!r.napisano === n),
+            onclick: () => { if (!!r.napisano === n) return; postavi(uObliku(id!, n)); oznaci(); osvjezi(); } }, t))) : null,
       o.naTocno ? h("button", { type: "button", class: `z-tocno${o.tocno ? " on" : ""}`, title: o.oznakaTocno, onclick: () => { o.naTocno!(); oznaci(); osvjezi(); } },
         o.tocno ? `✓ ${o.oznakaTocno}` : o.oznakaTocno) : null,
     );
