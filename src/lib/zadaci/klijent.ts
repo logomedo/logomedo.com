@@ -458,22 +458,57 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   }
 
   /** Što povezuje slike: promjena odnosa zadržava slike (upozorenja pokažu što ne odgovara) i zadanu uputu mijenja novom. */
+  /** „Složi automatski”: novi sadržaj iz kataloga sa `stavki` redova, po odnosu i napisanim stupcima sadašnjeg. */
+  function slozIznova(stavki: number) {
+    const prije = sadrzaj;
+    const napisane = ulogeNapisano(vrsta, prije).filter((u) => ulogaNapisana(u, jeZnakId)).map((u) => u.kljuc);
+    const pg = poGlasovima();
+    if (vrsta === "slogovi") sadrzaj = slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), stavki, (prije as Slogovi).krugova);
+    else if (pg) {
+      // Po glasovima zadatka: bez isključenih glasova, red po red redom po odabranim glasovima.
+      const ciljevi = ciljeviGlasova(pg).map((c) => (r: RijecZadatka) => c(sGlasovima(r)));
+      const izvor = zaGenerator(p.rijeci).filter((r) => odgovara(sGlasovima(r), { glasovi: [], pozicija: "", bez: pg.bez }));
+      sadrzaj = slozi(vrsta, izvor, { ...postavke, stavki, nacin: odnosOd(prije), ciljevi: ciljevi.length ? ciljevi : undefined });
+      (sadrzaj as Odabir).po_glasovima = pg;
+    } else sadrzaj = slozi(vrsta, zaGenerator(p.rijeci), { ...postavke, stavki, nacin: VRSTE[vrsta].odnos ? odnosOd(prije) : undefined });
+    // Napisani stupci (zadane, desni stupac…) ostaju napisani i u novom prijedlogu.
+    for (const u of ulogeNapisano(vrsta, sadrzaj)) if (napisane.includes(u.kljuc)) postaviUlogu(u, true, jeZnakId);
+    // Prvi glas zadržava odabir slova na kolu; slova krugova biraju se samo s kola.
+    if (vrsta === "prvi_glas") {
+      const kolo = (prije as PrviGlas).kolo, s = sadrzaj as PrviGlas;
+      s.kolo = [...kolo]; s.boje = (prije as PrviGlas).boje;
+      s.krugovi = s.krugovi.map((k) => { if (k.slovo && kolo.includes(k.slovo)) return k; const iz = kolo.filter((sl) => brojSlova(sl) >= 3); return slozKrug(iz[Math.floor(Math.random() * iz.length)] ?? kolo[0], zaKrug()); });
+    }
+    // Percepcija zadržava izbor „različita / dvije iste".
+    if (vrsta === "percepcija" && (prije as Percepcija).trazi === "par") {
+      const s = sadrzaj as Percepcija;
+      s.trazi = "par"; s.stavke = s.stavke.map((x) => slozRed(x.polja[0].rijec_id, x.polja.length, "par"));
+    }
+  }
+
   function prekidacOdnosa(s: Odabir | Povezivanje | Uljez): HTMLElement {
     const v = vrsta as "odabir" | "povezivanje" | "uljez";
     const promijeni = (o: Odnos) => {
       if (o === s.odnos) return;
+      // Odnos je ono što slike povezuje, pa promjena odmah slaže nove slike po njemu (isti broj redova, isti
+      // napisani stupci). Bez potvrde ostaje sve kako je; prazan zadatak samo mijenja odnos.
+      const imaSlika = rijeciU(vrsta, s).length > 0;
+      if (imaSlika && !confirm(`Složiti nove slike po odnosu „${ODNOSI[o].naziv}”? Sadašnje slike se zamjenjuju.`)) return;
       if (jeZadanaUputa(uputa)) uputa = ODNOSI[o].uputa[v];
+      // Iz „Riječ i slika” u drugi odnos: napisani stupci su bili dio tog odnosa, nove slike su opet slike.
+      if (s.odnos === "ista_rijec") for (const u of ulogeNapisano(vrsta, s)) postaviUlogu(u, false, jeZnakId);
       s.odnos = o;
       // Riječ i slika: zadane / desni stupac napisani, ponuđene / lijevi stupac slike.
       if (o === "ista_rijec") for (const u of ulogeNapisano(vrsta, s)) postaviUlogu(u, u.kljuc === "zadana" || u.kljuc === "desno", jeZnakId);
+      if (imaSlika) slozIznova(brojUZadatku(vrsta, s));
       oznaci(); osvjezi();
     };
     return h("div", { class: "ploha z-scena-dio" },
       h("div", { class: "z-dio-glava" }, h("b", {}, "Što povezuje slike")),
       h("div", { class: "z-prekidac" },
         ...odnosiZa(v).map((o) => h("button", { type: "button", class: `z-tocno${s.odnos === o ? " on" : ""}`, onclick: () => promijeni(o) }, ODNOSI[o].naziv))),
-      h("p", { class: "sitno blijedo" }, "Slike ostaju; što više ne odgovara, piše u upozorenjima. „Složi automatski” slaže nove po ovom odnosu."),
-      h("div", { class: "z-dio-glava" }, h("b", {}, "Napisane riječi umjesto slika"), h("span", { class: "sitno blijedo" }, "dijete čita; pojedino polje: „Aa” ispod njega")),
+      h("p", { class: "sitno blijedo" }, "Drugi odnos odmah složi nove slike po njemu (isti broj redova). Pojedinu sliku i dalje mijenjaš klikom na nju."),
+      h("div", { class: "z-dio-glava" }, h("b", {}, "Napisane riječi umjesto slika"), h("span", { class: "sitno blijedo" }, "dijete čita; pojedino polje: „Slika | Riječ” ispod njega")),
       h("div", { class: "z-prekidac" },
         ...ulogeNapisano(vrsta, s).map((u) => {
           const on = ulogaNapisana(u, jeZnakId);
@@ -879,30 +914,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         vrsta === "percepcija" || vrsta === "prvi_glas" || vrsta === "slogovi" ? null : h("label", { class: "z-kvacica" }, h("input", { type: "checkbox", checked: postavke.samoSaSlikom, onchange: (e: Event) => (postavke.samoSaSlikom = (e.target as HTMLInputElement).checked) }), " Samo riječi sa slikom"),
         h("button", { type: "button", class: "gumb", onclick: () => {
           if (rijeciU(vrsta, sadrzaj).length && !confirm("Zamijeniti sadržaj novim prijedlogom?")) return;
-          const prije = sadrzaj;
-          const napisane = ulogeNapisano(vrsta, prije).filter((u) => ulogaNapisana(u, jeZnakId)).map((u) => u.kljuc);
-          const pg = poGlasovima();
-          if (vrsta === "slogovi") sadrzaj = slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), postavke.stavki, (prije as Slogovi).krugova);
-          else if (pg) {
-            // Po glasovima zadatka: bez isključenih glasova, red po red redom po odabranim glasovima.
-            const ciljevi = ciljeviGlasova(pg).map((c) => (r: RijecZadatka) => c(sGlasovima(r)));
-            const izvor = zaGenerator(p.rijeci).filter((r) => odgovara(sGlasovima(r), { glasovi: [], pozicija: "", bez: pg.bez }));
-            sadrzaj = slozi(vrsta, izvor, { ...postavke, nacin: odnosOd(prije), ciljevi: ciljevi.length ? ciljevi : undefined });
-            (sadrzaj as Odabir).po_glasovima = pg;
-          } else sadrzaj = slozi(vrsta, zaGenerator(p.rijeci), { ...postavke, nacin: VRSTE[vrsta].odnos ? odnosOd(prije) : undefined });
-          // Napisani stupci (zadane, desni stupac…) ostaju napisani i u novom prijedlogu.
-          for (const u of ulogeNapisano(vrsta, sadrzaj)) if (napisane.includes(u.kljuc)) postaviUlogu(u, true, jeZnakId);
-          // Prvi glas zadržava odabir slova na kolu; slova krugova biraju se samo s kola.
-          if (vrsta === "prvi_glas") {
-            const kolo = (prije as PrviGlas).kolo, s = sadrzaj as PrviGlas;
-            s.kolo = [...kolo]; s.boje = (prije as PrviGlas).boje;
-            s.krugovi = s.krugovi.map((k) => { if (k.slovo && kolo.includes(k.slovo)) return k; const iz = kolo.filter((sl) => brojSlova(sl) >= 3); return slozKrug(iz[Math.floor(Math.random() * iz.length)] ?? kolo[0], zaKrug()); });
-          }
-          // Percepcija zadržava izbor „različita / dvije iste".
-          if (vrsta === "percepcija" && (prije as Percepcija).trazi === "par") {
-            const s = sadrzaj as Percepcija;
-            s.trazi = "par"; s.stavke = s.stavke.map((x) => slozRed(x.polja[0].rijec_id, x.polja.length, "par"));
-          }
+          slozIznova(postavke.stavki);
           oznaci(); osvjezi();
         } }, "Složi")) : null);
   }

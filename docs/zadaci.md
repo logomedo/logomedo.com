@@ -190,8 +190,11 @@ riječi**; dvije riječi su u odnosu ako imaju isti ključ:
 Glas i slog uzimaju samo jednu riječ (izraz ČAROBNI ŠTAPIĆ nema ključ); rima gleda zadnju riječ izraza.
 Prvi slog kao otvoreni slog je odluka: MAČKA je MA-, ne MAČ-, pa MAČKA i MAJMUN idu zajedno, a LAV i LAMA ne.
 Odnos bira gumb predloška (`nacin` u `POST /admin/api/zadatak`), izbornik „Odnos” u „Po glasovima…” i prekidač
-„Što povezuje slike” u editoru. Prekidač ne dira slike (upozorenja pokažu što ne odgovara), a zadanu uputu zamijeni
-uputom novog odnosa; vlastitu uputu ostavlja. Stari zadaci bez polja su `rima`. Uputa za papir (PDF, ispis
+„Što povezuje slike” u editoru. Prekidač na zadatku sa slikama pita „Složiti nove slike po odnosu …?” i na „Da”
+složi zadatak iznova po novom odnosu (`slozIznova` u `klijent.ts`, isto kao „Složi automatski”, s trenutnim brojem
+redova i napisanim stupcima; izlazak iz „Riječ i slika” vraća slike); na „Odustani” ne mijenja ništa. Prazan zadatak
+samo promijeni odnos. Do 17. 11. 2026. prekidač nije dirao slike, pa se na zadatku ništa nije vidjelo („nema
+smisla da se može klikati”). Zadanu uputu zamijeni uputom novog odnosa; vlastitu uputu ostavlja. Stari zadaci bez polja su `rima`. Uputa za papir (PDF, ispis
 bilježnice) ide iz odnosa (`zadanaUputa`). Građa na produkciji 15. 11. 2026. (riječi sa slikom do 3 sloga):
 skupina 3+ za uljeza ima rima 46, prvi glas 27, prvi slog 53, zadnji glas 25.
 
