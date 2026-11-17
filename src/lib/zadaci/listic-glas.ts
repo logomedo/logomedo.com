@@ -101,7 +101,7 @@ export function rasporedOdnosa(vrsta: VrstaOdnosa, rijeci: RijecGlasova[], f: Fi
   for (const r of rijeci) if (K(r) && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez })) skupine.set(K(r)!, par ? [r, r] : [...(skupine.get(K(r)!) ?? []), r]);
   const velike = [...skupine.values()].filter((g) => g.length >= (vrsta === "uljez" ? 3 : 2));
   if (!f.glasovi.length) return { redova: Math.min(velike.length, redovaZaGlasove(vrsta, 0, zeljeno)), mogucih: velike.length, prazni: [] };
-  const r = poCiljevima(velike, ciljeviGlasova(f), redovaZaGlasove(vrsta, f.glasovi.length, zeljeno));
+  const r = poCiljevima(velike, ciljeviGlasova(f), redovaZaGlasove(vrsta, f.glasovi.length, zeljeno), vrsta === "uljez" ? 3 : 2);
   return { redova: r.length, mogucih: r.length, prazni: f.glasovi.filter((_, i) => !r.some((x) => x.cilj === i)) };
 }
 

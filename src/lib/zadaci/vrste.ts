@@ -651,10 +651,8 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
   const izbor = (min: number, koliko: number): [string, RijecZadatka[]][] => {
     const c = p.ciljevi;
     if (!c?.length) return vecih(min).slice(0, koliko).map(([k, g]) => [k, ciljPrvi(promijesaj(g, rnd))]);
-    return poCiljevima(vecih(min).map(([, g]) => g), c, koliko).map(({ skupina, cilj }) => {
-      const g = promijesaj(skupina, rnd);
-      return [K(g[0])!, [...g.filter(c[cilj]), ...g.filter((r) => !c[cilj](r))]];
-    });
+    // Skupina se dijeli na više redova po `min` riječi; red počinje riječju s glasom (poCiljevima).
+    return poCiljevima(vecih(min).map(([, g]) => promijesaj(g, rnd)), c, koliko, min).map(({ skupina }) => [K(skupina[0])!, skupina]);
   };
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini

@@ -203,6 +203,10 @@ odnosa otvara dijalog glasova s tim odnosom, a zasebnog „Po glasovima…” na
 **po jedan za svaki odabrani glas**, redom (`poCiljevima` u `odnosi.ts`, isto u brojanju dijaloga i na
 poslužitelju); najmanje 4 (jedan glas daje 4 reda tog glasa), povezivanje do 8 parova. Prije je uvijek bilo 4
 reda iz bilo kojeg odabranog glasa, pa je za 6 glasova davalo „4 para od 6 mogućih”.
+Skupina se dijeli na više redova s različitim riječima (17. 11. 2026., `poCiljevima(…, velicina)`): prije je
+svaka skupina davala najviše jedan red, pa je uljez „Isti prvi glas” s C (sve riječi na C su jedna skupina) imao
+samo jedan red. Sad redova ima koliko traži „Broj redova”, dok ima neiskorištenih riječi s glasom; prvo idu
+nenačete skupine, a ostala mjesta u redu prvo dobiju riječi bez glasa.
 
 Odabir se sprema u sadržaj (`po_glasovima: { glasovi, oznake, pozicija, bez }`, samo za zadatke složene po
 glasovima). Editor tada pri biranju slike bez uzora (zadana, lijeva, nova u uljezu) uključi filtar tih glasova

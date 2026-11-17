@@ -116,19 +116,35 @@ export const ODNOSI: Record<Odnos, {
 };
 
 /**
- * Skupine po odabranim glasovima: redom kroz glasove (C, S, Z, C, S, Z…), svakom glasu prva neiskorištena skupina
- * u kojoj je riječ s tim glasom, dok ne bude `n` skupina ili nijedan glas više nema novu. `cilj` je indeks glasa.
- * Istim pravilom broji dijalog „Po glasovima…” i slaže poslužitelj (on skupine prije izmiješa).
+ * Redovi po odabranim glasovima: redom kroz glasove (C, S, Z, C, S, Z…), svakom glasu `velicina` još neiskorištenih
+ * riječi iz skupine u kojoj je riječ s tim glasom, dok ne bude `n` redova ili nijedan glas više nema riječi. Skupina
+ * se dijeli na više redova (17. 11. 2026.: uljez „Isti prvi glas” s C imao je samo jedan red, jer su sve riječi na C
+ * jedna skupina), a neiskorištena skupina ima prednost pred već načetom. Red počinje riječju s glasom (zadana,
+ * lijeva), ostala mjesta prvo dobiju riječi bez glasa, da riječi s glasom ostanu za sljedeće redove.
+ * `cilj` je indeks glasa. Istim pravilom broji dijalog „Po glasovima…” i slaže poslužitelj (on skupine prije izmiješa).
  */
-export function poCiljevima<T>(skupine: T[][], ciljevi: ((r: T) => boolean)[], n: number): { skupina: T[]; cilj: number }[] {
+export function poCiljevima<T>(skupine: T[][], ciljevi: ((r: T) => boolean)[], n: number, velicina = 2): { skupina: T[]; cilj: number }[] {
   const out: { skupina: T[]; cilj: number }[] = [];
-  const uzete = new Set<number>();
+  // Po indeksu, ne po vrijednosti: „Riječ i slika” ima istu riječ dvaput u skupini.
+  const slobodni = skupine.map((g) => g.map((_, i) => i));
+  const koristeno = skupine.map(() => 0);
   while (out.length < n) {
     let dodano = false;
     for (let c = 0; c < ciljevi.length && out.length < n; c++) {
-      const i = skupine.findIndex((g, j) => !uzete.has(j) && g.some(ciljevi[c]));
-      if (i < 0) continue;
-      uzete.add(i); out.push({ skupina: skupine[i], cilj: c }); dodano = true;
+      const C = ciljevi[c];
+      let j = -1;
+      skupine.forEach((g, k) => {
+        if (slobodni[k].length < velicina || !slobodni[k].some((i) => C(g[i]))) return;
+        if (j < 0 || koristeno[k] < koristeno[j]) j = k;
+      });
+      if (j < 0) continue;
+      const g = skupine[j], sl = slobodni[j];
+      const prvi = sl.find((i) => C(g[i]))!;
+      const ostali = [...sl.filter((i) => i !== prvi && !C(g[i])), ...sl.filter((i) => i !== prvi && C(g[i]))].slice(0, velicina - 1);
+      const red = [prvi, ...ostali];
+      slobodni[j] = sl.filter((i) => !red.includes(i));
+      koristeno[j]++;
+      out.push({ skupina: red.map((i) => g[i]), cilj: c }); dodano = true;
     }
     if (!dodano) break;
   }

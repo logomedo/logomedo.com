@@ -90,3 +90,17 @@ test("odabrani glasovi ostaju u sadržaju (editor ih nudi pri biranju slike)", (
   assert.equal((normaliziraj("uljez", { po_glasovima: { glasovi: [], bez: [] }, stavke: [] }) as Uljez).po_glasovima, undefined);
   assert.equal((normaliziraj("odabir", { po_glasovima: { glasovi: [3], oznake: ["S"], pozicija: "svugdje", bez: [] }, stavke: [] }) as Odabir).po_glasovima?.pozicija, "");
 });
+
+test("poCiljevima: jedna skupina daje više redova (uljez, prvi glas C)", () => {
+  const sk = [["ca", "ce", "ci", "co", "cu", "cr", "cv"]];
+  const r = poCiljevima(sk, [(x: string) => x.startsWith("c")], 4, 3);
+  assert.equal(r.length, 2);
+  assert.equal(new Set(r.flatMap((x) => x.skupina)).size, 6);
+});
+
+test("poCiljevima: riječ s glasom ostaje za sljedeći red, nova skupina prije načete", () => {
+  // Rima: u skupini -ica samo dvije riječi s C; red uzme jednu s C i jednu bez, pa ostane za drugi red.
+  const sk = [["cica", "vica", "mica", "cvica"], ["cesta", "pesta"]];
+  const r = poCiljevima(sk, [(x: string) => x.startsWith("c")], 4, 2);
+  assert.deepEqual(r.map((x) => x.skupina), [["cica", "vica"], ["cesta", "pesta"], ["cvica", "mica"]]);
+});
