@@ -486,7 +486,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const promijeniTemu = (t: TemaRazvrstavanja) => { const prije = { pravilo: s.pravilo, tema: s.tema }; s.tema = t; promijeniUputu(prije); oznaci(); osvjezi(); };
     /**
      * Nova oznaka spremnika: slike tog spremnika se zamijene riječima s novom oznakom (sa slikom ako ih ima
-     * dovoljno), isti broj; ostale slike ostaju. Kad katalog nema dovoljno riječi, višak mjesta ostane prazan.
+     * dovoljno), isti broj; ostale slike ostaju. Prazan (tek dodan) spremnik dobije nove slike. Kad katalog nema dovoljno riječi, višak mjesta ostane prazan.
      */
     const postaviOznaku = (i: number, k: string | null) => {
       const stara = s.kategorije[i];
@@ -494,7 +494,24 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       if (k !== null && k !== stara) {
         const zauzete = new Set(s.slike.filter((x) => x.kategorija !== i).map((x) => x.rijec_id));
         const sve = zaGenerator(p.rijeci).filter((r) => kategorijaRijeci(s.pravilo, r.rijec) === k && !zauzete.has(r.id));
-        const mjesta = s.slike.filter((x) => x.kategorija === i);
+        let mjesta = s.slike.filter((x) => x.kategorija === i);
+        if (!mjesta.length) {
+          // Nova (prazna) vreća dobije koliko u prosjeku imaju ostale; do 12 ukupno, pa se po potrebi
+          // smanje najpune vreće (8 + 4 + 4 → 4 + 4 + 4).
+          const ostale = s.kategorije.length - 1 || 1;
+          let n = Math.max(1, Math.round(s.slike.length / ostale));
+          if (s.slike.length + n > RAZVRSTAVANJE_SLIKA_MAX) {
+            n = Math.floor(RAZVRSTAVANJE_SLIKA_MAX / s.kategorije.length);
+            while (s.slike.length + n > RAZVRSTAVANJE_SLIKA_MAX) {
+              const broj = s.kategorije.map((_, j) => (j === i ? -1 : s.slike.filter((x) => x.kategorija === j).length));
+              const naj = broj.indexOf(Math.max(...broj));
+              s.slike.splice(s.slike.map((x) => x.kategorija).lastIndexOf(naj), 1);
+            }
+          }
+          // Nove slike na nasumična mjesta među postojećima.
+          mjesta = Array.from({ length: n }, () => ({ rijec_id: null, kategorija: i }));
+          for (const x of mjesta) s.slike.splice(Math.floor(Math.random() * (s.slike.length + 1)), 0, x);
+        }
         const sa = sve.filter((r) => r.slika);
         const nove = promijesaj(sa.length >= mjesta.length ? sa : sve);
         mjesta.forEach((x, j) => { x.rijec_id = nove[j]?.id ?? null; });
