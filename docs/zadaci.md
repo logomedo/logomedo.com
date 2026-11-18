@@ -705,4 +705,6 @@ dodirne ono koje je čulo; krivo se trese i glas se ponovi. Stavka = ekran = okv
 - Ocjena: prvi dodir po slici (`{stavka: indeks slike, odabrano: 0|1|2}`).
 
 Papir (PDF, HTML ispis, A4 pregled): `razbacanaSlova` u `slusanje.ts`, `rasporedKojegSlova` i `rasporedPozicije` u `pdf/model.ts`.
-„Po glasovima…” za ove dvije vrste još nema (generator već prima `slova`).
+„Po glasovima…” za ove dvije vrste još nema (generator već prima `slova`). Odluka 18. 11. 2026.: dodati za obje radi
+dosljednosti predložaka. Kod `koje_slovo` odabrani glasovi su stavke **i međusobni ometači** (čuje S, među slovima su
+Š, Z, Ž: to razlikovanje je cilj vježbe); kod `pozicija_glasa` dijalog bira jedan glas.
