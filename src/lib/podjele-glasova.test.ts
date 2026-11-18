@@ -16,3 +16,10 @@ test("po podjeli: redom skupina, prazne se preskaču, nepoznato u Ostalo", () =>
   const r = poPodjeli(g, "mjesto");
   assert.deepEqual(r.map((x) => [x.skupina.naziv, x.glasovi.map((y) => y.oznaka).join("")]), [["Bilabijali", "B"], ["Dentali", "S"], ["Velari", "K"], ["Ostalo", "A"]]);
 });
+
+import { skupineGlasa } from "./podjele-glasova.ts";
+test("skupine glasa: S je dental, frikativ, bezvučni; A nema nijednu", () => {
+  const s = skupineGlasa("S");
+  assert.deepEqual([s.mjesto?.kod, s.nacin?.kod, s.zvucnost?.kod], ["dentali", "frikativi", "bezvucni"]);
+  assert.deepEqual(skupineGlasa("A"), {});
+});

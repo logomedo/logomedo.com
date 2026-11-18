@@ -55,3 +55,13 @@ export function poPodjeli<T extends { oznaka: string }>(glasovi: T[], podjela: P
   if (ostalo.length) out.push({ skupina: { kod: "ostalo", naziv: "Ostalo", opis: "", glasovi: ostalo.map((g) => g.oznaka) }, glasovi: ostalo });
   return out.filter((x) => x.glasovi.length);
 }
+
+/** Skupine glasa u svakoj podjeli: { mjesto: Dentali, nacin: Frikativi, zvucnost: Bezvučni }; samoglasnik nema nijednu. */
+export function skupineGlasa(oznaka: string): Partial<Record<Podjela, Skupina>> {
+  const out: Partial<Record<Podjela, Skupina>> = {};
+  for (const [p, d] of Object.entries(PODJELE) as [Podjela, (typeof PODJELE)[Podjela]][]) {
+    const s = d.skupine.find((x) => x.glasovi.includes(oznaka));
+    if (s) out[p] = s;
+  }
+  return out;
+}

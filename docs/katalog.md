@@ -44,7 +44,7 @@ Početna stranica kataloga slaže mape glasova po podjeli iz `src/lib/podjele-gl
 bazi): **mjesto tvorbe** (zadano: bilabijali, labiodentali, dentali, alveolari, palatali, velari), **način tvorbe**
 (okluzivi, frikativi, afrikate, sonanti) i **zvučnost** (zvučni, bezvučni, sonanti bez para). Izbor je `?podjela=`
 i pamti se u kolačiću `katalog_podjela`. Stara kategorija `glasovi.skupina` (sibilanti, šuštavci…) ostaje u bazi
-i na stranici glasa, ali katalog po njoj više ne slaže.
+i u obrascu „Novi glas”, ali je katalog i podnaslov stranice glasa više ne pokazuju (podnaslov: „Dentali · frikativi · bezvučni”, `skupineGlasa`).
 
 ## Seed
 
