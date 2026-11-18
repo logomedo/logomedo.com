@@ -6,6 +6,7 @@ import { postavka } from "./postavke";
 import { ekrani, uputaZa, type ZadatakZaIgru } from "./biljeznice-ekrani";
 import { UPUTE_PRVOG_GLASA } from "./zadaci/vrste";
 import { izgovorZa, kljucZvuka, naciniZa, prolazi, slicnost } from "./zvukovi-tekst";
+import { glasIzKljuca, jeKljucGlasa, kljucGlasa } from "./zadaci/slusanje";
 import { javniUrl, ocistiCache } from "./generiranje";
 import { batchSKvotom, platitelj, type Kolicina } from "./kvota";
 
@@ -71,7 +72,7 @@ export async function stanjeZvukova(kljucevi: string[]): Promise<StanjeZvuka[]> 
  * Jedan batch s kvotom (lib/kvota.ts) za sve; u Queue idu tek nakon uspješnog batcha.
  */
 export async function dodajZvukove(kljucevi: string[], email: string): Promise<number> {
-  const trebaju = (await stanjeZvukova(kljucevi.map(kljucZvuka))).filter((s) => !s.odobren && !s.kandidata && !s.u_redu && !s.bez_ponavljanja);
+  const trebaju = (await stanjeZvukova(kljucevi.map(kljucZvuka).filter((k) => !jeKljucGlasa(k)))).filter((s) => !s.odobren && !s.kandidata && !s.u_redu && !s.bez_ponavljanja);
   if (!trebaju.length) return 0;
   const ids = await upisiPoslove(email, trebaju.length, trebaju.length === 1 ? `izgovor ${trebaju[0].kljuc}` : `${trebaju.length} izgovora`,
     trebaju.map((s) => novPosao(s.kljuc, izgovorZa(s.kljuc), email)));
@@ -230,7 +231,7 @@ export async function brojeviIzgovora(): Promise<Record<TabIzgovora, number>> {
   const r = await env.DB.prepare(
     `SELECT
        (SELECT COUNT(*) FROM (SELECT kljuc FROM zvukovi WHERE status = 'kandidat' UNION SELECT kljuc FROM zvuk_generiranja WHERE status IN ('ceka', 'radi'))) AS ceka,
-       (SELECT COUNT(*) FROM zvukovi WHERE status = 'odobren') AS odobreno,
+       (SELECT COUNT(*) FROM zvukovi WHERE status = 'odobren' AND model != 'snimka') AS odobreno,
        (SELECT COUNT(*) FROM (${ODBIJENI_KLJUCEVI})) AS odbijeno,
        (SELECT COUNT(*) FROM zvuk_generiranja WHERE status = 'greska') AS greske`,
   ).first<Record<TabIzgovora, number>>();
@@ -238,7 +239,7 @@ export async function brojeviIzgovora(): Promise<Record<TabIzgovora, number>> {
 }
 
 // Tekstovi bez odobrene snimke, bez kandidata i bez posla: zadnja snimka je odbijena.
-const ODBIJENI_KLJUCEVI = `SELECT kljuc, MAX(id) AS id FROM zvukovi z GROUP BY kljuc
+const ODBIJENI_KLJUCEVI = `SELECT kljuc, MAX(id) AS id FROM zvukovi z WHERE model != 'snimka' GROUP BY kljuc
   HAVING SUM(status IN ('odobren', 'kandidat')) = 0
      AND NOT EXISTS (SELECT 1 FROM zvuk_generiranja q WHERE q.kljuc = z.kljuc AND q.status IN ('ceka', 'radi'))`;
 
@@ -269,7 +270,7 @@ export async function skupineIzgovora(tab: TabIzgovora): Promise<Skupina[]> {
     return [...m.values()].sort((a, b) => (red.get(a.kljuc) ?? Infinity) - (red.get(b.kljuc) ?? Infinity));
   }
   const upit = tab === "odobreno"
-    ? `SELECT ${STUPCI} FROM zvukovi WHERE status = 'odobren' ORDER BY id DESC LIMIT 400`
+    ? `SELECT ${STUPCI} FROM zvukovi WHERE status = 'odobren' AND model != 'snimka' ORDER BY id DESC LIMIT 400`
     : `SELECT ${STUPCI} FROM zvukovi WHERE id IN (SELECT id FROM (${ODBIJENI_KLJUCEVI})) ORDER BY id DESC LIMIT 400`;
   const { results } = await db.prepare(upit).all<Zvuk>();
   return results.map((z) => ({ kljuc: z.kljuc, izgovor: z.izgovor, snimke: [z], uIzradi: false, zadnjeOdbijanje: null }));
@@ -345,6 +346,7 @@ export async function odbijZvukove(ids: number[], email: string, o: { razlog?: s
 
 /** Tekst ponovno (odobren ili odbijen): posao s varijantama. Stara odobrena ostaje dok nova ne bude odobrena. */
 export async function ponoviZvuk(kljuc: string, email: string, izgovor?: string): Promise<boolean> {
+  if (jeKljucGlasa(kljuc)) return false;   // glas snima logopedica (/admin/zvukovi/snimke), ne ElevenLabs
   const [s] = await stanjeZvukova([kljuc]);
   if (s.u_redu || s.kandidata) return false;
   await posalji(await upisiPoslove(email, 1, `izgovor ${kljuc}`, [novPosao(kljuc, izgovor?.trim() || izgovorZa(kljuc), email, true)]));
@@ -365,4 +367,51 @@ async function makniJavni(r2: string) {
   if (jos || !(await env.JAVNO.head(r2))) return;
   await env.JAVNO.delete(r2);
   await ocistiCache(javniUrl(r2));
+}
+
+// ── Snimke glasova (logopedica snima mikrofonom, /admin/zvukovi/snimke) ─────────────────────────
+
+export interface SnimkaGlasa { glas: string; id: number; url: string; snimio: string | null; kada: string }
+
+/** Odobrena snimka za svaki snimljeni glas (ključ `/s/`). */
+export async function snimkeGlasova(): Promise<SnimkaGlasa[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT id, kljuc, r2_kljuc, pregledao, created_at FROM zvukovi WHERE status = 'odobren' AND model = 'snimka' ORDER BY id`,
+  ).all<{ id: number; kljuc: string; r2_kljuc: string; pregledao: string | null; created_at: string }>();
+  return results.flatMap((r) => { const glas = glasIzKljuca(r.kljuc); return glas ? [{ glas, id: r.id, url: javniUrl(r.r2_kljuc), snimio: r.pregledao, kada: r.created_at }] : []; });
+}
+
+/** WAV iz preglednika: RIFF/WAVE zaglavlje, do 2 MB (glas traje sekundu-dvije, 24 kHz mono ≈ 50 kB/s). */
+export const jeWav = (b: ArrayBuffer) => {
+  if (b.byteLength < 44 || b.byteLength > 2_000_000) return false;
+  const t = new TextDecoder().decode(new Uint8Array(b, 0, 12));
+  return t.startsWith("RIFF") && t.slice(8, 12) === "WAVE";
+};
+
+/** Spremi snimku glasa: odmah odobrena i javna; prijašnja za isti glas postaje „zamijenjena”. */
+export async function spremiSnimkuGlasa(glas: string, wav: ArrayBuffer, email: string): Promise<number> {
+  const db = env.DB, kljuc = kljucGlasa(glas);
+  const r2 = `zvuk/${await hash16(wav)}.wav`;
+  await env.SLIKE.put(r2, wav, { httpMetadata: { contentType: "audio/wav" } });
+  const { results: stari } = await db.prepare("SELECT r2_kljuc FROM zvukovi WHERE kljuc = ? AND status = 'odobren'").bind(kljuc).all<{ r2_kljuc: string }>();
+  const [, novi] = await db.batch([
+    db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = 'zamijenjen novijom', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'odobren'").bind(email, kljuc),
+    db.prepare(
+      `INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, mime, bajtova, glas_id, model, nacin, provjera, status, pregledao, pregledano_at)
+       VALUES (?, ?, ?, 'audio/wav', ?, 'mikrofon', 'snimka', 'snimka', 'bez', 'odobren', ?, datetime('now')) RETURNING id`,
+    ).bind(kljuc, `glas ${glas}`, r2, wav.byteLength, email),
+  ]);
+  const id = (novi.results[0] as { id: number }).id;
+  await uskladiJavniZvuk(id);
+  for (const s of stari) if (s.r2_kljuc !== r2) await makniJavni(s.r2_kljuc);
+  return id;
+}
+
+/** Makni snimku glasa (igra tada za taj glas šuti). */
+export async function obrisiSnimkuGlasa(glas: string, email: string): Promise<void> {
+  const kljuc = kljucGlasa(glas);
+  const { results } = await env.DB.prepare(
+    "UPDATE zvukovi SET status = 'odbijen', razlog = 'obrisana snimka', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'odobren' RETURNING r2_kljuc",
+  ).bind(email, kljuc).all<{ r2_kljuc: string }>();
+  for (const s of results) await makniJavni(s.r2_kljuc);
 }

@@ -4,7 +4,7 @@
 import "@fontsource-variable/nunito";
 import "@fontsource/andika/700.css";
 import { TEME, type Tema } from "../lib/teme";
-import { brojEkrana, type ZadatakZaIgru } from "../lib/biljeznice-ekrani";
+import { brojEkrana, glasoviIgre, type ZadatakZaIgru } from "../lib/biljeznice-ekrani";
 import { odobreniZvukovi, tekstoviIgre } from "../lib/zvukovi";
 import type { RijecBiljeznice } from "../lib/biljeznice";
 import type { Pozadina } from "../lib/pozadine";
@@ -28,7 +28,7 @@ const za = {
   pozadine,
   kraj: tema.kraj,
   // Odobrene snimke izgovora (ElevenLabs) po ključu teksta; bez snimke igra šuti.
-  zvukovi: await odobreniZvukovi(tekstoviIgre(zadaci, rijeci, tema.kraj)),
+  zvukovi: await odobreniZvukovi([...tekstoviIgre(zadaci, rijeci, tema.kraj), ...glasoviIgre(zadaci)]),
 };
 // JSON u <script type="application/json">: „</” se ne smije pojaviti doslovno.
 const json = JSON.stringify(za).replace(/</g, "\\u003c");
@@ -246,6 +246,30 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   @keyframes palica-l { 0% { transform: rotate(-14deg); } 40% { transform: rotate(4deg); } }
   @keyframes palica-d { 0% { transform: rotate(14deg); } 40% { transform: rotate(-4deg); } }
   @keyframes poskoci { 40% { transform: translateY(-3vh); } }
+  /* Koje slovo čuješ: slova razbacana po polju (položaj iz razbaci(), isti ključ = isti raspored). */
+  .cuj-glas { width: min(13vh, 18vw); height: min(13vh, 18vw); border-radius: 50%; border: 0; background: var(--zeleno); color: #fff; box-shadow: 0 5px 0 #1d6b33; cursor: pointer; padding: 2.4vh; flex: none; }
+  .cuj-glas svg { width: 100%; height: 100%; }
+  .cuj-glas.govori { animation: puls .6s ease-in-out infinite alternate; }
+  .slova-polje { position: relative; width: min(94vw, calc(62vh * var(--omjer))); aspect-ratio: var(--omjer); container-type: inline-size; background: rgb(251 243 226 / .92); border: 2px solid var(--papir-rub); border-radius: 3vh; }
+  .razbacano { position: absolute; transform: translate(-50%, -50%) rotate(var(--kut)); font: 700 calc(var(--cel) * .6cqw) / 1 Andika, sans-serif;
+    color: var(--boja); background: none; border: 0; padding: .1em .25em; border-radius: .3em; cursor: pointer; transition: scale .15s, background .2s; }
+  .razbacano:hover { scale: 1.08; }
+  .razbacano.tocno { background: var(--zeleno); color: #fff; scale: 1.25; box-shadow: 0 0 0 .6vh #fff, 0 0 3vh #ffe680; }
+  .razbacano.krivo { animation: trese .45s; }
+  /* Gdje je glas: slika, tri kruga (početak, sredina, kraj), gumb za glas. */
+  .pozicija { display: flex; flex-direction: column; align-items: center; gap: 2.4vh; }
+  .pozicija .kartica { --s: min(38vh, 50vw); }
+  .pozicija-krugovi { display: flex; gap: min(5vh, 7vw); }
+  .pozicija-krug { width: min(11vh, 20vw); aspect-ratio: 1; border-radius: 50%; border: .8vh solid #5a3414; background: #fffdf6; cursor: pointer; transition: background .15s, transform .15s; }
+  .pozicija-krug.on { background: radial-gradient(circle at 35% 30%, #9ff0a8, var(--zeleno) 60%, #1d6b33); transform: scale(1.1); }
+  .pozicija-krug.krivo { animation: trese .45s; }
+  .pozicija .cuj-glas { width: min(9vh, 14vw); height: min(9vh, 14vw); padding: 1.6vh; }
+  @media (orientation: landscape) {
+    .pozicija { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 5vw; }
+    .pozicija .kartica { grid-row: 1 / 3; --s: min(52vh, 34vw); }
+    .pozicija .cuj-glas { justify-self: center; align-self: start; }
+    .pozicija-krugovi { align-self: end; }
+  }
   /* Razvrstavanje: slike gore (vuku se prstom: translate, ne transform, da ne smeta .odabrana), spremnici dolje. */
   .razvrstaj-slike { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.6vh 1.6vw; max-width: 94vw; }
   .razvrstaj-slike .kartica { --s: min(24vh, 17vw); touch-action: none; user-select: none; -webkit-user-select: none; }

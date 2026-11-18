@@ -4,11 +4,12 @@
 // Ništa se ne sprema i ništa ne odlazi na server.
 import { ekrani, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
 import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts";
-import { izmjenaCss, UPUTE_PRVOG_GLASA, BOJE_DULJINE, jeDuga, type Polje } from "./zadaci/vrste.ts";
+import { izmjenaCss, UPUTE_POZICIJE, UPUTE_PRVOG_GLASA, BOJE_DULJINE, jeDuga, type Polje } from "./zadaci/vrste.ts";
 import { iskocenoSlovo, koloSlova, znackaSlova } from "./kolo-slova.ts";
 import { kljucZvuka } from "./zvukovi-tekst.ts";
 import { mapaRijeci } from "./zadaci/napisano.ts";
 import { spremnikSvg } from "./spremnici.ts";
+import { BOJE_SLOVA, kljucGlasa, POZICIJE, prikazSlova, razbaci, type Pozicija } from "./zadaci/slusanje.ts";
 
 interface Podaci {
   naslov: string; podnaslov: string | null;
@@ -64,6 +65,7 @@ function otkljucajSnimke() {
 /** Ima li tekst odobrenu snimku. Bez nje igra šuti (glas preglednika je za hrvatski preloš). */
 const imaSnimku = (tekst: string) => !!snimke[kljucZvuka(tekst)];
 function govori(tekst: string, gumb?: HTMLElement) {
+  niz++;
   govornik?.classList.remove("govori");
   govornik = gumb ?? null;
   const url = snimke[kljucZvuka(tekst)];
@@ -74,6 +76,30 @@ function govori(tekst: string, gumb?: HTMLElement) {
   svirac.onended = gotovo;
   svirac.onerror = gotovo;
   svirac.play().catch(gotovo);
+}
+
+/**
+ * Niz snimki jednu za drugom (uputa, glas, riječ). Tekst bez snimke se preskače. Novi `govori`
+ * ili `govoriNiz` prekida stari niz (`niz` se mijenja).
+ */
+let niz = 0;
+function govoriNiz(tekstovi: string[], gumb?: HTMLElement) {
+  govornik?.classList.remove("govori");
+  govornik = gumb ?? null;
+  const urls = tekstovi.map((t) => snimke[kljucZvuka(t)]).filter((u): u is string => !!u);
+  const moj = ++niz;
+  if (!urls.length || !svirac) return;
+  gumb?.classList.add("govori");
+  const gotovo = () => { if (moj === niz) gumb?.classList.remove("govori"); };
+  const sljedeca = (i: number) => {
+    if (moj !== niz) return;
+    if (i >= urls.length) return gotovo();
+    svirac.pause(); svirac.muted = false; svirac.src = urls[i]; svirac.currentTime = 0;
+    svirac.onended = () => setTimeout(() => sljedeca(i + 1), 250);
+    svirac.onerror = () => sljedeca(i + 1);
+    svirac.play().catch(gotovo);
+  };
+  sljedeca(0);
 }
 
 let ac: AudioContext | null = null;
@@ -463,6 +489,64 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     return { cvorovi: [q.el, mreza, h("div", { class: "spremnici" }, ...spremnici.map((x) => x.b))], tekst, gumb: q.gumb };
   }
 
+  /** Gumb koji izgovori niz (uputa, glas…); null ako nijedan tekst nema snimku. */
+  function zvucnikNiza(tekstovi: () => string[], kl = "zvucnik") {
+    if (!tekstovi().some(imaSnimku)) return null;
+    const b = h("button", { type: "button", class: kl, "aria-label": "Poslušaj" });
+    b.innerHTML = IKONA_ZVUK;
+    b.addEventListener("click", (e) => { e.stopPropagation(); govoriNiz(tekstovi(), b); });
+    return b;
+  }
+
+  /**
+   * Koje slovo čuješ: pitanje, veliki gumb „čuj glas” i polje s razbacanim slovima (isti raspored kao na
+   * papiru za isti ključ). Pravo slovo zasvijetli, krivo se trese i glas se ponovi.
+   */
+  function ekranKojeSlovo(e: Extract<Ekran, { vrsta: "koje_slovo" }>) {
+    const glas = kljucGlasa(e.stavka.glas!);
+    const niz = () => [e.uputa, glas];
+    const q = h("div", { class: "pitanje" }, h("span", {}, e.uputa), zvucnikNiza(niz));
+    const uho = zvucnikNiza(() => [glas], "cuj-glas");
+    const omjer = innerWidth > innerHeight ? 1.9 : 0.9;
+    const { mjesta, stupaca, redova } = razbaci(e.stavka.ponudeno.length, e.kljuc, omjer);
+    const polje = h("div", { class: "slova-polje", style: `--omjer:${omjer};--cel:${Math.min(100 / stupaca, (100 / redova) * omjer)}` },
+      ...e.stavka.ponudeno.map((sl, i) => {
+        const m = mjesta[i];
+        const b = h("button", { type: "button", class: "razbacano", style: `left:${m.x * 100}%;top:${m.y * 100}%;--kut:${m.kut}deg;--boja:${BOJE_SLOVA[m.boja]}`, "aria-label": sl },
+          prikazSlova(sl, e.slova));
+        b.addEventListener("click", () => {
+          if (zakljucano) return;
+          if (sl === e.stavka.glas) { b.classList.add("tocno"); rijeseno(); return; }
+          b.classList.remove("krivo"); void b.offsetWidth; b.classList.add("krivo"); krivo();
+          setTimeout(() => govoriNiz([glas], uho ?? undefined), 500);
+        });
+        return b;
+      }));
+    return { cvorovi: [q, uho, polje], niz: niz(), gumb: q.querySelector<HTMLElement>(".zvucnik") ?? undefined };
+  }
+
+  /**
+   * Gdje je glas: slika (dodir izgovori riječ), ispod tri kruga: početak, sredina, kraj. Pitanje izgovori
+   * uputu, glas i riječ. Pravi krug se oboji, krivi se trese.
+   */
+  function ekranPozicija(e: Extract<Ekran, { vrsta: "pozicija_glasa" }>) {
+    const id = e.slika.rijec_id!, glas = kljucGlasa(e.glas);
+    const niz = () => [e.uputa, glas, ime(id)];
+    const q = h("div", { class: "pitanje" }, (e.uputa === UPUTE_POZICIJE.ekran ? h("span", {}, "Gdje čuješ glas ", znackaSlova(e.glas), "?") : h("span", {}, e.uputa, " ", znackaSlova(e.glas))), zvucnikNiza(niz));
+    const uho = zvucnikNiza(() => [glas], "cuj-glas");
+    const kart = karticaBezRijeci(id, () => govori(ime(id)), "pozicija-slika");
+    const krugovi = ([0, 1, 2] as Pozicija[]).map((p) => {
+      const c = h("button", { type: "button", class: "pozicija-krug", "aria-label": POZICIJE[p].naziv });
+      c.addEventListener("click", () => {
+        if (zakljucano) return;
+        if (p === e.slika.pozicija) { c.classList.add("on"); kart.classList.add("tocno"); rijeseno(); return; }
+        c.classList.remove("krivo"); void c.offsetWidth; c.classList.add("krivo"); krivo();
+      });
+      return c;
+    });
+    return { cvorovi: [q, h("div", { class: "pozicija" }, kart, h("div", { class: "pozicija-krugovi" }, ...krugovi), uho)], niz: niz(), gumb: q.querySelector<HTMLElement>(".zvucnik") ?? undefined };
+  }
+
   /** Scena preko cijelog ekrana; orijentacija prati uređaj, pogođeni gumbi ostaju pri okretanju. */
   let makniScenu: (() => void) | null = null;
   function ekranScena(e: Extract<Ekran, { vrsta: "scena" }>) {
@@ -495,6 +579,12 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const x = ekranScena(e);
       zamijeni(korijen);
       setTimeout(() => govori(x.tekst, document.querySelector<HTMLElement>(".scena-cijeli .zvucnik") ?? undefined), 350);
+      return;
+    }
+    if (e.vrsta === "koje_slovo" || e.vrsta === "pozicija_glasa") {
+      const y = e.vrsta === "koje_slovo" ? ekranKojeSlovo(e) : ekranPozicija(e);
+      zamijeni(korijen, ...y.cvorovi);
+      setTimeout(() => govoriNiz(y.niz, y.gumb), 350);
       return;
     }
     const x = e.vrsta === "odabir" ? ekranOdabir(e) : e.vrsta === "uljez" ? ekranUljez(e) : e.vrsta === "percepcija" ? ekranPercepcija(e)

@@ -77,6 +77,7 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
       <h1>Izgovor</h1>
       <p class="podnaslov">Poslušaj kako ElevenLabs izgovara riječi i upute. Djeca čuju samo odobrene snimke; bez snimke igra šuti.</p>
     </div>
+    <a class="gumb" href="/admin/zvukovi/snimke"><Ikona ime="zvuk" velicina={18} /> Snimke glasova</a>
     {smijeNa(Astro.locals.admin!.uloga, "/admin/zvukovi/glasovi") ? (
       <a class="gumb" href="/admin/zvukovi/glasovi"><Ikona ime="zvuk" velicina={18} />
         {glas ? <>Glas: <b>{imeGlasa}</b></> : <b class="greska">Odaberi glas</b>}</a>

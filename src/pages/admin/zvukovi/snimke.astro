@@ -1,0 +1,266 @@
+---
+// Snimke glasova (docs/zvukovi.md „Snimke glasova”): logopedica snimi svaki glas mikrofonom (S kao
+// „sss”, ne „es”). Preglednik snimku obreže (tišina), izjednači glasnoću i pretvori u WAV, pa je
+// pošalje ovdje; snimka je odmah odobrena i javna (ključ `/s/` u tablici zvukovi), a igra je pušta u
+// zadacima „Koje slovo čuješ?” i „Gdje je glas?”. ElevenLabs glasove ne generira.
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { kad } from "../../../lib/katalog";
+import { GLASOVI } from "../../../lib/zadaci/slusanje";
+import { jeWav, obrisiSnimkuGlasa, snimkeGlasova, spremiSnimkuGlasa } from "../../../lib/zvukovi";
+
+const email = Astro.locals.admin!.email;
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const glas = String(f.get("glas") ?? "");
+  if (!GLASOVI.includes(glas)) return Response.json({ greska: "Nepoznat glas." }, { status: 400 });
+  if (f.get("akcija") === "obrisi") {
+    await obrisiSnimkuGlasa(glas, email);
+    return Response.json({ ok: true });
+  }
+  const dat = f.get("wav");
+  const wav = dat instanceof File ? await dat.arrayBuffer() : null;
+  if (!wav || !jeWav(wav)) return Response.json({ greska: "Snimka nije ispravan WAV (ili je dulja od 2 MB)." }, { status: 400 });
+  const id = await spremiSnimkuGlasa(glas, wav, email);
+  const s = (await snimkeGlasova()).find((x) => x.id === id);
+  return Response.json({ ok: true, url: s?.url ?? null });
+}
+
+const snimke = new Map((await snimkeGlasova()).map((s) => [s.glas, s]));
+const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
+---
+<AdminOkvir naslov="Snimke glasova" aktivno="zvukovi">
+  <div class="naslov">
+    <div>
+      <a class="natrag" href="/admin/zvukovi"><Ikona ime="natrag" velicina={16} /> Izgovor</a>
+      <h1>Snimke glasova</h1>
+      <p class="podnaslov">
+        Snimi svaki glas onako kako ga dijete treba čuti: <b>„sss”</b>, ne „es”; <b>„mmm”</b>, ne „em”. Zaporni glasovi (B, P, D, T, K, G)
+        kratko i bez „ə” na kraju. Snimka se sama obreže i izjednači, a spremljena odmah ide u igre „Koje slovo čuješ?” i „Gdje je glas?”.
+      </p>
+    </div>
+    <p class="brojac"><b>{snimke.size}</b> / {GLASOVI.length} snimljeno</p>
+  </div>
+
+  <p class="ploha obavijest skriveno" id="poruka" role="status"></p>
+
+  <div class="glasovi">
+    {GLASOVI.map((g) => {
+      const s = snimke.get(g);
+      return (
+        <div class={`ploha glas${s ? " ima" : ""}${samoglasnici.has(g) ? " samoglasnik" : ""}`} data-glas={g} data-url={s?.url ?? ""}>
+          <div class="slovo">{g}</div>
+          <p class="stanje">{s ? <>Snimljeno {kad(s.kada)}</> : "Nije snimljeno"}</p>
+          <div class="gumbi">
+            <button type="button" class="gumb mali snimi" aria-label={`Snimi glas ${g}`}><span class="tocka"></span><span class="tekst">Snimi</span></button>
+            <button type="button" class="gumb mali slusaj" aria-label={`Poslušaj glas ${g}`} disabled={!s}><Ikona ime="zvuk" velicina={16} /></button>
+          </div>
+          <div class="nova skriveno">
+            <canvas class="val" width="240" height="40"></canvas>
+            <div class="gumbi">
+              <button type="button" class="gumb mali slusaj-novu"><Ikona ime="zvuk" velicina={16} /> Poslušaj</button>
+              <button type="button" class="gumb mali glavni spremi"><Ikona ime="kvacica" velicina={16} /> Spremi</button>
+            </div>
+          </div>
+          {s && <button type="button" class="obrisi poveznica">Obriši snimku</button>}
+        </div>
+      );
+    })}
+  </div>
+</AdminOkvir>
+
+<script>
+  // Snimanje: MediaRecorder → decodeAudioData → obrezivanje tišine → izjednačenje → 24 kHz mono WAV.
+  // Preslušavanje nove snimke ide kroz WebAudio (CSP ne dopušta blob: u <audio>).
+  const CILJ_HZ = 24000;
+  let ac: AudioContext | null = null;
+  const kontekst = () => (ac ??= new AudioContext());
+  const poruka = document.getElementById("poruka")!;
+  const javi = (t: string, greska = false) => { poruka.textContent = t; poruka.classList.remove("skriveno"); poruka.classList.toggle("upozorenje", greska); };
+
+  let izvor: AudioBufferSourceNode | null = null;
+  function pusti(b: AudioBuffer) {
+    izvor?.stop();
+    const c = kontekst(), s = c.createBufferSource();
+    s.buffer = b; s.connect(c.destination); s.start(); izvor = s;
+  }
+  const svirac = new Audio();
+
+  /** Obreži tišinu (prag prema vršnoj glasnoći), 40 ms rezerve, meki rubovi, vrh na −1 dBFS. */
+  function obradi(ulaz: AudioBuffer): Float32Array {
+    const k = ulaz.numberOfChannels, n = ulaz.length;
+    const x = new Float32Array(n);
+    for (let c = 0; c < k; c++) { const d = ulaz.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / k; }
+    const prozor = Math.round(ulaz.sampleRate * 0.01);
+    const rms: number[] = [];
+    for (let i = 0; i < n; i += prozor) { let s = 0; const kraj = Math.min(n, i + prozor); for (let j = i; j < kraj; j++) s += x[j] * x[j]; rms.push(Math.sqrt(s / (kraj - i))); }
+    const vrh = Math.max(...rms);
+    if (vrh < 0.003) throw new Error("Snimka je pretiha. Provjeri mikrofon.");
+    const prag = vrh * 0.08;
+    const prvi = rms.findIndex((r) => r > prag), zadnji = rms.length - 1 - [...rms].reverse().findIndex((r) => r > prag);
+    const rez = Math.round(ulaz.sampleRate * 0.04);
+    const od = Math.max(0, prvi * prozor - rez), do_ = Math.min(n, (zadnji + 1) * prozor + rez);
+    const y = x.slice(od, do_);
+    let max = 0;
+    for (const v of y) max = Math.max(max, Math.abs(v));
+    const g = max ? 0.89 / max : 1;
+    const rub = Math.min(Math.round(ulaz.sampleRate * 0.015), Math.floor(y.length / 2));
+    for (let i = 0; i < y.length; i++) {
+      const f = i < rub ? i / rub : i >= y.length - rub ? (y.length - 1 - i) / rub : 1;
+      y[i] *= g * f;
+    }
+    return y;
+  }
+
+  async function presamplaj(y: Float32Array, hz: number): Promise<AudioBuffer> {
+    const duljina = Math.max(1, Math.round((y.length * CILJ_HZ) / hz));
+    const o = new OfflineAudioContext(1, duljina, CILJ_HZ);
+    const b = o.createBuffer(1, y.length, hz);
+    b.copyToChannel(y as Float32Array<ArrayBuffer>, 0);
+    const s = o.createBufferSource(); s.buffer = b; s.connect(o.destination); s.start();
+    return o.startRendering();
+  }
+
+  function wav(b: AudioBuffer): Blob {
+    const d = b.getChannelData(0), n = d.length;
+    const v = new DataView(new ArrayBuffer(44 + n * 2));
+    const str = (o: number, s: string) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVE"); str(12, "fmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, b.sampleRate, true); v.setUint32(28, b.sampleRate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, "data"); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 0x7fff, true);
+    return new Blob([v.buffer], { type: "audio/wav" });
+  }
+
+  function nacrtaj(c: HTMLCanvasElement, b: AudioBuffer) {
+    const g = c.getContext("2d")!, d = b.getChannelData(0), w = c.width, h = c.height;
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = getComputedStyle(c).color;
+    const korak = Math.max(1, Math.floor(d.length / w));
+    for (let x = 0; x < w; x++) {
+      let m = 0;
+      for (let i = x * korak; i < Math.min(d.length, (x + 1) * korak); i++) m = Math.max(m, Math.abs(d[i]));
+      g.fillRect(x, (h - m * h) / 2, 1, Math.max(1, m * h));
+    }
+  }
+
+  let tok: MediaStream | null = null;
+  let aktivna: { kartica: HTMLElement; rec: MediaRecorder; komadi: Blob[] } | null = null;
+
+  async function pocni(kartica: HTMLElement) {
+    try {
+      tok ??= await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false } });
+    } catch {
+      javi("Preglednik nije dao mikrofon. Dopusti mikrofon za ovu stranicu i pokušaj ponovo.", true);
+      return;
+    }
+    kontekst();
+    const rec = new MediaRecorder(tok), komadi: Blob[] = [];
+    rec.ondataavailable = (e) => { if (e.data.size) komadi.push(e.data); };
+    rec.onstop = () => zavrsi(kartica, komadi, rec.mimeType);
+    aktivna = { kartica, rec, komadi };
+    kartica.classList.add("snima");
+    kartica.querySelector(".snimi .tekst")!.textContent = "Stani";
+    rec.start();
+  }
+
+  function stani() {
+    if (!aktivna) return;
+    const { kartica, rec } = aktivna;
+    aktivna = null;
+    kartica.classList.remove("snima");
+    kartica.querySelector(".snimi .tekst")!.textContent = "Snimi ponovo";
+    rec.stop();
+  }
+
+  const nove = new Map<HTMLElement, AudioBuffer>();
+  async function zavrsi(kartica: HTMLElement, komadi: Blob[], mime: string) {
+    try {
+      const sirovo = await new Blob(komadi, { type: mime }).arrayBuffer();
+      const ulaz = await kontekst().decodeAudioData(sirovo);
+      const b = await presamplaj(obradi(ulaz), ulaz.sampleRate);
+      if (b.duration > 3) throw new Error("Snimka je dulja od 3 sekunde. Snimi samo glas.");
+      nove.set(kartica, b);
+      kartica.querySelector(".nova")!.classList.remove("skriveno");
+      nacrtaj(kartica.querySelector<HTMLCanvasElement>(".val")!, b);
+      pusti(b);
+    } catch (e) {
+      javi(e instanceof Error ? e.message : "Snimka nije uspjela.", true);
+    }
+  }
+
+  async function spremi(kartica: HTMLElement) {
+    const b = nove.get(kartica);
+    if (!b) return;
+    const glas = kartica.dataset.glas!;
+    const fd = new FormData();
+    fd.set("glas", glas); fd.set("wav", wav(b), `${glas}.wav`);
+    const gumb = kartica.querySelector<HTMLButtonElement>(".spremi")!;
+    gumb.disabled = true;
+    try {
+      const r = await fetch(location.pathname, { method: "POST", body: fd });
+      const j = await r.json() as { ok?: boolean; url?: string; greska?: string };
+      if (!r.ok || !j.ok) throw new Error(j.greska ?? "Spremanje nije uspjelo.");
+      kartica.dataset.url = j.url ?? "";
+      kartica.classList.add("ima");
+      kartica.querySelector(".stanje")!.textContent = "Snimljeno upravo";
+      kartica.querySelector<HTMLButtonElement>(".slusaj")!.disabled = !j.url;
+      kartica.querySelector(".nova")!.classList.add("skriveno");
+      kartica.querySelector(".snimi .tekst")!.textContent = "Snimi";
+      nove.delete(kartica);
+      const n = document.querySelectorAll(".glas.ima").length;
+      document.querySelector(".brojac b")!.textContent = String(n);
+      javi(`Glas ${glas} je spremljen.`);
+    } catch (e) {
+      javi(e instanceof Error ? e.message : "Spremanje nije uspjelo.", true);
+    } finally {
+      gumb.disabled = false;
+    }
+  }
+
+  async function obrisi(kartica: HTMLElement) {
+    const glas = kartica.dataset.glas!;
+    const fd = new FormData();
+    fd.set("glas", glas); fd.set("akcija", "obrisi");
+    const r = await fetch(location.pathname, { method: "POST", body: fd });
+    if (!r.ok) return javi("Brisanje nije uspjelo.", true);
+    location.reload();
+  }
+
+  document.querySelector(".glasovi")!.addEventListener("click", (e) => {
+    const t = e.target as HTMLElement, kartica = t.closest<HTMLElement>(".glas");
+    if (!kartica) return;
+    if (t.closest(".snimi")) {
+      if (aktivna?.kartica === kartica) stani();
+      else { stani(); void pocni(kartica); }
+    } else if (t.closest(".slusaj")) {
+      if (kartica.dataset.url) { svirac.src = kartica.dataset.url; void svirac.play(); }
+    } else if (t.closest(".slusaj-novu")) {
+      const b = nove.get(kartica); if (b) pusti(b);
+    } else if (t.closest(".spremi")) void spremi(kartica);
+    else if (t.closest(".obrisi")) void obrisi(kartica);
+  });
+</script>
+
+<style>
+  .natrag { display: inline-flex; align-items: center; gap: 4px; font-size: .86rem; color: var(--blijedo); text-decoration: none; }
+  .brojac { margin: 0; color: var(--blijedo); white-space: nowrap; }
+  .brojac b { color: var(--tinta); font-size: 1.3rem; }
+  .skriveno { display: none !important; }
+  .glasovi { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .glas { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 10px; text-align: center; }
+  .glas.ima { border-color: var(--med); }
+  .glas.snima { outline: 3px solid #d62828; outline-offset: -1px; }
+  .slovo { font: 700 2.6rem/1 Andika, var(--font, sans-serif); color: var(--tinta); }
+  .samoglasnik .slovo { color: var(--med); }
+  .stanje { margin: 0; font-size: .8rem; color: var(--blijedo); }
+  .gumbi { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .gumb { min-height: 36px; }
+  .snimi .tocka { width: 10px; height: 10px; border-radius: 50%; background: #d62828; display: inline-block; }
+  .snima .snimi .tocka { animation: titraj 1s infinite; border-radius: 2px; }
+  @keyframes titraj { 50% { opacity: .3; } }
+  .nova { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+  .val { width: 100%; height: 40px; color: var(--med); background: var(--povrsina-2); border-radius: 6px; }
+  .obrisi { background: none; border: 0; color: var(--blijedo); font-size: .78rem; text-decoration: underline; cursor: pointer; }
+</style>

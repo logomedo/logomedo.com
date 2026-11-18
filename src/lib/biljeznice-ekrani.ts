@@ -1,6 +1,7 @@
 // Ekrani bilježnice: svaka stavka odabira i uljeza je jedan ekran, povezivanje je jedan
 // ekran, listić se u igri preskače. Broj ekrana = broj lampica na boru. Čisti TS: server
 // (broj lampica, ispis), preglednik (igra) i testovi.
+import { kljucGlasa } from "./zadaci/slusanje.ts";
 import { UPUTE_KOJEG_SLOVA, UPUTE_POZICIJE, uputaPozicije, type KojeSlovo, type PozicijaGlasa, type SlikaPozicije, type StavkaSlova, uputeRazvrstavanja, type Razvrstavanje, UPUTE_PERCEPCIJE, UPUTE_PRVOG_GLASA, UPUTE_SLOGOVA, type Slogovi, type SlikaSlogova, krugUIgri, type Krug, type PrviGlas, type Odabir, type Percepcija, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "./zadaci/vrste.ts";
 
 export interface ZadatakZaIgru { vrsta: Vrsta; uputa: string | null; sadrzaj: Sadrzaj }
@@ -88,6 +89,10 @@ export function ekrani(zadaci: ZadatakZaIgru[]): Ekran[] {
   }
   return out;
 }
+
+/** Ključevi snimki glasova (`/s/`) koje igra pušta; snima ih logopedica, ne ElevenLabs. */
+export const glasoviIgre = (zadaci: ZadatakZaIgru[]) => [...new Set(ekrani(zadaci).flatMap((e) =>
+  e.vrsta === "koje_slovo" ? [kljucGlasa(e.stavka.glas!)] : e.vrsta === "pozicija_glasa" ? [kljucGlasa(e.glas)] : []))];
 
 export const brojEkrana = (zadaci: ZadatakZaIgru[]) => ekrani(zadaci).length;
 
