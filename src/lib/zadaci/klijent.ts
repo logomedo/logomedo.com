@@ -579,7 +579,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   function urediKojeSlovo(): HTMLElement {
     const s = sadrzaj as KojeSlovo;
-    const novaSlova = (st: KojeSlovo["stavke"][0]) => { if (st.glas) st.ponudeno = slozPonudeno(st.glas, s.grafema); };
+    // Po glasovima: ostali odabrani glasovi ostaju ometači i kod „Nova slova”.
+    const ometaci = s.po_glasovima?.oznake.filter((o) => ABECEDA.includes(o)) ?? [];
+    const novaSlova = (st: KojeSlovo["stavke"][0]) => { if (st.glas) st.ponudeno = slozPonudeno(st.glas, s.grafema, Math.random, ometaci); };
     const glasStavke = (st: KojeSlovo["stavke"][0], g: string | null) => {
       st.glas = g;
       // Novi glas: ako ga nema među slovima, složi nova (slična prva); inače slova ostaju.
@@ -660,9 +662,10 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const pg = poGlasovima();
     if (vrsta === "slogovi") sadrzaj = slozSlogove((prije as Slogovi).nacin, zaGenerator(p.rijeci), stavki, (prije as Slogovi).krugova);
     else if (vrsta === "koje_slovo") {
-      // Isti broj slova i velika/mala; glasovi nasumični.
+      // Isti broj slova i velika/mala; glasovi nasumični, a po glasovima zadatka odabrani (jedni drugima ometači).
       const k = prije as KojeSlovo;
-      sadrzaj = { ...slozKojeSlovo(stavki, undefined, Math.random, k.grafema), slova: k.slova };
+      const slova = k.po_glasovima?.oznake.filter((o) => ABECEDA.includes(o));
+      sadrzaj = { ...slozKojeSlovo(stavki, slova?.length ? slova : undefined, Math.random, k.grafema), slova: k.slova, ...(k.po_glasovima ? { po_glasovima: k.po_glasovima } : {}) };
     } else if (vrsta === "pozicija_glasa") {
       // Isti glas (bez glasa: generator ga bira), nove slike.
       const q = prije as PozicijaGlasa;

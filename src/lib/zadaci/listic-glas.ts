@@ -2,6 +2,7 @@
 // poslužitelju (slaganje), pa broj na gumbu odgovara listiću.
 import { fonemi } from "../fonemi.ts";
 import { brojSlogova } from "./rima.ts";
+import { pozicijaGlasa } from "./slusanje.ts";
 import { kljuc, poCiljevima, type Odnos } from "./odnosi.ts";
 import { MAX_PAROVA, MAX_REDOVA } from "./vrste.ts";
 
@@ -56,7 +57,7 @@ export function izaberi<T>(sve: T[], n: number, rnd: () => number = Math.random)
 // ---- Ostali predlošci po glasovima (logopedski mod) ----
 
 /** Predlošci s gumbom „Po glasovima…”. Scena i vizualna percepcija ga nemaju (scenu slaže logoped, percepcija se ne izgovara). */
-export const PO_GLASOVIMA = ["listic", "slogovi", "odabir", "povezivanje", "uljez", "prvi_glas"] as const;
+export const PO_GLASOVIMA = ["listic", "slogovi", "odabir", "povezivanje", "uljez", "prvi_glas", "koje_slovo", "pozicija_glasa"] as const;
 export type VrstaPoGlasovima = (typeof PO_GLASOVIMA)[number];
 export const jePoGlasovima = (v: string): v is VrstaPoGlasovima => (PO_GLASOVIMA as readonly string[]).includes(v);
 /** Zadaci odnosa (rima, prvi glas…) uzimaju riječi do 3 sloga (isto kao poslužitelj: `maxSlogova`). */
@@ -67,7 +68,7 @@ export const RIMA_MAX_SLOGOVA = 3;
  * skupine odnosa (iste rime, istog prvog glasa…; 2+ riječi) u kojima je barem jedna s glasom, uljez takve
  * skupine od 3+. `bez` vrijedi za sve riječi.
  */
-export function moguce(vrsta: Exclude<VrstaPoGlasovima, "prvi_glas">, rijeci: RijecGlasova[], f: FiltarListica, odnos: Odnos = "rima"): number {
+export function moguce(vrsta: Exclude<VrstaPoGlasovima, "prvi_glas" | "koje_slovo" | "pozicija_glasa">, rijeci: RijecGlasova[], f: FiltarListica, odnos: Odnos = "rima"): number {
   if (vrsta === "listic" || vrsta === "slogovi") return rijeci.filter((r) => odgovara(r, f)).length;
   const K = (r: RijecGlasova) => kljuc(odnos, r);
   const sve = rijeci.filter((r) => K(r) && brojSlogova(r.rijec) <= RIMA_MAX_SLOGOVA && odgovara(r, { glasovi: [], pozicija: "", bez: f.bez }));
@@ -110,6 +111,13 @@ export function rasporedOdnosa(vrsta: VrstaOdnosa, rijeci: RijecGlasova[], f: Fi
     return { redova, mogucih: redova, prazni };
   }
   return { redova: r.length, mogucih: r.length, prazni };
+}
+
+/** Gdje je glas: koliko riječi ima glas točno jednom na početku, u sredini i na kraju (isto kao `slozPozicije`). */
+export function poPozicijama(rijeci: RijecGlasova[], glas: string): [number, number, number] {
+  const out: [number, number, number] = [0, 0, 0];
+  for (const r of rijeci) { const p = pozicijaGlasa(glas, r.rijec); if (p !== null) out[p]++; }
+  return out;
 }
 
 /** Prvi glas: koliko riječi počinje svakim slovom (slova kao u abecedi kola: LJ, DŽ…). */

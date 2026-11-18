@@ -187,7 +187,8 @@ export function uputeRazvrstavanja(r: Pick<Razvrstavanje, "pravilo" | "tema">): 
  * `grafema` je koliko slova generator i editor slažu po stavci.
  */
 export interface StavkaSlova { glas: string | null; ponudeno: string[] }
-export interface KojeSlovo { slova: VelicinaSlova; grafema: number; stavke: StavkaSlova[] }
+/** `po_glasovima`: glasovi iz „Po glasovima…”; svaki je jedna stavka, a ostali su njezini ometači. */
+export interface KojeSlovo { slova: VelicinaSlova; grafema: number; stavke: StavkaSlova[]; po_glasovima?: GlasoviZadatka }
 export const KOJE_SLOVO_MAX = 12;
 export const UPUTE_KOJEG_SLOVA = {
   ekran: "Koje slovo čuješ?",
@@ -495,6 +496,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
           const ponudeno = [...new Set(niz(st.ponudeno, GRAFEMA_MAX, (y) => (typeof y === "string" && ABECEDA.includes(y) ? y : null)).filter((y): y is string => y !== null))];
           return { glas: typeof st.glas === "string" && ABECEDA.includes(st.glas) ? st.glas : null, ponudeno };
         }),
+        ...glasoviZadatka(o.po_glasovima),
       };
     }
     case "pozicija_glasa": return {
@@ -1011,9 +1013,11 @@ export const uputaPozicije = (glas: string | null) => UPUTE_POZICIJE.ispis.repla
  */
 export function slozKojeSlovo(n: number, slova: string[] | undefined, rnd: () => number = Math.random, grafema = GRAFEMA_ZADANO): KojeSlovo {
   n = Math.max(1, Math.min(KOJE_SLOVO_MAX, n));
-  const zadana = (slova ?? []).filter((x) => ABECEDA.includes(x));
+  const zadana = [...new Set((slova ?? []).filter((x) => ABECEDA.includes(x)))];
   const glasovi = zadana.length ? Array.from({ length: n }, (_, i) => zadana[i % zadana.length]) : promijesaj(ABECEDA, rnd).slice(0, n);
-  return { slova: "velika", grafema, stavke: glasovi.map((glas) => ({ glas, ponudeno: slozPonudeno(glas, grafema, rnd) })) };
+  // Zadani glasovi (Po glasovima…) su jedni drugima ometači: svi stanu među slova, uz barem 2 druga.
+  if (zadana.length > 1) grafema = Math.max(grafema, Math.min(GRAFEMA_MAX, zadana.length + 2));
+  return { slova: "velika", grafema, stavke: glasovi.map((glas) => ({ glas, ponudeno: slozPonudeno(glas, grafema, rnd, zadana) })) };
 }
 
 /**

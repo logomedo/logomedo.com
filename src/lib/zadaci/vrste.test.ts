@@ -399,3 +399,12 @@ test("razvrstavanje: provjera javlja krivu kategoriju, praznu kategoriju i ponov
   assert.equal(zadanaUputa("razvrstavanje", { ...s, tema: "kosare", pravilo: "glasovi" }), "Razvrstaj slike u košare prema broju glasova. Poveži svaku sliku crtom s košarom.");
   assert.equal(brojUZadatku("razvrstavanje", s), 4);
 });
+
+import { slozKojeSlovo, type KojeSlovo } from "./vrste.ts";
+test("koje slovo po glasovima: svaki glas jedna stavka, ostali su mu ometači; po_glasovima preživi normalizaciju", () => {
+  const k = slozKojeSlovo(4, ["S", "Š", "Z", "Ž"], () => 0.3);
+  assert.deepEqual(k.stavke.map((s) => s.glas), ["S", "Š", "Z", "Ž"]);
+  for (const s of k.stavke) for (const x of ["S", "Š", "Z", "Ž"]) assert.ok(s.ponudeno.includes(x));
+  const pg = { glasovi: [1, 2], oznake: ["S", "Š"], pozicija: "", bez: [] };
+  assert.deepEqual((normaliziraj("koje_slovo", { ...k, po_glasovima: pg }) as KojeSlovo).po_glasovima, pg);
+});

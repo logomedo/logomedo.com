@@ -98,3 +98,17 @@ test("koje slovo: generator po glasovima, provjera, ocjena, ekrani", () => {
   assert.equal(e.length, 3);
   assert.equal(e[0].uputa, "Koje slovo čuješ?");
 });
+
+test("ponuđena slova: zadani ometači (Po glasovima…) su uvijek među slovima", () => {
+  for (const g of ["S", "Š", "Z", "Ž"]) {
+    const p = slozPonudeno(g, 6, rnd, ["S", "Š", "Z", "Ž"]);
+    assert.equal(p.length, 6);
+    assert.equal(new Set(p).size, 6);
+    for (const x of ["S", "Š", "Z", "Ž"]) assert.ok(p.includes(x), `${g}: nema ${x}`);
+  }
+  // Više ometača nego mjesta: glas ostaje, ometača koliko stane.
+  const p = slozPonudeno("A", 4, rnd, ["B", "C", "D", "E", "F"]);
+  assert.equal(p.length, 4);
+  assert.ok(p.includes("A"));
+  assert.ok(p.filter((x) => x !== "A").every((x) => ["B", "C", "D", "E", "F"].includes(x)));
+});

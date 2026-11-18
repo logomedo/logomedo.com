@@ -62,3 +62,9 @@ test("po glasovima: rima broji skupine s glasom, prvi glas po slovima", () => {
   assert.equal(moguce("slogovi", G, { glasovi: [R], pozicija: "", bez: [] }), 3);
   assert.deepEqual(poPrvomGlasu(G, ["L", "LJ", "Ž"]), { L: 1, LJ: 1, Ž: 0 });
 });
+
+import { poPozicijama } from "./listic-glas.ts";
+test("po pozicijama: glas točno jednom na početku, u sredini, na kraju", () => {
+  const R = (rijec: string) => ({ id: 1, rijec, g: [] as [number, string][] });
+  assert.deepEqual(poPozicijama([R("SAT"), R("OSA"), R("NOS"), R("SOS"), R("LAV")], "S"), [1, 1, 1]);
+});

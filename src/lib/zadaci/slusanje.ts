@@ -33,13 +33,17 @@ export function slicnaSlova(glas: string): string[] {
 
 export const GRAFEMA_MIN = 4, GRAFEMA_MAX = 16, GRAFEMA_ZADANO = 10;
 
-/** Ponuđena slova za glas: glas jednom, do 3 slična, ostalo nasumično; redoslijed nasumičan. */
-export function slozPonudeno(glas: string, n: number, rnd: () => number = Math.random): string[] {
+/**
+ * Ponuđena slova za glas: glas jednom, pa `ometaci` (ostali glasovi koje logoped uči razlikovati, „Po glasovima…”),
+ * pa do 3 slična, ostalo nasumično; redoslijed nasumičan.
+ */
+export function slozPonudeno(glas: string, n: number, rnd: () => number = Math.random, ometaci: string[] = []): string[] {
   n = Math.max(GRAFEMA_MIN, Math.min(GRAFEMA_MAX, n));
   const mijesaj = <T>(a: T[]) => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
-  const slicna = mijesaj(slicnaSlova(glas)).slice(0, Math.min(3, n - 1));
-  const ostala = mijesaj(GLASOVI.filter((x) => x !== glas && !slicna.includes(x))).slice(0, n - 1 - slicna.length);
-  return mijesaj([glas, ...slicna, ...ostala]);
+  const zadani = mijesaj([...new Set(ometaci)].filter((x) => x !== glas && GLASOVI.includes(x))).slice(0, n - 1);
+  const slicna = mijesaj(slicnaSlova(glas).filter((x) => !zadani.includes(x))).slice(0, Math.max(0, Math.min(3, n - 1 - zadani.length)));
+  const ostala = mijesaj(GLASOVI.filter((x) => x !== glas && !zadani.includes(x) && !slicna.includes(x))).slice(0, n - 1 - zadani.length - slicna.length);
+  return mijesaj([glas, ...zadani, ...slicna, ...ostala]);
 }
 
 // ---- Razbacana slova: isti raspored na ekranu, u HTML ispisu i u PDF-u ----

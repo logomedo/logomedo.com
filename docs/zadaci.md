@@ -6,7 +6,7 @@ po fonemima: „bez L” ne izbacuje LJ). Ispod piše koliko će slika biti. S o
 abecedno (do 150 kartica, 12 po stranici) i naslov „Glasovi L, R – inicijalna pozicija, bez Š”; samo isključivanje daje 12 nasumičnih.
 Pravilo je u `src/lib/zadaci/listic-glas.ts` (+ test), isto u obrascu i na poslužitelju.
 Logopedski mod (`/admin/postavke`, `korisnici.logopedski_mod`, migracija 0029, zadano uključen): samo s njim predlošci imaju
-„Po glasovima…”, i to Radni listić, Prebrajanje, Uparivanje, Povezivanje, Izbaci uljeza i Prvi glas (jedan dijalog, polja po vrsti).
+„Po glasovima…”, i to Radni listić, Prebrajanje, Uparivanje, Povezivanje, Izbaci uljeza, Prvi glas, Koje slovo čuješ i Gdje je glas (jedan dijalog, polja po vrsti).
 Prebrajanje uzima samo riječi s glasom; rima traži skupinu rime s riječi s glasom i stavlja je kao zadanu (lijevu) sliku, ostale
 su slobodne (`Postavke.cilj` u `slozi`); „bez” vrijedi za sve slike. Prvi glas: odabrani glasovi su krugovi (do 6), bez pozicije.
 Scena i Vizualna percepcija gumb nemaju (scenu slaže logoped, percepcija se ne izgovara). Dijalog broji građu funkcijom `moguce`.
@@ -705,6 +705,10 @@ dodirne ono koje je čulo; krivo se trese i glas se ponovi. Stavka = ekran = okv
 - Ocjena: prvi dodir po slici (`{stavka: indeks slike, odabrano: 0|1|2}`).
 
 Papir (PDF, HTML ispis, A4 pregled): `razbacanaSlova` u `slusanje.ts`, `rasporedKojegSlova` i `rasporedPozicije` u `pdf/model.ts`.
-„Po glasovima…” za ove dvije vrste još nema (generator već prima `slova`). Odluka 18. 11. 2026.: dodati za obje radi
-dosljednosti predložaka. Kod `koje_slovo` odabrani glasovi su stavke **i međusobni ometači** (čuje S, među slovima su
+„Po glasovima…” (18. 11. 2026., radi dosljednosti predložaka): Kod `koje_slovo` odabrani glasovi su stavke **i međusobni ometači** (čuje S, među slovima su
 Š, Z, Ž: to razlikovanje je cilj vježbe); kod `pozicija_glasa` dijalog bira jedan glas.
+- `koje_slovo`: stavki koliko odabranih glasova (najviše 12). `slozPonudeno(glas, n, rnd, ometaci)` stavi prvo
+  ometače, pa do 3 slična, pa nasumična; `slozKojeSlovo` digne `grafema` da svi odabrani stanu (+ 2 druga).
+  Sadržaj pamti `po_glasovima`, pa „Nova slova” i „Složi automatski” u editoru zadrže iste ometače.
+- `pozicija_glasa`: odabir u dijalogu je jedan glas (novi zamijeni stari), broj slika s kartice; ispod piše koliko
+  riječi sa slikom ima glas na početku, u sredini i na kraju (`poPozicijama`, isto pravilo kao `slozPozicije`).

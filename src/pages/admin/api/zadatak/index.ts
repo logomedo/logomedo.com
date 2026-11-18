@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { korisnikId, logopedskiMod, stvori, sveRijeci, zaListic } from "../../../../lib/zadaci/baza";
 import { brojSlika, ciljeviGlasova, izaberi, jePoGlasovima, moguce, naslovListica, odgovara, POZICIJE_LISTICA, rasporedOdnosa, redovaZaGlasove, RIMA_MAX_SLOGOVA } from "../../../../lib/zadaci/listic-glas";
 import { jeOdnos } from "../../../../lib/zadaci/odnosi";
-import { ABECEDA, brojStavki, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type Odabir, type Sadrzaj } from "../../../../lib/zadaci/vrste";
+import { ABECEDA, brojStavki, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type KojeSlovo, type Odabir, type PozicijaGlasa, type Sadrzaj } from "../../../../lib/zadaci/vrste";
 
 const kartica = (r: { id: number; rijec: string }) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") });
 
@@ -41,6 +41,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
       const slova = oznake.filter((o) => ABECEDA.includes(o));
       if (!slova.length) return prazno();
       sadrzaj = slozi(vrsta, zaGenerator(await sveRijeci()).filter((r) => r.slika), { ...zadano, slova });
+      naslov = naslovListica(slova, "", []);
+    } else if (vrsta === "koje_slovo" || vrsta === "pozicija_glasa") {
+      // Koje slovo: svaki glas jedna stavka, ostali odabrani su joj ometači. Gdje je glas: jedan glas (prvi odabrani).
+      const slova = oznake.filter((o) => ABECEDA.includes(o)).slice(0, vrsta === "pozicija_glasa" ? 1 : undefined);
+      if (!slova.length) return prazno();
+      const n = vrsta === "koje_slovo" ? slova.length : zadano.stavki;
+      sadrzaj = slozi(vrsta, zaGenerator(await sveRijeci()).filter((r) => r.slika), { ...zadano, stavki: n, slova });
+      if (vrsta === "pozicija_glasa" && !(sadrzaj as PozicijaGlasa).slike.length) return prazno();
+      const odabrani = k.glasovi.filter((g) => slova.includes(g.oznaka));
+      (sadrzaj as KojeSlovo | PozicijaGlasa).po_glasovima = { glasovi: odabrani.map((g) => g.id), oznake: odabrani.map((g) => g.oznaka), pozicija: "", bez: [] };
       naslov = naslovListica(slova, "", []);
     } else {
       const saSlikom = new Map(k.rijeci.map((r) => [r.id, r]));
