@@ -174,8 +174,14 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
       <h2>Nova pozivnica</h2>
       <p class="blijedo sitno">Za novog logopeda ili za povratak deaktiviranog. Link se prikaže jednom; pošalji ga osobno.</p>
       <input type="hidden" name="akcija" value="poziv" />
-      <input type="text" name="ime" placeholder="Ime i prezime" maxlength="80" autocomplete="off" />
-      <input type="email" name="email" placeholder="E-mail" required maxlength="254" autocomplete="off" />
+      <div class="polje">
+        <label for="poziv-ime">Ime i prezime</label>
+        <input id="poziv-ime" type="text" name="ime" placeholder="npr. Ana Horvat" maxlength="80" autocomplete="off" />
+      </div>
+      <div class="polje">
+        <label for="poziv-email">E-mail</label>
+        <input id="poziv-email" type="email" name="email" placeholder="ime@primjer.hr" required maxlength="254" autocomplete="off" />
+      </div>
       <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi link</button>
     </form>
   </div>
@@ -197,14 +203,18 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   .raspored { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; margin-top: 16px; }
   @media (max-width: 1000px) { .raspored { grid-template-columns: 1fr; } }
   .ploha { overflow-x: auto; }
-  .dodaj { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+  .dodaj { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .dodaj .polje label { margin-bottom: 6px; }
+  .dodaj .gumb { align-self: stretch; justify-content: center; margin-top: 4px; }
   .dodaj h2, .link h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; }
   .sitno { font-size: .82rem; margin: 0; }
   form { margin: 0; }
   .akcije { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
   .limiti { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .limiti label { display: inline-flex; gap: 4px; align-items: center; font-size: .8rem; color: var(--blijedo); margin: 0; }
-  .limiti input { width: 76px; }
+  .limiti input { width: 76px; font: inherit; font-size: .84rem; padding: 5px 8px; border: 1px solid var(--rub-jak); border-radius: 8px;
+    background: var(--povrsina); color: var(--tinta); font-variant-numeric: tabular-nums; }
+  .limiti input:focus { outline: none; border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
   .brojke { font-size: .84rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .podnaslov-tablice { margin: 24px 16px 8px; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
   .prazne { padding: 0 16px 16px; }

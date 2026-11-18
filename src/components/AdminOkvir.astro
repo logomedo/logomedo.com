@@ -348,9 +348,9 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
       .oznaka.greska { background: var(--greska-blago); color: var(--greska); }
       .obavijest { display: flex; gap: 10px; align-items: center; padding: 12px 16px; margin-bottom: 20px; border-radius: 12px;
         background: var(--med-blago); color: var(--med-tamno); font-weight: 550; }
-      input[type=text], textarea { width: 100%; font: inherit; padding: 9px 12px; border: 1px solid var(--rub-jak); border-radius: 10px;
+      input[type=text], input[type=email], textarea { width: 100%; font: inherit; padding: 9px 12px; border: 1px solid var(--rub-jak); border-radius: 10px;
         background: var(--povrsina); color: var(--tinta); }
-      input[type=text]:focus, textarea:focus { outline: none; border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+      input[type=text]:focus, input[type=email]:focus, textarea:focus { outline: none; border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
       label { display: block; font-size: .8rem; font-weight: 650; color: var(--blijedo); margin: 0 0 6px; }
       .prazno { padding: 56px 24px; text-align: center; color: var(--blijedo); }
       .prazno h2 { margin: 0 0 6px; color: var(--tinta); font-family: var(--font-slova); font-weight: 600; }
