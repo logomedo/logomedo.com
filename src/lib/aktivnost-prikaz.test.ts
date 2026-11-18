@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { grupiraj, razlike, relativno } from "./aktivnost-prikaz.ts";
+import { grupiraj, razlike, relativno, smijeVratitiGrupu } from "./aktivnost-prikaz.ts";
 
 test("razlike: status slike, bez vremena pregleda", () => {
   const a = JSON.stringify({ rijec_id: 1, stil_id: 1, status: "kandidat", razlog: null, pregledao: null, pregledano_at: null });
@@ -36,4 +36,14 @@ test("relativno", () => {
   assert.equal(relativno("2026-11-01 09:59:40", sada), "upravo");
   assert.equal(relativno("2026-11-01 09:50:00", sada), "prije 10 min");
   assert.equal(relativno("2026-11-01 07:00:00", sada), "prije 3 h");
+});
+
+test("smijeVratitiGrupu: logoped samo bilježnice, superadmin sve vrative tablice", () => {
+  assert.equal(smijeVratitiGrupu(false, ["biljeznice"]), true);
+  for (const t of [["slike"], ["rijeci"], ["generiranja"], ["slike", "generiranja"], ["biljeznice", "slike"]]) {
+    assert.equal(smijeVratitiGrupu(false, t), false, t.join("+"));
+    assert.equal(smijeVratitiGrupu(true, t), true, t.join("+"));
+  }
+  assert.equal(smijeVratitiGrupu(true, ["korisnici"]), false);
+  assert.equal(smijeVratitiGrupu(false, ["korisnici"]), false);
 });

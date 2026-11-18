@@ -60,6 +60,13 @@ const POLJA: Record<string, string> = {
 /** Tablice čiji se zapisi mogu poništiti ili vratiti; korisnici i pozivnice su samo zapis. */
 const VRATIVE = new Set(["rijeci", "slike", "generiranja", "biljeznice"]);
 export const jeVrativo = (tablica: string) => VRATIVE.has(tablica);
+/**
+ * Što logoped smije poništiti ili vratiti: samo svoje bilježnice. Slike, poslovi i riječi su zajednički
+ * katalog; vraćanje starog snimka preko njih pregazilo bi kasnije tuđe odluke (npr. superadminovo odbijanje).
+ */
+export const LOGOPED_VRACA = new Set(["biljeznice"]);
+export const smijeVratitiGrupu = (urednik: boolean, tablice: string[]) =>
+  tablice.some(jeVrativo) && (urednik || tablice.every((t) => LOGOPED_VRACA.has(t)));
 /** Polja koja se mijenjaju uz svaku odluku i ne govore ništa sama za sebe. */
 const SKRIVENO = new Set(["pregledano_at", "rijec_id", "stil_id"]);
 

@@ -1,10 +1,13 @@
 ---
+import { smije } from "../lib/admin/ovlasti";
 // Dnevnik aktivnosti (docs/aktivnost.md): najnovije na vrhu, osvježava se uživo svakih 5 s.
 // Cijeli se iscrtava u pregledniku (isti kod za prvi prikaz i nove stavke); `rijec` ga sužava na jednu riječ.
 interface Props { rijec?: number; limit?: number; filtri?: boolean; autori?: string[] }
 const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
+// Gumbi Poništi / Vrati na ovo: superadmin svugdje, logoped samo za svoje bilježnice (smijeVratitiGrupu; server isto).
+const urednik = smije(Astro.locals.admin!.uloga, "katalog.uredivanje");
 ---
-<section class="aktivnost" data-aktivnost data-rijec={rijec ?? ""} data-limit={limit}>
+<section class="aktivnost" data-aktivnost data-rijec={rijec ?? ""} data-limit={limit} data-urednik={urednik ? "1" : ""}>
   {filtri && (
     <div class="filtri">
       <label>Tko
@@ -23,7 +26,7 @@ const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
 </section>
 
 <script>
-  import { grupiraj, jeVrativo, oznakaRadnje, razlike, relativno, tkoKratko, datum, type StavkaPrikaz as S } from "../lib/aktivnost-prikaz";
+  import { grupiraj, smijeVratitiGrupu, oznakaRadnje, razlike, relativno, tkoKratko, datum, type StavkaPrikaz as S } from "../lib/aktivnost-prikaz";
 
   const esc = (t: unknown) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
   const skrati = (t: string, n = 160) => (t.length > n ? t.slice(0, n) + "…" : t);
@@ -39,6 +42,7 @@ const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
     const starijeEl = $<HTMLButtonElement>("[data-starije]");
     const tkoEl = el.querySelector("[data-tko]") as HTMLSelectElement | null;
     const limit = Number(el.dataset.limit) || 60;
+    const urednik = el.dataset.urednik === "1";
     let stavke: S[] = [];
     let nove = new Set<number>();
     let ima_starijih = false;
@@ -97,7 +101,7 @@ const { rijec, limit = 60, filtri = false, autori = [] } = Astro.props;
           <div class="opis-grupe"><b>${esc(naslov)}</b>${vraca}${vise}<div class="sitno blijedo">${esc(tkoKratko(s.tko))} ·
             <time datetime="${datum(s.at).toISOString()}" title="${esc(datum(s.at).toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" }))}">${esc(relativno(s.at))}</time>
             · <span class="mono">#${s.id}</span>${kasnije ? ' · <span class="oznaka" title="Isti redak je poslije ove izmjene opet mijenjan">kasnije mijenjano</span>' : ""}</div></div>
-          ${g.some((x) => jeVrativo(x.tablica)) ? `<div class="akcije">
+          ${smijeVratitiGrupu(urednik, g.map((x) => x.tablica)) ? `<div class="akcije">
             <button type="button" class="gumb tihi" data-smjer="ponisti" title="Vrati stanje prije ove izmjene (kao novu izmjenu)">Poništi</button>
             <button type="button" class="gumb tihi" data-smjer="vrati" title="Vrati stanje odmah nakon ove izmjene (kao novu izmjenu)">Vrati na ovo</button>
           </div>` : ""}
