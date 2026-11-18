@@ -67,6 +67,21 @@ pregled (i ona koju STT ne čuje točno), a čovjek bira. „Odobri” jednu odb
 Scribe kratku riječ zna prepisati ćirilicom („дим”, „Бал”, „Конь”) iako je izgovor dobar:
 `zaUsporedbu` je prvo preslovi (`latinica`).
 
+## Snimke glasova (/admin/zvukovi/snimke, 18. 11. 2026.)
+
+Zadaci „Koje slovo čuješ?” i „Gdje je glas?” trebaju **izolirani glas** („sss”, ne „es”), što ElevenLabs ne zna. Zato
+ga snima logopedica: 30 kartica (abeceda, LJ/NJ/DŽ su jedan glas), „Snimi” → „Stani”, preslušaj, „Spremi”.
+
+- Preglednik snimku (MediaRecorder) dekodira, obreže tišinu (prag 8 % vršne glasnoće, 40 ms rezerve), izjednači na
+  −1 dBFS s mekim rubovima i pretvori u 24 kHz mono WAV (oko 50 kB/s). Preslušavanje prije spremanja ide kroz
+  WebAudio, jer CSP ne dopušta `blob:` u `<audio>`.
+- Server provjeri RIFF/WAVE i veličinu (do 2 MB), spremi u R2 (`zvuk/<hash>.wav`) i upiše red u `zvukovi`:
+  `kljuc = '/s/'`, `model = 'snimka'`, `status = 'odobren'` (odmah javno). Prijašnja snimka istog glasa postaje
+  „zamijenjen novijom”. Bez migracije: tablica `zvukovi` već ima `mime`.
+- Igra ih dobiva istim putem kao izgovor (`odobreniZvukovi`), ključevi iz `glasoviIgre()` u `biljeznice-ekrani.ts`.
+- Snimke ne ulaze u ElevenLabs: `dodajZvukove` i `ponoviZvuk` preskaču ključeve `/x/`, a tabovi Izgovora ne
+  prikazuju `model = 'snimka'`.
+
 ## Stranica Izgovor (/admin/zvukovi)
 
 Po dizajnu „1.3 Odobravanje izgovora”: kartica po tekstu sa svim snimkama, tabovi Čeka / Odobreno

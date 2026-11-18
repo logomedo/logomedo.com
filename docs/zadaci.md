@@ -676,3 +676,30 @@ prepisati; upozorenje javlja sliku koja po pravilu ide drugamo. Izrazi od više 
 - Spremnici su slike iz Vertexa (`scripts/spremnici-slike.sh` → `spremnici-obrada.py` → `public/spremnici/`), s
   praznim bijelim krugom; obrada ga izmjeri (`SPREMNICI` u `src/lib/spremnici.ts`), pa se slovo crta preko slike.
   Nove slike: pokreni oba skripta i prepiši brojeve iz ispisa obrade. Plan i odluke: `docs/razvrstavanje-plan.md`.
+
+### koje_slovo i pozicija_glasa: slušne vrste (18. 11. 2026.)
+
+Obje traže da dijete **čuje glas**, pa ih prati snimka glasa koju snima logopedica (`/admin/zvukovi/snimke`,
+`docs/zvukovi.md` „Snimke glasova”). ElevenLabs izolirani glas ne zna izgovoriti logopedski („es” umjesto „sss”).
+Model i pomoćne funkcije: `vrste.ts` (`KojeSlovo`, `PozicijaGlasa`) i `slusanje.ts` (+ testovi), migracija
+`0035_slusne_vrste.sql` (CHECK + područja „Glas i slovo” i „Mjesto glasa u riječi” pod predvještinama).
+
+**Koje slovo čuješ?** (`koje_slovo`): igra pusti glas, ispod je 4–16 razbacanih slova (`ponudeno`, glas jednom), dijete
+dodirne ono koje je čulo; krivo se trese i glas se ponovi. Stavka = ekran = okvir na papiru.
+- Ometači (`slozPonudeno`): do 3 iz skupine sličnih (`SLICNA`: S Š Z Ž C, Č Ć DŽ Đ, L LJ J, N NJ M, zvučni/bezvučni
+  parovi, samoglasnici), ostalo nasumično.
+- Raspored (`razbaci`): mreža ćelija bez preklapanja, slovo pomaknuto i zakrenuto ±18°, deterministički iz ključa
+  `i|slova`; isti na ekranu, u editoru i na papiru. Velika ili mala slova po zadatku (`slova`), Andika.
+- Papir: logoped izgovori glas, dijete zaokruži slovo; ključ („Za logopeda: 1. S · 2. Š”) sitno na dnu stranice.
+- Ocjena: prvi dodir po stavci (`{stavka, odabrano: indeks slova}`).
+
+**Gdje je glas?** (`pozicija_glasa`): glas po zadatku, ispod svake slike tri kruga (početak, sredina, kraj).
+- `pozicijaGlasa(glas, rijec)` po fonemima (LJ je jedan glas): riječ bez glasa ili s glasom dvaput (LULA za L) nije
+  jednoznačna i editor je javlja; pozicija se računa sama, logoped je može prepisati.
+- Generator (`slozPozicije`) slaže podjednako po pozicijama; bez zadanog glasa bira glas koji katalog ima na sve tri.
+- Igra: ekran po slici; izgovori uputu, snimku glasa i riječ (`govoriNiz`); slika bez napisane riječi (odala bi
+  poziciju), dodir slike izgovori riječ. Papir: slike u mreži, ispod svake tri prazna kruga.
+- Ocjena: prvi dodir po slici (`{stavka: indeks slike, odabrano: 0|1|2}`).
+
+Predlošci: kartice su skrivene (`U_IZRADI`) dok papir nije gotov i dok migracija nije na produkciji.
+„Po glasovima…” za ove dvije vrste još nema (generator već prima `slova`).
