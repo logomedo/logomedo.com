@@ -305,3 +305,31 @@ a Access OTP kod iz e-maila: to radi korisnik, ne Claude.
 
 **509. Pozivnice testerima izdaje korisnik sam** na `/admin/korisnici` i šalje ih ručno na WhatsApp; Claude ne izdaje
 pozivnice i ne šalje poruke. Uvjet „oba testera prijavljena” iz plana se ne čeka. Odluka korisnika 16. 11. 2026.
+
+## Nakon lanca (18. 11. 2026., zahtjevi korisnika izvan S-paketa)
+
+**601. Profil na `/admin/postavke`** (`src/lib/admin/profil.ts`). Ime i prezime mijenja svatko, e-mail samo logoped.
+Superadminov e-mail je u secretu `ADMIN_EMAILS`, pa bi ga promjena u bazi izbacila iz uloge. E-mail je ključ u ~15
+stupaca (passkeyi, sesije, app prijava, `rijeci.dodao`, `pregledao`, `aktivnost.tko`, `pozivi`, postavke, prompt
+verzije); promjena ih sve preimenuje u jednom `batch`u (`STUPCI_EMAILA`), pa logoped ostaje prijavljen i zadržava
+doprinos. Novi stupac s e-mailom treba dodati u taj popis. Odbija se: tuđi e-mail, superadminov, onaj s otvorenom
+pozivnicom. Na uređaju passkey ostaje pod starim e-mailom (samo oznaka, prijava radi).
+
+**602. Pregled slika i izgovora po korisniku** (`src/lib/zatrazio.ts`). Logoped vidi i odlučuje samo o onome što je
+sam poslao; superadmin sve, s oznakom „Poslao” i filtrom `?korisnik=`. Bez migracije: pošiljatelj slike je
+`generiranja.zatrazio` (posao sa `slika_id`), inače prvi zapis u `aktivnost` za taj redak (upload, premještanje);
+izgovora `zvuk_generiranja.zatrazio` preko `zvukovi.posao_id`. Stupac u `slike` je odbačen jer bi trebao migraciju
+i backfill na produkciji, a izvedeni podatak je dovoljno brz (indeksi `generiranja_rijec`, `aktivnost_redak`).
+Provjera je i na serveru (`smijeOSlici`, `svojiZvukovi`). Zamka: neki `zatrazio` nisu e-mail (npr. „claude: džem,
+džudo (18.11.)” iz skripti), takve vidi samo superadmin.
+
+**603. Ovlast `katalog.uredivanje` (samo superadmin).** Logoped katalog čita, dodaje nove riječi, šalje slike i
+izgovore na generiranje, učitava slike, odlučuje o svojima i generira slike situacija. Samo superadmin: rute
+`/admin/api/rijec/*` (naziv, spajanje, opis, rečenica, rima, pozicije, brisanje), `/admin/novi-glas`, POST na
+znakovi, nepoželjne i snimke glasova, situacije osim `generiraj`/`ponovi`, „zapamti kao opis riječi” (`trajno`) i
+poništavanje grupa u dnevniku koje diraju tablicu `rijeci`.
+
+**604. Otvoreno (čeka korisnika):** (a) treba li i nova riječ biti samo superadminova; (b) nova riječ s nazivom
+obrisane riječi tu riječ vraća (`ON CONFLICT … aktivna = 1`), pa logoped tako može poništiti brisanje; nepoželjne su
+i dalje blokirane; (c) brojke stanja na Katalogu (npr. „kandidata čeka pregled”) su globalne, a gumb „Pregledaj N”
+broji samo svoje.
