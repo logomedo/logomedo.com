@@ -101,3 +101,17 @@ Gornja granica uz zadane limite (cijene **nisu** u repou, procjena za provjeru n
 
 Korisnik je odabrao sve preporuke (1–4). Sve ZATVORITI stavke i odluke implementirane, odluka 606 u
 `decisions.md`, testovi u `src/lib/revizija-alfa.test.ts`.
+
+## Otvoreno
+
+- Postojeći retci u `korisnici` (na produkciji) i dalje imaju 50 / 200; spuštanje na 20 / 50 je promjena D1
+  podataka, čeka korisnikov „da”.
+- ElevenLabs plan: provjeriti mjesečnu kvotu znakova prema 25 × 50 izgovora tjedno (do ~40 000 znakova tjedno).
+- Ručna provjera s testnim logoped računom (popis klikova u sažetku sesije i ispod) još nije napravljena.
+- 604 (c): brojke stanja na Katalogu su i dalje globalne.
+- Predložena slika nije upotrebljiva u logopedovim zadacima do potvrde (namjerno, vidi odluku 606).
+
+Testni scenarij: pozivnica s `/admin/korisnici` na drugi e-mail, passkey u drugom profilu preglednika. Kao logoped:
+Odobri na Pregledu → „predloženo”; na riječi s odobrenom slikom nema „Makni iz odobrenih” ni stila; obrisana i
+nepoželjna riječ odbijene; Zvukovi bez „Snimi ponovo” na Odobreno i bez „Pogurni red”; nema „Dodao: …” za tuđe;
+javna bilježnica radi u privatnom prozoru. Kao superadmin: predložena slika prva na Pregledu, potvrda je odobri.
