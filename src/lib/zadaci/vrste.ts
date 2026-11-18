@@ -8,8 +8,9 @@ import { brojGlasova, brojSlogova } from "./rima.ts";
 import { jeOdnos, kljuc, ODNOSI, poCiljevima, uOdnosu, type Odnos } from "./odnosi.ts";
 import { fonemi } from "../fonemi.ts";
 import { prikazRijeci } from "../znakovi.ts";
+import { GRAFEMA_MAX, GRAFEMA_MIN, GRAFEMA_ZADANO, jePozicija, POZICIJE, pozicijaGlasa, slozPonudeno, type Pozicija, type VelicinaSlova } from "./slusanje.ts";
 
-export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena" | "percepcija" | "prvi_glas" | "slogovi" | "razvrstavanje";
+export type Vrsta = "listic" | "odabir" | "povezivanje" | "uljez" | "scena" | "percepcija" | "prvi_glas" | "slogovi" | "razvrstavanje" | "koje_slovo" | "pozicija_glasa";
 export type { Odnos };
 type Id = number | null;
 
@@ -179,7 +180,32 @@ export function uputeRazvrstavanja(r: Pick<Razvrstavanje, "pravilo" | "tema">): 
   const t = TEME_RAZVRSTAVANJA[r.tema], p = PRAVILA_RAZVRSTAVANJA[r.pravilo].prema;
   return { ekran: `Razvrstaj slike ${t.u} ${p}.`, ispis: `Razvrstaj slike ${t.u} ${p}. Poveži svaku sliku crtom ${t.s}.` };
 }
-export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija | PrviGlas | Slogovi | Razvrstavanje;
+/**
+ * Koje slovo čuješ: igra pusti snimku glasa (logopedica, `/s/`), ispod je 4–16 razbacanih slova
+ * (`ponudeno`, glas jednom), dijete dodirne slovo koje je čulo. Na papiru logoped izgovori glas,
+ * dijete zaokruži slovo; ključ za logopeda je sitno na dnu stranice. Stavka = ekran = okvir na papiru.
+ * `grafema` je koliko slova generator i editor slažu po stavci.
+ */
+export interface StavkaSlova { glas: string | null; ponudeno: string[] }
+export interface KojeSlovo { slova: VelicinaSlova; grafema: number; stavke: StavkaSlova[] }
+export const KOJE_SLOVO_MAX = 12;
+export const UPUTE_KOJEG_SLOVA = {
+  ekran: "Koje slovo čuješ?",
+  ispis: "Poslušaj glas i zaokruži slovo koje čuješ.",
+};
+/**
+ * Pozicija glasa: ispod slike su tri kruga (početak, sredina, kraj riječi), dijete dodirne (oboji)
+ * onaj gdje čuje `glas`. `pozicija` slike se računa iz riječi (`pozicijaGlasa`), logoped je može
+ * prepisati; riječ s glasom dvaput ili bez njega editor javlja.
+ */
+export interface SlikaPozicije { rijec_id: Id; pozicija: Pozicija }
+export interface PozicijaGlasa { glas: string | null; slike: SlikaPozicije[]; po_glasovima?: GlasoviZadatka }
+export const POZICIJA_SLIKA_MAX = 12;
+export const UPUTE_POZICIJE = {
+  ekran: "Gdje čuješ ovaj glas u riječi?",
+  ispis: "Gdje čuješ glas {glas} u riječi? Oboji prvi krug ako je na početku, srednji ako je u sredini, a zadnji ako je na kraju.",
+};
+export type Sadrzaj = Listic | Odabir | Povezivanje | Uljez | Scena | Percepcija | PrviGlas | Slogovi | Razvrstavanje | KojeSlovo | PozicijaGlasa;
 
 /** Hrvatska abeceda (30 slova, dvoslovi su jedno slovo). Redoslijed kola. */
 export const ABECEDA = ["A", "B", "C", "Č", "Ć", "D", "DŽ", "Đ", "E", "F", "G", "H", "I", "J", "K", "L", "LJ", "M", "N", "NJ", "O", "P", "R", "S", "Š", "T", "U", "V", "Z", "Ž"];
@@ -282,6 +308,14 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     naziv: "Razvrstavanje", opis: "Dijete razvrstava slike u dvije ili tri vreće (košare, kutije) s oznakom: po prvom ili zadnjem glasu, broju slogova ili broju glasova.",
     uputa: "Razvrstaj slike u vreće prema prvom glasu. Poveži svaku sliku crtom s vrećom.", ispis: "Poveži crtom s vrećom", odnos: false,
   },
+  koje_slovo: {
+    naziv: "Koje slovo čuješ?", opis: "Dijete čuje glas, a među razbacanim slovima dodirne ono koje je čulo. Na papiru glas izgovori logoped.",
+    uputa: UPUTE_KOJEG_SLOVA.ispis, ispis: "Zaokruži slovo", odnos: false,
+  },
+  pozicija_glasa: {
+    naziv: "Gdje je glas?", opis: "Ispod slike su tri kruga: dijete odabere prvi, srednji ili zadnji, ovisno o tome je li glas na početku, u sredini ili na kraju riječi.",
+    uputa: UPUTE_POZICIJE.ispis.replace("glas {glas}", "glas"), ispis: "Oboji krug", odnos: false,
+  },
 };
 
 /** Zadana uputa za papir; percepcija ovisi o tome traži li se različita ili par. */
@@ -289,6 +323,7 @@ export function zadanaUputa(v: Vrsta, s?: Sadrzaj): string {
   if (v === "percepcija" && s) return UPUTE_PERCEPCIJE[(s as Percepcija).trazi].ispis;
   if (v === "slogovi" && s) return UPUTE_SLOGOVA[(s as Slogovi).nacin].ispis;
   if (v === "razvrstavanje" && s) return uputeRazvrstavanja(s as Razvrstavanje).ispis;
+  if (v === "pozicija_glasa" && s) return uputaPozicije((s as PozicijaGlasa).glas);
   if ((v === "odabir" || v === "povezivanje" || v === "uljez") && s) return ODNOSI[odnosOd(s)].uputa[v];
   return VRSTE[v].uputa;
 }
@@ -317,6 +352,8 @@ export function prazno(v: Vrsta, stavki = 4): Sadrzaj {
     case "prvi_glas": return { kolo: [...ABECEDA], boje: "sareno", krugovi: [{ slovo: null, slike: Array(SLIKA_MIN).fill(null), tocno: [] }] };
     case "slogovi": return { nacin: "duljina", krugova: 4, slike: Array.from({ length: 8 }, () => ({ rijec_id: null, slogova: 1 })) };
     case "razvrstavanje": return { pravilo: "prvi_glas", tema: "vrece", kategorije: [null, null], slike: Array.from({ length: 8 }, (_, i) => ({ rijec_id: null, kategorija: i % 2 })) };
+    case "koje_slovo": return { slova: "velika", grafema: GRAFEMA_ZADANO, stavke: n.map(() => ({ glas: null, ponudeno: [] })) };
+    case "pozicija_glasa": return { glas: null, slike: Array.from({ length: 6 }, (_, i) => ({ rijec_id: null, pozicija: (i % 3) as Pozicija })) };
   }
 }
 
@@ -447,6 +484,23 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
         slike: niz(o.slike, RAZVRSTAVANJE_SLIKA_MAX, (x) => ({ rijec_id: id(obj(x).rijec_id), kategorija: ind(obj(x).kategorija, kategorije.length) })),
       };
     }
+    case "koje_slovo": {
+      const g = Number(o.grafema);
+      return {
+        slova: o.slova === "mala" ? "mala" : "velika",
+        grafema: Number.isInteger(g) ? Math.max(GRAFEMA_MIN, Math.min(GRAFEMA_MAX, g)) : GRAFEMA_ZADANO,
+        stavke: niz(o.stavke, KOJE_SLOVO_MAX, (x) => {
+          const st = obj(x);
+          // Ponuđena slova: samo iz abecede, svako jednom.
+          const ponudeno = [...new Set(niz(st.ponudeno, GRAFEMA_MAX, (y) => (typeof y === "string" && ABECEDA.includes(y) ? y : null)).filter((y): y is string => y !== null))];
+          return { glas: typeof st.glas === "string" && ABECEDA.includes(st.glas) ? st.glas : null, ponudeno };
+        }),
+      };
+    }
+    case "pozicija_glasa": return {
+      glas: typeof o.glas === "string" && ABECEDA.includes(o.glas) ? o.glas : null, ...glasoviZadatka(o.po_glasovima),
+      slike: niz(o.slike, POZICIJA_SLIKA_MAX, (x) => ({ rijec_id: id(obj(x).rijec_id), pozicija: jePozicija(obj(x).pozicija) ? obj(x).pozicija as Pozicija : 0 })),
+    };
   }
 }
 
@@ -462,6 +516,7 @@ export function rijeciU(v: Vrsta, s: Sadrzaj): number[] {
   if (v === "prvi_glas") for (const k of (s as PrviGlas).krugovi) out.push(...k.slike);
   if (v === "slogovi") out.push(...(s as Slogovi).slike.map((x) => x.rijec_id));
   if (v === "razvrstavanje") out.push(...(s as Razvrstavanje).slike.map((x) => x.rijec_id));
+  if (v === "pozicija_glasa") out.push(...(s as PozicijaGlasa).slike.map((x) => x.rijec_id));
   return [...new Set(out.filter((x): x is number => x !== null).map(Math.abs))];
 }
 
@@ -542,6 +597,37 @@ export function provjeri(v: Vrsta, s: Sadrzaj, rijeci: Map<number, RijecZadatka>
       const k = kategorijaRijeci(rz.pravilo, r.rijec), upisana = rz.kategorije[x.kategorija];
       if (k === null) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} nije jedna riječ: ne razvrstava se ${P.prema}.` });
       else if (upisana !== null && k !== upisana) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} je u kategoriji ${upisana}, a ${P.prema} ide u ${k}${rz.kategorije.includes(k) ? "" : " (te kategorije nema)"}.` });
+    }
+    return u;
+  }
+  if (v === "koje_slovo") {
+    const ks = s as KojeSlovo;
+    if (!ks.stavke.length) u.push({ gdje: "zadatak", poruka: "Nema nijednog zadatka." });
+    ks.stavke.forEach((st, i) => {
+      const g = `stavka ${i + 1}`;
+      if (!st.glas) u.push({ gdje: g, poruka: `${i + 1}. zadatak nema glas.` });
+      else if (!st.ponudeno.includes(st.glas)) u.push({ gdje: g, poruka: `${i + 1}. zadatak: među slovima nema slova ${st.glas}.` });
+      if (st.ponudeno.length < GRAFEMA_MIN) u.push({ gdje: g, poruka: `${i + 1}. zadatak ima samo ${st.ponudeno.length} slova (najmanje ${GRAFEMA_MIN}).` });
+    });
+    return u;
+  }
+  if (v === "pozicija_glasa") {
+    const pg = s as PozicijaGlasa;
+    if (!pg.glas) u.push({ gdje: "zadatak", poruka: "Odaberi glas." });
+    const pune = pg.slike.filter((x) => x.rijec_id !== null);
+    if (!pune.length) u.push({ gdje: "zadatak", poruka: "Nema nijedne slike." });
+    if (pune.length < pg.slike.length) u.push({ gdje: "slike", poruka: `${pg.slike.length - pune.length} prazn${pg.slike.length - pune.length === 1 ? "a slika" : "ih slika"}: u igri i na papiru se ne prikazuju.` });
+    const vidjeno = new Set<number>();
+    for (const x of pune) { if (vidjeno.has(x.rijec_id!)) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} je dvaput.` }); vidjeno.add(x.rijec_id!); }
+    if (pg.glas) for (const x of pune) {
+      const r = R(x.rijec_id);
+      if (!r) continue;
+      const f = fonemi(r.rijec).filter((y) => y === pg.glas).length;
+      const p = pozicijaGlasa(pg.glas, r.rijec);
+      if (!jednaRijec(r.rijec)) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} nije jedna riječ.` });
+      else if (f === 0) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} nema glas ${pg.glas}.` });
+      else if (f > 1) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)} ima glas ${pg.glas} ${f} puta: odgovor nije jednoznačan.` });
+      else if (p !== null && p !== x.pozicija) u.push({ gdje: "slike", poruka: `${ime(x.rijec_id)}: označeno „${POZICIJE[x.pozicija].naziv}”, a glas ${pg.glas} je ${POZICIJE[p].gdje} (ako je ispravak namjeran, zanemari).` });
     }
     return u;
   }
@@ -644,6 +730,19 @@ export function ocijeni(v: Vrsta, s: Sadrzaj, odgovori: Odgovor[]): { tocnih: nu
     const pune = sl.slike.map((x, i) => ({ ...x, i })).filter((x) => x.rijec_id !== null);
     return { tocnih: pune.filter((x) => prvi.get(x.i) === tocnoSlogovi(sl.nacin, x.slogova)).length, ukupno: pune.length };
   }
+  if (v === "koje_slovo") {
+    // Stavka je točna ako je prvi dodir bio na slovu glasa.
+    const st = (s as KojeSlovo).stavke;
+    for (const o of odgovori) if ("stavka" in o && !prvi.has(o.stavka)) prvi.set(o.stavka, o.odabrano);
+    return { tocnih: st.filter((x, i) => x.glas !== null && x.ponudeno[prvi.get(i) ?? -1] === x.glas).length, ukupno: st.length };
+  }
+  if (v === "pozicija_glasa") {
+    // `stavka` je indeks slike, `odabrano` krug (0 početak, 1 sredina, 2 kraj); broji se prvi dodir.
+    const pg = s as PozicijaGlasa;
+    for (const o of odgovori) if ("stavka" in o && !prvi.has(o.stavka)) prvi.set(o.stavka, o.odabrano);
+    const pune = pg.slike.map((x, i) => ({ ...x, i })).filter((x) => x.rijec_id !== null);
+    return { tocnih: pune.filter((x) => prvi.get(x.i) === x.pozicija).length, ukupno: pune.length };
+  }
   if (v === "razvrstavanje") {
     // Slika je točna ako ju je dijete prvi put stavilo u pravu kategoriju.
     const rz = s as Razvrstavanje;
@@ -698,6 +797,8 @@ export const BROJ_STAVKI: Partial<Record<Vrsta, { naziv: string; min: number; ma
   prvi_glas: { naziv: "Broj krugova", min: 1, max: MAX_REDOVA, zadano: 4 },
   slogovi: { naziv: "Broj slika", min: 2, max: SLOGOVI_SLIKA_MAX, zadano: 8 },
   razvrstavanje: { naziv: "Broj slika", min: 4, max: RAZVRSTAVANJE_SLIKA_MAX, zadano: 8 },
+  koje_slovo: { naziv: "Broj zadataka", min: 1, max: KOJE_SLOVO_MAX, zadano: 4 },
+  pozicija_glasa: { naziv: "Broj slika", min: 3, max: POZICIJA_SLIKA_MAX, zadano: 6 },
   listic: { naziv: "Broj slika", min: 1, max: MAX_KARTICA_LISTICA, zadano: 12 },
 };
 /** Broj stavki iz obrasca, unutar granica vrste (prazno ili krivo = zadano). */
@@ -710,7 +811,7 @@ export function brojStavki(v: Vrsta, ulaz: unknown): number {
 /** Koliko stavki zadatak već ima (da „Složi” zadrži broj). */
 export function brojUZadatku(v: Vrsta, s: Sadrzaj): number {
   const x = s as unknown as Record<string, unknown[] | undefined>;
-  const n = (v === "povezivanje" ? x.parovi : v === "listic" ? x.kartice : v === "prvi_glas" ? x.krugovi : v === "slogovi" || v === "razvrstavanje" ? x.slike : x.stavke)?.length ?? 0;
+  const n = (v === "povezivanje" ? x.parovi : v === "listic" ? x.kartice : v === "prvi_glas" ? x.krugovi : v === "slogovi" || v === "razvrstavanje" || v === "pozicija_glasa" ? x.slike : x.stavke)?.length ?? 0;
   return n ? brojStavki(v, n) : BROJ_STAVKI[v]?.zadano ?? 4;
 }
 
@@ -744,6 +845,8 @@ export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => 
 
   if (v === "scena") return prazno("scena");   // scenu slaže logoped: slike ovise o pozadini
   if (v === "slogovi") return slozSlogove(NACINI_SLOGOVA.includes(p.nacin as NacinSlogova) ? (p.nacin as NacinSlogova) : "duljina", cilj ? rijeci.filter(cilj) : rijeci, p.stavki, 4, rnd);
+  if (v === "koje_slovo") return slozKojeSlovo(n, p.slova, rnd);
+  if (v === "pozicija_glasa") return slozPozicije(p.slova?.[0] ?? null, rijeci, n, rnd);
   if (v === "razvrstavanje") return slozRazvrstavanje(jePraviloRazvrstavanja(p.nacin) ? p.nacin : "prvi_glas", rijeci, n, { slova: p.slova, cilj }, rnd);
   if (v === "prvi_glas") {
     // Slova za koja katalog ima dovoljno slika, svako jednom; krugova koliko traži `stavki` (do 6).
@@ -897,4 +1000,46 @@ export function slozRazvrstavanje(pravilo: PraviloRazvrstavanja, rijeci: RijecZa
   while (izbor.length < n && g.some((x) => x.length)) g.forEach((x, i) => { const r = x.shift(); if (r && izbor.length < n) izbor.push({ rijec_id: r.id, kategorija: i }); });
   const sve: (string | null)[] = kategorije.length >= KATEGORIJA_MIN ? kategorije : [...kategorije, ...Array(KATEGORIJA_MIN - kategorije.length).fill(null)];
   return { pravilo, tema: "vrece", kategorije: sve, slike: promijesaj(izbor, rnd) };
+}
+
+/** Uputa pozicije za papir s glasom („Gdje čuješ glas S u riječi? …”); bez glasa općenita. */
+export const uputaPozicije = (glas: string | null) => UPUTE_POZICIJE.ispis.replace("glas {glas}", glas ? `glas ${glas}` : "glas");
+
+/**
+ * Koje slovo čuješ iz abecede: n različitih glasova (po glasovima: odabrana slova redom, pa ponavljanje
+ * ako ih je manje od n), svaki s `GRAFEMA_ZADANO` slova (`slozPonudeno`: slična slova prva).
+ */
+export function slozKojeSlovo(n: number, slova: string[] | undefined, rnd: () => number = Math.random, grafema = GRAFEMA_ZADANO): KojeSlovo {
+  n = Math.max(1, Math.min(KOJE_SLOVO_MAX, n));
+  const zadana = (slova ?? []).filter((x) => ABECEDA.includes(x));
+  const glasovi = zadana.length ? Array.from({ length: n }, (_, i) => zadana[i % zadana.length]) : promijesaj(ABECEDA, rnd).slice(0, n);
+  return { slova: "velika", grafema, stavke: glasovi.map((glas) => ({ glas, ponudeno: slozPonudeno(glas, grafema, rnd) })) };
+}
+
+/**
+ * Pozicija glasa iz kataloga: riječi s glasom točno jednom, ravnomjerno po početku, sredini i kraju
+ * (kružno, pozicija bez riječi se preskače), slika ako ih ima dovoljno, redoslijed nasumičan.
+ * Bez zadanog glasa: nasumičan glas koji ima riječi na sve tri pozicije (ili najviše riječi).
+ */
+export function slozPozicije(glas: string | null, rijeci: RijecZadatka[], n: number, rnd: () => number = Math.random): PozicijaGlasa {
+  n = Math.max(BROJ_STAVKI.pozicija_glasa!.min, Math.min(POZICIJA_SLIKA_MAX, n));
+  const jedne = rijeci.filter((r) => !r.znak && jednaRijec(r.rijec));
+  const po = (g: string) => {
+    let izvor = jedne.filter((r) => pozicijaGlasa(g, r.rijec) !== null);
+    const sa = izvor.filter((r) => r.slika);
+    if (sa.length >= n) izvor = sa;
+    const g3: RijecZadatka[][] = [[], [], []];
+    for (const r of promijesaj(izvor, rnd)) g3[pozicijaGlasa(g, r.rijec)!].push(r);
+    return g3;
+  };
+  if (!glas || !ABECEDA.includes(glas)) {
+    const ocjena = (g: string) => { const g3 = po(g); return g3.filter((x) => x.length >= Math.ceil(n / 3)).length * 1000 + g3.reduce((a, x) => a + x.length, 0); };
+    const kandidati = promijesaj(ABECEDA, rnd).map((g) => ({ g, o: ocjena(g) }));
+    const naj = Math.max(...kandidati.map((k) => Math.floor(k.o / 1000)));
+    glas = kandidati.find((k) => Math.floor(k.o / 1000) === naj)?.g ?? "S";
+  }
+  const g3 = po(glas);
+  const slike: SlikaPozicije[] = [];
+  while (slike.length < n && g3.some((x) => x.length)) for (const p of [0, 1, 2] as Pozicija[]) { const r = g3[p].shift(); if (r && slike.length < n) slike.push({ rijec_id: r.id, pozicija: p }); }
+  return { glas, slike: promijesaj(slike, rnd) };
 }

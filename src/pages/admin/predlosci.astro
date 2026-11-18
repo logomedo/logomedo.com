@@ -12,9 +12,9 @@ const listicJson = JSON.stringify(listic.rijeci).replace(/</g, "\\u003c");
 const prazno = Astro.url.searchParams.has("prazno");
 const pozicije = [["", "Bilo gdje u riječi"], ["inicijalna", "Inicijalna (početak)"], ["medijalna", "Medijalna (sredina)"], ["finalna", "Finalna (kraj)"], ["skupina", "Skupine"]];
 const listovi = podrucja.filter((p) => p.roditelj_id !== null);
-const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas", slogovi: "slogovi", razvrstavanje: "razvrstavanje" };
+const zadano: Record<Vrsta, string> = { listic: "listici", odabir: "rima", povezivanje: "rima", uljez: "rima", scena: "situacije", percepcija: "vizualna-percepcija", prvi_glas: "prvi-glas", slogovi: "slogovi", razvrstavanje: "razvrstavanje", koje_slovo: "glas-slovo", pozicija_glasa: "pozicija-glasa" };
 // Vrsta u izradi (editor, ispis i igra još nisu gotovi) se ne nudi.
-const U_IZRADI: Vrsta[] = [];
+const U_IZRADI: Vrsta[] = ["koje_slovo", "pozicija_glasa"];
 const vrste = (Object.entries(VRSTE) as [Vrsta, (typeof VRSTE)[Vrsta]][]).filter(([kod]) => !U_IZRADI.includes(kod));
 // Svaka vrsta ide u svoje podpodručje (ono je samo oznaka; mijenja se u uređivaču), a gumbi su njezine inačice.
 const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
@@ -25,6 +25,7 @@ const gumbi: Record<Vrsta, { tekst: string; nacin?: string }[]> = {
   percepcija: [{ tekst: "Nađi različitu", nacin: "razlicitu" }, { tekst: "Nađi dvije iste", nacin: "par" }],
   prvi_glas: [{ tekst: "Kolo slova" }], scena: [{ tekst: "Nova scena" }],
   razvrstavanje: (Object.keys(PRAVILA_RAZVRSTAVANJA) as PraviloRazvrstavanja[]).map((nacin) => ({ tekst: PRAVILA_RAZVRSTAVANJA[nacin].naziv, nacin })),
+  koje_slovo: [{ tekst: "Nasumični glasovi" }], pozicija_glasa: [{ tekst: "Nasumičan glas" }],
 };
 const podrucjeVrste = (kod: Vrsta) => listovi.find((p) => p.slug === zadano[kod]);
 // Odnos ima svoje podpodručje (rima u „Prepoznavanje rime”, prvi glas u „Prvi glas u riječi”…); bez para ostaje prazno.
@@ -40,6 +41,8 @@ const naslovDijaloga: Record<string, string> = {
 
 // Mala shema rasporeda svake vrste (kvadratići = slike).
 const shema: Record<Vrsta, string> = {
+  koje_slovo: `<path d="M8 10h4l5-4v14l-5-4H8z" class="s-jaka"/><path d="M21 9a5 5 0 0 1 0 8" class="s-crta"/><text x="36" y="20" class="s-slovo">S</text><text x="62" y="16" class="s-slovo" transform="rotate(14 62 16)">Š</text><text x="14" y="44" class="s-slovo" transform="rotate(-12 14 44)">Z</text><text x="44" y="50" class="s-slovo s-med">C</text><text x="72" y="44" class="s-slovo" transform="rotate(10 72 44)">Č</text><circle cx="40" cy="44" r="10" class="s-crta"/>`,
+  pozicija_glasa: `<rect x="29" y="2" width="30" height="30" rx="4"/><circle cx="24" cy="46" r="8" class="s-crta"/><circle cx="44" cy="46" r="8" class="s-jaka"/><circle cx="64" cy="46" r="8" class="s-crta"/>`,
   razvrstavanje: `<rect x="8" y="4" width="14" height="14" rx="3" class="s-med"/><rect x="26" y="4" width="14" height="14" rx="3"/><rect x="44" y="4" width="14" height="14" rx="3" class="s-med"/><rect x="62" y="4" width="14" height="14" rx="3"/><path d="M12 54c-3-10 0-18 6-20h12c6 2 9 10 6 20zM52 54c-3-10 0-18 6-20h12c6 2 9 10 6 20z"/><path d="M15 18l9 18M51 18l-21 18" class="s-crta"/>`,
   odabir: `<rect x="34" y="4" width="20" height="20" rx="4" class="s-jaka"/><rect x="6" y="34" width="20" height="20" rx="4"/><rect x="34" y="34" width="20" height="20" rx="4" class="s-med"/><rect x="62" y="34" width="20" height="20" rx="4"/>`,
   povezivanje: `<rect x="8" y="4" width="16" height="16" rx="3"/><rect x="8" y="23" width="16" height="16" rx="3"/><rect x="8" y="42" width="16" height="16" rx="3"/><rect x="64" y="4" width="16" height="16" rx="3"/><rect x="64" y="23" width="16" height="16" rx="3"/><rect x="64" y="42" width="16" height="16" rx="3"/><path d="M26 12 62 31M26 31 62 50M26 50 62 12" class="s-crta"/>`,
@@ -285,6 +288,8 @@ const shema: Record<Vrsta, string> = {
   .shema :global(rect) { fill: var(--povrsina); stroke: var(--rub-jak); stroke-width: 1.4; }
   .shema :global(.s-jaka) { fill: var(--med-blago); stroke: var(--med); }
   .shema :global(.s-med) { stroke: var(--med); stroke-width: 2.2; }
+  .shema :global(.s-slovo) { font: 700 15px Andika, sans-serif; fill: var(--tinta); stroke: none; text-anchor: middle; }
+  .shema :global(.s-slovo.s-med) { fill: var(--med); }
   .shema :global(.s-crta) { fill: none; stroke: var(--med); stroke-width: 1.6; stroke-linecap: round; }
   select { flex: 1; height: 34px; min-width: 0; font: inherit; font-size: .84rem; padding: 0 8px; border: 1px solid var(--rub-jak); border-radius: 8px; background: var(--povrsina); color: var(--tinta); }
 </style>
