@@ -4,8 +4,11 @@
 export type Uloga = "superadmin" | "logoped";
 
 export type Ovlast =
-  /** Puna prava na katalog (riječi, slike, zvukovi) i situacije. */
+  /** Katalog: čitanje, nove riječi, slanje slika i izgovora na generiranje, odluke o svojima. */
   | "katalog"
+  /** Uređivanje postojećeg kataloga: riječi (naziv, opis, pozicije, brisanje), glasovi, znakovi,
+   * nepoželjne, situacije, snimke glasova, tuđe slike. */
+  | "katalog.uredivanje"
   /** Svoji zadaci i bilježnice. */
   | "zadaci"
   /** AI generiranje (slike, zvukovi); logoped kroz tjednu kvotu. */
@@ -24,6 +27,7 @@ export type Ovlast =
 /** Matrica: tko smije što. */
 export const OVLASTI = {
   katalog: { superadmin: true, logoped: true },
+  "katalog.uredivanje": { superadmin: true, logoped: false },
   zadaci: { superadmin: true, logoped: true },
   ai: { superadmin: true, logoped: true },
   "ai.bez_limita": { superadmin: true, logoped: false },

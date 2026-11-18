@@ -8,6 +8,7 @@ import { safeNext } from "../../../lib/admin/sesija";
 import { javniUrl } from "../../../lib/generiranje";
 import { izvediRimu } from "../../../lib/zadaci/rima";
 import { imenaKorisnika } from "../../../lib/zatrazio";
+import { smije } from "../../../lib/admin/ovlasti";
 
 const r = await nadji(Astro.params.slug!);
 if (!r) return new Response("Nema te riječi", { status: 404 });
@@ -32,6 +33,8 @@ const stilovi = await stiloviAktivni();
 // Logoped odlučuje samo o slikama koje je sam poslao; superadmin o svima i vidi tko je poslao.
 const admin = Astro.locals.admin!;
 const superadmin = admin.uloga === "superadmin";
+// Postojeću riječ (naziv, opis, pozicije, brisanje) uređuje samo superadmin; logoped je čita.
+const urednik = smije(admin.uloga, "katalog.uredivanje");
 const moja = (s: { zatrazio?: string | null }) => superadmin || s.zatrazio === admin.email.toLowerCase();
 const imena = superadmin ? await imenaKorisnika() : new Map<string, string>();
 const poslao = (s: { zatrazio?: string | null }) => (s.zatrazio ? imena.get(s.zatrazio) ?? s.zatrazio : "nepoznato");
@@ -56,7 +59,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
       {Number(q("zadataka")) > 0 && <> Pazi: {q("zadataka")} zadataka još koristi staru riječ, zamijeni je u njima.</>}</div>
   )}
   {q("greska_naziva") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q("greska_naziva")}</div>}
-  {spoji && (
+  {spoji && urednik && (
     <form class="obavijest upozorenje spajanje" method="post" action={`/admin/api/rijec/${r.id}`}>
       <input type="hidden" name="akcija" value="preimenuj" /><input type="hidden" name="naziv" value={spoji} />
       <input type="hidden" name="spoji" value="1" /><input type="hidden" name="slug" value={r.slug} /><input type="hidden" name="od" value={od} />
@@ -82,25 +85,29 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
 
     <div class="detalji">
       <h1 class="naslov-rijeci">{r.rijec.toLocaleUpperCase("hr")}</h1>
-      <details class="preimenuj">
-        <summary class="sitno">Promijeni naziv</summary>
-        <form method="post" action={`/admin/api/rijec/${r.id}`}>
-          <input type="hidden" name="akcija" value="preimenuj" /><input type="hidden" name="slug" value={r.slug} /><input type="hidden" name="od" value={od} />
-          <input type="text" name="naziv" value={r.rijec} maxlength="40" required aria-label="Novi naziv" />
-          <button class="gumb mali" type="submit">Spremi naziv</button>
-        </form>
-        <p class="sitno blijedo">Ako riječ s tim nazivom već postoji, slike se mogu prebaciti na nju.</p>
-      </details>
-      <details class="preimenuj obrisi">
-        <summary class="sitno">Obriši riječ</summary>
-        <form method="post" action={`/admin/api/rijec/${r.id}`}>
-          <input type="hidden" name="akcija" value="obrisi" />
-          <span class="sitno blijedo">Riječ nestaje iz kataloga, a njezine slike se odbijaju. Vratiti se može u Aktivnosti.</span>
-          <label class="sitno nepozeljna"><input type="checkbox" name="nepozeljna" value="1" /> Ne želim je u katalogu: stavi je na popis nepoželjnih</label>
-          <textarea name="razlog" rows="2" maxlength="500" class="sitno" aria-label="Zašto ne" placeholder="Zašto ne (npr. nije za djecu). Za tipfeler ne treba."></textarea>
-          <button class="gumb mali opasno" type="submit">Obriši {r.rijec.toLocaleUpperCase("hr")}</button>
-        </form>
-      </details>
+      {urednik && (
+        <>
+          <details class="preimenuj">
+            <summary class="sitno">Promijeni naziv</summary>
+            <form method="post" action={`/admin/api/rijec/${r.id}`}>
+              <input type="hidden" name="akcija" value="preimenuj" /><input type="hidden" name="slug" value={r.slug} /><input type="hidden" name="od" value={od} />
+              <input type="text" name="naziv" value={r.rijec} maxlength="40" required aria-label="Novi naziv" />
+              <button class="gumb mali" type="submit">Spremi naziv</button>
+            </form>
+            <p class="sitno blijedo">Ako riječ s tim nazivom već postoji, slike se mogu prebaciti na nju.</p>
+          </details>
+          <details class="preimenuj obrisi">
+            <summary class="sitno">Obriši riječ</summary>
+            <form method="post" action={`/admin/api/rijec/${r.id}`}>
+              <input type="hidden" name="akcija" value="obrisi" />
+              <span class="sitno blijedo">Riječ nestaje iz kataloga, a njezine slike se odbijaju. Vratiti se može u Aktivnosti.</span>
+              <label class="sitno nepozeljna"><input type="checkbox" name="nepozeljna" value="1" /> Ne želim je u katalogu: stavi je na popis nepoželjnih</label>
+              <textarea name="razlog" rows="2" maxlength="500" class="sitno" aria-label="Zašto ne" placeholder="Zašto ne (npr. nije za djecu). Za tipfeler ne treba."></textarea>
+              <button class="gumb mali opasno" type="submit">Obriši {r.rijec.toLocaleUpperCase("hr")}</button>
+            </form>
+          </details>
+        </>
+      )}
       <p class="podnaslov">
         {r.izvor === "legacy" ? `Iz starog kataloga, na listićima ${r.legacy_koristeno}×` : "Dodana u adminu"}
         {r.dodao && <> · Dodao: {r.dodao_ime ?? r.dodao}</>}
@@ -111,7 +118,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
         {r.pozicije.map((p) => (
           <div class:list={["pozicija", { izvedena: !p.potvrdeno }]}>
             <a href={`/admin/glas/${p.slug}?p=${p.pozicija}`} class="pg"><b>{p.oznaka}</b> {NAZIV_POZICIJE[p.pozicija].toLowerCase()}</a>
-            {!p.potvrdeno && (
+            {!p.potvrdeno && urednik && (
               <form method="post" action={`/admin/api/rijec/${r.id}`}>
                 <input type="hidden" name="glas" value={p.slug} /><input type="hidden" name="pozicija" value={p.pozicija} />
                 <input type="hidden" name="next" value={ovdje} />
@@ -122,25 +129,34 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
           </div>
         ))}
       </div>
-      {r.pozicije.some((p) => !p.potvrdeno) && <p class="sitno blijedo">Plave pozicije su izvedene iz pravopisa. Potvrdi ih ili makni.</p>}
+      {urednik && r.pozicije.some((p) => !p.potvrdeno) && <p class="sitno blijedo">Plave pozicije su izvedene iz pravopisa. Potvrdi ih ili makni.</p>}
 
-      <form class="ploha uredi" method="post" action={`/admin/api/rijec/${r.id}`}>
-        <input type="hidden" name="next" value={ovdje} />
-        <div>
-          <label for="opis">Opis za sliku (ide u prompt)</label>
-          <input id="opis" type="text" name="opis_za_sliku" value={r.opis_za_sliku ?? ""} maxlength="300"
-            placeholder="npr. luk kao povrće, ne oružje" />
-        </div>
-        <div>
-          <label for="recenica">Primjer rečenice</label>
-          <input id="recenica" type="text" name="recenica" value={r.recenica ?? ""} maxlength="300" />
-        </div>
-        <div>
-          <label for="rima">Rima (prazno = iz pravopisa: <span class="mono">-{(izvediRimu(r.rijec) ?? "?").toLocaleLowerCase("hr")}</span>)</label>
-          <input id="rima" type="text" name="rima" value={r.rima ?? ""} maxlength="12" placeholder={izvediRimu(r.rijec)?.toLocaleLowerCase("hr") ?? ""} />
-        </div>
-        <button class="gumb mali" type="submit">Spremi</button>
-      </form>
+      {urednik ? (
+        <form class="ploha uredi" method="post" action={`/admin/api/rijec/${r.id}`}>
+          <input type="hidden" name="next" value={ovdje} />
+          <div>
+            <label for="opis">Opis za sliku (ide u prompt)</label>
+            <input id="opis" type="text" name="opis_za_sliku" value={r.opis_za_sliku ?? ""} maxlength="300"
+              placeholder="npr. luk kao povrće, ne oružje" />
+          </div>
+          <div>
+            <label for="recenica">Primjer rečenice</label>
+            <input id="recenica" type="text" name="recenica" value={r.recenica ?? ""} maxlength="300" />
+          </div>
+          <div>
+            <label for="rima">Rima (prazno = iz pravopisa: <span class="mono">-{(izvediRimu(r.rijec) ?? "?").toLocaleLowerCase("hr")}</span>)</label>
+            <input id="rima" type="text" name="rima" value={r.rima ?? ""} maxlength="12" placeholder={izvediRimu(r.rijec)?.toLocaleLowerCase("hr") ?? ""} />
+          </div>
+          <button class="gumb mali" type="submit">Spremi</button>
+        </form>
+      ) : (
+        <dl class="ploha uredi samo-citanje">
+          <div><dt>Opis za sliku</dt><dd>{r.opis_za_sliku || <span class="blijedo">—</span>}</dd></div>
+          <div><dt>Primjer rečenice</dt><dd>{r.recenica || <span class="blijedo">—</span>}</dd></div>
+          <div><dt>Rima</dt><dd class="mono">-{(r.rima || izvediRimu(r.rijec) || "?").toLocaleLowerCase("hr")}</dd></div>
+          <p class="sitno blijedo">Riječ uređuje superadmin. Ti možeš slati slike na generiranje i odlučivati o svojima.</p>
+        </dl>
+      )}
 
       {odobrene.length > 1 && (
         <div class="odobrene">
@@ -331,6 +347,8 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   .odobrene .prikazana a.list { outline-color: var(--med); }
   .odobrene figcaption { display: flex; flex-direction: column; align-items: center; min-width: 0; }
   .poslao { font-weight: 600; color: var(--med-tamno); }
+  .samo-citanje dt { font-size: .8rem; font-weight: 650; color: var(--blijedo); margin: 0 0 2px; }
+  .samo-citanje dd { margin: 0; }
   .kandidati { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
   .kandidati.mali { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-top: 14px; }
   .kandidat { margin: 0; padding: 10px; }

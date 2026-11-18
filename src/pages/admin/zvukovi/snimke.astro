@@ -8,9 +8,14 @@ import Ikona from "../../../components/Ikona.astro";
 import { kad } from "../../../lib/katalog";
 import { GLASOVI } from "../../../lib/zadaci/slusanje";
 import { jeWav, obrisiSnimkuGlasa, snimkeGlasova, spremiSnimkuGlasa } from "../../../lib/zvukovi";
+import { smije } from "../../../lib/admin/ovlasti";
 
 const email = Astro.locals.admin!.email;
+// Snimke glasova su dio kataloga: snima i briše samo superadmin, logoped ih sluša.
+const urednik = smije(Astro.locals.admin!.uloga, "katalog.uredivanje");
 if (Astro.request.method === "POST") {
+  // Uređivanje kataloga je superadminovo (katalog.uredivanje); logoped ovu stranicu samo čita.
+  if (!urednik) return new Response("Zabranjeno", { status: 403 });
   const f = await Astro.request.formData();
   const glas = String(f.get("glas") ?? "");
   if (!GLASOVI.includes(glas)) return Response.json({ greska: "Nepoznat glas." }, { status: 400 });
@@ -52,7 +57,7 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
           <div class="slovo">{g}</div>
           <p class="stanje">{s ? <>Snimljeno {kad(s.kada)}</> : "Nije snimljeno"}</p>
           <div class="gumbi">
-            <button type="button" class="gumb mali snimi" aria-label={`Snimi glas ${g}`}><span class="tocka"></span><span class="tekst">Snimi</span></button>
+            <button type="button" class="gumb mali snimi" hidden={!urednik} aria-label={`Snimi glas ${g}`}><span class="tocka"></span><span class="tekst">Snimi</span></button>
             <button type="button" class="gumb mali slusaj" aria-label={`Poslušaj glas ${g}`} disabled={!s}><Ikona ime="zvuk" velicina={16} /></button>
           </div>
           <div class="nova skriveno">
@@ -62,7 +67,7 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
               <button type="button" class="gumb mali glavni spremi"><Ikona ime="kvacica" velicina={16} /> Spremi</button>
             </div>
           </div>
-          {s && <button type="button" class="obrisi poveznica">Obriši snimku</button>}
+          {s && urednik && <button type="button" class="obrisi poveznica">Obriši snimku</button>}
         </div>
       );
     })}

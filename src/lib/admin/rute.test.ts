@@ -13,8 +13,8 @@ test("svaka ruta, s podputanjom i kosom crtom na kraju", () => {
 
 test("popis ruta je točno ovaj", () => {
   assert.deepEqual([...SAMO_SUPERADMIN].sort(), [
-    "/admin/api/app-kod", "/admin/api/zvuk-proba", "/admin/app/prijava", "/admin/korisnici",
-    "/admin/prompt", "/admin/red", "/admin/zvukovi/glasovi",
+    "/admin/api/app-kod", "/admin/api/novi-glas", "/admin/api/rijec", "/admin/api/zvuk-proba", "/admin/app/prijava", "/admin/korisnici",
+    "/admin/novi-glas", "/admin/prompt", "/admin/red", "/admin/zvukovi/glasovi",
   ]);
 });
 
@@ -45,7 +45,7 @@ test("negativni slučajevi: susjedne i javne rute", () => {
     "/admin", "/admin/", "/admin/zvukovi", "/admin/zvukovi/", "/admin/redovi", "/admin/red-x", "/admin/promptovi",
     "/admin/korisnicix", "/admin/poziv", "/admin/poziv/options", "/admin/poziv/verify", "/admin/zadaci",
     "/admin/zadaci/1", "/admin/biljeznice", "/admin/aktivnost", "/admin/postavke", "/admin/passkeys",
-    "/admin/api/zadatak/1", "/admin/api/zvuk", "/admin/app", "/admin/api/app", "/prompt", "/red", "/",
+    "/admin/api/zadatak/1", "/admin/api/zvuk", "/admin/api/rijeci", "/admin/nova-rijec", "/admin/app", "/admin/api/app", "/prompt", "/red", "/",
   ]) assert.equal(rutaSamoSuperadmin(p), false, p);
 });
 

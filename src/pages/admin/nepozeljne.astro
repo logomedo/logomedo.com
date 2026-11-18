@@ -7,8 +7,12 @@ import KatalogKartice from "../../components/KatalogKartice.astro";
 import Ikona from "../../components/Ikona.astro";
 import { DB } from "../../lib/katalog";
 import { dodajNepozeljnu, makniNepozeljnu, sveNepozeljne } from "../../lib/nepozeljne";
+import { smije } from "../../lib/admin/ovlasti";
 
+const urednik = smije(Astro.locals.admin!.uloga, "katalog.uredivanje");
 if (Astro.request.method === "POST") {
+  // Uređivanje kataloga je superadminovo (katalog.uredivanje); logoped ovu stranicu samo čita.
+  if (!urednik) return new Response("Zabranjeno", { status: 403 });
   const f = await Astro.request.formData();
   const natrag = (k: "greska" | "ok", poruka: string) => Astro.redirect(`/admin/nepozeljne?${k}=${encodeURIComponent(poruka)}`, 303);
   const akcija = String(f.get("akcija"));
@@ -45,7 +49,8 @@ const datum = (s: string) => new Date(s.replace(" ", "T") + "Z").toLocaleDateStr
   {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
   {q.get("ok") && <div class="obavijest uspjeh"><Ikona ime="kvacica" /> {q.get("ok")}</div>}
 
-  <form method="post" class="ploha nova">
+  {urednik && (
+<form method="post" class="ploha nova">
     <input type="hidden" name="akcija" value="dodaj" />
     <div>
       <label for="n-rijec">Riječ</label>
@@ -57,25 +62,31 @@ const datum = (s: string) => new Date(s.replace(" ", "T") + "Z").toLocaleDateStr
     </div>
     <div><button class="gumb glavni" type="submit"><Ikona ime="plus" /> Dodaj na popis</button></div>
   </form>
+)}
 
   {popis.length > 0 && (
     <section class="ploha popis">
       {popis.map((n) => (
         <div class="stavka">
           <div class="rijec">{n.rijec.toLocaleUpperCase("hr")}</div>
-          <form method="post" class="razlog">
+          {!urednik && <p class="sitno">{n.razlog ?? <span class="blijedo">bez razloga</span>}</p>}
+          {urednik && (
+<form method="post" class="razlog">
             <input type="hidden" name="akcija" value="razlog" /><input type="hidden" name="rijec" value={n.rijec} />
             <textarea name="razlog" rows="1" maxlength="500" aria-label={`Razlog za ${n.rijec}`} placeholder="bez razloga">{n.razlog ?? ""}</textarea>
             <button class="gumb mali tihi" type="submit">Spremi</button>
           </form>
+)}
           <div class="meta sitno blijedo">
             {datum(n.created_at)}
             {aktivna.has(n.rijec) && <> · <a href={`/admin/rijec/${aktivna.get(n.rijec)}`}>još je u katalogu</a></>}
           </div>
-          <form method="post">
+          {urednik && (
+<form method="post">
             <input type="hidden" name="akcija" value="makni" /><input type="hidden" name="id" value={n.id} /><input type="hidden" name="rijec" value={n.rijec} />
             <button class="gumb mali tihi" type="submit" title="Makni s popisa: riječ se opet smije dodati">Makni s popisa</button>
           </form>
+)}
         </div>
       ))}
     </section>

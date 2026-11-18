@@ -7,14 +7,20 @@ import Ikona from "../../components/Ikona.astro";
 import { korisnikId } from "../../lib/zadaci/baza";
 import { dupliciraj, ponovi, zadnjiPoslovi, zatrazi } from "../../lib/pozadine-generiranje";
 import { koristi, makniSliku, obrisi, ORIJENTACIJE, popis, stvori, ucitajSliku, uredi, type Orijentacija } from "../../lib/pozadine";
+import { smije } from "../../lib/admin/ovlasti";
 
 const NAZIV_O: Record<Orijentacija, string> = { uspravno: "Uspravna", vodoravno: "Vodoravna" };
 
+const urednik = smije(Astro.locals.admin!.uloga, "katalog.uredivanje");
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
   const email = Astro.locals.admin!.email;
   const akcija = String(f.get("akcija"));
   const id = Number(f.get("id")) || 0;
+  // Logoped situacije samo šalje na generiranje; uređivanje kataloga je superadminovo (katalog.uredivanje).
+  if (!urednik && akcija !== "generiraj" && akcija !== "ponovi") {
+    return new Response("Zabranjeno", { status: 403 });
+  }
   const natrag = (k: "greska" | "ok", poruka: string, sidro = id) =>
     Astro.redirect(`/admin/situacije?${k}=${encodeURIComponent(poruka)}${sidro ? `#p${sidro}` : ""}`, 303);
   const naziv = String(f.get("naziv") ?? "").trim();
@@ -95,7 +101,8 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
   {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
   {q.get("ok") && <div class="obavijest uspjeh"><Ikona ime="kvacica" /> {q.get("ok")}</div>}
 
-  <details class="ploha nova" open={!pozadine.length}>
+  {urednik && (
+<details class="ploha nova" open={!pozadine.length}>
     <summary><Ikona ime="plus" /> Nova situacija</summary>
     <form method="post" enctype="multipart/form-data" class="forma-pozadine" novalidate>
       <input type="hidden" name="akcija" value="nova" />
@@ -118,6 +125,7 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
       <div class="akcije"><button class="gumb glavni" type="submit"><Ikona ime="kvacica" /> Dodaj situaciju</button></div>
     </form>
   </details>
+)}
 
   <div class="popis">
     {pozadine.map((p) => (
@@ -155,7 +163,7 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
                   })()}
                 <figcaption>
                   {NAZIV_O[o]}{s && <span class="blijedo"> · {s.sirina}×{s.visina}</span>}
-                  {s && (
+                  {s && urednik && (
                     <form method="post" class="inline" data-potvrda={`Maknuti ${o === "uspravno" ? "uspravnu" : "vodoravnu"} sliku?`}>
                       <input type="hidden" name="akcija" value="makni" /><input type="hidden" name="id" value={p.id} />
                       <input type="hidden" name="orijentacija" value={o} />
@@ -167,7 +175,8 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
             );
           })}
         </div>
-        <form method="post" enctype="multipart/form-data" class="forma-pozadine podaci" novalidate>
+        {urednik && (
+<form method="post" enctype="multipart/form-data" class="forma-pozadine podaci" novalidate>
           <input type="hidden" name="akcija" value="uredi" /><input type="hidden" name="id" value={p.id} />
           <label>Naziv</label>
           <input type="text" name="naziv" value={p.naziv} required minlength="3" maxlength="120" />
@@ -186,12 +195,15 @@ const IZ: Record<Orijentacija, string> = { uspravno: "uspravne", vodoravno: "vod
             <button class="gumb glavni mali" type="submit">Spremi</button>
           </div>
         </form>
-        <form method="post" class="brisi" data-potvrda={`Obrisati situaciju „${p.naziv}”?`}>
+)}
+        {urednik && (
+<form method="post" class="brisi" data-potvrda={`Obrisati situaciju „${p.naziv}”?`}>
           <input type="hidden" name="akcija" value="obrisi" /><input type="hidden" name="id" value={p.id} />
           <button class="gumb mali tihi opasno" type="submit" disabled={!!koriste.get(p.id)}
             title={koriste.get(p.id) ? "Situaciju koriste zadaci" : undefined}>Obriši</button>
         </form>
-        {(p.uspravno || p.vodoravno) && (
+)}
+        {(p.uspravno || p.vodoravno) && urednik && (
           <details class="dupliciraj">
             <summary>Dupliciraj situaciju</summary>
             <form method="post" class="forma-dupliciraj">

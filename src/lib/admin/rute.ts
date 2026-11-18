@@ -12,6 +12,10 @@ export const SAMO_SUPERADMIN = [
   "/admin/api/zvuk-proba",
   "/admin/app/prijava",
   "/admin/api/app-kod",
+  // Uređivanje postojećeg kataloga (ovlast katalog.uredivanje): riječ (naziv, opis, pozicije, brisanje) i glasovi.
+  "/admin/api/rijec",
+  "/admin/api/novi-glas",
+  "/admin/novi-glas",
 ] as const;
 
 const pogada = (p: string) => SAMO_SUPERADMIN.some((r) => p === r || p.startsWith(`${r}/`));

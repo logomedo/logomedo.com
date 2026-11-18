@@ -6,6 +6,7 @@ import { OVLASTI, odrediUlogu, smije, type Ovlast, type Uloga } from "./ovlasti.
 /** Očekivano, napisano ručno: logoped smije samo katalog, zadatke i AI (kroz kvotu). */
 const OCEKIVANO: Record<Ovlast, Record<Uloga, boolean>> = {
   katalog: { superadmin: true, logoped: true },
+  "katalog.uredivanje": { superadmin: true, logoped: false },
   zadaci: { superadmin: true, logoped: true },
   ai: { superadmin: true, logoped: true },
   "ai.bez_limita": { superadmin: true, logoped: false },

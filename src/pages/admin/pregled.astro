@@ -8,11 +8,14 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import { kandidati } from "../../lib/pregled";
 import { pregledFiltar } from "../../lib/admin/vlasnistvo";
+import { smije } from "../../lib/admin/ovlasti";
 import { imenaKorisnika, posiljateljiNaPregledu } from "../../lib/zatrazio";
 
 // Logoped vidi samo slike koje je sam poslao; superadmin sve, s oznakom tko je poslao i filtrom.
 const admin = Astro.locals.admin!;
 const superadmin = admin.uloga === "superadmin";
+// Brisanje riječi i „zapamti kao opis riječi” mijenjaju postojeći katalog: samo superadmin.
+const urednik = smije(admin.uloga, "katalog.uredivanje");
 const glas = Astro.url.searchParams.get("glas");
 const korisnik = superadmin ? Astro.url.searchParams.get("korisnik") : null;
 const [results, imena, posiljatelji] = await Promise.all([
@@ -59,7 +62,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
               <input type="text" id="razlog" maxlength="300" placeholder="npr. Ovo je mačka, a ne mač" /></label>
             <label>Kako treba biti?
               <input type="text" id="dorada" maxlength="300" placeholder="npr. Strelica pokazuje na rep" /></label>
-            <label class="kvacica"><input type="checkbox" id="trajno" /> Zapamti „kako treba” kao opis riječi (za sve buduće slike)</label>
+            <label class="kvacica" hidden={!urednik}><input type="checkbox" id="trajno" /> Zapamti „kako treba” kao opis riječi (za sve buduće slike)</label>
             <label class="kvacica"><input type="checkbox" id="ponovi" checked /> <span id="ponovi-tekst">Generiraj novu</span></label>
             <div class="red-gumba"><button class="gumb glavni" type="submit">Odbij</button>
               <span class="blijedo sitno"><kbd>Tab</kbd> sljedeće polje · <kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span></div>
@@ -72,12 +75,12 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
             <p class="sitno" id="cilj-info" hidden></p>
             <label><span id="dorada2-naslov">Kako treba biti za ovu riječ?</span>
               <input type="text" id="dorada2" maxlength="300" placeholder="npr. Mač je oružje (sword), ne mačka" /></label>
-            <label class="kvacica"><input type="checkbox" id="trajno2" /> Zapamti kao opis riječi (za sve buduće slike)</label>
+            <label class="kvacica" hidden={!urednik}><input type="checkbox" id="trajno2" /> Zapamti kao opis riječi (za sve buduće slike)</label>
             <label class="kvacica"><input type="checkbox" id="ponovi2" checked /> <span id="ponovi2-tekst">Generiraj novu</span></label>
             <div class="red-gumba"><button class="gumb glavni" type="submit">Premjesti</button>
               <span class="blijedo sitno"><kbd>Enter</kbd> potvrdi · <kbd>Esc</kbd> odustani</span></div>
           </form>
-          <button class="gumb veliki opasno" id="obrisi"><kbd>D</kbd> Riječ ne postoji, obriši je</button>
+          <button class="gumb veliki opasno" id="obrisi" hidden={!urednik}><kbd>D</kbd> Riječ ne postoji, obriši je</button>
           <form class="razlog" id="obrisi-okvir" hidden>
             <p class="sitno" id="obrisi-tekst"></p>
             <div class="red-gumba"><button class="gumb glavni opasno" type="submit">Obriši riječ</button>
@@ -368,7 +371,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
     if (k === "a") odluci("odobri");
     else if (k === "x") { e.preventDefault(); otvoriRazlog(); }
     else if (k === "p") { e.preventDefault(); otvoriPremjesti(); }
-    else if (k === "d") { e.preventDefault(); otvoriObrisi(); }
+    else if (k === "d" && !$("obrisi").hidden) { e.preventDefault(); otvoriObrisi(); }
     else if (k === "s" || e.key === "ArrowRight") dalje();
     else if (k === "z") ponisti();
   });

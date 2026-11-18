@@ -7,8 +7,12 @@ import Ikona from "../../components/Ikona.astro";
 import { noviZnak, postaviAktivan, sviZnakovi } from "../../lib/znakovi-baza";
 import { SKUPINE_ZNAKOVA, skupinaZnaka, ZNAK_MAX, type SkupinaZnaka } from "../../lib/znakovi";
 import "@fontsource/andika/700.css";
+import { smije } from "../../lib/admin/ovlasti";
 
+const urednik = smije(Astro.locals.admin!.uloga, "katalog.uredivanje");
 if (Astro.request.method === "POST") {
+  // Uređivanje kataloga je superadminovo (katalog.uredivanje); logoped ovu stranicu samo čita.
+  if (!urednik) return new Response("Zabranjeno", { status: 403 });
   const f = await Astro.request.formData();
   const email = Astro.locals.admin!.email;
   const natrag = (k: "greska" | "ok", poruka: string) => Astro.redirect(`/admin/znakovi?${k}=${encodeURIComponent(poruka)}`, 303);
@@ -44,7 +48,8 @@ const aktivnih = znakovi.length - skriveni.length;
   {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
   {q.get("ok") && <div class="obavijest uspjeh"><Ikona ime="kvacica" /> {q.get("ok")}</div>}
 
-  <form method="post" class="ploha novi">
+  {urednik && (
+<form method="post" class="ploha novi">
     <input type="hidden" name="akcija" value="novi" />
     <label for="z-novi">Novi znak</label>
     <div class="red">
@@ -53,6 +58,7 @@ const aktivnih = znakovi.length - skriveni.length;
     </div>
     <p class="pomoc">Jedan do {ZNAK_MAX} znaka, točno kako se prikazuju: q, W, DŽ, 10, §. Riječi idu u „Slike riječi”.</p>
   </form>
+)}
 
   {skupine.map((g) => (
     <section class="ploha skupina">
@@ -62,10 +68,12 @@ const aktivnih = znakovi.length - skriveni.length;
           <div class="znak" id={z.slug}>
             <span class="glif">{z.znak}</span>
             <span class="koristi" title="Zadaci koji ga koriste">{z.zadataka ? `${z.zadataka} zad.` : " "}</span>
-            <form method="post">
+            {urednik && (
+<form method="post">
               <input type="hidden" name="akcija" value="skrij" /><input type="hidden" name="id" value={z.id} />
               <button class="skrij" type="submit" title={`Skrij ${z.znak}`} aria-label={`Skrij ${z.znak}`}>×</button>
             </form>
+)}
           </div>
         ))}
       </div>
@@ -80,7 +88,7 @@ const aktivnih = znakovi.length - skriveni.length;
           <form method="post" class="znak skriven">
             <input type="hidden" name="akcija" value="vrati" /><input type="hidden" name="id" value={z.id} />
             <span class="glif">{z.znak}</span>
-            <button class="gumb mali" type="submit">Vrati</button>
+            {urednik && <button class="gumb mali" type="submit">Vrati</button>}
           </form>
         ))}
       </div>
