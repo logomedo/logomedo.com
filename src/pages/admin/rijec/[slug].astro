@@ -84,6 +84,14 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
         </form>
         <p class="sitno blijedo">Ako riječ s tim nazivom već postoji, slike se mogu prebaciti na nju.</p>
       </details>
+      <details class="preimenuj obrisi">
+        <summary class="sitno">Obriši riječ</summary>
+        <form method="post" action={`/admin/api/rijec/${r.id}`}>
+          <input type="hidden" name="akcija" value="obrisi" />
+          <span class="sitno blijedo">Riječ nestaje iz kataloga, a njezine slike se odbijaju. Vratiti se može u Aktivnosti.</span>
+          <button class="gumb mali opasno" type="submit">Obriši {r.rijec.toLocaleUpperCase("hr")}</button>
+        </form>
+      </details>
       <p class="podnaslov">
         {r.izvor === "legacy" ? `Iz starog kataloga, na listićima ${r.legacy_koristeno}×` : "Dodana u adminu"}
         {r.dodao && <> · Dodao: {r.dodao_ime ?? r.dodao}</>}
@@ -289,6 +297,8 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   .preimenuj summary { cursor: pointer; color: var(--blijedo, inherit); }
   .preimenuj form { display: flex; gap: 8px; margin-top: 8px; }
   .preimenuj input { flex: 1; min-width: 0; }
+  .obrisi form { align-items: center; flex-wrap: wrap; }
+  .obrisi span { flex: 1 1 220px; }
   .spajanje { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
   .spajanje .red-gumba { display: flex; gap: 8px; }
   .odobrene { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 16px; }

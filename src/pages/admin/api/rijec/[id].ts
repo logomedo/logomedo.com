@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
 import { safeNext } from "../../../../lib/admin/sesija";
 import { novaGrupa, sZapisom } from "../../../../lib/aktivnost";
-import { preimenuj } from "../../../../lib/generiranje";
+import { obrisiRijec, preimenuj } from "../../../../lib/generiranje";
 
 /** Opis za sliku, primjer rečenice i ručna rima; potvrda izvedene pozicije; novi naziv (i spajanje s postojećom). */
 export const POST: APIRoute = async ({ request, params, locals }) => {
@@ -11,6 +11,13 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
   const t = (k: string) => { const v = String(f.get(k) ?? "").trim(); return v ? v.slice(0, 300) : null; };
   const akcija = f.get("akcija");
   const zapis = (radnja: string) => ({ tko: locals.admin!.email, radnja, tablica: "rijeci" as const, grupa: novaGrupa() });
+  if (akcija === "obrisi") {
+    // Riječ s tipfelerom ili koja ne treba: makni iz kataloga sa svim slikama (vraća se iz Aktivnosti).
+    const r = await env.DB.prepare("SELECT rijec FROM rijeci WHERE id = ?").bind(id).first<{ rijec: string }>();
+    if (!r) return new Response("Nema te riječi", { status: 404 });
+    await obrisiRijec(id, locals.admin!.email);
+    return new Response(null, { status: 303, headers: { location: `/admin?${new URLSearchParams({ obrisano: r.rijec })}` } });
+  }
   if (akcija === "preimenuj") {
     const od = safeNext(String(f.get("od") ?? ""));
     const stara = String(f.get("slug") ?? "");
