@@ -484,7 +484,23 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       oznaci(); osvjezi();
     };
     const promijeniTemu = (t: TemaRazvrstavanja) => { const prije = { pravilo: s.pravilo, tema: s.tema }; s.tema = t; promijeniUputu(prije); oznaci(); osvjezi(); };
-    const postaviOznaku = (i: number, k: string | null) => { s.kategorije[i] = k; rasporedi(); oznaci(); osvjezi(); };
+    /**
+     * Nova oznaka spremnika: slike tog spremnika se zamijene riječima s novom oznakom (sa slikom ako ih ima
+     * dovoljno), isti broj; ostale slike ostaju. Kad katalog nema dovoljno riječi, višak mjesta ostane prazan.
+     */
+    const postaviOznaku = (i: number, k: string | null) => {
+      const stara = s.kategorije[i];
+      s.kategorije[i] = k;
+      if (k !== null && k !== stara) {
+        const zauzete = new Set(s.slike.filter((x) => x.kategorija !== i).map((x) => x.rijec_id));
+        const sve = zaGenerator(p.rijeci).filter((r) => kategorijaRijeci(s.pravilo, r.rijec) === k && !zauzete.has(r.id));
+        const mjesta = s.slike.filter((x) => x.kategorija === i);
+        const sa = sve.filter((r) => r.slika);
+        const nove = promijesaj(sa.length >= mjesta.length ? sa : sve);
+        mjesta.forEach((x, j) => { x.rijec_id = nove[j]?.id ?? null; });
+      }
+      rasporedi(); oznaci(); osvjezi();
+    };
     const brojRijeci = (k: string) => zaGenerator(p.rijeci).filter((r) => r.slika && kategorijaRijeci(s.pravilo, r.rijec) === k).length;
     const oznakaKat = (i: number) => {
       const k = s.kategorije[i];
