@@ -4,11 +4,15 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import KatalogKartice from "../../components/KatalogKartice.astro";
 import { jePodjela, PODJELA_ZADANO, PODJELE, poPodjeli, type Podjela } from "../../lib/podjele-glasova";
+import { brojKandidata } from "../../lib/pregled";
+import { pregledFiltar } from "../../lib/admin/vlasnistvo";
 import { glasovi, stilIzUrla, zapamtiStil, stiloviAktivni, ukupno, ukupnoSvihStilova } from "../../lib/katalog";
 
 const s = await stilIzUrla(Astro.url);
 zapamtiStil(Astro.cookies, s.kod);
-const [lista, u, svi, stilovi] = await Promise.all([glasovi(s.id), ukupno(s.id), ukupnoSvihStilova(), stiloviAktivni()]);
+// Gumb „Pregledaj N” vodi na /admin/pregled, pa broji isto što ondje: logoped samo svoje, u svim stilovima.
+const [lista, u, svi, stilovi, zaPregled] = await Promise.all([glasovi(s.id), ukupno(s.id), ukupnoSvihStilova(), stiloviAktivni(),
+  brojKandidata(pregledFiltar(Astro.locals.admin!))]);
 const uzStil = (href: string) => (s.kod === "bojanka" ? href : `${href}?stil=${s.kod}`);
 // Ispod brojke: koliko je u svim stilovima, ako se razlikuje (bočna traka broji sve stilove).
 const sviNapomena = (ovaj: number, sviBroj: number) => (sviBroj !== ovaj ? `${sviBroj} u svim stilovima` : "");
@@ -35,7 +39,7 @@ const O = 2 * Math.PI * 26;
     <div class="gumbi">
       <a class="gumb" href="/admin/nova-rijec"><Ikona ime="plus" /> Nova riječ</a>
       {smijeNa(Astro.locals.admin!.uloga, "/admin/novi-glas") && <a class="gumb" href="/admin/novi-glas"><Ikona ime="plus" /> Novi glas</a>}
-      {u.kandidata > 0 && <a class="gumb glavni" href="/admin/pregled"><Ikona ime="pregled" /> Pregledaj {u.kandidata} kandidata</a>}
+      {zaPregled > 0 && <a class="gumb glavni" href="/admin/pregled"><Ikona ime="pregled" /> Pregledaj {zaPregled} kandidata</a>}
     </div>
   </div>
 

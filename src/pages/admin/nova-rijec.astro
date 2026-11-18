@@ -1,12 +1,16 @@
 ---
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
-import { DB, stiloviAktivni } from "../../lib/katalog";
+import { DB, indeksRijeci, stiloviAktivni } from "../../lib/katalog";
+import { sveNepozeljne } from "../../lib/nepozeljne";
 
 const q = Astro.url.searchParams;
-const [stilovi, { results: glasovi }] = await Promise.all([
+// Postojeće i nepoželjne riječi idu u stranicu (~800 riječi, par KB): pretraga dok se piše, bez upita.
+const [stilovi, { results: glasovi }, postojece, nepozeljne] = await Promise.all([
   stiloviAktivni(),
   DB().prepare("SELECT oznaka, skupine FROM glasovi ORDER BY redoslijed").all<{ oznaka: string; skupine: number }>(),
+  indeksRijeci(),
+  sveNepozeljne(),
 ]);
 const v = (k: string) => q.get(k) ?? "";
 ---
@@ -19,12 +23,18 @@ const v = (k: string) => q.get(k) ?? "";
 
   {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
 
-  <form class="ploha forma" method="post" action="/admin/api/nova-rijec" data-glasovi={JSON.stringify(glasovi)}>
+  <form class="ploha forma" method="post" action="/admin/api/nova-rijec" data-glasovi={JSON.stringify(glasovi)}
+    data-postojece={JSON.stringify(postojece.map((x) => [x.r, x.s, x.o]))}
+    data-nepozeljne={JSON.stringify(nepozeljne.map((n) => [n.rijec, n.razlog ?? ""]))}>
     <div class="polje-rijec">
       <label for="n-rijec">Riječ</label>
       <input id="n-rijec" type="text" name="rijec" value={v("rijec")} required maxlength="40" autocomplete="off" spellcheck="false"
         autofocus pattern="[a-zA-ZčćđšžČĆĐŠŽ]+([ \-][a-zA-ZčćđšžČĆĐŠŽ]+)*" title="Samo slova, razmak ili crtica" placeholder="npr. krastavac" />
       <p class="pomoc">Malim slovima, kako se izgovara: <span class="mono adresa">/admin/rijec/…</span></p>
+      <div class="postojece" aria-live="polite" hidden>
+        <p class="stanje"></p>
+        <div class="slicne"></div>
+      </div>
     </div>
 
     <fieldset>
@@ -62,7 +72,7 @@ const v = (k: string) => q.get(k) ?? "";
     </fieldset>
 
     <div class="akcije">
-      <button class="gumb glavni" type="submit"><Ikona ime="kvacica" /> Dodaj riječ</button>
+      <button class="gumb glavni" type="submit" id="dodaj"><Ikona ime="kvacica" /> Dodaj riječ</button>
       <a class="gumb tihi" href="/admin">Odustani</a>
     </div>
   </form>
@@ -81,10 +91,61 @@ const v = (k: string) => q.get(k) ?? "";
   const adresa = forma.querySelector<HTMLElement>(".adresa")!;
   const iskljuceno = new Set<string>();
 
+  // ── Pretraga postojećih: dok pišeš vidiš riječi iz kataloga koje sadrže upisano (i bez kvačica:
+  // „macka” nađe MAČKA). Kad nijedna nije ista kao upisana, riječ sigurno ne postoji. ──
+  const postojece = (JSON.parse(forma.dataset.postojece!) as [string, string, number][]).map(([r, s, o]) => ({ r, s, o, b: bez(r) }));
+  const nepozeljne = new Map(JSON.parse(forma.dataset.nepozeljne!) as [string, string][]);
+  const okvir = forma.querySelector<HTMLElement>(".postojece")!;
+  const stanje = okvir.querySelector<HTMLElement>(".stanje")!;
+  const slicne = okvir.querySelector<HTMLElement>(".slicne")!;
+  const dodaj = forma.querySelector<HTMLButtonElement>("#dodaj")!;
+  function bez(t: string) { return t.toLocaleLowerCase("hr").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "dj"); }
+  const VELIKO = (t: string) => t.toLocaleUpperCase("hr");
+
+  function pretrazi(r: string) {
+    okvir.hidden = !r;
+    dodaj.disabled = false;
+    if (!r) return;
+    const q = bez(r);
+    const ista = postojece.find((x) => x.r === r);
+    const nadjene = postojece
+      .filter((x) => x.b.includes(q))
+      .sort((a, b) => Number(b.b.startsWith(q)) - Number(a.b.startsWith(q)) || a.r.length - b.r.length || a.r.localeCompare(b.r, "hr"));
+    const nep = nepozeljne.get(r);
+    okvir.dataset.vrsta = ista || nep !== undefined ? "postoji" : "nova";
+    if (ista) {
+      stanje.textContent = `${VELIKO(r)} već postoji u katalogu. Otvori je i ondje pošalji sliku na generiranje.`;
+      dodaj.disabled = true;
+    } else if (nep !== undefined) {
+      stanje.textContent = `${VELIKO(r)} je na popisu nepoželjnih${nep ? `: ${nep}` : "."}`;
+      dodaj.disabled = true;
+    } else {
+      stanje.textContent = nadjene.length
+        ? `${VELIKO(r)} nije u katalogu. Slične koje već postoje:`
+        : `${VELIKO(r)} nije u katalogu, ni ništa slično. Možeš je dodati.`;
+    }
+    slicne.replaceChildren(...nadjene.slice(0, 16).map((x) => {
+      const a = document.createElement("a");
+      a.href = `/admin/rijec/${x.s}`;
+      a.className = "slicna" + (x === ista ? " ista" : "");
+      a.textContent = VELIKO(x.r);
+      if (!x.o) a.title = "Još nema odobrene slike";
+      if (!x.o) a.classList.add("bez-slike");
+      return a;
+    }));
+    if (nadjene.length > 16) {
+      const v = document.createElement("span");
+      v.className = "jos";
+      v.textContent = `+ još ${nadjene.length - 16}`;
+      slicne.appendChild(v);
+    }
+  }
+
   const osvjezi = () => {
     const r = ulaz.value.trim().toLocaleLowerCase("hr").replace(/\s+/g, " ");
     adresa.textContent = `/admin/rijec/${r ? slug(r) : "…"}`;
     rima.placeholder = r ? `-${(izvediRimu(r) ?? "").toLocaleLowerCase("hr")}` : "-";
+    pretrazi(r);
     if (!r) { kutija.innerHTML = '<span class="blijedo">Upiši riječ.</span>'; return; }
     const p = pojave(r, glasovi.map((g) => g.oznaka), glasovi.filter((g) => g.skupine).map((g) => g.oznaka));
     kutija.innerHTML = p.length
@@ -121,5 +182,17 @@ const v = (k: string) => q.get(k) ?? "";
   .kvacica { display: inline-flex; gap: 8px; align-items: center; margin: 0; font-size: .92rem; font-weight: 550; color: var(--tinta); cursor: pointer; }
   .kvacica input { accent-color: var(--med); width: 16px; height: 16px; margin: 0; }
   .akcije { display: flex; gap: 10px; }
+  .postojece { margin-top: 10px; padding: 12px 14px; border-radius: 12px; background: var(--povrsina-2); }
+  .postojece .stanje { margin: 0; font-size: .9rem; font-weight: 600; }
+  .postojece[data-vrsta="nova"] .stanje { color: var(--uspjeh); }
+  .postojece[data-vrsta="postoji"] .stanje { color: var(--greska); }
+  .slicne { display: flex; flex-wrap: wrap; gap: 6px; }
+  .slicne:not(:empty) { margin-top: 10px; }
+  .slicne :global(.slicna) { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--rub-jak); background: var(--povrsina);
+    color: var(--tinta); font-size: .82rem; font-weight: 650; letter-spacing: .03em; text-decoration: none; }
+  .slicne :global(.slicna:hover) { border-color: var(--med); }
+  .slicne :global(.slicna.ista) { background: var(--med-blago); border-color: var(--med); color: var(--med-tamno); }
+  .slicne :global(.slicna.bez-slike) { border-style: dashed; }
+  .slicne :global(.jos) { align-self: center; font-size: .8rem; color: var(--blijedo); }
   .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
 </style>

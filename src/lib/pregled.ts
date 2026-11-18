@@ -36,3 +36,12 @@ export async function nedavneOdluke(): Promise<{ id: number; status: string; pre
   ).all<{ id: number; status: string; pregledao: string | null }>();
   return results;
 }
+
+/** Broj kandidata za pregled (svi stilovi), uz isti filtar kao `kandidati`: gumb „Pregledaj N” na Katalogu. */
+export async function brojKandidata(vidi: string | null): Promise<number> {
+  const r = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM slike s JOIN rijeci r ON r.id = s.rijec_id
+     WHERE s.status = 'kandidat' AND r.aktivna = 1 AND (?1 IS NULL OR ${ZATRAZIO_SLIKE} = ?1)`,
+  ).bind(vidi).first<{ n: number }>();
+  return r?.n ?? 0;
+}
