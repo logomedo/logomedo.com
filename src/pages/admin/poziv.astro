@@ -10,13 +10,22 @@ import Ikona from "../../components/Ikona.astro";
   <div class="prijava">
     <div id="poziv" class="ploha okvir" data-stanje="ucitavanje">
       <Marka href="/" dodatak="admin" />
-      <h1>Dobrodošli, <span id="poziv-ime">…</span></h1>
-      <p class="blijedo">Pozvani ste u LogoMedo admin kao <b id="poziv-email"></b>. Prijava je passkeyem: otiskom prsta,
-        licem ili PIN-om uređaja, bez lozinke.</p>
-      <input id="poziv-oznaka" type="text" name="label" placeholder="Naziv uređaja, npr. iPhone (nije obavezno)" maxlength="80" />
-      <button id="poziv-passkey" class="gumb glavni puno" type="button" disabled><Ikona ime="kljuc" /> Napravi passkey</button>
-      <p id="msg" hidden></p>
-      <p class="sitno blijedo">Link vrijedi 72 sata i samo jednom. Ako ne radi, zatražite novi.</p>
+      <div class="dobrodoslica">
+        <h1>Dobrodošli, <span id="poziv-ime">…</span></h1>
+        <p class="blijedo">Pozvani ste u LogoMedo admin kao <b id="poziv-email"></b>. Prijava je passkeyem: otiskom prsta,
+          licem ili PIN-om uređaja, bez lozinke.</p>
+        <input id="poziv-oznaka" type="text" name="label" placeholder="Naziv uređaja, npr. iPhone (nije obavezno)" maxlength="80" />
+        <button id="poziv-passkey" class="gumb glavni puno" type="button" disabled><Ikona ime="kljuc" /> Napravi passkey</button>
+        <p id="msg" hidden></p>
+        <p class="sitno blijedo">Link vrijedi 72 sata i samo jednom. Ako ne radi, zatražite novi.</p>
+      </div>
+      <div class="nevazeca" role="alert">
+        <span class="znak"><Ikona ime="upozorenje" velicina={26} /></span>
+        <h1 id="greska-naslov">Pozivnica više ne vrijedi</h1>
+        <p id="greska-tekst" class="blijedo">Link je istekao, već je iskorišten ili je pozivnica opozvana.</p>
+        <p class="savjet">Javite se osobi koja vam je poslala link i zatražite novu pozivnicu. Svaki link vrijedi 72 sata i samo jednom.</p>
+        <a class="gumb puno" href="/">Na početnu stranicu</a>
+      </div>
     </div>
   </div>
 </AdminOkvir>
@@ -28,6 +37,14 @@ import Ikona from "../../components/Ikona.astro";
   p { margin: 0 0 8px; }
   .puno { width: 100%; min-height: 46px; }
   #msg { color: var(--greska); }
-  [data-stanje="greska"] #poziv-passkey, [data-stanje="greska"] #poziv-oznaka { display: none; }
+  .dobrodoslica { display: flex; flex-direction: column; gap: 10px; }
+  .nevazeca { display: none; flex-direction: column; align-items: center; text-align: center; gap: 6px; margin-top: 8px; }
+  [data-stanje="greska"] .dobrodoslica { display: none; }
+  [data-stanje="greska"] .nevazeca { display: flex; }
+  [data-stanje="ucitavanje"] .dobrodoslica { visibility: hidden; }
+  .znak { display: grid; place-items: center; width: 56px; height: 56px; margin-top: 18px; border-radius: 50%;
+    background: var(--greska-blago); color: var(--greska); }
+  .nevazeca h1 { margin-top: 8px; }
+  .savjet { margin: 8px 0 12px; padding: 12px 14px; border-radius: 12px; background: var(--povrsina-2); font-size: .9rem; text-align: left; }
   .sitno { font-size: .8rem; margin-top: 8px; }
 </style>

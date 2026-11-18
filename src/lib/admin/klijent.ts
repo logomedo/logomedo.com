@@ -94,11 +94,14 @@ if (poziv) {
     poziv.dataset.stanje = "spremno";
     gumb.disabled = false;
   };
+  // Server namjerno ne kaže razlog (istekla, iskorištena, opozvana); tekst je u poziv.astro.
+  const nevazeca = () => { poziv.dataset.stanje = "greska"; };
   if (!token) {
-    poziv.dataset.stanje = "greska";
-    show("Link nije potpun: otvori cijeli link iz poruke.");
+    nevazeca();
+    document.getElementById("greska-naslov")!.textContent = "Link nije potpun";
+    document.getElementById("greska-tekst")!.textContent = "Otvorite cijeli link iz poruke, zajedno s dijelom iza znaka #.";
   } else {
-    ucitaj().catch((e) => { poziv.dataset.stanje = "greska"; show((e as Error).message); });
+    ucitaj().catch(nevazeca);
   }
   gumb.addEventListener("click", async () => {
     if (!opcije) return;
@@ -113,7 +116,7 @@ if (poziv) {
       show("Passkey nije upisan: " + (e as Error).message);
       // Izazov je potrošen ili je istekao: nove opcije za sljedeći pokušaj.
       opcije = null;
-      ucitaj().catch((e2) => { poziv.dataset.stanje = "greska"; show((e2 as Error).message); });
+      ucitaj().catch(nevazeca);
     }
   });
 }
