@@ -458,3 +458,13 @@ Katalog (`rijeci`, „Slike riječi”) je popis dopuštenih riječi: za njih se
 - Prijedlozi novih riječi (Claude, popis s kvačicama) prvo čitaju ovaj popis i preskaču riječi s njega;
   riječi koje logoped odznači na prijedlogu upisuju se ovdje s njezinim komentarom kao razlogom.
 - Logika: `src/lib/nepozeljne.ts`, testovi `src/lib/nepozeljne.test.ts`. Popis nije u Aktivnosti (nema „Poništi”).
+
+### Prvi krug prijedloga (18. 11. 2026. navečer)
+
+Popis od ~90 riječi za glasove kojih u katalogu ima malo (DŽ, Đ, H, F, Ć, Ž; NJ, LJ, J, N na početku; B, M na kraju)
+logopedica je pregledala u artifactu s kvačicama. U katalog ih je ušlo 75 (`rijeci.dodao = 'claude: prijedlozi 18.11.'`,
+387 veza glas–pozicija s `potvrdeno = 1`), uz DŽEM i DŽUDO dodane ranije kao proba. Generira se 150 slika (ilustracija
+i bojanka), oko $6 i 2 h na Vertexu. Kratki engleski opis za sliku dobile su riječi koje bi model mogao krivo shvatiti
+(FEN, DUH, GRB, ŠEF, NJIHALJKA…), a mogu se mijenjati na stranici riječi. Odbijeno je 14 riječi, među njima sve umanjenice
+(zečić, ptić, konjić…). One su na popisu nepoželjnih bez razloga, jer ga logopedica nije upisala.
+Riječi su upisane izravno u D1, ne kroz `/admin/nova-rijec`, pa nisu u Aktivnosti i ne troše kvotu.
