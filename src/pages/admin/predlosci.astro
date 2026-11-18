@@ -3,6 +3,7 @@ import AdminOkvir from "../../components/AdminOkvir.astro";
 import { logopedskiMod, podrucja as svaPodrucja, zaListic } from "../../lib/zadaci/baza";
 import { BROJEVI_LISTICA, jePoGlasovima, ZADANO_SLIKA } from "../../lib/zadaci/listic-glas";
 import { ODNOSI, ODNOSI_POPIS, odnosiZa, type Odnos } from "../../lib/zadaci/odnosi";
+import { PODJELE, poPodjeli, type Podjela } from "../../lib/podjele-glasova";
 import { ABECEDA, BROJ_STAVKI, PRAVILA_RAZVRSTAVANJA, VRSTE, type PraviloRazvrstavanja, type Vrsta } from "../../lib/zadaci/vrste";
 
 const [podrucja, listic, mod] = await Promise.all([svaPodrucja(), zaListic(), logopedskiMod(Astro.locals.admin!.email)]);
@@ -109,8 +110,19 @@ const shema: Record<Vrsta, string> = {
         </label>
         <fieldset>
           <legend><span data-za="listic slogovi odabir povezivanje uljez">Riječ ima glas <span class="blijedo">(jedan ili više; bez odabira iz cijelog kataloga)</span></span><span data-za="prvi_glas">Glasovi na kolu</span><span data-za="koje_slovo">Glasovi koje dijete razlikuje</span><span data-za="pozicija_glasa">Glas <span class="blijedo">(jedan)</span></span></legend>
-          <div class="cipovi">
-            {listic.glasovi.map((g) => <label class="cip"><input type="checkbox" name="glas" value={g.id} /><span>{g.oznaka}</span></label>)}
+          {/* Glasovi po podjeli (zadano mjesto tvorbe, kao katalog); naziv skupine odabere ili odznači cijelu skupinu. */}
+          <label class="podjela">Složi po
+            <select data-podjela>{(Object.keys(PODJELE) as Podjela[]).map((p) => <option value={p}>{PODJELE[p].naziv}</option>)}</select>
+          </label>
+          <div class="skupine-glasova">
+            {poPodjeli(listic.glasovi, "mjesto").map(({ skupina, glasovi }) => (
+              <div class="skupina-glasova" data-skupina={skupina.kod}>
+                <button type="button" class="naziv-skupine" title={`Odaberi sve: ${skupina.glasovi.join(", ")}`}>{skupina.naziv}</button>
+                <div class="cipovi">
+                  {glasovi.map((g) => <label class="cip"><input type="checkbox" name="glas" value={g.id} /><span>{g.oznaka}</span></label>)}
+                </div>
+              </div>
+            ))}
           </div>
         </fieldset>
         <label class="pozicija" data-za="listic slogovi odabir povezivanje uljez">Pozicija
@@ -154,6 +166,7 @@ const shema: Record<Vrsta, string> = {
   // a ispod piše koliko će građe biti (isto pravilo kao poslužitelj).
   import { brojSlika, moguce, naslovListica, poPozicijama, poPrvomGlasu, rasporedOdnosa, type RijecGlasova, type VrstaPoGlasovima } from "../../lib/zadaci/listic-glas";
   import { ABECEDA, brojStavki, KOJE_SLOVO_MAX, MAX_KARTICA_LISTICA } from "../../lib/zadaci/vrste";
+  import { PODJELE, poPodjeli, type Podjela } from "../../lib/podjele-glasova";
   import { ODNOSI, type Odnos } from "../../lib/zadaci/odnosi";
   // Gumb odnosa (Isti prvi glas…) šalje i podpodručje tog odnosa.
   document.querySelectorAll<HTMLButtonElement>("button[data-podrucje-gumba]").forEach((b) => b.addEventListener("click", () => {
@@ -242,6 +255,8 @@ const shema: Record<Vrsta, string> = {
         forma.querySelector("[data-broj-naziv]")!.textContent = sKartice.closest("label")!.firstChild!.textContent!.trim();
       }
       if (b.dataset.odnos) { (forma.querySelector("select[data-odnos]") as unknown as HTMLSelectElement).value = b.dataset.odnos; pozicijaOdnosa(); }
+      // Gdje je glas bira jedan glas: naziv skupine tada ne odabire ništa.
+      skupineEl.classList.toggle("jedan", vrsta === "pozicija_glasa");
       forma.querySelectorAll<HTMLElement>("[data-za]").forEach((el) => {
         const vidi = el.dataset.za!.split(" ").includes(vrsta);
         el.hidden = !vidi;
@@ -264,6 +279,33 @@ const shema: Record<Vrsta, string> = {
       poz.value = POZICIJA_ODNOSA[o] ?? "";
     }
     forma.querySelector("select[data-odnos]")?.addEventListener("change", pozicijaOdnosa);
+    // Skupine glasova: prekidač podjele preslaže čipove (pamti se u pregledniku), naziv skupine odabere sve u njoj.
+    const skupineEl = forma.querySelector(".skupine-glasova") as HTMLElement;
+    const cipovi = new Map([...forma.querySelectorAll<HTMLLabelElement>(".skupine-glasova .cip")].map((c) => [c.querySelector("span")!.textContent!, c]));
+    const izborPodjele = forma.querySelector("select[data-podjela]") as unknown as HTMLSelectElement;
+    const sloziCipove = (p: Podjela) => {
+      skupineEl.replaceChildren(...poPodjeli([...cipovi.keys()].map((oznaka) => ({ oznaka })), p).map(({ skupina, glasovi }) => {
+        const div = document.createElement("div");
+        div.className = "skupina-glasova";
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "naziv-skupine"; b.textContent = skupina.naziv; b.title = `Odaberi sve: ${skupina.glasovi.join(", ")}`;
+        const red = document.createElement("div");
+        red.className = "cipovi";
+        for (const g of glasovi) red.appendChild(cipovi.get(g.oznaka)!);
+        div.appendChild(b); div.appendChild(red);
+        return div;
+      }));
+    };
+    try { const p = localStorage.getItem("predlosci-podjela"); if (p && p in PODJELE && p !== "mjesto") { izborPodjele.value = p; sloziCipove(p as Podjela); } } catch {}
+    izborPodjele.addEventListener("change", () => { sloziCipove(izborPodjele.value as Podjela); try { localStorage.setItem("predlosci-podjela", izborPodjele.value); } catch {} });
+    skupineEl.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>(".naziv-skupine");
+      if (!b || vrsta === "pozicija_glasa") return;
+      const sve = [...b.parentElement!.querySelectorAll<HTMLInputElement>("input[name=glas]")];
+      const ukljuci = !sve.every((x) => x.checked);
+      sve.forEach((x) => { x.checked = ukljuci; });
+      osvjezi();
+    });
     // Gdje je glas: novi glas zamijeni prethodni (ide prije osvjezi).
     forma.addEventListener("change", (e) => {
       const t = e.target as HTMLInputElement;
@@ -286,6 +328,19 @@ const shema: Record<Vrsta, string> = {
   .glas legend { padding: 0; margin-bottom: 6px; font-size: .8rem; font-weight: 650; color: var(--tinta); }
   .glas legend .blijedo { font-weight: 500; }
   .cipovi { display: flex; flex-wrap: wrap; gap: 6px; }
+  .podjela { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; font-size: .84rem; color: var(--blijedo); }
+  .dijalog .podjela select { width: auto; flex: 0 0 auto; }
+  /* Skupine i čipove preslaže JS (bez Astro scopea), pa su selektori ispod .skupine-glasova globalni. */
+  .skupine-glasova { display: grid; gap: 8px; }
+  .skupine-glasova :global(.cipovi) { display: flex; flex-wrap: wrap; gap: 6px; }
+  .skupine-glasova :global(.cip) { margin: 0; cursor: pointer; }
+  .skupine-glasova :global(.cip input) { position: absolute; opacity: 0; pointer-events: none; }
+  .skupine-glasova :global(.skupina-glasova) { display: grid; grid-template-columns: 112px 1fr; align-items: start; gap: 8px; }
+  .skupine-glasova :global(.naziv-skupine) { justify-self: start; margin-top: 7px; padding: 0; border: 0; background: none; color: var(--blijedo); font: inherit; font-size: .8rem;
+    font-weight: 650; cursor: pointer; text-align: left; text-decoration: underline dotted; text-underline-offset: 3px; }
+  .skupine-glasova :global(.naziv-skupine:hover) { color: var(--tinta); }
+  .skupine-glasova.jedan :global(.naziv-skupine) { cursor: default; text-decoration: none; }
+  @media (max-width: 520px) { .skupine-glasova :global(.skupina-glasova) { grid-template-columns: 1fr; gap: 4px; } .skupine-glasova :global(.naziv-skupine) { margin-top: 0; } }
   .cip { margin: 0; cursor: pointer; }
   .cip input { position: absolute; opacity: 0; pointer-events: none; }
   .cip span { display: inline-grid; place-items: center; min-width: 38px; height: 34px; padding: 0 9px; border: 1px solid var(--rub-jak); border-radius: 9px;

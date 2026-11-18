@@ -38,11 +38,13 @@ Preostale tri su legacy odluke ili greške (KRASTAVAC pod C-medijalno).
 
 Katalog ima svih 25 suglasnika (do tada 13 iz starog appa: C, S, Z, Č, Š, Ž, L, R, K, Đ, DŽ, G, M). Dodani
 B, P, V, F, T, D, N, J, LJ, NJ, Ć, H skriptom `scripts/glasovi-dopuni.ts --remote --izvedi` (kao „Novi glas”:
-bez kategorije, bez pozicije „skupina”, veze iz pravopisa s `potvrdeno = 0`; samo dodaje). Samoglasnika nema.
+bez kategorije, bez pozicije „skupina”, veze iz pravopisa s `potvrdeno = 0`; samo dodaje). Isto popodne i
+samoglasnici A, E, I, O, U: u svakoj podjeli su zasebna skupina „Samoglasnici” na kraju, pa katalog ima 30 mapa.
 
 Početna stranica kataloga slaže mape glasova po podjeli iz `src/lib/podjele-glasova.ts` (fonetika, u kodu, ne u
 bazi): **mjesto tvorbe** (zadano: bilabijali, labiodentali, dentali, alveolari, palatali, velari), **način tvorbe**
-(okluzivi, frikativi, afrikate, sonanti) i **zvučnost** (zvučni, bezvučni, sonanti bez para). Izbor je `?podjela=`
+(okluzivi, frikativi, afrikate, sonanti) i **zvučnost** (zvučni, bezvučni, sonanti bez para). Isti prekidač „Složi po” je
+u dijalogu „Po glasovima…” u Predlošcima; klik na naziv skupine odabere (ili odznači) sve njezine glasove. Izbor je `?podjela=`
 i pamti se u kolačiću `katalog_podjela`. Stara kategorija `glasovi.skupina` (sibilanti, šuštavci…) ostaje u bazi
 i u obrascu „Novi glas”, ali je katalog i podnaslov stranice glasa više ne pokazuju (podnaslov: „Dentali · frikativi · bezvučni”, `skupineGlasa`).
 

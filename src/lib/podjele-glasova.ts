@@ -5,6 +5,9 @@
 export type Podjela = "mjesto" | "nacin" | "zvucnost";
 export interface Skupina { kod: string; naziv: string; opis: string; glasovi: string[] }
 
+/** Samoglasnici su u svakoj podjeli zasebna skupina, na kraju. */
+const SAMOGLASNICI: Skupina = { kod: "samoglasnici", naziv: "Samoglasnici", opis: "", glasovi: ["A", "E", "I", "O", "U"] };
+
 export const PODJELE: Record<Podjela, { naziv: string; skupine: Skupina[] }> = {
   mjesto: {
     naziv: "Mjesto tvorbe",
@@ -15,6 +18,7 @@ export const PODJELE: Record<Podjela, { naziv: string; skupine: Skupina[] }> = {
       { kod: "alveolari", naziv: "Alveolari", opis: "desni", glasovi: ["L", "R"] },
       { kod: "palatali", naziv: "Palatali", opis: "nepčani", glasovi: ["J", "LJ", "NJ", "Š", "Ž", "Č", "Ć", "DŽ", "Đ"] },
       { kod: "velari", naziv: "Velari", opis: "jedreni", glasovi: ["K", "G", "H"] },
+      SAMOGLASNICI,
     ],
   },
   nacin: {
@@ -24,6 +28,7 @@ export const PODJELE: Record<Podjela, { naziv: string; skupine: Skupina[] }> = {
       { kod: "frikativi", naziv: "Frikativi", opis: "tjesnačni", glasovi: ["S", "Z", "Š", "Ž", "F", "H"] },
       { kod: "afrikate", naziv: "Afrikate", opis: "sliveni", glasovi: ["C", "Č", "Ć", "DŽ", "Đ"] },
       { kod: "sonanti", naziv: "Sonanti", opis: "", glasovi: ["M", "N", "NJ", "L", "LJ", "R", "V", "J"] },
+      SAMOGLASNICI,
     ],
   },
   zvucnost: {
@@ -33,6 +38,7 @@ export const PODJELE: Record<Podjela, { naziv: string; skupine: Skupina[] }> = {
       { kod: "bezvucni", naziv: "Bezvučni", opis: "", glasovi: ["P", "T", "K", "S", "Š", "C", "Č", "Ć", "F", "H"] },
       // Sonanti su zvučni, ali nemaju bezvučni par, pa nisu ni u jednoj od dviju skupina.
       { kod: "sonanti", naziv: "Sonanti", opis: "bez bezvučnog para", glasovi: ["M", "N", "NJ", "L", "LJ", "R", "V", "J"] },
+      SAMOGLASNICI,
     ],
   },
 };
@@ -40,12 +46,13 @@ export const PODJELE: Record<Podjela, { naziv: string; skupine: Skupina[] }> = {
 export const PODJELA_ZADANO: Podjela = "mjesto";
 export const jePodjela = (x: unknown): x is Podjela => x === "mjesto" || x === "nacin" || x === "zvucnost";
 
-/** Svi suglasnici, redom po mjestu tvorbe (25). */
-export const SUGLASNICI = PODJELE.mjesto.skupine.flatMap((s) => s.glasovi);
+/** Svih 30 glasova redom po mjestu tvorbe (25 suglasnika pa 5 samoglasnika). */
+export const SVI_GLASOVI = PODJELE.mjesto.skupine.flatMap((s) => s.glasovi);
+export const SUGLASNICI = SVI_GLASOVI.filter((g) => !SAMOGLASNICI.glasovi.includes(g));
 
 /**
  * Glasovi kataloga složeni po podjeli: skupine redom kako su zadane, glas unutar skupine redom iz popisa.
- * Glas kojeg nema ni u jednoj skupini (samoglasnik) ide u „Ostalo” na kraju; prazne skupine se ne vraćaju.
+ * Glas kojeg nema ni u jednoj skupini ide u „Ostalo” na kraju; prazne skupine se ne vraćaju.
  */
 export function poPodjeli<T extends { oznaka: string }>(glasovi: T[], podjela: Podjela): { skupina: Skupina; glasovi: T[] }[] {
   const po = new Map(glasovi.map((g) => [g.oznaka, g]));
@@ -56,7 +63,7 @@ export function poPodjeli<T extends { oznaka: string }>(glasovi: T[], podjela: P
   return out.filter((x) => x.glasovi.length);
 }
 
-/** Skupine glasa u svakoj podjeli: { mjesto: Dentali, nacin: Frikativi, zvucnost: Bezvučni }; samoglasnik nema nijednu. */
+/** Skupine glasa u svakoj podjeli: { mjesto: Dentali, nacin: Frikativi, zvucnost: Bezvučni }. */
 export function skupineGlasa(oznaka: string): Partial<Record<Podjela, Skupina>> {
   const out: Partial<Record<Podjela, Skupina>> = {};
   for (const [p, d] of Object.entries(PODJELE) as [Podjela, (typeof PODJELE)[Podjela]][]) {
@@ -64,4 +71,11 @@ export function skupineGlasa(oznaka: string): Partial<Record<Podjela, Skupina>> 
     if (s) out[p] = s;
   }
   return out;
+}
+
+/** Podnaslov glasa: „Dentali · frikativi · bezvučni”, „Alveolari · sonanti”, „Samoglasnici” (bez ponavljanja). */
+export function opisGlasa(oznaka: string): string {
+  const pod = skupineGlasa(oznaka);
+  const imena = [pod.mjesto, pod.nacin, pod.zvucnost].filter((x): x is Skupina => !!x).map((x) => x.naziv);
+  return [...new Set(imena)].map((n, i) => (i ? n.toLocaleLowerCase("hr") : n)).join(" · ");
 }

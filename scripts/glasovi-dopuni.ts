@@ -1,4 +1,4 @@
-// Dopuni katalog suglasnicima koji nedostaju (podjele-glasova.ts: 25 suglasnika), kao „Novi glas”
+// Dopuni katalog glasovima koji nedostaju (podjele-glasova.ts: 25 suglasnika i 5 samoglasnika), kao „Novi glas”
 // (src/pages/admin/api/novi-glas.ts): glas bez kategorije i bez pozicije „skupina”, a sve riječi koje ga imaju
 // dobiju ga s pozicijama iz pravopisa (`potvrdeno = 0`, logoped potvrđuje na stranici glasa).
 // Samo dodaje (INSERT OR IGNORE); postojeće glasove i veze ne dira.
@@ -10,7 +10,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pojave, slug } from "../src/lib/fonemi.ts";
-import { SUGLASNICI } from "../src/lib/podjele-glasova.ts";
+import { SVI_GLASOVI } from "../src/lib/podjele-glasova.ts";
 
 const gdje = process.argv.includes("--remote") ? "--remote" : process.argv.includes("--local") ? "--local" : null;
 if (!gdje) throw new Error("--local ili --remote");
@@ -20,8 +20,8 @@ const upit = <T>(sql: string): T[] =>
   JSON.parse(execFileSync("npx", ["wrangler", "d1", "execute", "logomedo", gdje, "--json", "--command", sql], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }))[0].results;
 
 const postoje = new Set(upit<{ oznaka: string }>("SELECT oznaka FROM glasovi").map((g) => g.oznaka));
-const novi = SUGLASNICI.filter((g) => !postoje.has(g));
-if (!novi.length) { console.log("Svi suglasnici su već u katalogu."); process.exit(0); }
+const novi = SVI_GLASOVI.filter((g) => !postoje.has(g));
+if (!novi.length) { console.log("Svi glasovi su već u katalogu."); process.exit(0); }
 const rijeci = upit<{ id: number; rijec: string }>("SELECT id, rijec FROM rijeci WHERE vrsta = 'rijec'");
 
 const q = (s: string) => `'${s.replace(/'/g, "''")}'`;
