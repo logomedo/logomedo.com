@@ -701,5 +701,5 @@ dodirne ono koje je čulo; krivo se trese i glas se ponovi. Stavka = ekran = okv
   poziciju), dodir slike izgovori riječ. Papir: slike u mreži, ispod svake tri prazna kruga.
 - Ocjena: prvi dodir po slici (`{stavka: indeks slike, odabrano: 0|1|2}`).
 
-Predlošci: kartice su skrivene (`U_IZRADI`) dok papir nije gotov i dok migracija nije na produkciji.
+Papir (PDF, HTML ispis, A4 pregled): `razbacanaSlova` u `slusanje.ts`, `rasporedKojegSlova` i `rasporedPozicije` u `pdf/model.ts`.
 „Po glasovima…” za ove dvije vrste još nema (generator već prima `slova`).

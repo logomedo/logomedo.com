@@ -509,7 +509,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const uho = zvucnikNiza(() => [glas], "cuj-glas");
     const omjer = innerWidth > innerHeight ? 1.9 : 0.9;
     const { mjesta, stupaca, redova } = razbaci(e.stavka.ponudeno.length, e.kljuc, omjer);
-    const polje = h("div", { class: "slova-polje", style: `--omjer:${omjer};--cel:${Math.min(100 / stupaca, (100 / redova) * omjer)}` },
+    const polje = h("div", { class: "slova-polje", style: `--omjer:${omjer};--cel:${Math.min(100 / stupaca, (100 / redova) / omjer)}` },
       ...e.stavka.ponudeno.map((sl, i) => {
         const m = mjesta[i];
         const b = h("button", { type: "button", class: "razbacano", style: `left:${m.x * 100}%;top:${m.y * 100}%;--kut:${m.kut}deg;--boja:${BOJE_SLOVA[m.boja]}`, "aria-label": sl },

@@ -540,7 +540,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   /** Razbacana slova kao u igri i na papiru (isti `razbaci`), traženo slovo istaknuto. */
   function poljeSlova(st: KojeSlovo["stavke"][0], i: number, velika: KojeSlovo["slova"], kl = "z-slova-polje", istakni = true): HTMLElement {
     const { mjesta, stupaca, redova } = razbaci(st.ponudeno.length, `${i}|${st.ponudeno.join(",")}`, 1.6);
-    return h("div", { class: kl, style: `--cel:${Math.min(100 / stupaca, (100 / redova) * 1.6)}` },
+    return h("div", { class: kl, style: `--cel:${Math.min(100 / stupaca, (100 / redova) / 1.6)}` },
       ...st.ponudeno.map((sl, j) => h("span", { class: `z-razbacano${istakni && sl === st.glas ? " on" : ""}`, style: `left:${mjesta[j].x * 100}%;top:${mjesta[j].y * 100}%;--kut:${mjesta[j].kut}deg` }, prikazSlova(sl, velika))));
   }
 
