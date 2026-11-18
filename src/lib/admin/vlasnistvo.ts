@@ -19,3 +19,12 @@ export function autorFiltar(s: Pick<Tko, "uloga" | "korisnikId">): AutorFiltar {
 export function aktivnostFiltar(s: Pick<Tko, "uloga" | "email">): string | null {
   return s.uloga === "superadmin" ? null : s.email;
 }
+
+/**
+ * Filtar za pregled slika i izgovora: null = sve (superadmin bez odabira), e-mail = samo ono što je
+ * taj korisnik poslao. Logoped uvijek vidi samo svoje; superadmin može suziti na jednog korisnika.
+ */
+export function pregledFiltar(s: Pick<Tko, "uloga" | "email">, korisnik?: string | null): string | null {
+  if (s.uloga === "superadmin") return korisnik?.trim().toLowerCase() || null;
+  return s.email.trim().toLowerCase();
+}

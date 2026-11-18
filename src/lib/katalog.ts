@@ -1,6 +1,7 @@
 // Upiti kataloga za admin. Svi brojevi su po stilu (zasad samo „bojanka”).
 import { env } from "cloudflare:workers";
 import type { Pozicija } from "./fonemi";
+import { zatrazioSlike } from "./zatrazio";
 
 export interface Glas { id: number; oznaka: string; slug: string; skupina: string | null; skupine: number }
 export interface Stil { id: number; kod: string; naziv: string; predlozak: string; model: string }
@@ -19,6 +20,8 @@ export interface Slika {
   prompt: string | null; model: string | null; izvor: string; created_at: string; pregledao: string | null; r2_kljuc: string;
   /** Samo iz `rijec()`: kod i naziv stila slike. */
   stil?: string; stil_naziv?: string;
+  /** Samo iz `rijec()`: tko je sliku poslao (e-mail malim slovima), null = nepoznato. */
+  zatrazio?: string | null;
 }
 
 export const DB = () => env.DB;
@@ -99,7 +102,7 @@ export async function rijec(slug: string) {
     ).bind(r.id),
     DB().prepare(
       `SELECT x.id, x.rijec_id, x.status, x.razlog, x.prompt, x.model, x.izvor, x.created_at, x.pregledao, x.r2_kljuc,
-         st.kod AS stil, st.naziv AS stil_naziv
+         st.kod AS stil, st.naziv AS stil_naziv, ${zatrazioSlike("x")} AS zatrazio
        FROM slike x JOIN stilovi st ON st.id = x.stil_id
        WHERE x.rijec_id = ? ORDER BY CASE x.status WHEN 'odobrena' THEN 0 WHEN 'kandidat' THEN 1 ELSE 2 END, x.id DESC`,
     ).bind(r.id),

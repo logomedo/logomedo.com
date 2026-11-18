@@ -9,6 +9,8 @@ import { izgovorZa, kljucZvuka, naciniZa, prolazi, slicnost } from "./zvukovi-te
 import { glasIzKljuca, jeKljucGlasa, kljucGlasa } from "./zadaci/slusanje";
 import { javniUrl, ocistiCache } from "./generiranje";
 import { batchSKvotom, platitelj, type Kolicina } from "./kvota";
+import { ZATRAZIO_ZVUKA } from "./zatrazio";
+import { adminEmails } from "./admin/sesija";
 
 /** TTS poziva po poslu: STT razlika = još jedan pokušaj, zadnji ide čovjeku s oznakom „razlika”. */
 export const MAX_POKUSAJA = 3;
@@ -220,21 +222,29 @@ async function zavrsi(posaoId: number, zvukId: number) {
 export interface Zvuk {
   id: number; kljuc: string; izgovor: string; status: string; provjera: string; prijepis: string | null; slicnost: number | null;
   razlog: string | null; bez_ponavljanja: number; pregledao: string | null; model: string; nacin: string | null; glas_id: string; created_at: string;
+  /** Tko je izgovor poslao na snimanje (e-mail malim slovima); null = nepoznato. */
+  zatrazio: string | null;
 }
-const STUPCI = "id, kljuc, izgovor, status, provjera, prijepis, slicnost, razlog, bez_ponavljanja, pregledao, model, nacin, glas_id, created_at";
+const STUPCI = `z.id, z.kljuc, z.izgovor, z.status, z.provjera, z.prijepis, z.slicnost, z.razlog, z.bez_ponavljanja, z.pregledao, z.model, z.nacin,
+  z.glas_id, z.created_at, ${ZATRAZIO_ZVUKA} AS zatrazio`;
+/** Uvjet nad `zvukovi z` za filtar pregleda (`?` = e-mail ili null za sve), dvaput isti argument. */
+const VIDI_Z = `(? IS NULL OR ${ZATRAZIO_ZVUKA} = ?)`;
+const VIDI_Q = "(? IS NULL OR lower(q.zatrazio) = ?)";
 
 /** Kartica na /admin/zvukovi: jedan tekst, njegove snimke i je li nova u izradi. */
 export interface Skupina { kljuc: string; izgovor: string; snimke: Zvuk[]; uIzradi: boolean; zadnjeOdbijanje: Zvuk | null }
 export type TabIzgovora = "ceka" | "odobreno" | "odbijeno" | "greske";
 
-export async function brojeviIzgovora(): Promise<Record<TabIzgovora, number>> {
+/** `vidi`: null = sve (superadmin), e-mail = samo izgovori koje je taj korisnik poslao. */
+export async function brojeviIzgovora(vidi: string | null): Promise<Record<TabIzgovora, number>> {
   const r = await env.DB.prepare(
     `SELECT
-       (SELECT COUNT(*) FROM (SELECT kljuc FROM zvukovi WHERE status = 'kandidat' UNION SELECT kljuc FROM zvuk_generiranja WHERE status IN ('ceka', 'radi'))) AS ceka,
-       (SELECT COUNT(*) FROM zvukovi WHERE status = 'odobren' AND model != 'snimka') AS odobreno,
-       (SELECT COUNT(*) FROM (${ODBIJENI_KLJUCEVI})) AS odbijeno,
-       (SELECT COUNT(*) FROM zvuk_generiranja WHERE status = 'greska') AS greske`,
-  ).first<Record<TabIzgovora, number>>();
+       (SELECT COUNT(*) FROM (SELECT z.kljuc FROM zvukovi z WHERE z.status = 'kandidat' AND ${VIDI_Z}
+          UNION SELECT q.kljuc FROM zvuk_generiranja q WHERE q.status IN ('ceka', 'radi') AND ${VIDI_Q})) AS ceka,
+       (SELECT COUNT(*) FROM zvukovi z WHERE z.status = 'odobren' AND z.model != 'snimka' AND ${VIDI_Z}) AS odobreno,
+       (SELECT COUNT(*) FROM zvukovi z WHERE z.id IN (SELECT id FROM (${ODBIJENI_KLJUCEVI})) AND ${VIDI_Z}) AS odbijeno,
+       (SELECT COUNT(*) FROM zvuk_generiranja q WHERE q.status = 'greska' AND ${VIDI_Q}) AS greske`,
+  ).bind(vidi, vidi, vidi, vidi, vidi, vidi, vidi, vidi, vidi, vidi).first<Record<TabIzgovora, number>>();
   return r ?? { ceka: 0, odobreno: 0, odbijeno: 0, greske: 0 };
 }
 
@@ -247,13 +257,13 @@ const ODBIJENI_KLJUCEVI = `SELECT kljuc, MAX(id) AS id FROM zvukovi z WHERE mode
  * Kartice za tab. „Čeka”: tekstovi s kandidatima ili poslom u izradi, poredani po prvoj snimci
  * teksta (ne zadnjoj), pa odbijena i ponovno snimljena riječ ostaje na istom mjestu.
  */
-export async function skupineIzgovora(tab: TabIzgovora): Promise<Skupina[]> {
+export async function skupineIzgovora(tab: TabIzgovora, vidi: string | null): Promise<Skupina[]> {
   const db = env.DB;
   if (tab === "ceka") {
     const [snimke, poslovi, odbijene, prvi] = await db.batch([
-      db.prepare(`SELECT ${STUPCI} FROM zvukovi WHERE status = 'kandidat' ORDER BY id`),
-      db.prepare("SELECT kljuc, izgovor FROM zvuk_generiranja WHERE status IN ('ceka', 'radi') ORDER BY id"),
-      db.prepare(`SELECT ${STUPCI} FROM zvukovi WHERE id IN (SELECT MAX(id) FROM zvukovi WHERE status = 'odbijen' AND pregledao != 'automatski' GROUP BY kljuc)`),
+      db.prepare(`SELECT ${STUPCI} FROM zvukovi z WHERE z.status = 'kandidat' AND ${VIDI_Z} ORDER BY z.id`).bind(vidi, vidi),
+      db.prepare(`SELECT q.kljuc, q.izgovor FROM zvuk_generiranja q WHERE q.status IN ('ceka', 'radi') AND ${VIDI_Q} ORDER BY q.id`).bind(vidi, vidi),
+      db.prepare(`SELECT ${STUPCI} FROM zvukovi z WHERE z.id IN (SELECT MAX(id) FROM zvukovi WHERE status = 'odbijen' AND pregledao != 'automatski' GROUP BY kljuc)`),
       db.prepare("SELECT kljuc, MIN(id) AS id FROM zvukovi GROUP BY kljuc"),
     ]) as [D1Result<Zvuk>, D1Result<{ kljuc: string; izgovor: string }>, D1Result<Zvuk>, D1Result<{ kljuc: string; id: number }>];
     const red = new Map(prvi.results.map((r) => [r.kljuc, r.id]));
@@ -270,9 +280,9 @@ export async function skupineIzgovora(tab: TabIzgovora): Promise<Skupina[]> {
     return [...m.values()].sort((a, b) => (red.get(a.kljuc) ?? Infinity) - (red.get(b.kljuc) ?? Infinity));
   }
   const upit = tab === "odobreno"
-    ? `SELECT ${STUPCI} FROM zvukovi WHERE status = 'odobren' AND model != 'snimka' ORDER BY id DESC LIMIT 400`
-    : `SELECT ${STUPCI} FROM zvukovi WHERE id IN (SELECT id FROM (${ODBIJENI_KLJUCEVI})) ORDER BY id DESC LIMIT 400`;
-  const { results } = await db.prepare(upit).all<Zvuk>();
+    ? `SELECT ${STUPCI} FROM zvukovi z WHERE z.status = 'odobren' AND z.model != 'snimka' AND ${VIDI_Z} ORDER BY z.id DESC LIMIT 400`
+    : `SELECT ${STUPCI} FROM zvukovi z WHERE z.id IN (SELECT id FROM (${ODBIJENI_KLJUCEVI})) AND ${VIDI_Z} ORDER BY z.id DESC LIMIT 400`;
+  const { results } = await db.prepare(upit).bind(vidi, vidi).all<Zvuk>();
   return results.map((z) => ({ kljuc: z.kljuc, izgovor: z.izgovor, snimke: [z], uIzradi: false, zadnjeOdbijanje: null }));
 }
 
@@ -290,8 +300,19 @@ export async function greskeIzgovora(email: string): Promise<GreskaPosla[]> {
  * Odobri: snimka ide na CDN, prijašnja odobrena za isti tekst postaje odbijena („zamijenjena”), a
  * ostali kandidati istog teksta odbijeni („odabrana druga”). Vraća false ako snimka nije kandidat.
  */
+/** Od `ids` ostavi one o kojima `email` smije odlučivati: superadmin sve, ostali samo svoje (`zatrazio`). */
+export async function svojiZvukovi(ids: number[], email: string): Promise<number[]> {
+  const e = email.trim().toLowerCase();
+  if (adminEmails().has(e) || !ids.length) return ids;
+  const { results } = await env.DB.prepare(
+    `SELECT z.id FROM zvukovi z WHERE z.id IN (SELECT value FROM json_each(?)) AND ${ZATRAZIO_ZVUKA} = ?`,
+  ).bind(JSON.stringify(ids), e).all<{ id: number }>();
+  return results.map((r) => r.id);
+}
+
 export async function odobriZvuk(id: number, email: string): Promise<boolean> {
   const db = env.DB;
+  if (!(await svojiZvukovi([id], email)).length) return false;
   const z = await db.prepare("SELECT id, kljuc, status FROM zvukovi WHERE id = ?").bind(id).first<{ id: number; kljuc: string; status: string }>();
   if (!z || z.status !== "kandidat") return false;
   const { results: stari } = await db.prepare("SELECT id, r2_kljuc FROM zvukovi WHERE kljuc = ? AND status = 'odobren'").bind(z.kljuc).all<{ id: number; r2_kljuc: string }>();
@@ -311,8 +332,10 @@ export async function odobriZvuk(id: number, email: string): Promise<boolean> {
  * `ponovo: false` = samo odbij (ElevenLabs neke riječi ne zna izgovoriti; vraća se „Snimi ponovo”
  * na tabu Odbijeno). Vraća broj odbijenih.
  */
-export async function odbijZvukove(ids: number[], email: string, o: { razlog?: string; izgovor?: string; ponovo?: boolean } = {}): Promise<number> {
+export async function odbijZvukove(sviIds: number[], email: string, o: { razlog?: string; izgovor?: string; ponovo?: boolean } = {}): Promise<number> {
   const db = env.DB;
+  const ids = await svojiZvukovi(sviIds, email);
+  if (!ids.length) return 0;
   const odbij = db.prepare(
     `UPDATE zvukovi SET status = 'odbijen', razlog = ?, bez_ponavljanja = ?, pregledao = ?, pregledano_at = datetime('now')
      WHERE id IN (SELECT value FROM json_each(?)) AND status = 'kandidat' RETURNING kljuc, izgovor`,

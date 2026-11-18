@@ -7,13 +7,35 @@
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import { kandidati } from "../../lib/pregled";
+import { pregledFiltar } from "../../lib/admin/vlasnistvo";
+import { imenaKorisnika, posiljateljiNaPregledu } from "../../lib/zatrazio";
 
+// Logoped vidi samo slike koje je sam poslao; superadmin sve, s oznakom tko je poslao i filtrom.
+const admin = Astro.locals.admin!;
+const superadmin = admin.uloga === "superadmin";
 const glas = Astro.url.searchParams.get("glas");
-const results = await kandidati(glas);
+const korisnik = superadmin ? Astro.url.searchParams.get("korisnik") : null;
+const [results, imena, posiljatelji] = await Promise.all([
+  kandidati(glas, pregledFiltar(admin, korisnik)),
+  superadmin ? imenaKorisnika() : Promise.resolve(new Map<string, string>()),
+  superadmin ? posiljateljiNaPregledu() : Promise.resolve([]),
+]);
+const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
 ---
 <AdminOkvir naslov="Pregled" aktivno="pregled" puno>
   <>
-    <div class="pregled" id="pregled" data-kandidati={JSON.stringify(results)} data-glas={glas ?? ""} hidden={!results.length}>
+    {superadmin && (zaFiltar.length > 0 || korisnik) && (
+      <form class="filtar-korisnika" method="get">
+        {glas && <input type="hidden" name="glas" value={glas} />}
+        <label for="korisnik">Poslao</label>
+        <select id="korisnik" name="korisnik">
+          <option value="">Svi korisnici</option>
+          {zaFiltar.map((p) => <option value={p.email} selected={p.email === korisnik?.toLowerCase()}>{p.ime} ({p.slike})</option>)}
+        </select>
+      </form>
+    )}
+    <div class="pregled" id="pregled" data-kandidati={JSON.stringify(results)} data-glas={glas ?? ""} data-korisnik={korisnik ?? ""}
+      data-imena={superadmin ? JSON.stringify(Object.fromEntries(imena)) : ""} hidden={!results.length}>
       <div class="pozornica">
         <div class="list"><img id="slika" alt="" /></div>
         <div class="usporedba" id="usporedba" hidden>
@@ -24,6 +46,7 @@ const results = await kandidati(glas);
       <aside class="ploca">
         <div class="napredak"><span id="brojac"></span><div class="traka-napretka"><i id="traka"></i></div></div>
         <h1 id="rijec" class="rijec"></h1>
+        {superadmin && <p id="poslao" class="poslao"></p>}
         <p id="pozicije" class="blijedo"></p>
         <p id="opis" class="opis" hidden></p>
         <p id="oblik" class="oblik" hidden></p>
@@ -74,7 +97,9 @@ const results = await kandidati(glas);
     <div class="gotovo" id="gotovo" hidden={results.length > 0}>
       <div class="ploha prazno">
         <h2 id="gotovo-naslov">{results.length ? "Sve pregledano" : "Nema kandidata za pregled"}</h2>
-        <p>Novi kandidati stižu dok runner radi i pojavljuju se ovdje sami.</p>
+        <p>{superadmin
+          ? "Novi kandidati stižu dok runner radi i pojavljuju se ovdje sami."
+          : "Ovdje su samo slike koje si ti poslao na generiranje. Nove se pojavljuju same kad budu gotove."}</p>
         <a class="gumb" href="/admin"><Ikona ime="katalog" /> Katalog</a>
       </div>
     </div>
@@ -83,12 +108,16 @@ const results = await kandidati(glas);
 
 <script>
   type K = { id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; odobrenih: number; pozicije: string;
-    sirina: number | null; visina: number | null; zamjenjuje: number | null; z_sirina: number | null; z_visina: number | null };
+    sirina: number | null; visina: number | null; zamjenjuje: number | null; z_sirina: number | null; z_visina: number | null; zatrazio: string | null };
   type Odluka = { id: number; status: string; pregledao: string | null };
   const el = document.getElementById("pregled")!;
   // `prosli` su već prikazani (odlučeni ili preskočeni) u ovoj kartici; `red` su preostali, red[0] je na ekranu.
   let red: K[] = JSON.parse(el.dataset.kandidati!);
   const glas = el.dataset.glas || "";
+  const korisnik = el.dataset.korisnik || "";
+  const izbor = document.getElementById("korisnik") as HTMLSelectElement | null;
+  izbor?.addEventListener("change", () => izbor.form!.submit());
+  const imena: Record<string, string> = el.dataset.imena ? JSON.parse(el.dataset.imena) : {};
   const ja = (document.querySelector(".tko") as HTMLElement | null)?.title ?? "";
   const prosli = new Set<number>();
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -121,6 +150,8 @@ const results = await kandidati(glas);
       ? "Kvadratna verzija slike desno. Odobri = zamijeni original (on više neće biti u katalogu)."
       : `Slika nije kvadratna (${k.sirina}×${k.visina}).`;
     $("rijec").textContent = k.rijec.toLocaleUpperCase("hr");
+    const poslao = document.getElementById("poslao");
+    if (poslao) poslao.textContent = k.zatrazio ? `Poslao: ${imena[k.zatrazio] ?? k.zatrazio}` : "Poslao: nepoznato";
     $("pozicije").textContent = k.pozicije ?? "";
     $("opis").hidden = !k.opis_za_sliku; $("opis").textContent = k.opis_za_sliku ?? "";
     $("prompt").textContent = k.prompt ?? "";
@@ -244,7 +275,10 @@ const results = await kandidati(glas);
   async function uskladi() {
     if (document.hidden || zauzeto) return;
     try {
-      const r = await fetch(`/admin/api/kandidati${glas ? `?glas=${encodeURIComponent(glas)}` : ""}`, { credentials: "same-origin" });
+      const q = new URLSearchParams();
+      if (glas) q.set("glas", glas);
+      if (korisnik) q.set("korisnik", korisnik);
+      const r = await fetch(`/admin/api/kandidati${q.size ? `?${q}` : ""}`, { credentials: "same-origin" });
       if (!r.ok) return;
       const { kandidati, odluke } = (await r.json()) as { kandidati: K[]; odluke: Odluka[] };
       if (zauzeto) return;
@@ -341,6 +375,10 @@ const results = await kandidati(glas);
 </script>
 
 <style>
+  .filtar-korisnika { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+  .filtar-korisnika label { margin: 0; }
+  .filtar-korisnika select { font: inherit; padding: 6px 10px; border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); }
+  .poslao { margin: -4px 0 6px; font-size: .86rem; font-weight: 600; color: var(--med-tamno); }
   .pregled { display: grid; grid-template-columns: 1fr 380px; min-height: 100vh; }
   .pozornica { position: relative; display: grid; place-items: center; padding: 40px; background:
     radial-gradient(circle at 50% 40%, var(--povrsina) 0, var(--papir) 70%); }

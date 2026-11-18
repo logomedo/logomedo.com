@@ -8,6 +8,8 @@ import Ikona from "./Ikona.astro";
 import type { ComponentProps } from "astro/types";
 import { env } from "cloudflare:workers";
 import { smijeNa } from "../lib/admin/rute";
+import { pregledFiltar } from "../lib/admin/vlasnistvo";
+import { ZATRAZIO_SLIKE, ZATRAZIO_ZVUKA } from "../lib/zatrazio";
 import { kvotaIzAdrese, porukaZaKorisnika, preostalo, type StanjeKvote, type VrstaKvote } from "../lib/kvota";
 
 interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "postavke"; puno?: boolean }
@@ -20,12 +22,14 @@ const kvota = admin && kvotaUAdresi ? await porukaZaKorisnika(admin.email, kvota
 
 let brojevi = { kandidata: 0, uRedu: 0, gresaka: 0, zvukova: 0 };
 if (admin) {
+  // Za pregled (Slike, Izgovor) logoped broji samo ono što je sam poslao, kao na tim stranicama.
+  const vidi = pregledFiltar(admin);
   brojevi = (await env.DB.prepare(
-    `SELECT (SELECT COUNT(*) FROM slike WHERE status = 'kandidat') AS kandidata,
+    `SELECT (SELECT COUNT(*) FROM slike s WHERE s.status = 'kandidat' AND (?1 IS NULL OR ${ZATRAZIO_SLIKE} = ?1)) AS kandidata,
        (SELECT COUNT(*) FROM generiranja WHERE status IN ('ceka','radi')) AS uRedu,
        (SELECT COUNT(*) FROM generiranja WHERE status = 'greska') AS gresaka,
-       (SELECT COUNT(DISTINCT kljuc) FROM zvukovi WHERE status = 'kandidat') AS zvukova`,
-  ).first<typeof brojevi>()) ?? brojevi;
+       (SELECT COUNT(DISTINCT z.kljuc) FROM zvukovi z WHERE z.status = 'kandidat' AND (?1 IS NULL OR ${ZATRAZIO_ZVUKA} = ?1)) AS zvukova`,
+  ).bind(vidi).first<typeof brojevi>()) ?? brojevi;
 }
 // Logoped vidi koliko mu je AI kredita ostalo (lib/kvota.ts); superadmin je bez limita, pa ništa.
 const kvotaStanje: Record<VrstaKvote, StanjeKvote> | null =

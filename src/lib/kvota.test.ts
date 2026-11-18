@@ -216,10 +216,14 @@ test("dodajZvukove: preko limita ništa u bazi ni u Queueu; unutar limita sve", 
   assert.equal(await potroseno(ana, "zvukovi"), 2);
 });
 
+/** Kandidat iz gotovog posla koji je zatražila Ana (logoped odlučuje samo o svojima). */
 async function kandidat(kljuc: string): Promise<number> {
+  const posao = (await db().prepare(
+    "INSERT INTO zvuk_generiranja (kljuc, izgovor, status, zatrazio) VALUES (?, ?, 'gotovo', ?) RETURNING id",
+  ).bind(kljuc, kljuc, ANA).first<number>("id"))!;
   return (await db().prepare(
-    `INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, bajtova, glas_id, model, provjera) VALUES (?, ?, ?, 1, 'g', 'm', 'ok') RETURNING id`,
-  ).bind(kljuc, kljuc, `zvuk/${kljuc}.mp3`).first<number>("id"))!;
+    `INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, bajtova, glas_id, model, provjera, posao_id) VALUES (?, ?, ?, 1, 'g', 'm', 'ok', ?) RETURNING id`,
+  ).bind(kljuc, kljuc, `zvuk/${kljuc}.mp3`, posao).first<number>("id"))!;
 }
 
 test("odbijZvukove s ponovnim snimanjem: bez kredita se ne odbija ni snimka; naplata samo za novi posao", async () => {
@@ -229,7 +233,7 @@ test("odbijZvukove s ponovnim snimanjem: bez kredita se ne odbija ni snimka; nap
   await assert.rejects(odbijZvukove([a], ANA, { ponovo: true }).then(() => odbijZvukove([a, b], ANA, { ponovo: true })), odbijena);
   // Prvi poziv: „mama” ima još kandidata b, pa nema posla ni naplate; drugi traži posao i pada cijeli.
   assert.equal(await broj("SELECT COUNT(*) AS n FROM zvukovi WHERE status = 'kandidat'"), 1);
-  assert.equal(await broj("SELECT COUNT(*) AS n FROM zvuk_generiranja"), 0);
+  assert.equal(await broj("SELECT COUNT(*) AS n FROM zvuk_generiranja WHERE status != 'gotovo'"), 0);
   await limit(ana, 50, 1);
   assert.equal(await odbijZvukove([b], ANA, { ponovo: true }), 1);
   assert.equal(await broj("SELECT COUNT(*) AS n FROM zvuk_generiranja WHERE varijante = 1"), 1);

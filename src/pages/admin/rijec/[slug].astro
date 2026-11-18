@@ -7,6 +7,7 @@ import { kad, KOLACIC_STILA, rijec as nadji, NAZIV_POZICIJE, stiloviAktivni, zap
 import { safeNext } from "../../../lib/admin/sesija";
 import { javniUrl } from "../../../lib/generiranje";
 import { izvediRimu } from "../../../lib/zadaci/rima";
+import { imenaKorisnika } from "../../../lib/zatrazio";
 
 const r = await nadji(Astro.params.slug!);
 if (!r) return new Response("Nema te riječi", { status: 404 });
@@ -28,6 +29,12 @@ const spoji = q("spoji"); // naziv koji već postoji: traži potvrdu spajanja
 const ucitano = Astro.url.searchParams.get("ucitano");
 const greskaUploada = Astro.url.searchParams.get("greska");
 const stilovi = await stiloviAktivni();
+// Logoped odlučuje samo o slikama koje je sam poslao; superadmin o svima i vidi tko je poslao.
+const admin = Astro.locals.admin!;
+const superadmin = admin.uloga === "superadmin";
+const moja = (s: { zatrazio?: string | null }) => superadmin || s.zatrazio === admin.email.toLowerCase();
+const imena = superadmin ? await imenaKorisnika() : new Map<string, string>();
+const poslao = (s: { zatrazio?: string | null }) => (s.zatrazio ? imena.get(s.zatrazio) ?? s.zatrazio : "nepoznato");
 // Za generiranje ponudi prvo stil koji još nema ni odobrenu ni kandidata ni posao u redu (npr. bojanka uz gotovu ilustraciju).
 const zauzet = (kod: string) => r.slike.some((s) => s.stil === kod && s.status !== "odbijena") || uRedu.some((q) => q.stil === kod);
 const zadaniStil = stilovi.find((x) => !zauzet(x.kod))?.kod ?? stilovi[0]?.kod;
@@ -70,7 +77,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
         {odobrena ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> {odobrena.stil_naziv}</span> : <span class="oznaka">nema odobrene</span>}
         {odobrena && <a href={javniUrl(odobrena.r2_kljuc)} target="_blank" rel="noopener">javni URL</a>}
       </div>
-      {odobrena && <PremjestiStil slika={odobrena} stilovi={stilovi} next={ovdje} />}
+      {odobrena && moja(odobrena) && <PremjestiStil slika={odobrena} stilovi={stilovi} next={ovdje} />}
     </div>
 
     <div class="detalji">
@@ -139,7 +146,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
             <figure class:list={{ prikazana: s.id === odobrena?.id }}>
               <a class="list" href={`/admin/rijec/${r.slug}?od=${encodeURIComponent(od)}&stil=${s.stil}`} title={`Prikaži gore: ${s.stil_naziv}`}
                 aria-current={s.id === odobrena?.id ? "true" : undefined}><img src={`/admin/slika/${s.id}`} alt={`${r.rijec}, ${s.stil_naziv}`} loading="lazy" /></a>
-              <figcaption class="sitno blijedo">{s.stil_naziv}<PremjestiStil slika={s} stilovi={stilovi} next={ovdje} /></figcaption></figure>
+              <figcaption class="sitno blijedo">{s.stil_naziv}{moja(s) && <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />}</figcaption></figure>
           ))}
         </div>
       )}
@@ -200,14 +207,19 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
             <div class="list"><img src={`/admin/slika/${s.id}`} alt={`Kandidat ${s.id}`} loading="lazy" /></div>
             <figcaption>
               <span class="blijedo sitno"><b>{s.stil_naziv}</b> · {kad(s.created_at)} · {s.izvor === "upload" ? `upload${s.model ? `: ${s.model}` : ""}` : s.model ?? s.izvor}</span>
+              {superadmin && <span class="poslao sitno">Poslao: {poslao(s)}</span>}
               {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
-              <form method="post" action={`/admin/api/slika/${s.id}`} class="odluka">
-                <input type="hidden" name="next" value={ovdje} />
-                <input type="text" name="razlog" placeholder="Razlog odbijanja" maxlength="300" />
-                <button class="gumb mali" name="akcija" value="odbij"><Ikona ime="x" velicina={14} /> Odbij</button>
-                <button class="gumb mali glavni" name="akcija" value="odobri"><Ikona ime="kvacica" velicina={14} /> Odobri</button>
-              </form>
-              <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />
+              {moja(s) ? (
+                <>
+                  <form method="post" action={`/admin/api/slika/${s.id}`} class="odluka">
+                    <input type="hidden" name="next" value={ovdje} />
+                    <input type="text" name="razlog" placeholder="Razlog odbijanja" maxlength="300" />
+                    <button class="gumb mali" name="akcija" value="odbij"><Ikona ime="x" velicina={14} /> Odbij</button>
+                    <button class="gumb mali glavni" name="akcija" value="odobri"><Ikona ime="kvacica" velicina={14} /> Odobri</button>
+                  </form>
+                  <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />
+                </>
+              ) : <span class="sitno blijedo">Poslao drugi korisnik; čeka njegov pregled.</span>}
             </figcaption>
           </figure>
         ))}
@@ -225,9 +237,14 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
             <figcaption>
               <span class:list={["oznaka", { uspjeh: s.status === "odobrena", greska: s.status === "odbijena" }]}>{s.status} · {s.stil_naziv}</span>
               {s.razlog && <span class="sitno blijedo">„{s.razlog}”</span>}
-              <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
-                <button class="gumb mali tihi" name="akcija" value="vrati">{s.status === "odobrena" ? "Makni iz odobrenih" : "Vrati u kandidate"}</button></form>
-              <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />
+              {superadmin && <span class="poslao sitno">Poslao: {poslao(s)}</span>}
+              {moja(s) && (
+                <>
+                  <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
+                    <button class="gumb mali tihi" name="akcija" value="vrati">{s.status === "odobrena" ? "Makni iz odobrenih" : "Vrati u kandidate"}</button></form>
+                  <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />
+                </>
+              )}
               {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
             </figcaption>
           </figure>
@@ -307,6 +324,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   .odobrene a.list:hover { outline-color: var(--rub-jak); }
   .odobrene .prikazana a.list { outline-color: var(--med); }
   .odobrene figcaption { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .poslao { font-weight: 600; color: var(--med-tamno); }
   .kandidati { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
   .kandidati.mali { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin-top: 14px; }
   .kandidat { margin: 0; padding: 10px; }

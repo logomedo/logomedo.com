@@ -13,8 +13,15 @@ import {
   type TabIzgovora,
 } from "../../lib/zvukovi";
 import { KvotaPrekoracena } from "../../lib/kvota";
+import { pregledFiltar } from "../../lib/admin/vlasnistvo";
+import { imenaKorisnika, posiljateljiNaPregledu } from "../../lib/zatrazio";
 
 const email = Astro.locals.admin!.email;
+// Logoped vidi i odlučuje samo o izgovorima koje je sam poslao; superadmin sve, s oznakom i filtrom.
+const superadmin = Astro.locals.admin!.uloga === "superadmin";
+const korisnik = superadmin ? Astro.url.searchParams.get("korisnik") : null;
+const vidi = pregledFiltar(Astro.locals.admin!, korisnik);
+const saKorisnikom = (href: string) => (korisnik ? `${href}&korisnik=${encodeURIComponent(korisnik)}` : href);
 const TABOVI: { kod: TabIzgovora; tekst: string }[] = [
   { kod: "ceka", tekst: "Čeka" }, { kod: "odobreno", tekst: "Odobreno" }, { kod: "odbijeno", tekst: "Odbijeno" }, { kod: "greske", tekst: "Nije uspjelo" },
 ];
@@ -33,7 +40,7 @@ if (Astro.request.method === "POST") {
     if (a === "odobri") {
       ok = await odobriZvuk(Number(f.get("id")), email);
       makni = true;
-      if (!ok) poruka = "Ta snimka više ne čeka (netko je bio brži).";
+      if (!ok) poruka = "Ta snimka više ne čeka ili je nije poslao ovaj korisnik.";
     }
     if (a === "odbij" || a === "odbij-samo") {
       const ids = String(f.get("ids") ?? "").split(",").map(Number).filter(Boolean);
@@ -52,18 +59,22 @@ if (Astro.request.method === "POST") {
     if (!(e instanceof KvotaPrekoracena)) throw e;
     ok = false; makni = false; poruka = e.poruka;
   }
-  if (ajax) return Response.json({ ok, makni, poruka, brojevi: await brojeviIzgovora() });
+  if (ajax) return Response.json({ ok, makni, poruka, brojevi: await brojeviIzgovora(vidi) });
   const u = new URL(Astro.url);
   if (poruka) u.searchParams.set("p", poruka);
   return Astro.redirect(u.pathname + u.search, 303);
 }
 
-const [brojevi, skupine, greske, glas] = await Promise.all([
-  brojeviIzgovora(),
-  tab === "greske" ? Promise.resolve([]) : skupineIzgovora(tab),
+const [brojevi, skupine, greske, glas, imena, posiljatelji] = await Promise.all([
+  brojeviIzgovora(vidi),
+  tab === "greske" ? Promise.resolve([]) : skupineIzgovora(tab, vidi),
   tab === "greske" ? greskeIzgovora(email) : Promise.resolve([]),
   postavka("zvuk_glas"),
+  superadmin ? imenaKorisnika() : Promise.resolve(new Map<string, string>()),
+  superadmin ? posiljateljiNaPregledu() : Promise.resolve([]),
 ]);
+const zaFiltar = posiljatelji.filter((p) => p.zvukovi > 0 || p.email === korisnik?.toLowerCase());
+const poslao = (z: { zatrazio: string | null }) => (z.zatrazio ? imena.get(z.zatrazio) ?? z.zatrazio : "nepoznato");
 const imeGlasa = glas
   ? (await env.DB.prepare("SELECT glas_ime FROM zvuk_probe WHERE glas_id = ? AND glas_ime IS NOT NULL LIMIT 1").bind(glas).first<{ glas_ime: string }>())?.glas_ime ?? glas
   : "";
@@ -88,9 +99,20 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
   </div>
   {poruka && <p class="ploha obavijest" role="status">{poruka}</p>}
 
+  {superadmin && (zaFiltar.length > 0 || korisnik) && (
+    <form class="filtar-korisnika" method="get">
+      <input type="hidden" name="s" value={tab} />
+      <label for="korisnik">Poslao</label>
+      <select id="korisnik" name="korisnik">
+        <option value="">Svi korisnici</option>
+        {zaFiltar.map((p) => <option value={p.email} selected={p.email === korisnik?.toLowerCase()}>{p.ime}{p.zvukovi ? ` (${p.zvukovi} čeka)` : ""}</option>)}
+      </select>
+    </form>
+  )}
+
   <nav class="tabovi" aria-label="Prikaži">
     {TABOVI.map((t) => (
-      <a href={`/admin/zvukovi?s=${t.kod}`} class:list={["tab", { aktivno: t.kod === tab, upozorenje: t.kod === "greske" && brojevi.greske > 0 }]}
+      <a href={saKorisnikom(`/admin/zvukovi?s=${t.kod}`)} class:list={["tab", { aktivno: t.kod === tab, upozorenje: t.kod === "greske" && brojevi.greske > 0 }]}
         aria-current={t.kod === tab ? "page" : undefined}>{t.tekst} (<span data-tab-broj={t.kod}>{brojevi[t.kod]}</span>)</a>
     ))}
   </nav>
@@ -131,6 +153,7 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
               <div class="opis">
                 <b class:list={[z.provjera === "ok" ? "dobro" : z.provjera === "razlika" ? "lose" : ""]}>{provjera(z)}</b>
                 <span class="sitno blijedo">{opisNacina(z.nacin ?? z.model)} · #{z.id} · {kad(z.created_at)}{tab !== "ceka" && z.pregledao && <> · {z.pregledao}</>}</span>
+                {superadmin && <span class="sitno poslao">Poslao: {poslao(z)}</span>}
                 {tab !== "ceka" && z.razlog && <span class="sitno razlog">{z.razlog}</span>}
                 {z.bez_ponavljanja === 1 && <span class="sitno razlog">Samo odbijeno: ne snima se ponovo dok ga netko ne vrati.</span>}
               </div>
@@ -177,6 +200,9 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
   )}
 </AdminOkvir>
 <script>
+  const izbor = document.getElementById("korisnik") as HTMLSelectElement | null;
+  izbor?.addEventListener("change", () => izbor.form!.submit());
+
   // ── Slušanje: jedan Audio, gumb pokazuje sviranje ──
   const zvuk = new Audio();
   let svira: HTMLButtonElement | null = null;
@@ -286,6 +312,10 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
   });
 </script>
 <style>
+  .filtar-korisnika { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+  .filtar-korisnika label { margin: 0; }
+  .filtar-korisnika select { font: inherit; padding: 6px 10px; border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); }
+  .poslao { font-weight: 600; color: var(--med-tamno); }
   .obavijest { padding: 10px 16px; margin-bottom: 16px; }
   .greska { color: var(--greska); }
   .tabovi { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
