@@ -355,7 +355,7 @@ test("razvrstavanje: normalizacija drži 2–3 različite oznake po pravilu i sl
   const r = normaliziraj("razvrstavanje", { pravilo: "slogovi", tema: "kosare", kategorije: ["2", "2", "X", "3"], slike: Array.from({ length: 20 }, () => ({ rijec_id: 5, kategorija: 7 })) }) as Razvrstavanje;
   assert.equal(r.pravilo, "slogovi");
   assert.equal(r.tema, "kosare");
-  assert.deepEqual(r.kategorije, ["2", null, null]);
+  assert.deepEqual(r.kategorije, ["2", null, null, "3"]);
   assert.equal(r.slike.length, 12);
   assert.ok(r.slike.every((x) => x.kategorija === 0));
   const p = normaliziraj("razvrstavanje", { pravilo: "?", kategorije: ["C"] }) as Razvrstavanje;

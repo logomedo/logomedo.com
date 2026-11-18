@@ -663,11 +663,14 @@ odgođen do profila djeteta. Čeka Matijin odgovor na skup fontova.
 
 ### razvrstavanje (17. 11. 2026.)
 
-Dijete razvrstava 4–12 slika u 2–3 vreće, košare ili kutije s oznakom (`tema`). Pravilo (`pravilo`): prvi glas,
+Dijete razvrstava 4–12 slika u 2–4 vreće, košare ili kutije s oznakom (`tema`). Pravilo (`pravilo`): prvi glas,
 zadnji glas (oznaka je slovo, LJ/NJ/DŽ su jedan glas), broj slogova ili broj glasova (oznaka je broj, LJUTO = 4).
 Kategorija slike je spremljena (`slike[].kategorija`), računa se iz riječi (`kategorijaRijeci`), logoped je može
 prepisati; upozorenje javlja sliku koja po pravilu ide drugamo. Izrazi od više riječi ne ulaze. Generator
 (`slozRazvrstavanje`): 2 kategorije, od 9 slika 3; kod brojeva susjedni (2 i 3 sloga); slike ravnomjerno.
+
+Četvrta vreća (18. 11. 2026.): dodana vreća s oznakom dobije prosjek ostalih, a do 12 slika ukupno se najpunije smanje
+(4 + 4 + 4 → 3 + 3 + 3 + 3). Promjena oznake zamijeni slike te vreće riječima s novom oznakom.
 
 - Papir (PDF i HTML ispis, `rasporedRazvrstavanja` u `pdf/model.ts`): slike gore bez natpisa (natpis bi odao
   glas), pojas za crte, spremnici s točkom dolje. Jedna stranica.

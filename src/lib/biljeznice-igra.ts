@@ -486,7 +486,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return k;
     });
     const mreza = h("div", { class: `razvrstaj-slike${slike.length > 8 ? " puno" : slike.length > 4 ? " srednje" : ""}` }, ...kartice);
-    return { cvorovi: [q.el, mreza, h("div", { class: "spremnici" }, ...spremnici.map((x) => x.b))], tekst, gumb: q.gumb };
+    return { cvorovi: [q.el, mreza, h("div", { class: "spremnici", style: `--k:${spremnici.length}` }, ...spremnici.map((x) => x.b))], tekst, gumb: q.gumb };
   }
 
   /** Gumb koji izgovori niz (uputa, glas…); null ako nijedan tekst nema snimku. */

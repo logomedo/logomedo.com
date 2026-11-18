@@ -271,8 +271,9 @@ const json = JSON.stringify(za).replace(/</g, "\\u003c");
   .razvrstaj-slike.puno .kartica { --s: min(15vh, 12vw); }
   .razvrstaj-kartica.vuce { z-index: 20; cursor: grabbing; scale: 1.08; box-shadow: inset 0 0 0 2px #a07a4c, 0 14px 28px rgb(60 40 20 / .4); }
   .razvrstaj-kartica.spremljena { pointer-events: none; z-index: 20; }
-  .spremnici { display: flex; justify-content: center; gap: 5vw; margin-top: 1vh; }
-  .spremnik { position: relative; width: min(21vh, 22vw); padding: 0; border: 0; background: none; cursor: pointer; transition: scale .15s; }
+  .spremnici { display: flex; justify-content: center; gap: min(5vw, calc(16vw / var(--k, 2))); margin-top: 1vh; }
+  /* 4 spremnika stanu u širinu i na uspravnom mobitelu. */
+  .spremnik { position: relative; width: min(21vh, 22vw, calc(84vw / var(--k, 2))); padding: 0; border: 0; background: none; cursor: pointer; transition: scale .15s; }
   .spremnik svg { display: block; width: 100%; height: auto; filter: drop-shadow(0 6px 8px rgb(60 40 20 / .3)); }
   .spremnik.cilj { scale: 1.12; }
   .spremnik.poskok { animation: poskoci .4s; }

@@ -139,7 +139,7 @@ export const UPUTE_SLOGOVA: Record<NacinSlogova, { ekran: string; ispis: string 
   glasovi: { ekran: "Lupni po bubnju za svaki glas u riječi.", ispis: "Izgovori riječ glas po glas. Oboji onoliko krugova koliko riječ ima glasova." },
 };
 /**
- * Razvrstavanje: dijete razvrstava slike u 2–3 vreće (košare, kutije) s oznakom po pravilu: prvi ili
+ * Razvrstavanje: dijete razvrstava slike u 2–4 vreće (košare, kutije) s oznakom po pravilu: prvi ili
  * zadnji glas (oznaka je slovo, LJ je jedan glas), broj slogova ili broj glasova (oznaka je broj).
  * `kategorija` slike je indeks u `kategorije`; računa se iz riječi (`kategorijaRijeci`), logoped je može
  * prepisati. Na papiru dijete povlači crtu od slike do vreće, na ekranu sliku povuče prstom.
@@ -161,7 +161,7 @@ export const TEME_RAZVRSTAVANJA: Record<TemaRazvrstavanja, { naziv: string; u: s
 };
 export const jePraviloRazvrstavanja = (x: unknown): x is PraviloRazvrstavanja => typeof x === "string" && x in PRAVILA_RAZVRSTAVANJA;
 export const jeTemaRazvrstavanja = (x: unknown): x is TemaRazvrstavanja => typeof x === "string" && x in TEME_RAZVRSTAVANJA;
-export const KATEGORIJA_MIN = 2, KATEGORIJA_MAX = 3, RAZVRSTAVANJE_SLIKA_MAX = 12, RAZVRSTAVANJE_BROJ_MAX = 12;
+export const KATEGORIJA_MIN = 2, KATEGORIJA_MAX = 4, RAZVRSTAVANJE_SLIKA_MAX = 12, RAZVRSTAVANJE_BROJ_MAX = 12;
 /** Oznaka kategorije kojoj riječ pripada po pravilu („C”, „LJ”, „3”), ili null (izraz, riječ bez slova). */
 export function kategorijaRijeci(pravilo: PraviloRazvrstavanja, rijec: string): string | null {
   if (!jednaRijec(rijec)) return null;
@@ -305,7 +305,7 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     uputa: UPUTE_PRVOG_GLASA.ispis, ispis: "Zaokruži", odnos: false,
   },
   razvrstavanje: {
-    naziv: "Razvrstavanje", opis: "Dijete razvrstava slike u dvije ili tri vreće (košare, kutije) s oznakom: po prvom ili zadnjem glasu, broju slogova ili broju glasova.",
+    naziv: "Razvrstavanje", opis: "Dijete razvrstava slike u dvije do četiri vreće (košare, kutije) s oznakom: po prvom ili zadnjem glasu, broju slogova ili broju glasova.",
     uputa: "Razvrstaj slike u vreće prema prvom glasu. Poveži svaku sliku crtom s vrećom.", ispis: "Poveži crtom s vrećom", odnos: false,
   },
   koje_slovo: {
@@ -476,7 +476,7 @@ export function normaliziraj(v: Vrsta, ulaz: unknown): Sadrzaj {
     }
     case "razvrstavanje": {
       const pravilo = jePraviloRazvrstavanja(o.pravilo) ? o.pravilo : "prvi_glas";
-      // Oznake: ispravne za pravilo, bez ponavljanja (ponovljena ostaje prazna), 2–3.
+      // Oznake: ispravne za pravilo, bez ponavljanja (ponovljena ostaje prazna), 2–4.
       const procitane = niz(o.kategorije, KATEGORIJA_MAX, (k) => (jeOznakaKategorije(pravilo, k) ? k : null));
       const kategorije = tocnoN(procitane.map((k, i) => (k !== null && procitane.indexOf(k) < i ? null : k)), Math.max(KATEGORIJA_MIN, procitane.length), () => null);
       return {
