@@ -24,16 +24,6 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
 ---
 <AdminOkvir naslov="Pregled" aktivno="pregled" puno>
   <>
-    {superadmin && (zaFiltar.length > 0 || korisnik) && (
-      <form class="filtar-korisnika" method="get">
-        {glas && <input type="hidden" name="glas" value={glas} />}
-        <label for="korisnik">Poslao</label>
-        <select id="korisnik" name="korisnik">
-          <option value="">Svi korisnici</option>
-          {zaFiltar.map((p) => <option value={p.email} selected={p.email === korisnik?.toLowerCase()}>{p.ime} ({p.slike})</option>)}
-        </select>
-      </form>
-    )}
     <div class="pregled" id="pregled" data-kandidati={JSON.stringify(results)} data-glas={glas ?? ""} data-korisnik={korisnik ?? ""}
       data-imena={superadmin ? JSON.stringify(Object.fromEntries(imena)) : ""} hidden={!results.length}>
       <div class="pozornica">
@@ -44,6 +34,16 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
         </div>
       </div>
       <aside class="ploca">
+        {superadmin && (zaFiltar.length > 0 || korisnik) && (
+          <form class="filtar-korisnika" method="get">
+            {glas && <input type="hidden" name="glas" value={glas} />}
+            <label for="korisnik">Poslao</label>
+            <select id="korisnik" name="korisnik">
+              <option value="">Svi korisnici</option>
+              {zaFiltar.map((p) => <option value={p.email} selected={p.email === korisnik?.toLowerCase()}>{p.ime} ({p.slike})</option>)}
+            </select>
+          </form>
+        )}
         <div class="napredak"><span id="brojac"></span><div class="traka-napretka"><i id="traka"></i></div></div>
         <h1 id="rijec" class="rijec"></h1>
         {superadmin && <p id="poslao" class="poslao"></p>}
@@ -100,6 +100,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
         <p>{superadmin
           ? "Novi kandidati stižu dok runner radi i pojavljuju se ovdje sami."
           : "Ovdje su samo slike koje si ti poslao na generiranje. Nove se pojavljuju same kad budu gotove."}</p>
+        {korisnik && <a class="gumb" href={glas ? `/admin/pregled?glas=${encodeURIComponent(glas)}` : "/admin/pregled"}>Prikaži sve korisnike</a>}
         <a class="gumb" href="/admin"><Ikona ime="katalog" /> Katalog</a>
       </div>
     </div>
@@ -375,7 +376,8 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
 </script>
 
 <style>
-  .filtar-korisnika { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; }
+  .filtar-korisnika { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+  .filtar-korisnika select { flex: 1; min-width: 0; }
   .filtar-korisnika label { margin: 0; }
   .filtar-korisnika select { font: inherit; padding: 6px 10px; border: 1px solid var(--rub-jak); border-radius: 10px; background: var(--povrsina); color: var(--tinta); }
   .poslao { margin: -4px 0 6px; font-size: .86rem; font-weight: 600; color: var(--med-tamno); }
