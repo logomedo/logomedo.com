@@ -4,6 +4,7 @@ import { pojave, slug } from "../../../lib/fonemi";
 import { dodajURed, stilovaZaRed } from "../../../lib/generiranje";
 import { stil } from "../../../lib/katalog";
 import { novaGrupa, sZapisom } from "../../../lib/aktivnost";
+import { nepozeljna } from "../../../lib/nepozeljne";
 import { KvotaPrekoracena, postaviKvotuUAdresu, provjeri } from "../../../lib/kvota";
 
 const DOPUSTENO = /^[a-zčćđšž]+(?:[ -][a-zčćđšž]+)*$/;
@@ -24,6 +25,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const rijec = String(f.get("rijec") ?? "").trim().toLocaleLowerCase("hr").replace(/\s+/g, " ");
   if (!rijec || rijec.length > 40 || !DOPUSTENO.test(rijec)) return natrag("Riječ smije imati samo hrvatska slova (do 40).");
+
+  // Nepoželjna riječ (lib/nepozeljne.ts): ne dodaje se, poruka nosi razlog; s popisa se miče na /admin/nepozeljne.
+  const ne = await nepozeljna(rijec);
+  if (ne) return natrag(`„${rijec}” je na popisu nepoželjnih riječi${ne.razlog ? `: ${ne.razlog}` : ""}. Ako je ipak želiš, makni je s popisa (Katalog → Nepoželjne riječi).`);
 
   const db = env.DB;
   const postoji = await db.prepare("SELECT id, slug, aktivna, vrsta FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string; aktivna: number; vrsta: string }>();

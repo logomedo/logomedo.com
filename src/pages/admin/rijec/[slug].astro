@@ -96,6 +96,8 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
         <form method="post" action={`/admin/api/rijec/${r.id}`}>
           <input type="hidden" name="akcija" value="obrisi" />
           <span class="sitno blijedo">Riječ nestaje iz kataloga, a njezine slike se odbijaju. Vratiti se može u Aktivnosti.</span>
+          <label class="sitno nepozeljna"><input type="checkbox" name="nepozeljna" value="1" /> Ne želim je u katalogu: stavi je na popis nepoželjnih</label>
+          <textarea name="razlog" rows="2" maxlength="500" class="sitno" aria-label="Zašto ne" placeholder="Zašto ne (npr. nije za djecu). Za tipfeler ne treba."></textarea>
           <button class="gumb mali opasno" type="submit">Obriši {r.rijec.toLocaleUpperCase("hr")}</button>
         </form>
       </details>
@@ -316,6 +318,10 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   .preimenuj input { flex: 1; min-width: 0; }
   .obrisi form { align-items: center; flex-wrap: wrap; }
   .obrisi span { flex: 1 1 220px; }
+  .obrisi .nepozeljna { flex-basis: 100%; display: flex; gap: 6px; align-items: center; margin: 0; cursor: pointer; }
+  .obrisi .nepozeljna input { flex: none; }
+  .obrisi textarea { flex-basis: 100%; box-sizing: border-box; font: inherit; resize: vertical; display: none; }
+  .obrisi form:has(.nepozeljna input:checked) textarea { display: block; }
   .spajanje { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
   .spajanje .red-gumba { display: flex; gap: 8px; }
   .odobrene { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 16px; }

@@ -444,3 +444,17 @@ slovarica 74, slova i brojke 62, RAN 58, razmaknuta slova 70; slovo i slika 86 k
 - **Odvojeno od riječi:** brojač kataloga, tražilica, stranica riječi (`/admin/rijec/znak-b` je 404),
   „Novi glas” i „Generiraj ilustracije” bilježnice gledaju samo `vrsta = 'rijec'`. „Nova riječ” odbija
   zapis koji je već znak.
+
+## Nepoželjne riječi (18. 11. 2026.)
+
+Katalog (`rijeci`, „Slike riječi”) je popis dopuštenih riječi: za njih se traže slike i izgovor. Tablica
+`nepozeljne_rijeci` (migracija 0036) je popis odbijenih: riječi koje logoped ne želi u katalogu, s razlogom
+(„teško se crta”, „nije za djecu”). Riječ ne mora postojati u `rijeci`, jer odbijen prijedlog nikad nije ni ušao.
+
+- Katalog → kartica **Nepoželjne riječi** (`/admin/nepozeljne`): dodaj s razlogom, promijeni razlog, makni s popisa.
+- **Nova riječ** (`/admin/api/nova-rijec`) ne dodaje riječ s popisa; poruka nosi razlog i kaže kako je maknuti.
+- **Obriši riječ** na stranici riječi ima kvačicu „Ne želim je u katalogu”: riječ se briše i ide na popis s razlogom.
+  Bez kvačice (tipfeler) samo se briše. Vraćanje riječi iz Aktivnosti ne miče je s popisa.
+- Prijedlozi novih riječi (Claude, popis s kvačicama) prvo čitaju ovaj popis i preskaču riječi s njega;
+  riječi koje logoped odznači na prijedlogu upisuju se ovdje s njezinim komentarom kao razlogom.
+- Logika: `src/lib/nepozeljne.ts`, testovi `src/lib/nepozeljne.test.ts`. Popis nije u Aktivnosti (nema „Poništi”).

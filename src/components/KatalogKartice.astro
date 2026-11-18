@@ -1,11 +1,12 @@
 ---
-// Kartice kataloga: slike riječi, situacije i znakovi (slova, brojke) (pozadine scena; u kodu i bazi i dalje `pozadine`).
-interface Props { aktivno: "rijeci" | "situacije" | "znakovi" }
+// Kartice kataloga: slike riječi, situacije, znakovi i nepoželjne riječi (slova, brojke) (pozadine scena; u kodu i bazi i dalje `pozadine`).
+interface Props { aktivno: "rijeci" | "situacije" | "znakovi" | "nepozeljne" }
 const { aktivno } = Astro.props;
 const kartice = [
   { kod: "rijeci", href: "/admin", tekst: "Slike riječi" },
   { kod: "situacije", href: "/admin/situacije", tekst: "Situacije" },
   { kod: "znakovi", href: "/admin/znakovi", tekst: "Znakovi" },
+  { kod: "nepozeljne", href: "/admin/nepozeljne", tekst: "Nepoželjne riječi" },
 ] as const;
 ---
 <nav class="kartice" aria-label="Katalog">
@@ -13,7 +14,7 @@ const kartice = [
 </nav>
 
 <style>
-  .kartice { display: flex; gap: 20px; margin-bottom: 14px; border-bottom: 1px solid var(--rub); }
+  .kartice { display: flex; flex-wrap: wrap; gap: 0 20px; margin-bottom: 14px; border-bottom: 1px solid var(--rub); }
   .kartice a { padding: 6px 2px 9px; margin-bottom: -1px; border-bottom: 2px solid transparent; text-decoration: none; color: var(--blijedo); font-weight: 600; font-size: .9rem; }
   .kartice a:hover { color: var(--tinta); }
   .kartice a.aktivno { color: var(--tinta); border-bottom-color: var(--med); }

@@ -1,0 +1,98 @@
+---
+// Nepoželjne riječi (migracija 0036, docs/katalog.md): riječi koje ne želimo u katalogu, s razlogom.
+// „Slike riječi” su popis dopuštenih, ovo popis odbijenih. Nova riječ ih ne prima, prijedlozi ih preskaču.
+// Stranica sama obrađuje POST, kao /admin/znakovi.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import KatalogKartice from "../../components/KatalogKartice.astro";
+import Ikona from "../../components/Ikona.astro";
+import { DB } from "../../lib/katalog";
+import { dodajNepozeljnu, makniNepozeljnu, sveNepozeljne } from "../../lib/nepozeljne";
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const natrag = (k: "greska" | "ok", poruka: string) => Astro.redirect(`/admin/nepozeljne?${k}=${encodeURIComponent(poruka)}`, 303);
+  const akcija = String(f.get("akcija"));
+  if (akcija === "dodaj" || akcija === "razlog") {
+    const r = await dodajNepozeljnu(String(f.get("rijec") ?? ""), String(f.get("razlog") ?? ""), Astro.locals.admin!.email);
+    if (!r) return natrag("greska", "Upiši riječ.");
+    return natrag("ok", akcija === "razlog" ? `Razlog za „${r}” je spremljen.` : `„${r}” je na popisu nepoželjnih.`);
+  }
+  if (akcija === "makni") {
+    const id = Number(f.get("id")) || 0;
+    if (id) await makniNepozeljnu(id);
+    return natrag("ok", `„${String(f.get("rijec") ?? "")}” više nije na popisu: može se ponovno dodati u katalog.`);
+  }
+  return natrag("greska", "Nepoznata radnja.");
+}
+
+const q = Astro.url.searchParams;
+const popis = await sveNepozeljne();
+// Je li riječ ipak u katalogu (aktivna): onda je vidljiva i treba je obrisati na njezinoj stranici.
+const { results: uKatalogu } = await DB().prepare(
+  "SELECT r.rijec, r.slug FROM rijeci r JOIN nepozeljne_rijeci n ON n.rijec = r.rijec WHERE r.aktivna = 1",
+).all<{ rijec: string; slug: string }>();
+const aktivna = new Map(uKatalogu.map((x) => [x.rijec, x.slug]));
+const datum = (s: string) => new Date(s.replace(" ", "T") + "Z").toLocaleDateString("hr-HR", { timeZone: "Europe/Zagreb" });
+---
+<AdminOkvir naslov="Nepoželjne riječi" aktivno="katalog">
+  <div class="naslov"><div>
+    <KatalogKartice aktivno="nepozeljne" />
+    <h1>Nepoželjne riječi</h1>
+    <p class="podnaslov">Riječi koje ne želimo u katalogu, i zašto. „Nova riječ” ih ne prima, a novi prijedlozi riječi ih preskaču.
+      Na popisu: {popis.length}.</p>
+  </div></div>
+
+  {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
+  {q.get("ok") && <div class="obavijest uspjeh"><Ikona ime="kvacica" /> {q.get("ok")}</div>}
+
+  <form method="post" class="ploha nova">
+    <input type="hidden" name="akcija" value="dodaj" />
+    <div>
+      <label for="n-rijec">Riječ</label>
+      <input id="n-rijec" class="rijec-unos" type="text" name="rijec" required maxlength="40" autocomplete="off" spellcheck="false" placeholder="npr. žeđ" />
+    </div>
+    <div>
+      <label for="n-razlog">Zašto ne <span class="blijedo">(vidi se kad je netko pokuša dodati)</span></label>
+      <textarea id="n-razlog" name="razlog" rows="2" maxlength="500" placeholder="npr. ne može se nacrtati; nije za djecu; već imamo LAĐU"></textarea>
+    </div>
+    <div><button class="gumb glavni" type="submit"><Ikona ime="plus" /> Dodaj na popis</button></div>
+  </form>
+
+  {popis.length > 0 && (
+    <section class="ploha popis">
+      {popis.map((n) => (
+        <div class="stavka">
+          <div class="rijec">{n.rijec.toLocaleUpperCase("hr")}</div>
+          <form method="post" class="razlog">
+            <input type="hidden" name="akcija" value="razlog" /><input type="hidden" name="rijec" value={n.rijec} />
+            <textarea name="razlog" rows="1" maxlength="500" aria-label={`Razlog za ${n.rijec}`} placeholder="bez razloga">{n.razlog ?? ""}</textarea>
+            <button class="gumb mali tihi" type="submit">Spremi</button>
+          </form>
+          <div class="meta sitno blijedo">
+            {datum(n.created_at)}
+            {aktivna.has(n.rijec) && <> · <a href={`/admin/rijec/${aktivna.get(n.rijec)}`}>još je u katalogu</a></>}
+          </div>
+          <form method="post">
+            <input type="hidden" name="akcija" value="makni" /><input type="hidden" name="id" value={n.id} /><input type="hidden" name="rijec" value={n.rijec} />
+            <button class="gumb mali tihi" type="submit" title="Makni s popisa: riječ se opet smije dodati">Makni s popisa</button>
+          </form>
+        </div>
+      ))}
+    </section>
+  )}
+</AdminOkvir>
+
+<style>
+  .nova { display: grid; gap: 12px; padding: 20px 22px; max-width: 620px; margin-bottom: 18px; }
+  .nova label { font-weight: 650; display: block; margin-bottom: 4px; }
+  .rijec-unos { font-family: var(--font-slova); font-size: 1.3rem; font-weight: 600; text-transform: uppercase; max-width: 280px; }
+  textarea { width: 100%; box-sizing: border-box; font: inherit; resize: vertical; }
+  .popis { padding: 6px 22px; }
+  .stavka { display: grid; grid-template-columns: 9rem minmax(0, 1fr) auto auto; gap: 8px 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--rub); }
+  .stavka:last-child { border-bottom: 0; }
+  .rijec { font-family: var(--font-slova); font-weight: 700; font-size: 1.05rem; letter-spacing: .03em; overflow-wrap: anywhere; }
+  .razlog { display: flex; gap: 8px; align-items: center; min-width: 0; }
+  .razlog textarea { min-height: 2.2em; font-size: .9rem; }
+  @media (max-width: 720px) { .stavka { grid-template-columns: 1fr auto; } .razlog { grid-column: 1 / -1; } }
+  .obavijest.upozorenje { background: var(--greska-blago); color: var(--greska); }
+</style>

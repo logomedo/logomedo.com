@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { safeNext } from "../../../../lib/admin/sesija";
 import { novaGrupa, sZapisom } from "../../../../lib/aktivnost";
 import { obrisiRijec, preimenuj } from "../../../../lib/generiranje";
+import { dodajNepozeljnu } from "../../../../lib/nepozeljne";
 
 /** Opis za sliku, primjer rečenice i ručna rima; potvrda izvedene pozicije; novi naziv (i spajanje s postojećom). */
 export const POST: APIRoute = async ({ request, params, locals }) => {
@@ -16,6 +17,8 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
     const r = await env.DB.prepare("SELECT rijec FROM rijeci WHERE id = ?").bind(id).first<{ rijec: string }>();
     if (!r) return new Response("Nema te riječi", { status: 404 });
     await obrisiRijec(id, locals.admin!.email);
+    // „I ne predlaži je više”: na popis nepoželjnih, s razlogom (vraćanje iz Aktivnosti je ne miče s popisa).
+    if (f.get("nepozeljna") === "1") await dodajNepozeljnu(r.rijec, String(f.get("razlog") ?? ""), locals.admin!.email);
     return new Response(null, { status: 303, headers: { location: `/admin?${new URLSearchParams({ obrisano: r.rijec })}` } });
   }
   if (akcija === "preimenuj") {
