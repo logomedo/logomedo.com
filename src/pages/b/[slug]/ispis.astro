@@ -9,7 +9,8 @@ import { izmjenaCss, VRSTE, zadanaUputa, BOJE_DULJINE, type Razvrstavanje, type 
 import { GRANCICA } from "../../../lib/ukrasi";
 import { mapaRijeci } from "../../../lib/zadaci/napisano";
 import "@fontsource/andika/700.css";
-import { dokumentBiljeznice } from "../../../lib/pdf/model";
+import { dokumentBiljeznice, rasporedKojegSlova, rasporedPozicije, tijelaZadatka, type TijeloPdf } from "../../../lib/pdf/model";
+import { razbacanaSlova } from "../../../lib/zadaci/slusanje";
 import { spremnikSvg } from "../../../lib/spremnici";
 
 const b = await poSlugu(String(Astro.params.slug));
@@ -28,7 +29,8 @@ type Stranica =
   | { vrsta: "percepcija"; uputa: string; stavke: Percepcija["stavke"] }
   | { vrsta: "prvi_glas"; uputa: string; krug: Krug }
   | { vrsta: "slogovi"; uputa: string; nacin: Slogovi["nacin"]; krugova: number; slike: number[] }
-  | { vrsta: "razvrstavanje"; uputa: string; s: Razvrstavanje; slike: number[] };
+  | { vrsta: "razvrstavanje"; uputa: string; s: Razvrstavanje; slike: number[] }
+  | { vrsta: "koje_slovo" | "pozicija_glasa"; uputa: string; t: TijeloPdf };
 const stranice: Stranica[] = [];
 for (const z of p.zadaci) {
   if (z.vrsta === "odabir") for (const k of komadi((z.sadrzaj as Odabir).stavke, 3)) stranice.push({ vrsta: "odabir", uputa: zadanaUputa("odabir", z.sadrzaj), stavke: k });
@@ -51,6 +53,9 @@ for (const z of p.zadaci) {
     const slike = rz.slike.flatMap((x) => (x.rijec_id === null ? [] : [x.rijec_id]));
     if (slike.length) stranice.push({ vrsta: "razvrstavanje", uputa: zadanaUputa("razvrstavanje", rz), s: rz, slike });
   }
+  // Stranice iz istog modela kao PDF bilježnice (4 okvira, 3 reda slika po stranici).
+  if (z.vrsta === "koje_slovo" || z.vrsta === "pozicija_glasa")
+    for (const t of tijelaZadatka(z.vrsta, z.sadrzaj, rijeci)) stranice.push({ vrsta: z.vrsta, uputa: zadanaUputa(z.vrsta, z.sadrzaj), t });
   if (z.vrsta === "povezivanje") stranice.push({ vrsta: "povezivanje", uputa: zadanaUputa("povezivanje", z.sadrzaj), s: z.sadrzaj as Povezivanje });
 }
 const n = brojEkrana(p.zadaci);
@@ -134,6 +139,36 @@ const grancica = tema.kutovi ? GRANCICA : "";
                 </div>
               ))}
             </div>
+          </div>
+        )}
+        {s.vrsta === "koje_slovo" && s.t.vrsta === "koje_slovo" && (() => {
+          // Mjere kao PDF bilježnice (170 mm širine, ~230 mm ispod upute): rasporedKojegSlova, razbacanaSlova.
+          const t = s.t, r = rasporedKojegSlova(t.okviri.length, 170, 230);
+          return (
+            <div class="koje-slovo">
+              {t.okviri.map((o) => {
+                const z = razbacanaSlova(o.slova.length, o.kljuc, 170, r.h);
+                return (
+                  <div class="slova-okvir" style={`height:${r.h}mm`}>
+                    <span class="slova-broj">{o.broj}.</span>
+                    {o.slova.map((sl, j) => <span class="razbacano" style={`left:${z.mjesta[j].x}mm;top:${z.mjesta[j].y}mm;font-size:${z.velicina}mm;--kut:${z.mjesta[j].kut}deg`}>{sl}</span>)}
+                  </div>
+                );
+              })}
+              <p class="za-logopeda">Za logopeda: {t.okviri.map((o) => `${o.broj}. ${o.glas}`).join(" · ")}</p>
+            </div>
+          );
+        })()}
+        {s.vrsta === "pozicija_glasa" && s.t.vrsta === "pozicija_glasa" && (
+          <div class="pozicija" style={`--stupaca:${s.t.stupaca};--s:${rasporedPozicije(s.t.slike.length, s.t.stupaca, 170, 230).s}mm`}>
+            {s.t.slike.map((sl) => (
+              <div>
+                <figure class="slika">
+                  {sl.url ? <img src={sl.url} alt="" /> : <span class={sl.napisano ? "bez napisano" : "bez"}>{sl.rijec}</span>}
+                </figure>
+                <div class="pozicija-krugovi"><i /><i /><i /></div>
+              </div>
+            ))}
           </div>
         )}
         {s.vrsta === "razvrstavanje" && (
@@ -305,6 +340,14 @@ const grancica = tema.kutovi ? GRANCICA : "";
   .spremnik { position: relative; width: var(--S); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .spremnik svg { display: block; width: 100%; height: auto; }
   .spremnik .tocka { position: absolute; width: 3.2mm; height: 3.2mm; top: -4.6mm; left: calc(50% - 1.6mm); }
+  .koje-slovo { flex: 1; display: flex; flex-direction: column; gap: 6mm; }
+  .slova-okvir { position: relative; flex: none; border: 1.1pt solid #000; border-radius: 5mm; }
+  .slova-broj { position: absolute; left: 3mm; top: 1.6mm; font-size: 9pt; color: #9a907f; }
+  .razbacano { position: absolute; transform: translate(-50%, -50%) rotate(var(--kut)); font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; line-height: 1; color: #000; }
+  .za-logopeda { margin: auto 0 0; font-size: 8pt; color: #9a907f; }
+  .pozicija { display: grid; grid-template-columns: repeat(var(--stupaca), var(--s)); gap: 9mm 10mm; justify-content: center; align-content: start; }
+  .pozicija-krugovi { display: flex; justify-content: center; gap: calc(3mm - 1.4pt); margin-top: calc(3mm - .7pt); }
+  .pozicija-krugovi i { width: calc(9mm + 1.4pt); aspect-ratio: 1; border: 1.4pt solid #000; border-radius: 50%; }
   .povezi { flex: 1; display: flex; justify-content: space-between; padding: 0 8mm; }
   .stupac { display: flex; flex-direction: column; justify-content: space-around; }
   .scena-ispis { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }

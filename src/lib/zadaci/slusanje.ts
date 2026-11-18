@@ -83,6 +83,19 @@ export function razbaci(n: number, kljuc: string, omjer = 1.6): { mjesta: Razbac
   });
   return { mjesta, stupaca, redova };
 }
+/**
+ * Razbacana slova u okviru w × h (mm, papir: PDF, pregled Ispisa i ispis bilježnice): `razbaci` za unutarnji
+ * pravokutnik bez ruba (omjer prema okviru, ne 1,6 s ekrana, jer je okvir na papiru širok i nizak).
+ * Veličina slova 0,55 ćelije kao u editoru (`--cel * .55`); `x`, `y` su središta od gornjeg lijevog kuta okvira.
+ */
+export function razbacanaSlova(n: number, kljuc: string, w: number, h: number, rub = 5) {
+  const iw = Math.max(1, w - 2 * rub), ih = Math.max(1, h - 2 * rub);
+  const r = razbaci(n, kljuc, iw / ih);
+  return {
+    velicina: Math.min(iw / r.stupaca, ih / r.redova) * 0.55,
+    mjesta: r.mjesta.map((m) => ({ x: rub + m.x * iw, y: rub + m.y * ih, kut: m.kut })),
+  };
+}
 /** Boje slova na ekranu (papir je crno-bijel). */
 export const BOJE_SLOVA = ["#d62828", "#1f6fd1", "#2a9d4b", "#8e44ad", "#e07a00", "#0f8b8d", "#c2185b"];
 

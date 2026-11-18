@@ -19,7 +19,7 @@ import {
 } from "./vrste.ts";
 import { usporediZnakove } from "../znakovi.ts";
 import { spremnikSvg } from "../spremnici.ts";
-import { GRAFEMA_MAX, GRAFEMA_MIN, POZICIJE, pozicijaGlasa, prikazSlova, razbaci, slozPonudeno, type Pozicija } from "./slusanje.ts";
+import { GRAFEMA_MAX, GRAFEMA_MIN, POZICIJE, pozicijaGlasa, prikazSlova, razbaci, razbacanaSlova, slozPonudeno, type Pozicija } from "./slusanje.ts";
 import { izvorni, jeNapisano, mapaRijeci, novoPoljeNapisano, postaviUlogu, uObliku, ulogaNapisana, ulogeNapisano, VRSTE_NAPISANO } from "./napisano.ts";
 import { slikaZa, vidljiviGumbi, type PozadinaPrikaz } from "../scena-prikaz.ts";
 import { A4 as A4_MM, GOTOVI, imaOkvir, isti, KUTOVI, MASNE, normalizirajOkvir, okvirSvg, podrucje as podrucjeOkvira, RUBOVI, UKRASI, urlUkrasa, type Kutovi, type Okvir } from "../okviri.ts";
@@ -869,6 +869,31 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       return h("div", { class: "a4-razvrstaj", style: `--stupaca:${st};--s:${mm(velicina ?? r?.s) || "38mm"};--S:${mm(r?.S ?? Math.min(56, (W - (s.kategorije.length - 1) * 14) / s.kategorije.length))}` },
         h("div", { class: "a4-razvrstaj-slike" }, ...slike.map((x) => h("div", { class: "a4-izbor" }, slika(x.rijec_id, "", false)))),
         h("div", { class: "a4-razvrstaj-spremnici" }, ...s.kategorije.map((k) => h("div", { class: "a4-spremnik" }, h("i", { class: "a4-tocka" }), spremnik(s.tema, k, "a4-spremnik-crtez")))));
+    }
+    if (vrsta === "koje_slovo") {
+      // Kao PDF (model.ts rasporedKojegSlova): okvir po stavci, visina okvira = `velicina`, slova iz razbacanaSlova
+      // (mm) za širinu okvira; broj u kutu teče kroz zadatak, ključ za logopeda na dnu stranice.
+      const s = sadrzaj as KojeSlovo;
+      const pune = s.stavke.flatMap((x, i) => (x.glas && x.ponudeno.includes(x.glas) ? [i] : []));
+      const ovdje = ind ?? pune;
+      const [W, H] = prostorListica(true);
+      const v = velicina ?? Math.min(62, (H - 8 - (ovdje.length - 1) * 6) / Math.max(1, ovdje.length));
+      return h("div", { class: "a4-koje-slovo" },
+        ...ovdje.map((i) => {
+          const st = s.stavke[i];
+          const z = razbacanaSlova(st.ponudeno.length, `${i}|${st.ponudeno.join(",")}`, W, v);
+          return h("div", { class: "a4-slova-okvir", style: `width:${W}mm;height:${v}mm` }, h("span", { class: "a4-slova-broj" }, `${pune.indexOf(i) + 1}.`),
+            ...st.ponudeno.map((g, j) => h("span", { class: "a4-slovo-razbacano", style: `left:${z.mjesta[j].x}mm;top:${z.mjesta[j].y}mm;font-size:${z.velicina}mm;--kut:${z.mjesta[j].kut}deg` }, prikazSlova(g, s.slova))));
+        }),
+        h("p", { class: "a4-za-logopeda" }, `Za logopeda: ${ovdje.map((i) => `${pune.indexOf(i) + 1}. ${s.stavke[i].glas}`).join(" · ")}`));
+    }
+    if (vrsta === "pozicija_glasa") {
+      // Kao PDF (model.ts rasporedPozicije): slike bez natpisa, ispod svake tri prazna kruga.
+      const s = sadrzaj as PozicijaGlasa;
+      const pune = s.slike.filter((x) => x.rijec_id !== null);
+      const slike = ind ? izbor(s.slike, ind) : pune;
+      return h("div", { class: "a4-pozicija", style: `--stupaca:${pune.length <= 4 ? 2 : 3};--s:${mm(velicina) || "46mm"}` },
+        ...slike.map((x) => h("div", { class: "a4-izbor" }, slika(x.rijec_id, "", false), h("div", { class: "a4-pozicija-krugovi" }, h("i", {}), h("i", {}), h("i", {})))));
     }
     if (vrsta === "povezivanje") {
       // Stranica je zaseban zadatak: desno samo parovi s te stranice, u promiješanom redoslijedu.

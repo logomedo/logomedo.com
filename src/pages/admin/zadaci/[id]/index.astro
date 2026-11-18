@@ -355,6 +355,15 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-spremnik { position: relative; width: var(--S); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .a4-spremnik .a4-tocka { position: absolute; width: 3.2mm; height: 3.2mm; top: -4.6mm; left: calc(50% - 1.6mm); }
   .a4-spremnik-crtez svg, .z-spremnik svg { display: block; width: 100%; height: auto; }
+  /* Koje slovo čuješ i Gdje je glas: isto kao PDF (model.ts rasporedKojegSlova, rasporedPozicije). */
+  .a4-koje-slovo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }
+  .a4-slova-okvir { position: relative; flex: none; box-sizing: border-box; border: 1.1pt solid #000; border-radius: 5mm; }
+  .a4-slova-broj { position: absolute; left: 3mm; top: 1.6mm; font-size: 9pt; color: #9a907f; }
+  .a4-slovo-razbacano { position: absolute; transform: translate(-50%, -50%) rotate(var(--kut)); font-family: Andika, "Nunito Variable", sans-serif; font-weight: 700; line-height: 1; color: #000; }
+  .a4-za-logopeda { margin: auto 0 0; font-size: 8pt; color: #9a907f; }
+  .a4-pozicija { display: grid; grid-template-columns: repeat(var(--stupaca), var(--s)); gap: 9mm 10mm; justify-content: center; align-content: start; }
+  .a4-pozicija-krugovi { display: flex; justify-content: center; gap: calc(3mm - 1.4pt); margin-top: calc(3mm - .7pt); }
+  .a4-pozicija-krugovi i { box-sizing: border-box; width: calc(9mm + 1.4pt); aspect-ratio: 1; border: 1.4pt solid #000; border-radius: 50%; }
   .a4-povezi { display: flex; justify-content: space-between; padding: 0 6mm; }
   .a4-stupac { display: flex; flex-direction: column; gap: 6mm; }
   .a4-par { display: flex; align-items: center; gap: 4mm; } .a4-par .z-slika { width: var(--s, 36mm); }

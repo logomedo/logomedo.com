@@ -190,3 +190,39 @@ test("razvrstavanje: jedna stranica, slike bez natpisa, spremnici s oznakom; 12 
     assert.equal((await PDFDocument.load(pdf)).getPageCount(), 1);
   }
 });
+
+test("koje slovo: okvir po stavci (samo stavke s glasom među slovima), 4 na prvoj stranici, ključ za logopeda, Andika", async () => {
+  const ponudeno = ["S", "Š", "Z", "Ž", "C", "A", "LJ", "M", "DŽ", "R"];
+  const stavke = Array.from({ length: 12 }, (_, i) => ({ glas: ponudeno[i % 10], ponudeno }));
+  const d = dokumentZadatka({ vrsta: "koje_slovo", naslov: "", uputa: "Poslušaj", sadrzaj: { slova: "mala", grafema: 10, stavke: [...stavke, { glas: null, ponudeno: [] }] } }, rijeci, true);
+  assert.ok(d.stranice.length >= 3, String(d.stranice.length));
+  assert.deepEqual(d.stranice.flatMap((s) => s.indeksi), Array.from({ length: 12 }, (_, i) => i));
+  assert.equal(d.stranice[0].indeksi!.length, 4);
+  assert.ok(d.stranice.every((s) => s.velicina! >= 46 && s.velicina! <= 62), d.stranice.map((s) => s.velicina).join());
+  const t = d.stranice[1].tijelo;
+  assert.ok(t.vrsta === "koje_slovo" && t.okviri[0].broj === 5 && t.okviri[0].glas === "C" && t.okviri[0].slova.includes("dž"));
+  assert.ok(JSON.stringify(t).includes('"znak":true'));
+  const andika = new Uint8Array(readFileSync(new URL("../../../public/fonts/andika-700.ttf", import.meta.url)));
+  const pdf = await napraviPdf(d, new Map(), { ...fontovi, znak: andika });
+  assert.equal((await PDFDocument.load(pdf)).getPageCount(), d.stranice.length);
+});
+
+test("gdje je glas: 3 stupca, redova koliko stane bez smanjivanja; do 4 slike 2 stupca; PDF s krugovima", async () => {
+  const slike = Array.from({ length: 12 }, (_, i) => ({ rijec_id: (i % 4) + 1, pozicija: (i % 3) as 0 | 1 | 2 }));
+  const d = dokumentZadatka({ vrsta: "pozicija_glasa", naslov: "", uputa: "Gdje čuješ glas Š?", sadrzaj: { glas: "Š", slike: [...slike, { rijec_id: null, pozicija: 0 }] } }, rijeci, true);
+  assert.deepEqual(d.stranice.map((s) => (s.tijelo as { slike: unknown[] }).slike.length), [9, 3]);
+  assert.ok(d.stranice.every((s) => s.velicina === 46 && s.tijelo.vrsta === "pozicija_glasa" && s.tijelo.stupaca === 3 && s.tijelo.slike.every((x) => !x.natpis)));
+  assert.equal((await PDFDocument.load(await napraviPdf(d, new Map(), fontovi))).getPageCount(), 2);
+  const m = dokumentZadatka({ vrsta: "pozicija_glasa", naslov: "", uputa: "", sadrzaj: { glas: "Š", slike: slike.slice(0, 4) } }, rijeci, true);
+  assert.ok(m.stranice.length === 1 && m.stranice[0].tijelo.vrsta === "pozicija_glasa" && m.stranice[0].tijelo.stupaca === 2 && m.stranice[0].velicina === 56);
+});
+
+test("bilježnica: koje slovo 4 okvira po stranici, gdje je glas 9 slika po stranici", () => {
+  const ponudeno = ["S", "Š", "Z", "Ž"];
+  const d = dokumentBiljeznice({ naslov: "Glasovi" }, [
+    { vrsta: "koje_slovo", sadrzaj: { slova: "velika", grafema: 4, stavke: Array.from({ length: 6 }, () => ({ glas: "S", ponudeno })) } },
+    { vrsta: "pozicija_glasa", sadrzaj: { glas: "Š", slike: Array.from({ length: 10 }, () => ({ rijec_id: 1, pozicija: 0 as const })) } },
+  ], rijeci, 1);
+  assert.deepEqual(d.stranice.map((s) => s.tijelo.vrsta), ["koje_slovo", "koje_slovo", "pozicija_glasa", "pozicija_glasa"]);
+  assert.match(d.stranice[2].uputa!, /glas Š/);
+});

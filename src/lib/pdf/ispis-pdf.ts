@@ -12,9 +12,10 @@ import { prelomi } from "./sirine.ts";
 import { TEME } from "../teme.ts";
 import { GRANCICA } from "../ukrasi.ts";
 import { podrucje, RUB_KARTICE, slojevi } from "../okviri.ts";
-import { rasporedRazvrstavanja, type DokumentPdf, type SlikaPdf, type StranicaPdf } from "./model.ts";
+import { POZICIJA_KRUG, POZICIJA_RAZMAK, rasporedKojegSlova, rasporedPozicije, rasporedRazvrstavanja, type DokumentPdf, type SlikaPdf, type StranicaPdf } from "./model.ts";
 import { OZNAKA, SPREMNICI, SPREMNIK_VB, spremnikOblik, velicinaOznake } from "../spremnici.ts";
 import { nacrtajSvg, omjer } from "./svg.ts";
+import { razbacanaSlova } from "../zadaci/slusanje.ts";
 
 /** `znak`: Andika (font za početno čitanje) za slova i brojke iz kataloga znakova; bez njega znak ide naslovnim fontom. */
 export interface FontoviPdf { tekst: Uint8Array; naslov: Uint8Array; znak?: Uint8Array }
@@ -82,11 +83,12 @@ class Platno {
 
   /**
    * Znak (slovo, brojka) centriran u (cx, cy) mm, s izmjenom kao u `izmjenaCss`: zrcalo i okreti su
-   * matrica oko središta (pdf-lib drawText ne zna zrcaliti), siva je ionako crna.
+   * matrica oko središta (pdf-lib drawText ne zna zrcaliti), siva je ionako crna. `kutCss` je zakret u
+   * stupnjevima kao CSS `rotate()` (u smjeru kazaljke; u PDF-u os y gleda gore, pa se oduzima).
    */
-  znak(t: string, cx: number, cy: number, pt: number, izmjena: Izmjena = "") {
+  znak(t: string, cx: number, cy: number, pt: number, izmjena: Izmjena = "", kutCss = 0) {
     const X = this.X(cx), Y = this.Y(cy);
-    const kut = izmjena === "naopako" ? Math.PI : izmjena === "lijevo" ? Math.PI / 2 : izmjena === "desno" ? -Math.PI / 2 : 0;
+    const kut = (izmjena === "naopako" ? Math.PI : izmjena === "lijevo" ? Math.PI / 2 : izmjena === "desno" ? -Math.PI / 2 : 0) - (kutCss * Math.PI) / 180;
     const sx = (izmjena === "zrcalo" ? -1 : 1) * (izmjena === "mala" ? 0.68 : 1), sy = izmjena === "mala" ? 0.68 : 1;
     const c = Math.cos(kut), s = Math.sin(kut);
     // M = T(X,Y) · R(kut) · S(sx,sy) · T(-X,-Y)
@@ -368,6 +370,32 @@ export async function napraviPdf(dok: DokumentPdf, slike: SlikePdf, fontovi: Fon
         const k1 = r.S / SPREMNIK_VB;
         p.znak(k, x + o.cx * k1, ys + o.cy * k1, velicinaOznake(k, o.r) * k1 * MM);
         p.tocka(x + r.S / 2, ys - 3, 1.6);
+      }
+    }
+
+    if (t.vrsta === "koje_slovo") {
+      // Okviri jedan ispod drugoga, slova razbacana kao na ekranu (isti ključ), crna Andika; broj u kutu.
+      // Na dnu sitno za logopeda koji glas izgovara za koji okvir.
+      const r = rasporedKojegSlova(t.okviri.length, W, H);
+      for (const [i, o] of t.okviri.entries()) {
+        const y = vrh + i * (r.h + r.g);
+        p.okvir(L, y, W, r.h, 5, 1.1);
+        p.tekst(`${o.broj}.`, L + 3, y + 2, 9, { boja: BLIJEDO, poravnanje: "l" });
+        const z = razbacanaSlova(o.slova.length, o.kljuc, W, r.h);
+        o.slova.forEach((sl, j) => p.znak(sl, L + z.mjesta[j].x, y + z.mjesta[j].y, z.velicina * MM, "", z.mjesta[j].kut));
+      }
+      p.tekst(`Za logopeda: ${t.okviri.map((o) => `${o.broj}. ${o.glas}`).join(" · ")}`, L, dno - 5, 8, { boja: BLIJEDO, poravnanje: "l" });
+    }
+
+    if (t.vrsta === "pozicija_glasa") {
+      // Mreža slika (bez natpisa), ispod svake tri prazna kruga: početak, sredina, kraj riječi.
+      const r = rasporedPozicije(t.slike.length, t.stupaca, W, H);
+      const x0 = L + (W - (t.stupaca * r.s + (t.stupaca - 1) * r.gx)) / 2, rk = POZICIJA_KRUG / 2;
+      for (const [i, sl] of t.slike.entries()) {
+        const x = x0 + (i % t.stupaca) * (r.s + r.gx), y = vrh + Math.floor(i / t.stupaca) * (r.s + r.kr + r.g);
+        await slikaUOkviru(p, sl, x, y, r.s);
+        for (let k = -1; k <= 1; k++)
+          p.page.drawCircle({ x: p.X(x + r.s / 2 + k * (POZICIJA_KRUG + POZICIJA_RAZMAK)), y: p.Y(y + r.s + 3 + rk), size: rk * MM, color: BIJELO, borderColor: CRNO, borderWidth: 1.4 });
       }
     }
 

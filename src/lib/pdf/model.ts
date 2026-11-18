@@ -8,7 +8,8 @@ import type { Tema } from "../teme.ts";
 import { imaOkvir, podrucje, slojevi, type Okvir, type Podrucje } from "../okviri.ts";
 import { TEME } from "../teme.ts";
 import { SPREMNICI } from "../spremnici.ts";
-import { rasporedListica, poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Razvrstavanje, type TemaRazvrstavanja, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
+import { prikazSlova } from "../zadaci/slusanje.ts";
+import { rasporedListica, poStraniciListica, VRSTE, zadanaUputa, BOJE_DULJINE, type RasporedListica, type Razvrstavanje, type TemaRazvrstavanja, type KojeSlovo, type PozicijaGlasa, type Slogovi, type Izmjena, type Listic, type Odabir, type Percepcija, type PrviGlas, type Povezivanje, type Sadrzaj, type Scena, type Uljez, type Vrsta } from "../zadaci/vrste.ts";
 
 /** Slika na papiru: URL (ili null, tada se u okviru ispiše riječ) i natpis ispod (ili ""). */
 /** `znak`: slovo ili brojka iz kataloga znakova, crta se kao znak u okviru (s izmjenom), ne kao riječ. */
@@ -28,8 +29,18 @@ export type TijeloPdf =
   | { vrsta: "povezivanje"; lijevo: SlikaPdf[]; desno: SlikaPdf[] }
   /** Slike gore, spremnici (vreće…) s oznakom dolje; dijete povlači crtu od slike do spremnika. */
   | { vrsta: "razvrstavanje"; tema: TemaRazvrstavanja; kategorije: string[]; slike: SlikaPdf[] }
+  /**
+   * Okvir s razbacanim slovima po stavci; `kljuc` je ključ `razbaci` kao u igri (isti raspored), `slova` već
+   * velika ili mala. `znak: true` je tu da preglednik učita Andiku (preglednik.ts traži `"znak":true`).
+   */
+  | { vrsta: "koje_slovo"; znak: true; okviri: OkvirSlova[] }
+  /** Slike bez natpisa (odao bi glas), ispod svake tri prazna kruga: početak, sredina, kraj. */
+  | { vrsta: "pozicija_glasa"; stupaca: number; slike: SlikaPdf[] }
   | { vrsta: "listic"; kartice: { slika: SlikaPdf | null; tekst: string }[]; raspored?: RasporedListica }
   | { vrsta: "scena"; pozadina: string | null; gumbi: SlikaPdf[] };
+
+/** `broj` teče kroz cijeli zadatak (ključ za logopeda na dnu stranice), `glas` je ono što logoped izgovori. */
+export interface OkvirSlova { broj: number; glas: string; kljuc: string; slova: string[] }
 
 export interface StranicaPdf {
   /** Veliki naslov na vrhu (samo prva stranica samostalnog zadatka). */
@@ -151,6 +162,25 @@ export function straniceZadatka(vrsta: Vrsta, s: Sadrzaj, rijeci: Map<number, Ri
     const ind = r.slike.map((x, i) => ({ x, i })).filter((y) => y.x.rijec_id !== null);
     return [{ tijelo: { vrsta: "razvrstavanje", tema: r.tema, kategorije: r.kategorije.map((k) => k ?? "?"), slike: ind.map((y) => ({ ...sl(y.x.rijec_id), natpis: "" })) }, indeksi: ind.map((y) => y.i) }];
   }
+  if (vrsta === "koje_slovo") {
+    // Okvir po stavci, samo stavke koje igra prikazuje (glas je među slovima). Bez prostora 4 po stranici;
+    // s prostorom okvira koliko stane dok okvir nije niži od KOJE_SLOVO_VISINA.
+    const ks = s as KojeSlovo;
+    const pune = ks.stavke.flatMap((x, i) => (x.glas && x.ponudeno.includes(x.glas) ? [{ x, i }] : []));
+    const okviri: OkvirSlova[] = pune.map((y, j) => ({ broj: j + 1, glas: y.x.glas!, kljuc: `${y.i}|${y.x.ponudeno.join(",")}`, slova: y.x.ponudeno.map((g) => prikazSlova(g, ks.slova)) }));
+    return lomi(okviri, 4, (k) => ({ vrsta: "koje_slovo", znak: true, okviri: k }), 1, () => KOJE_SLOVO_VISINA)
+      .map((d) => ({ tijelo: d.tijelo, indeksi: d.indeksi.map((j) => pune[j].i) }));
+  }
+  if (vrsta === "pozicija_glasa") {
+    // Kao analiza slogova: redova koliko stane bez smanjivanja slike (bez prostora 3 reda). Stupaca prema
+    // cijelom zadatku (do 4 slike 2, inače 3), da zadnja stranica ne promijeni mrežu. Natpis bi odao glas.
+    const pg = s as PozicijaGlasa;
+    const pune = pg.slike.map((x, i) => ({ x, i })).filter((y) => y.x.rijec_id !== null);
+    const stupaca = pune.length <= 4 ? 2 : 3;
+    const u = (k: { rijec_id: number | null }[]): TijeloPdf => ({ vrsta: "pozicija_glasa", stupaca, slike: k.map((x) => ({ ...sl(x.rijec_id), natpis: "" })) });
+    const puna = (k: { x: { rijec_id: number | null } }[]) => prostor ? najmanjaSlika(u(k.slice(0, stupaca).map((y) => y.x)), prostor.W, 1e4) - 0.05 : 0;
+    return lomi(pune, stupaca * 3, (k) => u(k.map((y) => y.x)), stupaca, puna).map((d) => ({ tijelo: d.tijelo, indeksi: d.indeksi.map((j) => pune[j].i) }));
+  }
   if (vrsta === "povezivanje") {
     // Svaka stranica je zaseban zadatak (lijevo i desno isti parovi). Bez prostora jedna stranica; inače
     // najmanje stranica s jednakim brojem parova u kojima slika ne pada ispod NAJMANJA_SLIKA.
@@ -252,6 +282,9 @@ export function najmanjaSlika(t: TijeloPdf, W: number, H: number): number {
     return Math.min(32, (W - (po - 1) * 5) / po);
   }
   if (t.vrsta === "razvrstavanje") return rasporedRazvrstavanja(t.slike.length, t.kategorije.length, W, H).s;
+  // Koje slovo: „slika” je visina okvira sa slovima (slova rastu s njom).
+  if (t.vrsta === "koje_slovo") return rasporedKojegSlova(t.okviri.length, W, H).h;
+  if (t.vrsta === "pozicija_glasa") return rasporedPozicije(t.slike.length, t.stupaca, W, H).s;
   if (t.vrsta === "slogovi") {
     const st = t.krugova ? 3 : 4, red = Math.max(1, Math.ceil(t.slike.length / st));
     const redKrugova = t.krugova * 10.5 - 2.5 <= 46 ? 1 : 2, kr = t.krugova ? (redKrugova === 1 ? 12 : 21) : 0, g = t.krugova ? 9 : 6;
@@ -272,6 +305,30 @@ export function rasporedRazvrstavanja(n: number, kategorija: number, W: number, 
   const S = Math.min(56, (W - (kategorija - 1) * gs) / kategorija);
   const s = Math.max(0, Math.min(40, (W - (stupaca - 1) * g) / stupaca, (H - S - G - (redova - 1) * g) / redova));
   return { stupaca, redova, g, gs, G, S, s };
+}
+
+/** Najniži okvir sa slovima (mm): niži bi smanjio slova ispod ~10 mm, pa ide nova stranica. */
+export const KOJE_SLOVO_VISINA = 46;
+
+/**
+ * Koje slovo na papiru (mm), isto za PDF, pregled Ispisa i ispis bilježnice: okviri cijele širine `W`
+ * jedan ispod drugoga (razmak `g`), visina `h` do 62; na dnu pojas `kljuc` za „Za logopeda: 1. S · 2. Š”.
+ */
+export function rasporedKojegSlova(n: number, W: number, H: number) {
+  const g = 6, kljuc = 8;
+  return { g, kljuc, w: W, h: Math.max(0, Math.min(62, (H - kljuc - (n - 1) * g) / Math.max(1, n))) };
+}
+
+/** Krug ispod slike pozicije glasa (promjer, mm) i razmak među tri kruga. */
+export const POZICIJA_KRUG = 9, POZICIJA_RAZMAK = 3;
+/**
+ * Gdje je glas na papiru (mm): mreža `stupaca` × `redova` slika `s` (do 46, u 2 stupca do 56), ispod svake
+ * tri kruga (pojas `kr` = 3 razmaka + krug), razmak redova `g`, stupaca `gx` (kao analiza slogova).
+ */
+export function rasporedPozicije(n: number, stupaca: number, W: number, H: number) {
+  const redova = Math.max(1, Math.ceil(n / stupaca)), g = 9, gx = 10, kr = 3 + POZICIJA_KRUG;
+  const s = Math.max(0, Math.min(stupaca === 2 ? 56 : 46, (W - (stupaca - 1) * gx) / stupaca, (H - (redova - 1) * g) / redova - kr));
+  return { redova, g, gx, kr, s };
 }
 
 /**
@@ -324,7 +381,7 @@ export function slikeDokumenta(d: DokumentPdf): string[] {
   for (const { tijelo: t } of d.stranice) {
     if (t.vrsta === "odabir") t.redovi.forEach((r) => [r.zadana, ...r.ponudeno].forEach(dodaj));
     if (t.vrsta === "uljez" || t.vrsta === "percepcija") t.redovi.flat().forEach(dodaj);
-    if (t.vrsta === "prvi_glas" || t.vrsta === "slogovi" || t.vrsta === "razvrstavanje") t.slike.forEach(dodaj);
+    if (t.vrsta === "prvi_glas" || t.vrsta === "slogovi" || t.vrsta === "razvrstavanje" || t.vrsta === "pozicija_glasa") t.slike.forEach(dodaj);
     if (t.vrsta === "razvrstavanje") out.add(SPREMNICI[t.tema].src);
     if (t.vrsta === "povezivanje") [...t.lijevo, ...t.desno].forEach(dodaj);
     if (t.vrsta === "listic") t.kartice.forEach((k) => dodaj(k.slika));
