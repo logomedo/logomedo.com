@@ -333,3 +333,9 @@ poništavanje grupa u dnevniku koje diraju tablicu `rijeci`.
 obrisane riječi tu riječ vraća (`ON CONFLICT … aktivna = 1`), pa logoped tako može poništiti brisanje; nepoželjne su
 i dalje blokirane; (c) brojke stanja na Katalogu (npr. „kandidata čeka pregled”) su globalne, a gumb „Pregledaj N”
 broji samo svoje.
+
+**605. „Poništi” i „Vrati na ovo” za logopeda samo na bilježnicama** (`smijeVratitiGrupu` u `aktivnost-prikaz.ts`,
+server u `api/aktivnost/[id].ts`, gumbi u `Aktivnost.astro`). Vraćanje primijeni stari snimak retka bez obzira na
+kasnije izmjene drugih, pa je logoped na svojoj staroj odluci o slici mogao ponovno odobriti sliku koju je superadmin
+u međuvremenu odbio. Slike, poslovi i riječi (zajednički katalog) vraća samo superadmin; zamjenjuje ograničenje samo
+na `rijeci` iz odluke 603.
