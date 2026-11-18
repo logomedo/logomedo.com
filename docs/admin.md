@@ -60,8 +60,9 @@ od prijave pozivnicom.
 **Deaktivacija:** „Deaktiviraj” odmah briše sve njegove sesije i opoziva otvorene pozivnice;
 passkeyi ostaju, pa „Aktiviraj” vraća pristup bez nove pozivnice.
 
-**Limit:** u retku korisnika polja „slike” i „izgovori” (AI limit za 7 dana) → „Spremi”. Zadano je
-50 slika i 200 izgovora. Jedan posao u redu = jedan kredit (slika riječi ili situacije = slika;
+**Limit:** u retku korisnika polja „slike” i „izgovori” (AI limit za 7 dana) → „Spremi”. Novi logoped
+(pozivnica) dobiva 20 slika i 50 izgovora (`ZADANI_LIMIT` u `src/lib/admin/ovlasti.ts`, od 18. 11. 2026.;
+stariji retci imaju 50 / 200 iz migracije 0032). Jedan posao u redu = jedan kredit (slika riječi ili situacije = slika;
 izgovor = izgovor). Zahtjev koji traži više od preostalog odbija se cijeli, s porukom koliko je
 ostalo i kad se prvi krediti vraćaju. Naplaćuje se i „Pokušaj ponovo” za neuspjele poslove
 (logoped na `/admin/zvukovi` vidi i vraća samo izgovore koje je sam zatražio); „Pogurni red” i

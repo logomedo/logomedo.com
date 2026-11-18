@@ -13,6 +13,7 @@ import {
   type TabIzgovora,
 } from "../../lib/zvukovi";
 import { KvotaPrekoracena } from "../../lib/kvota";
+import { IZGOVOR_VEC_ODOBREN } from "../../lib/zvukovi";
 import { pregledFiltar } from "../../lib/admin/vlasnistvo";
 import { imenaKorisnika, posiljateljiNaPregledu } from "../../lib/zatrazio";
 
@@ -40,7 +41,7 @@ if (Astro.request.method === "POST") {
     if (a === "odobri") {
       ok = await odobriZvuk(Number(f.get("id")), email);
       makni = true;
-      if (!ok) poruka = "Ta snimka više ne čeka ili je nije poslao ovaj korisnik.";
+      if (!ok) poruka = superadmin ? "Ta snimka više ne čeka." : "Ta snimka više ne čeka, ili riječ već ima odobren izgovor (zamijeniti ga može samo superadmin).";
     }
     if (a === "odbij" || a === "odbij-samo") {
       const ids = String(f.get("ids") ?? "").split(",").map(Number).filter(Boolean);
@@ -51,8 +52,11 @@ if (Astro.request.method === "POST") {
     if (a === "ponovi") {
       ok = await ponoviZvuk(String(f.get("kljuc") ?? ""), email, String(f.get("izgovor") ?? ""));
       makni = ok && tab === "odbijeno";
-      poruka = ok ? "Snimaju se tri nove varijante. Čekaju te u tabu Čeka." : "Taj tekst već ima snimku koja čeka ili se snima.";
+      poruka = ok ? "Snimaju se tri nove varijante. Čekaju te u tabu Čeka."
+        : superadmin ? "Taj tekst već ima snimku koja čeka ili se snima." : `Taj tekst već ima snimku koja čeka ili se snima, ili odobren izgovor (${IZGOVOR_VEC_ODOBREN})`;
     }
+    // „Pogurni red” dira poslove svih korisnika: samo superadmin (revizija 18. 11. 2026.).
+    if (a === "zaglavljeni" && !superadmin) return new Response("Zabranjeno", { status: 403 });
     if (a === "zaglavljeni") poruka = `Ponovno poslano u red: ${await posaljiZaglavljene()}.`;
     if (a === "greske") poruka = `Ponovno poslano u red: ${await greskeURed(email)}.`;
   } catch (e) {
@@ -121,7 +125,7 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
     <section class="ploha greske-popis">
       <form method="post" class="greske-akcije">
         {greske.length > 0 && <button class="gumb glavni" name="akcija" value="greske">Pokušaj ponovo sve ({greske.length})</button>}
-        <button class="gumb tihi" name="akcija" value="zaglavljeni" title="Poslovi koji čekaju ili su zapeli: ponovno u Cloudflare Queue">Pogurni red</button>
+        {superadmin && <button class="gumb tihi" name="akcija" value="zaglavljeni" title="Poslovi koji čekaju ili su zapeli: ponovno u Cloudflare Queue">Pogurni red</button>}
       </form>
       {greske.length ? (
         <table>
@@ -152,7 +156,7 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
               </button>
               <div class="opis">
                 <b class:list={[z.provjera === "ok" ? "dobro" : z.provjera === "razlika" ? "lose" : ""]}>{provjera(z)}</b>
-                <span class="sitno blijedo">{opisNacina(z.nacin ?? z.model)} · #{z.id} · {kad(z.created_at)}{tab !== "ceka" && z.pregledao && <> · {z.pregledao}</>}</span>
+                <span class="sitno blijedo">{opisNacina(z.nacin ?? z.model)} · #{z.id} · {kad(z.created_at)}{superadmin && tab !== "ceka" && z.pregledao && <> · {z.pregledao}</>}</span>
                 {superadmin && <span class="sitno poslao">Poslao: {poslao(z)}</span>}
                 {tab !== "ceka" && z.razlog && <span class="sitno razlog">{z.razlog}</span>}
                 {z.bez_ponavljanja === 1 && <span class="sitno razlog">Samo odbijeno: ne snima se ponovo dok ga netko ne vrati.</span>}
@@ -179,7 +183,7 @@ const provjera = (z: { provjera: string; prijepis: string | null }) =>
               </form>
             </details>
           )}
-          {tab !== "ceka" && !g.uIzradi && (
+          {tab !== "ceka" && !g.uIzradi && (superadmin || tab !== "odobreno") && (
             <details class="odbij">
               <summary class="gumb tihi">Snimi ponovo…</summary>
               <form method="post" data-ajax class="odbij-forma">

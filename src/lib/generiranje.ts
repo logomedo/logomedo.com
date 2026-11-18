@@ -10,6 +10,8 @@ import { blokIspravaka, spojiPrompt, type Ispravak } from "./prompt";
 import { pojave, slug as uSlug } from "./fonemi";
 import { dimenzije } from "./dimenzije";
 import { batchSKvotom, KvotaPrekoracena, platitelj, provjeri } from "./kvota";
+import { adminEmails } from "./admin/sesija";
+import { zabranaNoveRijeci } from "./nepozeljne";
 
 const ZASTARIO_MIN = 15;
 const MAX_POKUSAJA = 3;
@@ -243,7 +245,13 @@ export async function neuspjeh(posaoId: number, greska: string) {
 }
 
 /** Ishod odluke. `vec` = netko je bio brži: slika više nije kandidat (status i tko je odlučio). */
-export type Ishod = { ok: true } | { ok: false; nema?: true; vec?: { status: string; pregledao: string | null } };
+export type Ishod = { ok: true; predlozena?: true }
+  | { ok: false; nema?: true; zabranjeno?: true; vec?: { status: string; pregledao: string | null } };
+
+/** Superadmin (ADMIN_EMAILS) odlučuje za sve; ostali (logoped) samo predlažu (revizija 18. 11. 2026., ODLUKA 2). */
+const jeSuperadmin = (email: string) => adminEmails().has(email.trim().toLowerCase());
+
+export const SAMO_SUPERADMIN_VRACA = "O ovoj slici je već odlučio superadmin; promijeniti to može samo on.";
 
 /**
  * Odluka o kandidatu. Riječ može imati više odobrenih slika po stilu (npr. tri bojanke), pa
@@ -263,6 +271,26 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
     return { ok: false as const, vec: t ?? { status: s.status, pregledao: s.pregledao } };
   };
   if (akcija !== "vrati" && s.status !== "kandidat") return vec();
+  const superadmin = jeSuperadmin(email);
+  // Logoped: „Odobri” je prijedlog (slika ostaje kandidat dok je superadmin ne potvrdi), a „Vrati”
+  // povlači prijedlog ili vlastitu odluku; tuđu (superadminovu) odluku ne dira.
+  if (!superadmin && akcija === "odobri") {
+    const [, r] = await db.batch(sZapisom(zapis("slika.predlozena"), s.id, [
+      db.prepare("UPDATE slike SET predlozio = lower(?), predlozeno_at = datetime('now') WHERE id = ? AND status = 'kandidat' AND predlozio IS NULL")
+        .bind(email, s.id),
+    ]));
+    if (!r.meta.changes) return vec();
+    return { ok: true, predlozena: true };
+  }
+  if (!superadmin && akcija === "vrati") {
+    if (s.status === "kandidat") {
+      await db.batch(sZapisom(zapis("slika.prijedlog_povucen"), s.id, [
+        db.prepare("UPDATE slike SET predlozio = NULL, predlozeno_at = NULL WHERE id = ? AND status = 'kandidat'").bind(s.id),
+      ]));
+      return { ok: true };
+    }
+    if ((s.pregledao ?? "").toLowerCase() !== email.trim().toLowerCase()) return { ok: false, zabranjeno: true };
+  }
   if (akcija === "odobri") {
     // Riječ smije imati više odobrenih u istom stilu: dosadašnje ostaju odobrene.
     const [, r] = await db.batch(sZapisom(zapis("slika.odobrena"), s.id, [
@@ -373,6 +401,13 @@ export async function promijeniStil(slikaId: number, kod: string, email: string)
   const db = env.DB;
   const st = await db.prepare("SELECT id FROM stilovi WHERE kod = ?").bind(kod).first<{ id: number }>();
   if (!st) return { ok: false as const, greska: "Nepoznat stil." };
+  // Logoped seli samo kandidata ili sliku o kojoj je sam odlučio; odobrenu (superadmin) ne.
+  if (!jeSuperadmin(email)) {
+    const s = await db.prepare("SELECT status, lower(pregledao) AS pregledao FROM slike WHERE id = ?").bind(slikaId)
+      .first<{ status: string; pregledao: string | null }>();
+    if (!s) return { ok: false as const, greska: "Nema te slike." };
+    if (s.status !== "kandidat" && s.pregledao !== email.trim().toLowerCase()) return { ok: false as const, greska: SAMO_SUPERADMIN_VRACA };
+  }
   await db.batch(sZapisom({ tko: email, radnja: "slika.stil", tablica: "slike", grupa: novaGrupa() }, slikaId,
     [db.prepare("UPDATE slike SET stil_id = ? WHERE id = ?").bind(st.id, slikaId)]));
   return { ok: true as const };
@@ -403,6 +438,8 @@ export async function premjesti(slikaId: number, cilj: string, email: string, o:
   let r = await db.prepare("SELECT id, slug, aktivna FROM rijeci WHERE rijec = ?").bind(rijec).first<{ id: number; slug: string; aktivna: number }>();
   let nova = false;
   if (!r || !r.aktivna) {
+    const zabrana = await zabranaNoveRijeci(rijec, email);
+    if (zabrana) return { ok: false as const, greska: zabrana };
     const { results: glasovi } = await db.prepare("SELECT id, oznaka, skupine FROM glasovi").all<{ id: number; oznaka: string; skupine: number }>();
     const idGlasa = new Map(glasovi.map((g) => [g.oznaka, g.id]));
     const izvedeno = pojave(rijec, glasovi.map((g) => g.oznaka), glasovi.filter((g) => g.skupine).map((g) => g.oznaka));
@@ -444,9 +481,11 @@ export async function premjesti(slikaId: number, cilj: string, email: string, o:
   await db.prepare("UPDATE slike SET premjestena_u = ? WHERE id = ?").bind(kopija, s.id).run();
   if (o.trajno && o.dorada?.trim()) await trajniOpis(s.id, o.dorada, email, grupa);
 
-  const odobrena = (await odluci(kopija, "odobri", email, undefined, grupa)).ok;
+  // Kopija je odobrena; kod logopeda predložena (čeka superadmina), kao svako njegovo „Odobri”.
+  const o2 = await odluci(kopija, "odobri", email, undefined, grupa);
+  const odobrena = o2.ok && !("predlozena" in o2 && o2.predlozena);
   const posao = o.ponovi ? await ponoviNakonOdluke(s.id, email, grupa) : { generira: false };
-  return { ok: true as const, kopija, rijec: rijec, slug: r.slug, nova, odobrena, ...posao };
+  return { ok: true as const, kopija, rijec: rijec, slug: r.slug, nova, odobrena, predlozena: o2.ok && !odobrena, ...posao };
 }
 
 /** Javni URL odobrene slike (bucket logomedo-javno na cdn.logomedo.com). */

@@ -54,3 +54,9 @@ export function odrediUlogu(
   if (red && red.uloga === "logoped" && red.aktivan === 1) return "logoped";
   return null;
 }
+
+/**
+ * Tjedna AI kvota novog logopeda (pozivnica). Za alfu niže od zadanog u migraciji 0032 (50 / 200);
+ * superadmin pojedincu podiže na /admin/korisnici (revizija 18. 11. 2026., ODLUKA 4).
+ */
+export const ZADANI_LIMIT = { slike: 20, zvukovi: 50 } as const;

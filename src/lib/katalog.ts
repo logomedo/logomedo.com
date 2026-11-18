@@ -22,6 +22,8 @@ export interface Slika {
   stil?: string; stil_naziv?: string;
   /** Samo iz `rijec()`: tko je sliku poslao (e-mail malim slovima), null = nepoznato. */
   zatrazio?: string | null;
+  /** Samo iz `rijec()`: logoped koji je kandidata predložio za odobrenje (čeka superadmina). */
+  predlozio?: string | null;
 }
 
 export const DB = () => env.DB;
@@ -101,7 +103,7 @@ export async function rijec(slug: string) {
        WHERE rg.rijec_id = ? ORDER BY g.redoslijed`,
     ).bind(r.id),
     DB().prepare(
-      `SELECT x.id, x.rijec_id, x.status, x.razlog, x.prompt, x.model, x.izvor, x.created_at, x.pregledao, x.r2_kljuc,
+      `SELECT x.id, x.rijec_id, x.status, x.razlog, x.prompt, x.model, x.izvor, x.created_at, x.pregledao, x.r2_kljuc, lower(x.predlozio) AS predlozio,
          st.kod AS stil, st.naziv AS stil_naziv, ${zatrazioSlike("x")} AS zatrazio
        FROM slike x JOIN stilovi st ON st.id = x.stil_id
        WHERE x.rijec_id = ? ORDER BY CASE x.status WHEN 'odobrena' THEN 0 WHEN 'kandidat' THEN 1 ELSE 2 END, x.id DESC`,

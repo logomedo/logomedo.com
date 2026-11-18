@@ -339,3 +339,16 @@ server u `api/aktivnost/[id].ts`, gumbi u `Aktivnost.astro`). Vraćanje primijen
 kasnije izmjene drugih, pa je logoped na svojoj staroj odluci o slici mogao ponovno odobriti sliku koju je superadmin
 u međuvremenu odbio. Slike, poslovi i riječi (zajednički katalog) vraća samo superadmin; zamjenjuje ograničenje samo
 na `rijeci` iz odluke 603.
+
+**606. Revizija prije alfe** (`docs/rbac/2026-11-18-revizija-logoped-alfa.md`, korisnik odabrao sve preporuke).
+(1) Nova riječ ostaje logopedu, ali nepoželjnu ne dodaje nitko (sad i iz editora zadatka i premještanja), a obrisanu
+vraća samo superadmin (`zabranaNoveRijeci` u `lib/nepozeljne.ts`); zatvara 604 (a, b). (2) Logopedovo „Odobri” slike je
+prijedlog: `slike.predlozio`/`predlozeno_at` (migracija 0037; status ostaje `kandidat`, jer CHECK traži prepisivanje
+tablice), superadmin ga vidi prvog na `/admin/pregled` s oznakom i potvrđuje. Logoped „vrati” i promjenu stila smije
+samo na kandidatu ili na svojoj odluci (`odluci`, `promijeniStil`). Izgovor logopeda smije samo popuniti tekst bez
+odobrenog (ne zamjenjuje, ne odbija tuđe kandidate; „Snimi ponovo” ne za tekst s odobrenim). Predložena slika se ne
+koristi u logopedovim zadacima dok je superadmin ne potvrdi (javne bilježnice čitaju CDN, a tamo je samo odobreno).
+(3) Javne bilježnice ostaju logopedu; `/b/<slug>` dobiva `x-robots-tag: noindex`. (4) Nova pozivnica: 20 slika /
+50 izgovora tjedno (`ZADANI_LIMIT`); postojeći retci se ne mijenjaju. Uz to: „Pogurni red” samo superadmin, logoped ne
+vidi tuđe e-mailove (`nedavneOdluke`, „Dodao”, `pregledao`, `vec.pregledao`), `/admin/zvuk/[id]` logopedu samo
+odobrene i svoje.

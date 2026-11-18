@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { zabranaNoveRijeci } from "../../../lib/nepozeljne";
 import { env } from "cloudflare:workers";
 import { slug } from "../../../lib/fonemi";
 import { rijeciPoId } from "../../../lib/zadaci/baza";
@@ -11,6 +12,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const b = (await request.json().catch(() => ({}))) as { rijec?: unknown };
   const rijec = String(b.rijec ?? "").trim().toLocaleLowerCase("hr").replace(/\s+/g, " ");
   if (!rijec || rijec.length > 40 || !/^[a-zčćđšž -]+$/.test(rijec)) return json({ error: "Riječ smije imati samo slova (do 40)." }, 400);
+  // Nepoželjne ne smije nitko, obrisanu vraća samo superadmin (revizija 18. 11. 2026.).
+  const zabrana = await zabranaNoveRijeci(rijec, locals.admin!.email);
+  if (zabrana) return json({ error: zabrana }, 409);
   const znak = await env.DB.prepare("SELECT 1 FROM rijeci WHERE rijec = ? AND vrsta = 'znak'").bind(rijec).first();
   if (znak) return json({ error: `„${rijec}” je znak, ne riječ: odaberi ga među znakovima.` }, 409);
   const upis = await env.DB.batch(sZapisom(

@@ -35,7 +35,12 @@ const admin = Astro.locals.admin!;
 const superadmin = admin.uloga === "superadmin";
 // Postojeću riječ (naziv, opis, pozicije, brisanje) uređuje samo superadmin; logoped je čita.
 const urednik = smije(admin.uloga, "katalog.uredivanje");
-const moja = (s: { zatrazio?: string | null }) => superadmin || s.zatrazio === admin.email.toLowerCase();
+const ja = admin.email.toLowerCase();
+const moja = (s: { zatrazio?: string | null }) => superadmin || s.zatrazio === ja;
+// Logoped mijenja (stil, „vrati”) samo kandidata ili sliku o kojoj je sam odlučio; superadminovu odluku ne.
+const smijeMijenjati = (s: { zatrazio?: string | null; status: string; pregledao: string | null }) =>
+  superadmin || (moja(s) && (s.status === "kandidat" || s.pregledao?.toLowerCase() === ja));
+const zabrana = Astro.url.searchParams.get("zabrana");
 const imena = superadmin ? await imenaKorisnika() : new Map<string, string>();
 const poslao = (s: { zatrazio?: string | null }) => (s.zatrazio ? imena.get(s.zatrazio) ?? s.zatrazio : "nepoznato");
 // Za generiranje ponudi prvo stil koji još nema ni odobrenu ni kandidata ni posao u redu (npr. bojanka uz gotovu ilustraciju).
@@ -52,6 +57,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   {ucitano && q("oblik") && (
     <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Slika nije kvadratna ({q("oblik")}), a katalog je 1:1. Najbolje je učitati kvadratnu; inače nakon odobrenja kvadratnu verziju napravi <code>scripts/kvadrat.py</code>.</div>
   )}
+  {zabrana && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {zabrana}</div>}
   {greskaUploada && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Upload nije uspio: {greskaUploada}</div>}
   {q("preimenovano") && <div class="obavijest"><Ikona ime="kvacica" /> Naziv je promijenjen.</div>}
   {q("spojeno") !== null && (
@@ -80,7 +86,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
         {odobrena ? <span class="oznaka uspjeh"><Ikona ime="kvacica" velicina={12} /> {odobrena.stil_naziv}</span> : <span class="oznaka">nema odobrene</span>}
         {odobrena && <a href={javniUrl(odobrena.r2_kljuc)} target="_blank" rel="noopener">javni URL</a>}
       </div>
-      {odobrena && moja(odobrena) && <PremjestiStil slika={odobrena} stilovi={stilovi} next={ovdje} />}
+      {odobrena && smijeMijenjati(odobrena) && <PremjestiStil slika={odobrena} stilovi={stilovi} next={ovdje} />}
     </div>
 
     <div class="detalji">
@@ -110,7 +116,8 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
       )}
       <p class="podnaslov">
         {r.izvor === "legacy" ? `Iz starog kataloga, na listićima ${r.legacy_koristeno}×` : "Dodana u adminu"}
-        {r.dodao && <> · Dodao: {r.dodao_ime ?? r.dodao}</>}
+        {r.dodao && superadmin && <> · Dodao: {r.dodao_ime ?? r.dodao}</>}
+        {r.dodao && !superadmin && r.dodao.toLowerCase() === ja && <> · Dodao/la si je ti</>}
       </p>
 
       <h2>Glasovi i pozicije</h2>
@@ -227,7 +234,14 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
               <span class="blijedo sitno"><b>{s.stil_naziv}</b> · {kad(s.created_at)} · {s.izvor === "upload" ? `upload${s.model ? `: ${s.model}` : ""}` : s.model ?? s.izvor}</span>
               {superadmin && <span class="poslao sitno">Poslao: {poslao(s)}</span>}
               {s.prompt && <details class="prompt"><summary>Prompt</summary><p class="mono">{s.prompt}</p></details>}
-              {moja(s) ? (
+              {superadmin && s.predlozio && <span class="oznaka uspjeh sitno">Predlaže odobrenje: {imena.get(s.predlozio) ?? s.predlozio}</span>}
+              {!superadmin && s.predlozio ? (
+                <>
+                  <span class="sitno blijedo">Predložena za odobrenje; čeka potvrdu superadmina.</span>
+                  <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
+                    <button class="gumb mali tihi" name="akcija" value="vrati">Povuci prijedlog</button></form>
+                </>
+              ) : moja(s) ? (
                 <>
                   <form method="post" action={`/admin/api/slika/${s.id}`} class="odluka">
                     <input type="hidden" name="next" value={ovdje} />
@@ -256,7 +270,7 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
               <span class:list={["oznaka", { uspjeh: s.status === "odobrena", greska: s.status === "odbijena" }]}>{s.status} · {s.stil_naziv}</span>
               {s.razlog && <span class="sitno blijedo">„{s.razlog}”</span>}
               {superadmin && <span class="poslao sitno">Poslao: {poslao(s)}</span>}
-              {moja(s) && (
+              {smijeMijenjati(s) && (
                 <>
                   <form method="post" action={`/admin/api/slika/${s.id}`}><input type="hidden" name="next" value={ovdje} />
                     <button class="gumb mali tihi" name="akcija" value="vrati">{s.status === "odobrena" ? "Makni iz odobrenih" : "Vrati u kandidate"}</button></form>

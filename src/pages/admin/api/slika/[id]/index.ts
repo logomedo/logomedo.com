@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { odluciIPonovi, promijeniStil } from "../../../../../lib/generiranje";
+import { odluciIPonovi, promijeniStil, SAMO_SUPERADMIN_VRACA } from "../../../../../lib/generiranje";
 import { safeNext } from "../../../../../lib/admin/sesija";
 import { postaviKvotuUAdresu } from "../../../../../lib/kvota";
 import { NIJE_TVOJA, smijeOSlici } from "../../../../../lib/zatrazio";
@@ -20,12 +20,25 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
   if (b.akcija === "stil") {
     const ishod = await promijeniStil(Number(params.id), String(b.stil ?? ""), locals.admin!.email);
     if (jsonZahtjev) return Response.json(ishod, { status: ishod.ok ? 200 : 400 });
+    if (!ishod.ok) {
+      const u = new URL(safeNext(b.next), request.url);
+      u.searchParams.set("zabrana", ishod.greska);
+      return new Response(null, { status: 303, headers: { location: u.pathname + u.search + u.hash } });
+    }
     return new Response(null, { status: 303, headers: { location: safeNext(b.next) } });
   }
   const akcija = b.akcija as "odobri" | "odbij" | "vrati";
   if (!["odobri", "odbij", "vrati"].includes(akcija)) return Response.json({ error: "akcija" }, { status: 400 });
-  const ishod = await odluciIPonovi(Number(params.id), akcija, locals.admin!.email, b.razlog, Boolean(b.ponovi), { dorada: b.dorada, trajno: Boolean(b.trajno) && urednik });
-  if (jsonZahtjev) return Response.json(ishod, { status: ishod.ok ? 200 : "nema" in ishod && ishod.nema ? 404 : 409 });
+  const ishod = bezTudjegEmaila(await odluciIPonovi(Number(params.id), akcija, locals.admin!.email, b.razlog, Boolean(b.ponovi), { dorada: b.dorada, trajno: Boolean(b.trajno) && urednik }), urednik, locals.admin!.email);
+  if (jsonZahtjev) {
+    if ("zabranjeno" in ishod && ishod.zabranjeno) return Response.json({ ...ishod, poruka: SAMO_SUPERADMIN_VRACA, error: SAMO_SUPERADMIN_VRACA }, { status: 403 });
+    return Response.json(ishod, { status: ishod.ok ? 200 : "nema" in ishod && ishod.nema ? 404 : 409 });
+  }
+  if ("zabranjeno" in ishod && ishod.zabranjeno) {
+    const u = new URL(safeNext(b.next), request.url);
+    u.searchParams.set("zabrana", SAMO_SUPERADMIN_VRACA);
+    return new Response(null, { status: 303, headers: { location: u.pathname + u.search + u.hash } });
+  }
   // Odluka je spremljena, ali novi posao nije prošao kvotu: banner kvote na stranici povratka.
   if ("upozorenje" in ishod && ishod.upozorenje) {
     const u = postaviKvotuUAdresu(new URL(safeNext(b.next), request.url), "slike", 1);
@@ -33,3 +46,11 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
   }
   return new Response(null, { status: 303, headers: { location: safeNext(b.next) } });
 };
+
+/** Logoped ne vidi tuđi e-mail u „već je odlučio” (revizija 18. 11. 2026.); superadmin da. */
+function bezTudjegEmaila<T extends object>(ishod: T, superadmin: boolean, ja: string): T {
+  if (superadmin || !("vec" in ishod) || !ishod.vec) return ishod;
+  const vec = ishod.vec as { status: string; pregledao: string | null };
+  const moj = (vec.pregledao ?? "").toLowerCase() === ja.trim().toLowerCase();
+  return { ...ishod, vec: { ...vec, pregledao: moj ? vec.pregledao : null } };
+}

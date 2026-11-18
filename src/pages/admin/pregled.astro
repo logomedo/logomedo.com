@@ -19,7 +19,7 @@ const urednik = smije(admin.uloga, "katalog.uredivanje");
 const glas = Astro.url.searchParams.get("glas");
 const korisnik = superadmin ? Astro.url.searchParams.get("korisnik") : null;
 const [results, imena, posiljatelji] = await Promise.all([
-  kandidati(glas, pregledFiltar(admin, korisnik)),
+  kandidati(glas, pregledFiltar(admin, korisnik), !superadmin),
   superadmin ? imenaKorisnika() : Promise.resolve(new Map<string, string>()),
   superadmin ? posiljateljiNaPregledu() : Promise.resolve([]),
 ]);
@@ -50,6 +50,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
         <div class="napredak"><span id="brojac"></span><div class="traka-napretka"><i id="traka"></i></div></div>
         <h1 id="rijec" class="rijec"></h1>
         {superadmin && <p id="poslao" class="poslao"></p>}
+        {!superadmin && <p class="sitno blijedo">„Odobri” je prijedlog: slika postaje odobrena za sve kad je potvrdi superadmin.</p>}
         <p id="pozicije" class="blijedo"></p>
         <p id="opis" class="opis" hidden></p>
         <p id="oblik" class="oblik" hidden></p>
@@ -112,7 +113,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
 
 <script>
   type K = { id: number; prompt: string | null; model: string | null; rijec: string; slug: string; opis_za_sliku: string | null; odobrena_id: number | null; odobrenih: number; pozicije: string;
-    sirina: number | null; visina: number | null; zamjenjuje: number | null; z_sirina: number | null; z_visina: number | null; zatrazio: string | null };
+    sirina: number | null; visina: number | null; zamjenjuje: number | null; z_sirina: number | null; z_visina: number | null; zatrazio: string | null; predlozio: string | null };
   type Odluka = { id: number; status: string; pregledao: string | null };
   const el = document.getElementById("pregled")!;
   // `prosli` su već prikazani (odlučeni ili preskočeni) u ovoj kartici; `red` su preostali, red[0] je na ekranu.
@@ -155,7 +156,8 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
       : `Slika nije kvadratna (${k.sirina}×${k.visina}).`;
     $("rijec").textContent = k.rijec.toLocaleUpperCase("hr");
     const poslao = document.getElementById("poslao");
-    if (poslao) poslao.textContent = k.zatrazio ? `Poslao: ${imena[k.zatrazio] ?? k.zatrazio}` : "Poslao: nepoznato";
+    if (poslao) poslao.textContent = (k.zatrazio ? `Poslao: ${imena[k.zatrazio] ?? k.zatrazio}` : "Poslao: nepoznato")
+      + (k.predlozio ? ` · predlaže odobrenje (${imena[k.predlozio] ?? k.predlozio})` : "");
     $("pozicije").textContent = k.pozicije ?? "";
     $("opis").hidden = !k.opis_za_sliku; $("opis").textContent = k.opis_za_sliku ?? "";
     $("prompt").textContent = k.prompt ?? "";
@@ -191,7 +193,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
     const j: any = await r.json().catch(() => ({}));
     if (r.status === 409 && j.vec) return { vec: j.vec as Odluka };
     if (!r.ok) throw new Error(j.poruka ?? `HTTP ${r.status}`);   // 429: AI kvota (lib/kvota.ts)
-    return { vec: null, generira: !!j.generira, upozorenje: typeof j.upozorenje === "string" ? j.upozorenje : "" };
+    return { vec: null, predlozena: !!j.predlozena, generira: !!j.generira, upozorenje: typeof j.upozorenje === "string" ? j.upozorenje : "" };
   }
 
   const v = (id: string) => $<HTMLInputElement>(id).value;
@@ -206,6 +208,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
         ? { akcija, razlog: v("razlog"), dorada: v("dorada"), trajno: kv("trajno"), ponovi: kv("ponovi") }
         : { akcija });
       if (o.vec) poruka(opisOdluke(o.vec), "info");
+      else if (o.predlozena) { povijest.push(k); poruka(`${k.rijec.toLocaleUpperCase("hr")}: predloženo. Za sve postaje odobrena kad je potvrdi superadmin.`, "info"); }
       else {
         if (akcija === "odobri") for (const x of red) if (x.slug === k.slug) { x.odobrena_id = k.id; x.odobrenih = (x.odobrenih ?? 0) + 1; }
         if (akcija === "odbij" && kv("trajno") && v("dorada").trim()) for (const x of red) if (x.slug === k.slug) x.opis_za_sliku = v("dorada").trim();
@@ -235,7 +238,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
       else if (!r.ok) throw new Error(j.greska ?? `HTTP ${r.status}`);
       else {
         const R = String(j.rijec).toLocaleUpperCase("hr");
-        poruka(`Slika je sada uz ${R}${j.nova ? " (nova riječ u katalogu)" : ""}, ${j.odobrena ? "odobrena" : "kao kandidat"}.`
+        poruka(`Slika je sada uz ${R}${j.nova ? " (nova riječ u katalogu)" : ""}, ${j.odobrena ? "odobrena" : j.predlozena ? "predložena (čeka potvrdu superadmina)" : "kao kandidat"}.`
           + (j.generira ? ` Za ${k.rijec.toLocaleUpperCase("hr")} se crta nova.` : "")
           + (j.upozorenje ? ` Nova za ${k.rijec.toLocaleUpperCase("hr")} se ne crta: ${j.upozorenje}` : ""), j.upozorenje ? "greska" : "info");
         indeks = null;

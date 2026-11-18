@@ -12,7 +12,7 @@ const s = await stilIzUrla(Astro.url);
 zapamtiStil(Astro.cookies, s.kod);
 // Gumb „Pregledaj N” vodi na /admin/pregled, pa broji isto što ondje: logoped samo svoje, u svim stilovima.
 const [lista, u, svi, stilovi, zaPregled] = await Promise.all([glasovi(s.id), ukupno(s.id), ukupnoSvihStilova(), stiloviAktivni(),
-  brojKandidata(pregledFiltar(Astro.locals.admin!))]);
+  brojKandidata(pregledFiltar(Astro.locals.admin!), Astro.locals.admin!.uloga !== "superadmin")]);
 const uzStil = (href: string) => (s.kod === "bojanka" ? href : `${href}?stil=${s.kod}`);
 // Ispod brojke: koliko je u svim stilovima, ako se razlikuje (bočna traka broji sve stilove).
 const sviNapomena = (ovaj: number, sviBroj: number) => (sviBroj !== ovaj ? `${sviBroj} u svim stilovima` : "");

@@ -13,5 +13,9 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
   const b = await request.json<Record<string, string>>().catch(() => ({} as Record<string, string>));
   const ishod = await premjesti(Number(params.id), String(b.rijec ?? ""), locals.admin!.email,
     { dorada: b.dorada, trajno: Boolean(b.trajno) && urednik, ponovi: Boolean(b.ponovi) });
+  // Logoped ne vidi tuđi e-mail u „već je odlučio” (revizija 18. 11. 2026.).
+  if (!urednik && "vec" in ishod && ishod.vec && (ishod.vec.pregledao ?? "").toLowerCase() !== locals.admin!.email.toLowerCase()) {
+    ishod.vec = { ...ishod.vec, pregledao: null };
+  }
   return Response.json(ishod, { status: ishod.ok ? 200 : "nema" in ishod ? 404 : "vec" in ishod ? 409 : 400 });
 };

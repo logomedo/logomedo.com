@@ -310,11 +310,35 @@ export async function svojiZvukovi(ids: number[], email: string): Promise<number
   return results.map((r) => r.id);
 }
 
+/** Ima li tekst odobren izgovor (logoped ga ne smije zamijeniti, revizija 18. 11. 2026.). */
+async function imaOdobren(kljuc: string): Promise<boolean> {
+  return !!(await env.DB.prepare("SELECT 1 FROM zvukovi WHERE kljuc = ? AND status = 'odobren' LIMIT 1").bind(kljuc).first());
+}
+
+export const IZGOVOR_VEC_ODOBREN = "Ova riječ već ima odobren izgovor; zamijeniti ga može samo superadmin.";
+
+/**
+ * Odobri kandidata: dosadašnji odobreni i ostali kandidati istog teksta postaju odbijeni. Logoped
+ * (ne ADMIN_EMAILS) smije samo popuniti tekst koji još nema odobren izgovor i odbija samo svoje kandidate.
+ */
 export async function odobriZvuk(id: number, email: string): Promise<boolean> {
   const db = env.DB;
   if (!(await svojiZvukovi([id], email)).length) return false;
   const z = await db.prepare("SELECT id, kljuc, status FROM zvukovi WHERE id = ?").bind(id).first<{ id: number; kljuc: string; status: string }>();
   if (!z || z.status !== "kandidat") return false;
+  if (!adminEmails().has(email.trim().toLowerCase())) {
+    if (await imaOdobren(z.kljuc)) return false;
+    const ostali = (await db.prepare("SELECT id FROM zvukovi WHERE kljuc = ? AND status = 'kandidat' AND id != ?").bind(z.kljuc, id).all<{ id: number }>())
+      .results.map((r) => r.id);
+    const moji = await svojiZvukovi(ostali, email);
+    await db.batch([
+      db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = 'odabrana druga snimka', pregledao = ?, pregledano_at = datetime('now') WHERE id IN (SELECT value FROM json_each(?)) AND status = 'kandidat'")
+        .bind(email, JSON.stringify(moji)),
+      db.prepare("UPDATE zvukovi SET status = 'odobren', razlog = NULL, pregledao = ?, pregledano_at = datetime('now') WHERE id = ? AND status = 'kandidat'").bind(email, id),
+    ]);
+    await uskladiJavniZvuk(id);
+    return true;
+  }
   const { results: stari } = await db.prepare("SELECT id, r2_kljuc FROM zvukovi WHERE kljuc = ? AND status = 'odobren'").bind(z.kljuc).all<{ id: number; r2_kljuc: string }>();
   await db.batch([
     db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = 'zamijenjen novijom', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'odobren'").bind(email, z.kljuc),
@@ -372,6 +396,8 @@ export async function ponoviZvuk(kljuc: string, email: string, izgovor?: string)
   if (jeKljucGlasa(kljuc)) return false;   // glas snima logopedica (/admin/zvukovi/snimke), ne ElevenLabs
   const [s] = await stanjeZvukova([kljuc]);
   if (s.u_redu || s.kandidata) return false;
+  // Logoped ne snima ponovo tekst koji već ima odobren izgovor (inače bi ga svojim odobrenjem zamijenio).
+  if (!adminEmails().has(email.trim().toLowerCase()) && (await imaOdobren(kljuc))) return false;
   await posalji(await upisiPoslove(email, 1, `izgovor ${kljuc}`, [novPosao(kljuc, izgovor?.trim() || izgovorZa(kljuc), email, true)]));
   return true;
 }

@@ -6,6 +6,7 @@ import { env } from "cloudflare:workers";
 import { adminEmails, randomToken, sha256Hex } from "./sesija";
 import { novaGrupa, sZapisom, zapisNastalih, zapisSkupa, type Zapis } from "../aktivnost";
 import { oznakaKljuca, type NoviPasskey } from "./passkey";
+import { ZADANI_LIMIT } from "./ovlasti";
 
 export const POZIV_SATI = 72;
 
@@ -140,8 +141,8 @@ export function naredbeIskoristenja(tokenHash: string, kljuc: NoviPasskey, label
     ...sZapisom(z("korisnici", "korisnik.aktiviran"),
       { sql: "SELECT id FROM korisnici WHERE email = (SELECT email FROM pozivi WHERE token_hash = ?)", args: [tokenHash] }, [
         db.prepare(
-          `INSERT INTO korisnici (email, ime, uloga, aktivan, deaktiviran_at)
-           SELECT p.email, p.ime, 'logoped', 1, NULL ${MOJA}
+          `INSERT INTO korisnici (email, ime, uloga, aktivan, deaktiviran_at, limit_slike_7d, limit_zvukovi_7d)
+           SELECT p.email, p.ime, 'logoped', 1, NULL, ${ZADANI_LIMIT.slike}, ${ZADANI_LIMIT.zvukovi} ${MOJA}
            ON CONFLICT (email) DO UPDATE SET uloga = 'logoped', aktivan = 1, deaktiviran_at = NULL,
              ime = COALESCE(excluded.ime, korisnici.ime)`,
         ).bind(tokenHash, kljuc.id),

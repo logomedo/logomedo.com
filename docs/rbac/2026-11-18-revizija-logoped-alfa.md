@@ -96,3 +96,8 @@ Gornja granica uz zadane limite (cijene **nisu** u repou, procjena za provjeru n
    (logopedu „ti”); `pregledao` na `/admin/zvukovi` samo superadminu; `vec.pregledao` logopedu bez e-maila.
 6. `/admin/zvuk/[id]`: logoped samo odobrene i svoje.
 7. `/b/<slug>`: `<meta name="robots" content="noindex">`.
+
+## Stanje (18. 11. 2026. navečer)
+
+Korisnik je odabrao sve preporuke (1–4). Sve ZATVORITI stavke i odluke implementirane, odluka 606 u
+`decisions.md`, testovi u `src/lib/revizija-alfa.test.ts`.

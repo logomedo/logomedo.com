@@ -7,5 +7,7 @@ import { poSlugu, podaci } from "../../lib/biljeznice";
 const b = await poSlugu(String(Astro.params.slug));
 if (!b || !b.javna) return new Response("Nema te bilježnice", { status: 404 });
 const p = await podaci(b);
+// Bilježnice objavljuju i logopedi; link je za roditelja, ne za tražilice (kao /ispis).
+Astro.response.headers.set("x-robots-tag", "noindex");
 ---
 <IgraDjeteta naslov={b.naslov} podnaslov={b.podnaslov} tema={b.tema} zadaci={p.zadaci} rijeci={p.rijeci} pozadine={p.pozadine} />

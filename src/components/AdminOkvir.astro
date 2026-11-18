@@ -25,11 +25,12 @@ if (admin) {
   // Za pregled (Slike, Izgovor) logoped broji samo ono što je sam poslao, kao na tim stranicama.
   const vidi = pregledFiltar(admin);
   brojevi = (await env.DB.prepare(
-    `SELECT (SELECT COUNT(*) FROM slike s WHERE s.status = 'kandidat' AND (?1 IS NULL OR ${ZATRAZIO_SLIKE} = ?1)) AS kandidata,
+    `SELECT (SELECT COUNT(*) FROM slike s WHERE s.status = 'kandidat' AND (?1 IS NULL OR ${ZATRAZIO_SLIKE} = ?1)
+         AND (?2 = 0 OR s.predlozio IS NULL)) AS kandidata,
        (SELECT COUNT(*) FROM generiranja WHERE status IN ('ceka','radi')) AS uRedu,
        (SELECT COUNT(*) FROM generiranja WHERE status = 'greska') AS gresaka,
        (SELECT COUNT(DISTINCT z.kljuc) FROM zvukovi z WHERE z.status = 'kandidat' AND (?1 IS NULL OR ${ZATRAZIO_ZVUKA} = ?1)) AS zvukova`,
-  ).bind(vidi).first<typeof brojevi>()) ?? brojevi;
+  ).bind(vidi, admin.uloga === "superadmin" ? 0 : 1).first<typeof brojevi>()) ?? brojevi;
 }
 // Logoped vidi koliko mu je AI kredita ostalo (lib/kvota.ts); superadmin je bez limita, pa ništa.
 const kvotaStanje: Record<VrstaKvote, StanjeKvote> | null =
