@@ -41,6 +41,7 @@ export const RADNJE: Record<string, string> = {
   "korisnik.aktiviran": "Korisnik aktiviran",
   "korisnik.deaktiviran": "Korisnik deaktiviran",
   "korisnik.limit": "Promijenjen AI limit",
+  "korisnik.profil": "Promijenjen profil (ime ili e-mail)",
   ponisteno: "Poništeno",
   vraceno: "Vraćeno na stanje",
 };

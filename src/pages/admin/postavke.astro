@@ -2,15 +2,32 @@
 // Postavke korisnika (migracija 0029). Stranica sama obrađuje POST (kao /admin/zvukovi).
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import { logopedskiMod, postaviLogopedskiMod } from "../../lib/zadaci/baza";
+import { IME_MAX, profil, spremiProfil } from "../../lib/admin/profil";
 
-const email = Astro.locals.admin!.email;
-let spremljeno = false;
+const s = Astro.locals.admin!;
+const email = s.email;
+const superadmin = s.uloga === "superadmin";
+let spremljeno: "mod" | "profil" | null = Astro.url.searchParams.get("ok") === "profil" ? "profil" : null;
+let greska: string | null = null;
+let unos: { ime: string; email: string } | null = null;
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
-  await postaviLogopedskiMod(email, f.get("logopedski_mod") === "1");
-  spremljeno = true;
+  if (f.get("akcija") === "profil") {
+    const r = await spremiProfil(s, { ime: f.get("ime"), email: superadmin ? null : f.get("email") });
+    // Nova stranica nakon spremanja: zaglavlje i sesija već čitaju novi e-mail.
+    if (r.ok) return Astro.redirect("/admin/postavke?ok=profil", 303);
+    else {
+      greska = r.greska;
+      unos = { ime: String(f.get("ime") ?? ""), email: String(f.get("email") ?? email) };
+      Astro.response.status = 400;
+    }
+  } else {
+    await postaviLogopedskiMod(email, f.get("logopedski_mod") === "1");
+    spremljeno = "mod";
+  }
 }
 const mod = await logopedskiMod(email);
+const p = unos ?? await profil(email);
 ---
 <AdminOkvir naslov="Postavke" aktivno="postavke">
   <div class="naslov">
@@ -20,7 +37,32 @@ const mod = await logopedskiMod(email);
     </div>
   </div>
 
+  <form method="post" class="ploha postavke" id="profil">
+    <input type="hidden" name="akcija" value="profil" />
+    <h2>Profil</h2>
+    <div class="polja">
+      <div>
+        <label for="profil-ime">Ime i prezime</label>
+        <input id="profil-ime" type="text" name="ime" value={p.ime} maxlength={IME_MAX} autocomplete="name" placeholder="npr. Ana Horvat" />
+      </div>
+      <div>
+        <label for="profil-email">E-mail</label>
+        <input id="profil-email" type="email" name="email" value={p.email} required maxlength="254" autocomplete="email"
+          readonly={superadmin} />
+      </div>
+    </div>
+    <p class="opis">{superadmin
+      ? "Superadminov e-mail je u postavkama poslužitelja (ADMIN_EMAILS) i ovdje se ne mijenja."
+      : "E-mail je i korisničko ime za prijavu. Passkeyi, zadaci i sve što si napravio ostaju tvoji i nakon promjene."}</p>
+    <div class="dno">
+      {greska && <span class="greska" role="alert">{greska}</span>}
+      {spremljeno === "profil" && <span class="spremljeno" role="status">Spremljeno.</span>}
+      <button class="gumb glavni mali" type="submit">Spremi</button>
+    </div>
+  </form>
+
   <form method="post" class="ploha postavke">
+    <input type="hidden" name="akcija" value="mod" />
     <label class="prekidac">
       <input type="checkbox" name="logopedski_mod" value="1" checked={mod} />
       <span class="klizac" aria-hidden="true"></span>
@@ -31,13 +73,19 @@ const mod = await logopedskiMod(email);
       </span>
     </label>
     <div class="dno">
-      {spremljeno && <span class="spremljeno" role="status">Spremljeno.</span>}
+      {spremljeno === "mod" && <span class="spremljeno" role="status">Spremljeno.</span>}
       <button class="gumb glavni mali" type="submit">Spremi</button>
     </div>
   </form>
 </AdminOkvir>
 
 <style>
+  .postavke h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.15rem; }
+  .polja { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .polja { grid-template-columns: 1fr; } }
+  .polja input[readonly] { background: var(--povrsina-2); color: var(--blijedo); cursor: not-allowed; }
+  .postavke > .opis { margin: -4px 0 0; }
+  .greska { color: var(--greska); font-weight: 600; font-size: .88rem; margin-right: auto; }
   .postavke { margin-top: 24px; max-width: 640px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
   .prekidac { display: flex; gap: 14px; align-items: flex-start; cursor: pointer; margin: 0; }
   .prekidac input { position: absolute; opacity: 0; pointer-events: none; }
