@@ -2,6 +2,7 @@
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import KatalogKartice from "../../components/KatalogKartice.astro";
+import { jePodjela, PODJELA_ZADANO, PODJELE, poPodjeli, type Podjela } from "../../lib/podjele-glasova";
 import { glasovi, stilIzUrla, zapamtiStil, stiloviAktivni, ukupno, ukupnoSvihStilova } from "../../lib/katalog";
 
 const s = await stilIzUrla(Astro.url);
@@ -10,7 +11,13 @@ const [lista, u, svi, stilovi] = await Promise.all([glasovi(s.id), ukupno(s.id),
 const uzStil = (href: string) => (s.kod === "bojanka" ? href : `${href}?stil=${s.kod}`);
 // Ispod brojke: koliko je u svim stilovima, ako se razlikuje (bočna traka broji sve stilove).
 const sviNapomena = (ovaj: number, sviBroj: number) => (sviBroj !== ovaj ? `${sviBroj} u svim stilovima` : "");
-const skupine = [...new Set(lista.map((g) => g.skupina ?? "ostalo"))];
+// Mape glasova po podjeli (mjesto tvorbe, način, zvučnost); izbor se pamti u kolačiću, zadano mjesto tvorbe.
+const KOLACIC_PODJELE = "katalog_podjela";
+const izUrla = Astro.url.searchParams.get("podjela");
+const podjela: Podjela = jePodjela(izUrla) ? izUrla : jePodjela(Astro.cookies.get(KOLACIC_PODJELE)?.value) ? Astro.cookies.get(KOLACIC_PODJELE)!.value as Podjela : PODJELA_ZADANO;
+if (jePodjela(izUrla)) Astro.cookies.set(KOLACIC_PODJELE, podjela, { path: "/admin", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", secure: true, httpOnly: true });
+const skupine = poPodjeli(lista, podjela);
+const naPodjelu = (p: Podjela) => { const q = new URLSearchParams({ ...(s.kod !== "bojanka" ? { stil: s.kod } : {}), podjela: p }); return `/admin?${q}`; };
 const posto = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 const O = 2 * Math.PI * 26;
 ---
@@ -42,11 +49,16 @@ const O = 2 * Math.PI * 26;
     <div class="ploha brojka" class:list={{ upozorenje: u.gresaka > 0 }}><span class="vrijednost">{u.gresaka}</span><span class="opis">neuspjelih generiranja</span><span class="svi">{sviNapomena(u.gresaka, svi.gresaka)}</span></div>
   </section>
 
-  {skupine.map((sk) => (
+  <nav class="podjela-prekidac" aria-label="Složi glasove po">
+    <span class="blijedo">Složi po:</span>
+    {(Object.keys(PODJELE) as Podjela[]).map((p) => <a href={naPodjelu(p)} class:list={{ aktivno: p === podjela }} aria-current={p === podjela ? "true" : undefined}>{PODJELE[p].naziv}</a>)}
+  </nav>
+
+  {skupine.map(({ skupina: sk, glasovi: gs }) => (
     <section class="skupina">
-      <h2>{sk}</h2>
+      <h2>{sk.naziv}{sk.opis && <span class="opis-skupine"> · {sk.opis}</span>}</h2>
       <div class="glasovi">
-        {lista.filter((g) => (g.skupina ?? "ostalo") === sk).map((g) => (
+        {gs.map((g) => (
           <a class="ploha glas" href={uzStil(`/admin/glas/${g.slug}`)}>
             <svg class="prsten" viewBox="0 0 64 64" aria-hidden="true">
               <circle cx="32" cy="32" r="26" class="podloga" />
@@ -84,6 +96,10 @@ const O = 2 * Math.PI * 26;
   .traka-napretka { margin-top: 10px; height: 6px; border-radius: 999px; background: var(--povrsina-2); overflow: hidden; }
   .traka-napretka i { display: block; height: 100%; background: var(--med); border-radius: inherit; }
 
+  .podjela-prekidac { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -16px 0 26px; font-size: .86rem; }
+  .podjela-prekidac a { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--rub); text-decoration: none; color: var(--blijedo); font-weight: 600; }
+  .podjela-prekidac a.aktivno { background: var(--tinta); border-color: var(--tinta); color: var(--povrsina); }
+  .opis-skupine { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--vrlo-blijedo); }
   .skupina { margin-bottom: 34px; }
   .skupina h2 { margin: 0 0 12px; font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--blijedo); font-weight: 650; }
   .glasovi { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }

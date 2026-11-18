@@ -34,6 +34,18 @@ SR-, uključujući slogotvorno R (CRV, BRDO). R u skupini usred riječi (TORBA, 
 medijalna. Tako je složen i stari katalog: pravilo se poklapa sa 629 od 632 starih putanja.
 Preostale tri su legacy odluke ili greške (KRASTAVAC pod C-medijalno).
 
+## Podjele glasova (18. 11. 2026.)
+
+Katalog ima svih 25 suglasnika (do tada 13 iz starog appa: C, S, Z, Č, Š, Ž, L, R, K, Đ, DŽ, G, M). Dodani
+B, P, V, F, T, D, N, J, LJ, NJ, Ć, H skriptom `scripts/glasovi-dopuni.ts --remote --izvedi` (kao „Novi glas”:
+bez kategorije, bez pozicije „skupina”, veze iz pravopisa s `potvrdeno = 0`; samo dodaje). Samoglasnika nema.
+
+Početna stranica kataloga slaže mape glasova po podjeli iz `src/lib/podjele-glasova.ts` (fonetika, u kodu, ne u
+bazi): **mjesto tvorbe** (zadano: bilabijali, labiodentali, dentali, alveolari, palatali, velari), **način tvorbe**
+(okluzivi, frikativi, afrikate, sonanti) i **zvučnost** (zvučni, bezvučni, sonanti bez para). Izbor je `?podjela=`
+i pamti se u kolačiću `katalog_podjela`. Stara kategorija `glasovi.skupina` (sibilanti, šuštavci…) ostaje u bazi
+i na stranici glasa, ali katalog po njoj više ne slaže.
+
 ## Seed
 
 `scripts/seed-katalog.ts` čita `../preuzimanje/data/catalog.csv` i daje `seed/katalog.sql`:
