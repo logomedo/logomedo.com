@@ -11,6 +11,8 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
   sesije s notifikacijama po slici: katalog ima 428 riječi, a Vertex se plaća.
 - Izgovor (ElevenLabs) radi sam Worker kroz Cloudflare Queue, bez runnera: `docs/zvukovi.md`.
 - Prije commita: `npm test && npm run check && npm run build`.
+- Staging (`staging.logomedo.com`, kopija produkcijske D1 iza lozinke): `docs/staging.md`. Staging
+  naredbe uvijek kroz `npm run …:staging` ili s `--config wrangler.jsonc --env staging`.
 
 ## Lanac: RBAC (logopedi, pozivnica, AI kvota)
 
