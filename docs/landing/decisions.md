@@ -372,3 +372,13 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      performance 90 (`/katalog`, mobitel), best practices 96 (`/katalog`, mobitel). Brojke u `research/2026-11-19-lighthouse.md`.
 624. **Lanac zatvoren.** Uređivanje sadržaja ide u novu sesiju bez lanca (`handoffs/uredivanje-sadrzaja.md`); grana
      `landing` ostaje na `e11741f`, nove izmjene idu na `main`.
+
+## Poslije lanca
+
+625. **Pozivnica e-poštom pri „Odobri”** (zahtjev korisnika 19. 11. 2026.; mijenja dio odluke 706 da se link vidi
+     samo u odgovoru): Resend, domena `logomedo.com` u regiji eu-west-1, pošiljatelj `pozivnica@logomedo.com`,
+     reply-to `bok@logomedo.com` (`src/lib/email.ts`). DNS samo na poddomenama (`resend._domainkey` TXT, `send` MX+TXT,
+     `rsend` CNAME, DNS only), pa Googleov MX i SPF na apexu ostaju. Secret `RESEND_API_KEY` **samo u produkciji**:
+     staging je kopija produkcijske D1 sa stvarnim adresama, pa bez ključa ne šalje ništa. Neuspjeh slanja ne vraća
+     odobrenje: admin vidi upozorenje i link kao rezervu. Resend je odabran umjesto Cloudflare Email Servicea (odluka
+     710) jer je korisnik već imao ključ; obavijest superadminu o novom zahtjevu sad može ići istim putem.

@@ -11,6 +11,8 @@ declare namespace Cloudflare {
     OKRUZENJE?: string;
     /** Opcionalan: potpis vremenskog žiga i papar za ip_hash na /pristup (src/lib/pristup.ts). Bez njega žig je goli ms. */
     PRISTUP_TAJNA?: string;
+    /** Resend (pozivnica e-poštom pri „Odobri”, src/lib/email.ts). Samo produkcija; bez njega se ne šalje ništa. */
+    RESEND_API_KEY?: string;
   }
 }
 

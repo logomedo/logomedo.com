@@ -32,7 +32,7 @@ export async function brojNovih(): Promise<number> {
 }
 
 export type IshodOdobravanja =
-  | { ok: true; token: string; email: string; istjece: string }
+  | { ok: true; token: string; email: string; ime: string; istjece: string }
   | { ok: false; razlog: "obradjen" | RazlogOdbijanja };
 
 /**
@@ -59,7 +59,7 @@ export async function odobri(id: number, tko: string, sada = new Date()): Promis
     throw e;
   }
   await env.DB.prepare("UPDATE zahtjevi_pristupa SET poziv_token_hash = ? WHERE id = ?").bind(await sha256Hex(p.token), id).run();
-  return { ok: true, token: p.token, email: p.email, istjece: p.istjece };
+  return { ok: true, token: p.token, email: p.email, ime: z.ime, istjece: p.istjece };
 }
 
 /** Odbij (ili zatvori) otvoreni zahtjev. false: nema ga ili je već obrađen. */

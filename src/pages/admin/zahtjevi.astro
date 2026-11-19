@@ -9,6 +9,7 @@ import { smije } from "../../lib/admin/ovlasti";
 import { PORUKE_ODBIJANJA } from "../../lib/admin/pozivi";
 import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../lib/admin/zahtjevi";
 import { ROK_MJESECI, pocisti } from "../../lib/pristup";
+import { posaljiPozivnicu, type IshodSlanja } from "../../lib/email";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -16,6 +17,7 @@ if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { stat
 let poruka: string | null = Astro.url.searchParams.get("ok") === "odbijen" ? "Zahtjev je odbijen." : null;
 let greska: string | null = null;
 let link: { url: string; email: string; istjece: string } | null = null;
+let slanje: IshodSlanja | null = null;
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -24,7 +26,11 @@ if (Astro.request.method === "POST") {
   if (!Number.isInteger(id) || id <= 0) greska = "Nepoznat zahtjev.";
   else if (akcija === "odobri") {
     const r = await odobri(id, s.email);
-    if (r.ok) link = { url: `${Astro.url.origin}/admin/poziv#${r.token}`, email: r.email, istjece: r.istjece };
+    if (r.ok) {
+      link = { url: `${Astro.url.origin}/admin/poziv#${r.token}`, email: r.email, istjece: r.istjece };
+      slanje = await posaljiPozivnicu({ ...link, ime: r.ime });
+      if (!slanje.ok) console.error("pozivnica e-poštom nije poslana", slanje);
+    }
     else if (r.razlog === "obradjen") greska = "Zahtjev je već obrađen (možda u drugoj kartici). Nova pozivnica nije izdana.";
     else greska = `${PORUKE_ODBIJANJA[r.razlog]} Zahtjev je i dalje otvoren: ako pozivnica ne treba, zatvori ga gumbom „Odbij”.`;
   } else if (akcija === "odbij") {
@@ -43,8 +49,8 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
   <div class="naslov">
     <div>
       <h1>Zahtjevi za pristup</h1>
-      <p class="podnaslov">S obrasca na <a href="/pristup">/pristup</a>. „Odobri” izdaje pozivnicu (link vrijedi 72 h, jednom) koju
-        šalješ osobno. Zahtjevi se brišu nakon {ROK_MJESECI} mjeseci; odobreni čim je pozivnica iskorištena.</p>
+      <p class="podnaslov">S obrasca na <a href="/pristup">/pristup</a>. „Odobri” izdaje pozivnicu (link vrijedi 72 h, jednom) i šalje je
+        e-poštom s pozivnica@logomedo.com. Zahtjevi se brišu nakon {ROK_MJESECI} mjeseci; odobreni čim je pozivnica iskorištena.</p>
     </div>
   </div>
 
@@ -53,7 +59,12 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
   {link && (
     <section class="ploha link" id="poziv-rezultat">
       <h2>Pozivnica za {link.email}</h2>
-      <p class="blijedo sitno">Pošalji link osobno (poruka, ne javni kanal). Vidi se samo sada; vrijedi do {kad(link.istjece)}.
+      {slanje?.ok
+        ? <p class="poruka ok" role="status" id="poziv-poslan">Pozivnica je poslana e-poštom na {link.email}. Link ispod je rezerva, ako ne stigne.</p>
+        : <p class="poruka greska" role="alert" id="poziv-nije-poslan">{slanje?.ok === false && slanje.razlog === "nema_kljuca"
+            ? "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY)."
+            : "E-pošta nije poslana."} Pošalji link osobno.</p>}
+      <p class="blijedo sitno">Link se vidi samo sada; vrijedi do {kad(link.istjece)}. Ne šalji ga u javni kanal.
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
       <div class="red-linka">
         <input id="poziv-link" type="text" readonly value={link.url} aria-label="Link pozivnice" />
