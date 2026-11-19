@@ -4,6 +4,8 @@
 import Marka from "../components/Marka.astro";
 import { GODINA, IME_TVRTKE, IZBORNIK, KONTAKT, PRIJAVA, kontaktTekst, stranica } from "./konstante";
 
+interface Props { putanja?: string }
+const { putanja } = Astro.props;
 const autorsko = GODINA && IME_TVRTKE ? `© ${GODINA}. ${IME_TVRTKE}` : "";
 ---
 <footer class="podnozje">
@@ -14,15 +16,15 @@ const autorsko = GODINA && IME_TVRTKE ? `© ${GODINA}. ${IME_TVRTKE}` : "";
     </div>
     <nav aria-labelledby="pod-logomedo">
       <h2 id="pod-logomedo">LogoMedo</h2>
-      <ul>{IZBORNIK.map((l) => <li><a href={l.href}>{l.tekst}</a></li>)}</ul>
+      <ul>{IZBORNIK.map((l) => <li><a href={l.href} aria-current={l.href === putanja ? "page" : undefined}>{l.tekst}</a></li>)}</ul>
     </nav>
     <nav aria-labelledby="pod-pomoc">
       <h2 id="pod-pomoc">Pomoć</h2>
       <ul>
         <li><a href={PRIJAVA}>Prijava</a></li>
         {KONTAKT && <li><a href={KONTAKT}>Zatraži pristup</a></li>}
-        <li><a href="/privatnost">{stranica("/privatnost").izbornik}</a></li>
-        <li><a href="/uvjeti">{stranica("/uvjeti").izbornik}</a></li>
+        <li><a href="/privatnost" aria-current={putanja === "/privatnost" ? "page" : undefined}>{stranica("/privatnost").izbornik}</a></li>
+        <li><a href="/uvjeti" aria-current={putanja === "/uvjeti" ? "page" : undefined}>{stranica("/uvjeti").izbornik}</a></li>
       </ul>
     </nav>
   </div>
@@ -41,6 +43,8 @@ const autorsko = GODINA && IME_TVRTKE ? `© ${GODINA}. ${IME_TVRTKE}` : "";
   ul { list-style: none; margin: 0; padding: 0; }
   li a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
   li a:hover { color: var(--tinta); text-decoration: underline; }
+  li a[aria-current="page"] { color: var(--tinta); font-weight: 600; text-decoration: underline; text-decoration-color: var(--med);
+    text-decoration-thickness: 2px; text-underline-offset: 5px; }
   .donji { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--rub); font-size: .85rem; }
   @media (max-width: 719px) {
     .stupci { grid-template-columns: 1fr 1fr; }

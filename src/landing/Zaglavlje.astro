@@ -1,7 +1,9 @@
 ---
 // Zaglavlje (sadrzaj.md 2.2, 2.3; odluka 201): logo, četiri linka, gumb „Prijava”. Ispod 720 px linkovi su u
-// <details> („Izbornik”), bez skripte (CSP). Dodirne površine najmanje 44 px.
+// <details> („Izbornik”), bez skripte (CSP). Dodirne površine najmanje 44 px. Aktivna stranica ima aria-current i
+// istaknutu pozadinu; prekidač teme radi kroz /tema.js (landing odluke 608, 609).
 import Marka from "../components/Marka.astro";
+import Ikona from "../components/Ikona.astro";
 import { IZBORNIK, PRIJAVA } from "./konstante";
 
 interface Props { putanja?: string }
@@ -16,12 +18,20 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
         {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
       </ul>
     </nav>
+    <button type="button" class="prekidac-teme gore" aria-label="Tamna tema" title="Svijetla ili tamna tema" aria-pressed="false">
+      <span class="samo-dan"><Ikona ime="mjesec" /></span><span class="samo-noc"><Ikona ime="sunce" /></span>
+    </button>
     <a class="gumb-prijava" href={PRIJAVA}>Prijava</a>
     <details class="izbornik">
       <summary>Izbornik</summary>
       <nav aria-label="Glavni izbornik">
         <ul>
           {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
+          <li>
+            <button type="button" class="prekidac-teme u-izborniku" aria-pressed="false">
+              <span class="samo-dan"><Ikona ime="mjesec" /></span><span class="samo-noc"><Ikona ime="sunce" /></span> Tamna tema
+            </button>
+          </li>
         </ul>
       </nav>
     </details>
@@ -36,15 +46,22 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
   .siroka a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none;
     color: var(--blijedo); font-weight: 500; }
   .siroka a:hover { color: var(--tinta); background: var(--povrsina-2); }
-  a[aria-current="page"] { color: var(--tinta); text-decoration: underline; text-decoration-color: var(--med); text-decoration-thickness: 2px;
-    text-underline-offset: 6px; }
+  a[aria-current="page"], .siroka a[aria-current="page"] { color: var(--tinta); background: var(--med-blago); font-weight: 600;
+    box-shadow: inset 0 -3px 0 var(--med); }
+  .prekidac-teme { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; padding: 0;
+    border: 1px solid var(--rub-jak); border-radius: 999px; background: transparent; color: var(--blijedo); cursor: pointer; }
+  .prekidac-teme:hover { color: var(--tinta); background: var(--povrsina-2); }
+  .prekidac-teme :global(svg) { width: 20px; height: 20px; }
   .gumb-prijava { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--med);
     color: var(--med-tekst); font-weight: 600; text-decoration: none; white-space: nowrap; }
   .gumb-prijava:hover { filter: brightness(1.05); }
-  .izbornik { display: none; }
+  .izbornik, .u-izborniku { display: none; }
   @media (max-width: 719px) {
     .siroka { display: none; }
+    .prekidac-teme.gore { display: none; }
     .gumb-prijava { margin-left: auto; padding: 0 14px; }
+    .u-izborniku { display: flex; gap: 10px; justify-content: flex-start; width: 100%; height: 48px; padding: 0 8px; border: 0; border-radius: 10px;
+      color: inherit; font: inherit; font-size: 1.05rem; font-weight: 500; }
     .izbornik { display: block; }
     summary { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--rub-jak); border-radius: 999px;
       cursor: pointer; font-weight: 500; list-style: none; user-select: none; }
@@ -58,6 +75,7 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
     .izbornik a { display: flex; align-items: center; min-height: 48px; padding: 0 8px; border-radius: 10px; text-decoration: none; font-size: 1.05rem;
       font-weight: 500; }
     .izbornik li + li { border-top: 1px solid var(--rub); }
+    .izbornik a[aria-current="page"] { font-weight: 600; box-shadow: inset 4px 0 0 var(--med); padding-left: 14px; }
   }
   @media (max-width: 419px) {
     .red { gap: 8px; }

@@ -47,7 +47,7 @@ const naslov = s?.naslov ?? STRANICA_404.naslov;
     <main id="sadrzaj">
       <slot />
     </main>
-    <Podnozje />
+    <Podnozje putanja={putanja} />
   </body>
 </html>
 <style is:global>
