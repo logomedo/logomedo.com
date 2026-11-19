@@ -5,6 +5,12 @@ Status (2026-11-14): radni listić po glasovima. Na `/admin/predlosci` kartica �
 po fonemima: „bez L” ne izbacuje LJ). Ispod piše koliko će slika biti. S odabranim glasovima listić dobije sve takve riječi sa slikom
 abecedno (do 150 kartica, 12 po stranici) i naslov „Glasovi L, R – inicijalna pozicija, bez Š”; samo isključivanje daje 12 nasumičnih.
 Pravilo je u `src/lib/zadaci/listic-glas.ts` (+ test), isto u obrascu i na poslužitelju.
+„Uz samoglasnike” (19. 11. 2026., kvačica ispod Pozicije, samo Radni listić i Prebrajanje): glas na odabranoj poziciji smije imati
+do sebe samo samoglasnike (A E I O U), jer se S na početku najprije vježba uz samoglasnik: inicijalno SOK, SUNCE (ne STOL, SNIJEG),
+medijalno KOSA (ne MASKA), finalno NOS (ne MOST). Računa se iz fonema riječi (`uzSamoglasnike`), ne iz `rijec_glas`, pa ne treba
+migracija; pozicija u fonemima je ista kao u `pojave` (prvi, zadnji, ostalo). Uz „Skupine” se ne može uključiti. Polje `uz_samoglasnike=1`
+u `POST /admin/api/zadatak`; zadatku se ne pamti (listić nema `po_glasovima`), vidi se samo u naslovu „…, uz samoglasnike”.
+Slogovni R (SRCE, PRST) se ne računa kao samoglasnik.
 Logopedski mod (`/admin/postavke`, `korisnici.logopedski_mod`, migracija 0029, zadano uključen): samo s njim predlošci imaju
 „Po glasovima…”, i to Radni listić, Prebrajanje, Uparivanje, Povezivanje, Izbaci uljeza, Prvi glas, Koje slovo čuješ i Gdje je glas (jedan dijalog, polja po vrsti).
 Prebrajanje uzima samo riječi s glasom; rima traži skupinu rime s riječi s glasom i stavlja je kao zadanu (lijevu) sliku, ostale
