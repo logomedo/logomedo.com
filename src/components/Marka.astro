@@ -1,9 +1,10 @@
 ---
 // Znak: saće (med) s inicijalom, uz ime. `dodatak` je mala oznaka desno (npr. „admin”).
-interface Props { dodatak?: string; href?: string }
-const { dodatak, href = "/" } = Astro.props;
+// `oznaka`: tekst za čitač zaslona umjesto vidljivog imena (landing: „LogoMedo, naslovna”).
+interface Props { dodatak?: string; href?: string; oznaka?: string }
+const { dodatak, href = "/", oznaka } = Astro.props;
 ---
-<a class="marka" href={href}>
+<a class="marka" href={href} aria-label={oznaka}>
   <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
     <path d="M16 1.8 28.3 8.9v14.2L16 30.2 3.7 23.1V8.9Z" fill="var(--med)" />
     <path d="M12 9.5v12.5h8" fill="none" stroke="var(--med-tekst)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />

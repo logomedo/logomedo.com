@@ -3,10 +3,13 @@
 // klikne prekidač; izbor je u localStorage `logomedo-tema` kao data-tema na <html>.
 import "@fontsource-variable/inter";
 import "@fontsource-variable/fraunces";
+// Prerenderirane stranice (landing) imaju CSP bez noncea iz public/_headers (landing odluka 13): ista skripta
+// kao vanjska datoteka public/tema.js. Admin i /b/ ostaju na inline skripti, koju middleware potpiše nonceom.
+interface Props { vanjskaSkripta?: boolean }
+const { vanjskaSkripta = false } = Astro.props;
+const KOD = `try { const t = localStorage.getItem("logomedo-tema"); if (t === "svijetla" || t === "tamna") document.documentElement.dataset.tema = t; } catch {}`;
 ---
-<script is:inline>
-  try { const t = localStorage.getItem("logomedo-tema"); if (t === "svijetla" || t === "tamna") document.documentElement.dataset.tema = t; } catch {}
-</script>
+{vanjskaSkripta ? <script is:inline src="/tema.js"></script> : <script is:inline set:html={KOD} />}
 <style is:global>
   :root {
     color-scheme: light;

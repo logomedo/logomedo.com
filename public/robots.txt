@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin
+Disallow: /api
+Disallow: /b
+
+Sitemap: https://logomedo.com/sitemap.xml

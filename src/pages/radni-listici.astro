@@ -1,0 +1,13 @@
+---
+// /radni-listici: zasad samo R-1 (sadrzaj.md 3.3); R-2…R-7 i snimke dodaje S4.
+import Okvir from "../landing/Okvir.astro";
+import Uvod from "../landing/Uvod.astro";
+
+export const prerender = true;
+---
+<Okvir putanja="/radni-listici">
+  <Uvod gumbi={["prijava", "pristup"]}>
+    <Fragment slot="naslov">Radni listić u jednom kliku</Fragment>
+    Odaberite glas i poziciju, a LogoMedo složi listić sa slikama iz kataloga. Uredite ga, preuzmite PDF i ispišite.
+  </Uvod>
+</Okvir>

@@ -1,0 +1,41 @@
+---
+// N-1 Hero (sadrzaj.md 3.1). Vizual V-1: četiri ilustracije, 512 px, bez lazy (iznad pregiba).
+import Cta from "../Cta.astro";
+import { ALT_V1, ILUSTRACIJE_V1, KONTAKT } from "../konstante";
+---
+<section class="sekcija hero" aria-labelledby="naslov">
+  <div class="omot mreza">
+    <div class="tekst">
+      <p class="oznaka">Probno razdoblje · samo uz pozivnicu</p>
+      <h1 class="landing-h1" id="naslov">Slike za svaki glas. <em>Listić za tren.</em></h1>
+      <p class="uvodni">LogoMedo je radni alat za logopede: katalog slika po glasovima i pozicijama, radni listići koje ispišete u
+        jednom kliku i igre koje dijete rješava na tabletu.</p>
+      <Cta gumbi={["prijava", "pristup"]} />
+      <p class="sitno">Za prijavu vam treba pozivnica.{KONTAKT && <> Nemate je? <a href={KONTAKT}>Zatražite pristup.</a></>}</p>
+    </div>
+    <div class="slike" role="img" aria-label={ALT_V1}>
+      {ILUSTRACIJE_V1.map((s) => (
+        <img class="kartica-slike" src={`/landing/${s.ime}-512.webp`} srcset={`/landing/${s.ime}-256.webp 256w, /landing/${s.ime}-512.webp 512w`}
+          sizes="(max-width: 719px) 42vw, 240px" width="512" height="512" alt="" fetchpriority={s.ime === "riba" ? "high" : undefined} />
+      ))}
+    </div>
+  </div>
+</section>
+<style>
+  .hero { padding: 72px 0 80px; }
+  .mreza { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+  .tekst { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+  .oznaka { margin: 0; display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--med-blago); color: var(--med-tamno);
+    font-size: .85rem; font-weight: 600; }
+  .slike { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .slike img:nth-child(2) { transform: translateY(18px); }
+  .slike img:nth-child(4) { transform: translateY(18px); }
+  @media (max-width: 879px) {
+    .mreza { grid-template-columns: 1fr; gap: 40px; }
+    .slike { max-width: 440px; }
+  }
+  @media (max-width: 719px) {
+    .hero { padding: 40px 0 56px; }
+    .slike { gap: 12px; }
+  }
+</style>

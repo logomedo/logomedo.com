@@ -1,0 +1,22 @@
+# Prerenderirane stranice (landing odluka 13): ista zaglavlja kao zastiti() u src/middleware.ts, CSP bez noncea.
+# SSR odgovori (admin, api, b) ne čitaju ovu datoteku; njih štiti middleware.
+# Cloudflare spaja istoimena zaglavlja iz više pravila zarezom, a adapter dopisuje /_astro/* s Cache-Control:
+# zato cache-control NIJE na /*, nego samo na HTML putanjama (iste kao src/landing/konstante.ts STRANICE).
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.logomedo.com; media-src 'self' https://cdn.logomedo.com; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+
+/
+  Cache-Control: no-cache
+/katalog
+  Cache-Control: no-cache
+/radni-listici
+  Cache-Control: no-cache
+/igre
+  Cache-Control: no-cache
+/o-nama
+  Cache-Control: no-cache
+/privatnost
+  Cache-Control: no-cache

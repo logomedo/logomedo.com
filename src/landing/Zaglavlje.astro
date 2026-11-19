@@ -1,0 +1,70 @@
+---
+// Zaglavlje (sadrzaj.md 2.2, 2.3; odluka 201): logo, četiri linka, gumb „Prijava”. Ispod 720 px linkovi su u
+// <details> („Izbornik”), bez skripte (CSP). Dodirne površine najmanje 44 px.
+import Marka from "../components/Marka.astro";
+import { IZBORNIK, PRIJAVA } from "./konstante";
+
+interface Props { putanja?: string }
+const { putanja } = Astro.props;
+const trenutna = (href: string) => (href === putanja ? "page" : undefined);
+---
+<header class="zaglavlje">
+  <div class="omot red">
+    <Marka oznaka="LogoMedo, naslovna" />
+    <nav class="siroka" aria-label="Glavni izbornik">
+      <ul>
+        {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
+      </ul>
+    </nav>
+    <a class="gumb-prijava" href={PRIJAVA}>Prijava</a>
+    <details class="izbornik">
+      <summary>Izbornik</summary>
+      <nav aria-label="Glavni izbornik">
+        <ul>
+          {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
+        </ul>
+      </nav>
+    </details>
+  </div>
+</header>
+<style>
+  .zaglavlje { position: relative; z-index: 10; border-bottom: 1px solid var(--rub); background: var(--papir); }
+  .red { display: flex; align-items: center; gap: 12px; min-height: 68px; }
+  .siroka { margin-left: auto; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  .siroka ul { display: flex; gap: 4px; }
+  .siroka a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; text-decoration: none;
+    color: var(--blijedo); font-weight: 500; }
+  .siroka a:hover { color: var(--tinta); background: var(--povrsina-2); }
+  a[aria-current="page"] { color: var(--tinta); text-decoration: underline; text-decoration-color: var(--med); text-decoration-thickness: 2px;
+    text-underline-offset: 6px; }
+  .gumb-prijava { display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 999px; background: var(--med);
+    color: var(--med-tekst); font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .gumb-prijava:hover { filter: brightness(1.05); }
+  .izbornik { display: none; }
+  @media (max-width: 719px) {
+    .siroka { display: none; }
+    .gumb-prijava { margin-left: auto; padding: 0 14px; }
+    .izbornik { display: block; }
+    summary { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--rub-jak); border-radius: 999px;
+      cursor: pointer; font-weight: 500; list-style: none; user-select: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: ""; width: 7px; height: 7px; margin-left: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+      transform: translateY(-2px) rotate(45deg); }
+    .izbornik[open] summary::after { transform: translateY(2px) rotate(-135deg); }
+    .izbornik[open] summary { background: var(--povrsina-2); }
+    .izbornik nav { position: absolute; left: 0; right: 0; top: 100%; background: var(--povrsina); border-bottom: 1px solid var(--rub);
+      box-shadow: var(--sjena-2); padding: 8px 16px 14px; }
+    .izbornik a { display: flex; align-items: center; min-height: 48px; padding: 0 8px; border-radius: 10px; text-decoration: none; font-size: 1.05rem;
+      font-weight: 500; }
+    .izbornik li + li { border-top: 1px solid var(--rub); }
+  }
+  @media (max-width: 419px) {
+    .red { gap: 8px; }
+    .gumb-prijava, summary { padding: 0 12px; }
+    summary::after { margin-left: 6px; }
+  }
+  @media (max-width: 339px) {
+    .red :global(.marka .ime) { font-size: 1.05rem; }
+  }
+</style>

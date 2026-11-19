@@ -1,0 +1,14 @@
+---
+// /o-nama: zasad samo O-1 (sadrzaj.md 3.5); O-2…O-4 i V-25 dodaje S5. CTA iz tablice 2.1.
+import Okvir from "../landing/Okvir.astro";
+import Uvod from "../landing/Uvod.astro";
+
+export const prerender = true;
+---
+<Okvir putanja="/o-nama">
+  <Uvod gumbi={["pristup", "prijava"]}>
+    <Fragment slot="naslov">Novi LogoMedo nastaje s logopedima</Fragment>
+    LogoMedo radi mali tim koji ga gradi zajedno s logopedima iz prakse. Svaka nova vrsta zadatka i svaka slika prolazi kroz ruke nekoga tko
+    radi s djecom.
+  </Uvod>
+</Okvir>

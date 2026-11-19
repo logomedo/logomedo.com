@@ -1,0 +1,22 @@
+---
+// 404 (sadrzaj.md 3.7). Prerenderirana stranica ne zna putanju, pa rečenica o linku na igru (/b/) ide svima.
+import Okvir from "../landing/Okvir.astro";
+import Cta from "../landing/Cta.astro";
+
+export const prerender = true;
+---
+<Okvir>
+  <section class="sekcija nema" aria-labelledby="naslov">
+    <div class="omot">
+      <img class="kartica-slike" src="/landing/mis-256.webp" width="256" height="256" alt="Mali miš, ilustracija iz kataloga." />
+      <h1 class="landing-h1" id="naslov">Ova se stranica sakrila</h1>
+      <p class="uvodni">Stranicu koju tražite nismo našli. Možda je link zastario ili je u adresi mala pogreška.</p>
+      <p class="uvodni">Ako ste dobili link na igru, provjerite ga s logopedom koji vam ga je poslao.</p>
+      <Cta gumbi={[{ href: "/", tekst: "Na naslovnu" }, { href: "/katalog", tekst: "Katalog" }]} />
+    </div>
+  </section>
+</Okvir>
+<style>
+  .omot { display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+  .nema img { width: 160px; }
+</style>

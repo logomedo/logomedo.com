@@ -1,0 +1,14 @@
+---
+// /privatnost: zasad samo P-1 (sadrzaj.md 3.6); P-2…P-5 dodaje S5. „Stanje na dan” samo uz DATUM_OBJAVE.
+import Okvir from "../landing/Okvir.astro";
+import Uvod from "../landing/Uvod.astro";
+import { DATUM_OBJAVE } from "../landing/konstante";
+
+export const prerender = true;
+---
+<Okvir putanja="/privatnost">
+  <Uvod gumbi={["pristup"]} sitno={DATUM_OBJAVE ? `Stanje na dan ${DATUM_OBJAVE}` : undefined}>
+    <Fragment slot="naslov">Privatnost</Fragment>
+    Ukratko: ove stranice ne prikupljaju ništa, a o djetetu koje igra ne spremamo ništa. Ispod je točno što se gdje sprema.
+  </Uvod>
+</Okvir>

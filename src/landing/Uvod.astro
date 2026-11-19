@@ -1,0 +1,20 @@
+---
+// Hero sekcija podstranice (K-1, R-1, G-1, O-1, P-1): h1 (slot "naslov"), tekst (zadani slot), CTA, sitno.
+// Vizuali iz snimki zaslona (V-6, V-14, V-20) i V-25 dodaju S4/S5.
+import Cta from "./Cta.astro";
+
+interface Props { gumbi: ("prijava" | "pristup" | "demo")[]; sitno?: string }
+const { gumbi, sitno } = Astro.props;
+---
+<section class="sekcija uvod" aria-labelledby="naslov">
+  <div class="omot">
+    <h1 class="landing-h1" id="naslov"><slot name="naslov" /></h1>
+    <p class="uvodni"><slot /></p>
+    <Cta gumbi={gumbi} />
+    {sitno && <p class="sitno">{sitno}</p>}
+  </div>
+</section>
+<style>
+  .uvod .omot { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+  .uvod { padding-top: 72px; }
+</style>

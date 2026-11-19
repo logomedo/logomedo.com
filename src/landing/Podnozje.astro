@@ -1,0 +1,48 @@
+---
+// Podnožje (sadrzaj.md 2.4). „Zatraži pristup”, „Kontakt:” i „© GODINA. IME TVRTKE” se ne renderiraju dok su
+// njihove konstante prazne (odluka 206).
+import Marka from "../components/Marka.astro";
+import { GODINA, IME_TVRTKE, IZBORNIK, KONTAKT, PRIJAVA, kontaktTekst, stranica } from "./konstante";
+
+const autorsko = GODINA && IME_TVRTKE ? `© ${GODINA}. ${IME_TVRTKE}` : "";
+---
+<footer class="podnozje">
+  <div class="omot stupci">
+    <div class="o">
+      <Marka oznaka="LogoMedo, naslovna" />
+      <p>Slike, radni listići i igre za logopedsku terapiju.</p>
+    </div>
+    <nav aria-labelledby="pod-logomedo">
+      <h2 id="pod-logomedo">LogoMedo</h2>
+      <ul>{IZBORNIK.map((l) => <li><a href={l.href}>{l.tekst}</a></li>)}</ul>
+    </nav>
+    <nav aria-labelledby="pod-pomoc">
+      <h2 id="pod-pomoc">Pomoć</h2>
+      <ul>
+        <li><a href={PRIJAVA}>Prijava</a></li>
+        {KONTAKT && <li><a href={KONTAKT}>Zatraži pristup</a></li>}
+        <li><a href="/privatnost">{stranica("/privatnost").izbornik}</a></li>
+      </ul>
+    </nav>
+  </div>
+  {(autorsko || KONTAKT) && (
+    <div class="omot donji">
+      {autorsko && <span>{autorsko}</span>}
+      {KONTAKT && <span>Kontakt: <a href={KONTAKT}>{kontaktTekst(KONTAKT)}</a></span>}
+    </div>
+  )}
+</footer>
+<style>
+  .podnozje { border-top: 1px solid var(--rub); background: var(--povrsina-2); padding: 44px 0 32px; color: var(--blijedo); font-size: .95rem; }
+  .stupci { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 28px; }
+  .o p { margin: 12px 0 0; max-width: 300px; }
+  h2 { margin: 0 0 8px; font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--tinta); }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li a { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; }
+  li a:hover { color: var(--tinta); text-decoration: underline; }
+  .donji { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--rub); font-size: .85rem; }
+  @media (max-width: 719px) {
+    .stupci { grid-template-columns: 1fr 1fr; }
+    .o { grid-column: 1 / -1; }
+  }
+</style>

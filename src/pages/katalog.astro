@@ -1,0 +1,14 @@
+---
+// /katalog: zasad samo K-1 (sadrzaj.md 3.2); K-2…K-7 i snimke dodaje S4.
+import Okvir from "../landing/Okvir.astro";
+import Uvod from "../landing/Uvod.astro";
+import { BROJKE } from "../landing/konstante";
+
+export const prerender = true;
+---
+<Okvir putanja="/katalog">
+  <Uvod gumbi={["prijava", "pristup"]}>
+    <Fragment slot="naslov">Katalog slika po glasovima</Fragment>
+    {BROJKE.glasova} glasova, {BROJKE.rijeci} riječi i {BROJKE.slika} slika. Za svaku riječ znate gdje je glas: na početku, u sredini ili na kraju.
+  </Uvod>
+</Okvir>

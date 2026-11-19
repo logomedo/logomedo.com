@@ -1,0 +1,14 @@
+---
+// /igre: zasad samo G-1 (sadrzaj.md 3.4); G-2…G-7 i snimke dodaje S5. „Isprobaj igru” samo uz DEMO_URL (odluka 205).
+import Okvir from "../landing/Okvir.astro";
+import Uvod from "../landing/Uvod.astro";
+import { DEMO_URL } from "../landing/konstante";
+
+export const prerender = true;
+---
+<Okvir putanja="/igre">
+  <Uvod gumbi={DEMO_URL ? ["demo", "pristup"] : ["prijava", "pristup"]}>
+    <Fragment slot="naslov">Igra za dijete, na tabletu</Fragment>
+    Zadatke iz bilježnice dijete rješava na tabletu ili mobitelu. Pošaljete mu link i to je sve: bez prijave, bez instalacije.
+  </Uvod>
+</Okvir>

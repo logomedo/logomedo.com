@@ -1,0 +1,30 @@
+---
+// Gumbi poziva na akciju. Redoslijed = važnost (prvi je istaknut). Gumb s praznom konstantom se ne renderira
+// (KONTAKT, DEMO_URL; odluke 205, 206), pa prvi preostali postaje istaknut.
+import { DEMO_URL, KONTAKT, PRIJAVA } from "./konstante";
+
+type Vrsta = "prijava" | "pristup" | "demo";
+interface Gumb { href: string; tekst: string }
+interface Props { gumbi: (Vrsta | Gumb)[] }
+const { gumbi } = Astro.props;
+const svi: Record<Vrsta, Gumb> = {
+  prijava: { href: PRIJAVA, tekst: "Prijava" },
+  pristup: { href: KONTAKT, tekst: "Zatraži pristup" },
+  demo: { href: DEMO_URL, tekst: "Isprobaj igru" },
+};
+const vidljivi = gumbi.map((g) => (typeof g === "string" ? svi[g] : g)).filter((g) => g.href);
+---
+{vidljivi.length > 0 && (
+  <div class="cta">
+    {vidljivi.map((g, i) => <a class:list={["gumb", i === 0 ? "glavni" : "sporedni"]} href={g.href}>{g.tekst}</a>)}
+  </div>
+)}
+<style>
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .gumb { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 24px; border-radius: 999px;
+    font-weight: 600; font-size: 1.02rem; text-decoration: none; }
+  .glavni { background: var(--med); color: var(--med-tekst); box-shadow: var(--sjena-1); }
+  .glavni:hover { filter: brightness(1.05); }
+  .sporedni { border: 1px solid var(--rub-jak); color: var(--tinta); background: var(--povrsina); }
+  .sporedni:hover { background: var(--povrsina-2); }
+</style>

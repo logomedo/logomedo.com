@@ -1,0 +1,118 @@
+// Landing (docs/landing/sadrzaj.md, odluke 200–206): brojke, placeholderi za vrata S6 i SEO na jednom mjestu.
+// Prazan placeholder uklanja cijeli element (odluka 206); nikad se ne objavljuje „[… — S6]”.
+
+export const SITE = "https://logomedo.com";
+
+/** Zaokružene brojke (odluka 202). S6 ih provjerava upitima na produkciji prije objave. */
+export const BROJKE = {
+  glasova: 30,
+  rijeci: "650+",
+  slika: "1300+",
+  stilova: 2,
+  vrstaZadataka: 11,
+  znakova: 90,
+  temaIgre: 2,
+} as const;
+
+/** `[DEMO — S6]`: putanja `/b/<demo-slug>`; prazno = rezerva bez demoa (odluka 205). */
+export const DEMO_URL = "";
+/** `[KONTAKT — S6]`: href („mailto:…” ili URL) za „Zatraži pristup” i „Kontakt:”; prazno = bez tih elemenata. */
+export const KONTAKT = "";
+/** `[IME TVRTKE — S6]`: uz „© GODINA.” u podnožju; prazno = bez retka s autorskim pravom. */
+export const IME_TVRTKE = "";
+/** `[GODINA — S6]`: npr. "2026"; prazno = bez retka s autorskim pravom. */
+export const GODINA = "";
+/** `[DATUM OBJAVE — S6]` (P-1 na /privatnost): npr. "1. 12. 2026."; prazno = bez retka „Stanje na dan”. */
+export const DATUM_OBJAVE = "";
+
+export const PRIJAVA = "/admin/login";
+
+/** Tekst za „Kontakt:” iz hrefa (mailto: bez prefiksa). */
+export const kontaktTekst = (href: string) => href.replace(/^mailto:/, "");
+
+export interface Stranica {
+  putanja: string;
+  naslov: string;
+  opis: string;
+  /** Tekst linka u zaglavlju/podnožju. */
+  izbornik?: string;
+}
+
+/** SEO po stranici (sadrzaj.md 2.1). Redoslijed = sitemap. Title ≤ 60, description ≤ 155 (test). */
+export const STRANICE: Stranica[] = [
+  {
+    putanja: "/",
+    naslov: "LogoMedo · slike i radni listići za logopede",
+    opis: "Katalog slika po glasovima i pozicijama, radni listići za ispis i igre za dijete na tabletu. LogoMedo je alat za logopede.",
+  },
+  {
+    putanja: "/katalog",
+    naslov: "Katalog slika po glasovima · LogoMedo",
+    opis: "30 glasova, 650+ riječi i 1300+ slika u dva stila: ilustracija i bojanka. Riječi složene po početku, sredini i kraju.",
+    izbornik: "Katalog",
+  },
+  {
+    putanja: "/radni-listici",
+    naslov: "Radni listići i PDF za ispis · LogoMedo",
+    opis: "Radni listić po glasovima u jednom kliku i još deset vrsta zadataka. Gotov PDF za A4, s ukrasnim okvirom ili bez.",
+    izbornik: "Radni listići",
+  },
+  {
+    putanja: "/igre",
+    naslov: "Igre za dijete na tabletu · LogoMedo",
+    opis: "Zadatke iz bilježnice dijete rješava na tabletu ili mobitelu preko linka, bez prijave. O djetetu se ništa ne sprema.",
+    izbornik: "Igre",
+  },
+  {
+    putanja: "/o-nama",
+    naslov: "O nama · LogoMedo",
+    opis: "Novi LogoMedo nastaje zajedno s logopedima. Tko ga radi, odakle dolazi i kako se uključiti u probno razdoblje.",
+    izbornik: "O nama",
+  },
+  {
+    putanja: "/privatnost",
+    naslov: "Privatnost · LogoMedo",
+    opis: "Stranice LogoMeda ne koriste kolačiće ni praćenje. Što se sprema za logopede i zašto se o djetetu ne sprema ništa.",
+    izbornik: "Privatnost",
+  },
+];
+
+export const STRANICA_404 = { naslov: "Stranica nije pronađena · LogoMedo" } as const;
+
+export const stranica = (putanja: string): Stranica => {
+  const s = STRANICE.find((x) => x.putanja === putanja);
+  if (!s) throw new Error(`landing: nema SEO podataka za ${putanja}`);
+  return s;
+};
+
+/** Kanonski URL bez kose crte na kraju (osim naslovne); build.format "file". */
+export const kanonski = (putanja: string) => `${SITE}${putanja}`;
+
+/** Zaglavlje (odluka 201): četiri linka; Privatnost samo u podnožju. */
+export const IZBORNIK = ["/katalog", "/radni-listici", "/igre", "/o-nama"].map((p) => ({ href: p, tekst: stranica(p).izbornik! }));
+
+export const OG = {
+  slika: `${SITE}/landing/og.png`,
+  sirina: 1200,
+  visina: 630,
+  alt: "LogoMedo: slike za svaki glas, listić za tren.",
+} as const;
+
+/** V-1 (sadrzaj.md odjeljak 4): četiri ilustracije iz kataloga, public/landing/<ime>-{256,512}.webp. */
+export const ILUSTRACIJE_V1 = [
+  { ime: "riba", glas: "R" },
+  { ime: "sunce", glas: "S" },
+  { ime: "zaba", glas: "Ž" },
+  { ime: "lav", glas: "L" },
+] as const;
+export const ALT_V1 = "Ilustracije iz kataloga: riba, sunce, žaba i lav.";
+
+/** Redoslijed glasova iz kataloga (N-4): 25 suglasnika, pa 5 samoglasnika. */
+export const SUGLASNICI = ["C", "S", "Z", "Č", "Š", "Ž", "L", "R", "K", "Đ", "DŽ", "G", "M", "B", "P", "V", "F", "T", "D", "N", "J", "LJ", "NJ", "Ć", "H"];
+export const SAMOGLASNICI = ["A", "E", "I", "O", "U"];
+
+/** sitemap.xml iz STRANICE (404 nije u sitemapu). */
+export function sitemapXml(): string {
+  const url = STRANICE.map((s) => `  <url><loc>${kanonski(s.putanja)}</loc></url>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${url}\n</urlset>\n`;
+}

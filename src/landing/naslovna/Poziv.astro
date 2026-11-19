@@ -1,0 +1,21 @@
+---
+// N-6 Završni poziv. Bez KONTAKT-a nema „Zatraži pristup” ni rečenice „… javite nam se.” (nema kamo; odluka 206).
+import Cta from "../Cta.astro";
+import { KONTAKT } from "../konstante";
+---
+<section class="sekcija poziv" aria-labelledby="probno">
+  <div class="omot">
+    <div class="okvir">
+      <h2 class="landing-h2" id="probno">LogoMedo je u probnom razdoblju</h2>
+      <p class="uvodni">Gradimo ga zajedno s logopedima i pristup je zasad samo uz pozivnicu.{KONTAKT && " Ako želite isprobati katalog, listiće i igre u svom radu, javite nam se."}</p>
+      <Cta gumbi={["pristup", "prijava"]} />
+    </div>
+  </div>
+</section>
+<style>
+  .okvir { display: flex; flex-direction: column; gap: 20px; align-items: flex-start; padding: 40px; border-radius: 24px; background: var(--med-blago);
+    border: 1px solid var(--rub); }
+  .okvir .landing-h2 { margin: 0; }
+  .okvir .uvodni { color: var(--tinta); }
+  @media (max-width: 719px) { .okvir { padding: 26px 20px; } }
+</style>

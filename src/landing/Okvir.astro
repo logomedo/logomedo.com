@@ -1,0 +1,76 @@
+---
+// Okvir landing stranice (docs/landing/sadrzaj.md 2.1–2.5): head sa SEO i OG, zaglavlje, sadržaj, podnožje.
+// Prerenderirano, CSP iz public/_headers bez noncea: nijedna inline skripta (tema je /tema.js).
+import "@fontsource-variable/fraunces/wght-italic.css"; // pravi kurziv za „Listić za tren.” (Tema ima samo uspravni)
+import Tema from "../components/Tema.astro";
+import Zaglavlje from "./Zaglavlje.astro";
+import Podnozje from "./Podnozje.astro";
+import { OG, STRANICA_404, kanonski, stranica } from "./konstante";
+
+interface Props {
+  /** Putanja iz STRANICE; bez nje stranica je 404 (noindex, bez canonicala). */
+  putanja?: string;
+}
+const { putanja } = Astro.props;
+const s = putanja ? stranica(putanja) : undefined;
+const naslov = s?.naslov ?? STRANICA_404.naslov;
+---
+<!doctype html>
+<html lang="hr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{naslov}</title>
+    {s ? (
+      <>
+        <meta name="description" content={s.opis} />
+        <link rel="canonical" href={kanonski(s.putanja)} />
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="hr_HR" />
+        <meta property="og:site_name" content="LogoMedo" />
+        <meta property="og:title" content={s.naslov} />
+        <meta property="og:description" content={s.opis} />
+        <meta property="og:url" content={kanonski(s.putanja)} />
+        <meta property="og:image" content={OG.slika} />
+        <meta property="og:image:width" content={String(OG.sirina)} />
+        <meta property="og:image:height" content={String(OG.visina)} />
+        <meta property="og:image:alt" content={OG.alt} />
+        <meta name="twitter:card" content="summary_large_image" />
+      </>
+    ) : <meta name="robots" content="noindex" />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <Tema vanjskaSkripta />
+  </head>
+  <body>
+    <a class="preskoci" href="#sadrzaj">Preskoči na sadržaj</a>
+    <Zaglavlje putanja={putanja} />
+    <main id="sadrzaj">
+      <slot />
+    </main>
+    <Podnozje />
+  </body>
+</html>
+<style is:global>
+  html { overflow-x: clip; }
+  body { font-size: 16px; min-height: 100vh; display: flex; flex-direction: column; }
+  body > main { flex: 1; }
+  .preskoci { position: absolute; left: -9999px; top: 8px; z-index: 20; background: var(--povrsina); padding: 10px 14px; border-radius: 10px; }
+  .preskoci:focus { left: 8px; }
+  .omot { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .sekcija { padding: 64px 0; }
+  .sekcija + .sekcija { border-top: 1px solid var(--rub); }
+  .landing-h1 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: clamp(2.2rem, 6.4vw, 4.2rem); line-height: 1.04;
+    letter-spacing: -.025em; font-variation-settings: "SOFT" 100, "opsz" 144; text-wrap: balance; }
+  .landing-h1 em { font-style: italic; color: var(--med-tamno); font-weight: 500; }
+  .landing-h2 { margin: 0 0 18px; font-family: var(--font-slova); font-weight: 600; font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.12;
+    letter-spacing: -.015em; font-variation-settings: "SOFT" 100, "opsz" 96; text-wrap: balance; }
+  .uvodni { margin: 0; max-width: 620px; font-size: 1.15rem; color: var(--blijedo); }
+  .sitno { margin: 0; font-size: .9rem; color: var(--blijedo); }
+  .sitno a { color: var(--med-tamno); }
+  .kartica-slike { display: block; background: var(--papir-slike); border: 1px solid var(--rub); border-radius: 18px; box-shadow: var(--sjena-1);
+    width: 100%; height: auto; }
+  @media (max-width: 719px) {
+    .sekcija { padding: 44px 0; }
+    .omot { padding: 0 16px; }
+  }
+</style>
