@@ -306,3 +306,7 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
 615. **E-mailovi tvrtke u javnom repou** (nalaz reviewa: pravilo „nikakav e-mail” u `../CLAUDE.md`): `privacy@italk.hr`
      korisnik je izričito odobrio 19. 11. 2026. (javni podaci tvrtke), `hello@italk.hr` je javna adresa s italk.hr
      (odluka 602, potvrditi). Iznimka zapisana u `../CLAUDE.md`: javne adrese tvrtke smiju, osobne i dalje ne.
+616. **Natpis prekidača teme prati stanje** (ispravak korisnika u S6): gumb kaže u koju temu prebacuje, kao i ikona: u svijetloj
+     mjesec i „Tamna tema”, u tamnoj sunce i „Svijetla tema”. U mobilnom izborniku oba natpisa su u HTML-u u `.samo-dan` /
+     `.samo-noc` (CSS, bez bljeska i bez skripte); na desktopu `/tema.js` postavlja `aria-label` i `title`, i na promjenu teme
+     sustava. `aria-pressed` je uklonjen, jer uz natpis koji opisuje radnju zbunjuje čitač zaslona.
