@@ -14,7 +14,7 @@ export const POZICIJE: { kod: Pozicija; naziv: string }[] = [
 ];
 
 const DVOSLOVI = ["DŽ", "LJ", "NJ"];
-const SAMOGLASNICI = new Set(["A", "E", "I", "O", "U"]);
+export const SAMOGLASNICI = new Set(["A", "E", "I", "O", "U"]);
 
 /** Riječ u niz fonema: „LJULJAČKA” → LJ U LJ A Č K A. */
 export function fonemi(rijec: string): string[] {

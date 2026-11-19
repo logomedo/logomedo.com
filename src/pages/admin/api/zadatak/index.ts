@@ -27,12 +27,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const prazno = () => new Response(null, { status: 303, headers: { location: "/admin/predlosci?prazno=1" } });
   if (poGlasovima) {
     const k = await zaListic();
-    const filtar = { glasovi, pozicija: glasovi.length ? pozicija : "", bez };
     const oznake = k.glasovi.filter((g) => glasovi.includes(g.id)).map((g) => g.oznaka);
+    // „Uz samoglasnike” (listić, slogovi): glas do kojeg su samo samoglasnici (SOK da, STOL ne).
+    const uz = f.get("uz_samoglasnike") === "1" && (vrsta === "listic" || vrsta === "slogovi") && glasovi.length > 0 && pozicija !== "skupina";
+    const filtar = { glasovi, pozicija: glasovi.length ? pozicija : "", bez, ...(uz ? { uz: oznake } : {}) };
     if (vrsta === "listic") {
       const izbor = k.rijeci.filter((r) => odgovara(r, filtar));
       if (!izbor.length) return prazno();
-      naslov = naslovListica(oznake, filtar.pozicija, bez);
+      naslov = naslovListica(oznake, filtar.pozicija, bez, uz);
       // Odabrani broj slika (zadano 12): kad riječi ima više, nasumično; „sve” daje sve abecedno.
       const kartice = izaberi(izbor, brojSlika(f.get("broj") as string | null, MAX_KARTICA_LISTICA));
       sadrzaj = { kartice: kartice.map(kartica), raspored: "auto" };
@@ -67,7 +69,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         // Editor pamti odabir: birač slika nudi prvo riječi s tim glasovima, „Složi” slaže po njima.
         (sadrzaj as Odabir).po_glasovima = { glasovi, oznake, pozicija: filtar.pozicija, bez };
       }
-      naslov = naslovListica(oznake, filtar.pozicija, bez);
+      naslov = naslovListica(oznake, filtar.pozicija, bez, uz && vrsta === "slogovi");
     }
   } else {
     sadrzaj = slozi(vrsta, zaGenerator(await sveRijeci()), zadano);

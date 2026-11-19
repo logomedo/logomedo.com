@@ -1,6 +1,6 @@
 // Radni listić po glasovima: koje riječi ulaze. Isto pravilo u obrascu (broj slika uživo) i na
 // poslužitelju (slaganje), pa broj na gumbu odgovara listiću.
-import { fonemi } from "../fonemi.ts";
+import { fonemi, SAMOGLASNICI } from "../fonemi.ts";
 import { brojSlogova } from "./rima.ts";
 import { pozicijaGlasa } from "./slusanje.ts";
 import { kljuc, poCiljevima, type Odnos } from "./odnosi.ts";
@@ -11,8 +11,20 @@ export interface RijecGlasova { id: number; rijec: string; rima?: string | null;
 /**
  * `glasovi`: riječ ima barem jedan od njih na `pozicija` (prazno = bilo gdje); prazan popis = svaka riječ.
  * `bez`: nijedan od tih glasova nije nigdje u riječi (po fonemima: „bez L” ne izbacuje LJULJAČKU).
+ * `uz`: oznake odabranih glasova kad je uključeno „uz samoglasnike”: glas na toj poziciji ima do sebe samo
+ * samoglasnike (inicijalno SOK, SAT, ne STOL ni SNIJEG; medijalno KOSA, ne MASKA; finalno NOS, ne PAS-T…).
  */
-export interface FiltarListica { glasovi: number[]; pozicija: string; bez: string[] }
+export interface FiltarListica { glasovi: number[]; pozicija: string; bez: string[]; uz?: string[] }
+
+/** Pozicija pojave glasa u nizu fonema (bez skupine: ona nikad nije uz samoglasnik). */
+const pozicijaU = (i: number, n: number) => (i === 0 ? "inicijalna" : i === n - 1 ? "finalna" : "medijalna");
+
+/** Riječ ima neki od glasova `uz` na poziciji (prazno = bilo gdje) tako da su mu susjedi samoglasnici. */
+export function uzSamoglasnike(rijec: string, uz: string[], pozicija: string): boolean {
+  const f = fonemi(rijec);
+  return f.some((g, i) => uz.includes(g) && (!pozicija || pozicijaU(i, f.length) === pozicija)
+    && (i === 0 || SAMOGLASNICI.has(f[i - 1])) && (i === f.length - 1 || SAMOGLASNICI.has(f[i + 1])));
+}
 
 export const POZICIJE_LISTICA: Record<string, string> = {
   "": "bilo gdje", inicijalna: "inicijalna pozicija", medijalna: "medijalna pozicija", finalna: "finalna pozicija", skupina: "skupine",
@@ -20,6 +32,7 @@ export const POZICIJE_LISTICA: Record<string, string> = {
 
 export function odgovara(r: RijecGlasova, f: FiltarListica): boolean {
   if (f.glasovi.length && !r.g.some(([g, p]) => f.glasovi.includes(g) && (!f.pozicija || p === f.pozicija))) return false;
+  if (f.uz?.length && !uzSamoglasnike(r.rijec, f.uz, f.pozicija)) return false;
   if (f.bez.length) {
     const ima = new Set(fonemi(r.rijec));
     if (f.bez.some((b) => ima.has(b))) return false;
@@ -27,10 +40,10 @@ export function odgovara(r: RijecGlasova, f: FiltarListica): boolean {
   return true;
 }
 
-/** „Glasovi L, R – inicijalna pozicija, bez Š” */
-export function naslovListica(oznake: string[], pozicija: string, bez: string[]): string {
+/** „Glasovi L, R – inicijalna pozicija, uz samoglasnike, bez Š” */
+export function naslovListica(oznake: string[], pozicija: string, bez: string[], uz = false): string {
   const dijelovi: string[] = [];
-  if (oznake.length) dijelovi.push(`${oznake.length > 1 ? "Glasovi" : "Glas"} ${oznake.join(", ")}${pozicija ? ` – ${POZICIJE_LISTICA[pozicija]}` : ""}`);
+  if (oznake.length) dijelovi.push(`${oznake.length > 1 ? "Glasovi" : "Glas"} ${oznake.join(", ")}${pozicija ? ` – ${POZICIJE_LISTICA[pozicija]}` : ""}${uz ? (pozicija ? ", uz samoglasnike" : " uz samoglasnike") : ""}`);
   if (bez.length) dijelovi.push(`${oznake.length ? "bez" : "Bez"} ${bez.join(", ")}`);
   return dijelovi.join(", ");
 }

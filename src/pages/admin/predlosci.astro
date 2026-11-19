@@ -128,6 +128,9 @@ const shema: Record<Vrsta, string> = {
         <label class="pozicija" data-za="listic slogovi odabir povezivanje uljez">Pozicija
           <select name="pozicija" disabled>{pozicije.map(([k, n]) => <option value={k}>{n}</option>)}</select>
         </label>
+        <label class="pozicija uz" data-za="listic slogovi" title="Do glasa su samo samoglasnici: SOK, SAT, KOSA, NOS (ne STOL, SNIJEG, MASKA)">
+          <input type="checkbox" name="uz_samoglasnike" value="1" disabled /> Uz samoglasnike <span class="blijedo">(SOK, SAT, a ne STOL, SNIJEG)</span>
+        </label>
         <fieldset data-za="listic slogovi odabir povezivanje uljez">
           <legend>Bez glasova <span class="blijedo">(nijedna riječ ih nema nigdje)</span></legend>
           <div class="cipovi">
@@ -189,8 +192,11 @@ const shema: Record<Vrsta, string> = {
       const g = odabrani("glas"), bez = odabrani("bez").map((x) => x.value);
       const oznake = g.map((x) => x.nextElementSibling!.textContent!);
       poz.disabled = !g.length || vrsta === "prvi_glas" || vrsta === "koje_slovo" || vrsta === "pozicija_glasa";
-      const f = { glasovi: g.map((x) => Number(x.value)), pozicija: g.length ? poz.value : "", bez };
-      const sto = !g.length && !bez.length ? "Iz cijelog kataloga" : `„${naslovListica(oznake, f.pozicija, bez)}”`;
+      const uzPolje = polje("uz_samoglasnike") as HTMLInputElement;
+      uzPolje.disabled = poz.disabled || poz.value === "skupina" || (vrsta !== "listic" && vrsta !== "slogovi");
+      const uz = !uzPolje.disabled && uzPolje.checked;
+      const f = { glasovi: g.map((x) => Number(x.value)), pozicija: g.length ? poz.value : "", bez, ...(uz ? { uz: oznake } : {}) };
+      const sto = !g.length && !bez.length ? "Iz cijelog kataloga" : `„${naslovListica(oznake, f.pozicija, bez, uz)}”`;
       let tekst = "", moze = true;
       if (vrsta === "prvi_glas") {
         const n = poPrvomGlasu(rijeci, oznake);

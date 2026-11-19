@@ -26,7 +26,30 @@ test("listić po glasovima: više glasova, pozicija i isključeni glasovi", () =
   assert.deepEqual(ids({ glasovi: [], pozicija: "", bez: ["L"] }), [3, 4, 7]);
 });
 
+test("uz samoglasnike: glas do kojeg su samo samoglasnici", () => {
+  const S = 20;
+  const sr: RijecGlasova[] = [
+    { id: 1, rijec: "sok", g: [[S, "inicijalna"]] },
+    { id: 2, rijec: "stol", g: [[S, "inicijalna"]] },
+    { id: 3, rijec: "snijeg", g: [[S, "inicijalna"]] },
+    { id: 4, rijec: "sunce", g: [[S, "inicijalna"]] },
+    { id: 5, rijec: "kosa", g: [[S, "medijalna"]] },
+    { id: 6, rijec: "maska", g: [[S, "medijalna"]] },
+    { id: 7, rijec: "nos", g: [[S, "finalna"]] },
+    { id: 8, rijec: "most", g: [[S, "medijalna"]] },
+  ];
+  const s = (pozicija: string) => sr.filter((r) => odgovara(r, { glasovi: [S], pozicija, bez: [], uz: ["S"] })).map((r) => r.id);
+  assert.deepEqual(s("inicijalna"), [1, 4]);
+  assert.deepEqual(s("medijalna"), [5]);
+  assert.deepEqual(s("finalna"), [7]);
+  assert.deepEqual(s(""), [1, 4, 5, 7]);
+  // Bez kvačice ostaje kako je bilo.
+  assert.deepEqual(sr.filter((r) => odgovara(r, { glasovi: [S], pozicija: "inicijalna", bez: [] })).map((r) => r.id), [1, 2, 3, 4]);
+});
+
 test("naslov listića", () => {
+  assert.equal(naslovListica(["S"], "inicijalna", [], true), "Glas S – inicijalna pozicija, uz samoglasnike");
+  assert.equal(naslovListica(["S"], "", [], true), "Glas S uz samoglasnike");
   assert.equal(naslovListica(["L"], "inicijalna", []), "Glas L – inicijalna pozicija");
   assert.equal(naslovListica(["L", "R"], "", ["Š"]), "Glasovi L, R, bez Š");
   assert.equal(naslovListica([], "", ["R", "L"]), "Bez R, L");
