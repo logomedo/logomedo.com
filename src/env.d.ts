@@ -13,6 +13,8 @@ declare namespace Cloudflare {
     PRISTUP_TAJNA?: string;
     /** Resend (pozivnica e-poštom pri „Odobri”, src/lib/email.ts). Samo produkcija; bez njega se ne šalje ništa. */
     RESEND_API_KEY?: string;
+    /** Svix tajni ključ (`whsec_…`) Resend webhooka /api/resend/webhook (docs/inbox/). Bez njega webhook vraća 503. */
+    RESEND_WEBHOOK_SECRET?: string;
   }
 }
 
