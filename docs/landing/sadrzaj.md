@@ -95,7 +95,7 @@ Ako S6 ne odluči ime tvrtke ili kontakt, taj element se izostavlja (ne ostaje p
 
 Prijedlog: jedna zajednička `public/landing/og.png`, **1200 × 630, PNG** (WebP neki pregledi linkova ne
 prikazuju), svijetla pozadina, lijevo naslov „Slike za svaki glas. Listić za tren.”, desno četiri ilustracije
-RIBA, SUNCE, ŽABA, LAV [V-27]. Svaka stranica ima `og:title` = `<title>`, `og:description` = meta description,
+RUKAVICE, SUNCE, ŽIRAFA, LAV [V-27]. Svaka stranica ima `og:title` = `<title>`, `og:description` = meta description,
 `og:locale` = `hr_HR`.
 
 ---
@@ -145,7 +145,7 @@ RIBA, SUNCE, ŽABA, LAV [V-27]. Svaka stranica ima `og:title` = `<title>`, `og:d
   C S Z Č Š Ž L R K Đ DŽ G M B P V F T D N J LJ NJ Ć H · A E I O U
   (samoglasnici kao zasebna skupina iza razmaka; pločice nisu linkovi jer je katalog iza prijave [I-KAT-1])
 - **Ispod:** Riječi možete složiti i po mjestu tvorbe, načinu tvorbe ili zvučnosti. [I-KAT-1]
-- **Vizual:** pločice; uz četiri pločice (R, S, Ž, L) male ilustracije RIBA, SUNCE, ŽABA, LAV [V-1] (ponovno,
+- **Vizual:** pločice; uz četiri pločice (R, S, Ž, L) male ilustracije RUKAVICE, SUNCE, ŽIRAFA, LAV [V-1] (ponovno,
   256 px)
 
 #### N-5 Uskoro
@@ -500,13 +500,13 @@ za landing”). Prije objave pozicije glasova uz ilustracije potvrditi na strani
 
 | ID | Stranica / sekcija | Vrsta | Izvor | Veličine | Tema | Što se sakriva | Napomena | Alt |
 |---|---|---|---|---|---|---|---|---|
-| V-1 | `/` N-1 (i N-4 manje) | ilustracija ×4 | `ilustracija/riba/08b78c1b64f7ace1.png`, `ilustracija/sunce/7b78ac6aeb220458.png`, `ilustracija/zhaba/5bd3da7ad6c5afb4.png`, `ilustracija/lav/64116adb7fe6882d.png` | 512 i 256 px | obje (prozirni rub ili zaobljena kartica) | — | dekorativno u N-4 (`alt=""`), sadržajno u N-1 | „Ilustracije iz kataloga: riba, sunce, žaba i lav.” |
+| V-1 | `/` N-1 (i N-4 manje) | ilustracija ×4 | `ilustracija/rukavice/e672bb66109e13c6.png`, `ilustracija/sunce/7b78ac6aeb220458.png`, `ilustracija/zhirafa/a8f5bfc0c09f4158.png`, `ilustracija/lav/64116adb7fe6882d.png` | 512 i 256 px | obje (prozirni rub ili zaobljena kartica) | — | dekorativno u N-4 (`alt=""`), sadržajno u N-1 | „Ilustracije iz kataloga: rukavice, sunce, žirafa i lav.” (odluka 800) |
 | V-2 | `/` N-2 stup 1 | snimka | `/admin?stil=ilustracija` | 1280×800, 390×844 | svijetla | `.tko` | mape 30 glasova s brojevima | „Katalog u LogoMedu: mape glasova s brojem riječi u svakoj.” |
 | V-3 | `/` N-2 stup 2 | snimka | `/admin/zadaci/<id>` kartica Ispis (listić po glasu R, ilustracije) | 1280×800, 390×844 | svijetla | `.tko`, naslov zadatka ako sadrži ime | napraviti probni listić neutralnog naslova na stagingu (npr. „Glas R na početku”) | „Radni listić za glas R na početku riječi, spreman za ispis na A4.” |
 | V-4 | `/` N-2 stup 3 | snimka | `/b/<demo-staging>` vodoravno, tema Božić | 1280×800 | svijetla (igra ima svoju pozadinu) | slug u adresnoj traci (snimati bez trake), naslov bilježnice neutralan | treba demo bilježnica na stagingu [OP-4] | „Igra za dijete na tabletu: zadatak sa slikama i bor s lampicama.” |
 | V-6 | `/katalog` K-1 | snimka | `/admin?stil=ilustracija` | 1280×800, 390×844 | obje | `.tko` | može biti ista datoteka kao V-2 (mobilna varijanta za mobitel) | „Katalog s 30 mapa glasova, u stilu ilustracije.” |
 | V-7 | `/katalog` K-2 | snimka | `/admin/glas/r?stil=ilustracija` | 1280×800, 390×844 | svijetla | `.tko` | pozicije početak/sredina/kraj i skupine vidljive bez pomicanja | „Riječi s glasom R razvrstane po poziciji: početak, sredina, kraj i skupine.” |
-| V-8 | `/katalog` K-3 | ilustracija ×2 | `ilustracija/riba/08b78c1b64f7ace1.png` + `bojanka/riba/92c77de0ca525f8a.png` | 512 px | obje (bojanka na bijeloj kartici i u tamnoj temi) | — | par jedan uz drugi | „Riba u dva stila: ilustracija u boji i crno-bijela bojanka.” |
+| V-8 | `/katalog` K-3 | ilustracija ×2 | `ilustracija/rukavice/e672bb66109e13c6.png` + `bojanka/rukavice/f314aad932d163cb.png` | 512 px | obje (bojanka na bijeloj kartici i u tamnoj temi) | — | par jedan uz drugi | „Rukavice u dva stila: ilustracija u boji i crno-bijela bojanka.” (odluka 800) |
 | V-9 | `/katalog` K-3 | ilustracija ×2 | `ilustracija/sunce/7b78ac6aeb220458.png` + `bojanka/sunce/98eabebff5090197.png` | 512 px | obje | — | rezerva: `zhaba`, `lav` parovi iz inventure | „Sunce u dva stila: ilustracija u boji i bojanka.” |
 | V-10 | `/katalog` K-4 | snimka | `/admin/pregled` | 1280×800 | svijetla | `.tko`; ako se snima kao superadmin: `form.filtar-korisnika`, `#korisnik`, `#poslao`, poruka „X je već odobrio” | kao logoped vidi samo svoje slike: možda treba superadmin sesija uz sakrivanje | „Pregled nove slike s gumbima Odobri i Odbij.” |
 | V-11 | `/katalog` K-5 | snimka | `/admin/znakovi` | 1280×800, 390×844 | svijetla | `.tko` | prikaz b/d/p u Andiki | „Slova, brojke i simboli u fontu za početno čitanje.” |

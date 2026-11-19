@@ -16,7 +16,7 @@ import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
     <div class="slike" role="img" aria-label={ALT_V1}>
       {ILUSTRACIJE_V1.map((s) => (
         <img class="kartica-slike" src={`/landing/${s.ime}-512.webp`} srcset={`/landing/${s.ime}-256.webp 256w, /landing/${s.ime}-512.webp 512w`}
-          sizes="(max-width: 719px) 42vw, 240px" width="512" height="512" alt="" fetchpriority={s.ime === "riba" ? "high" : undefined} />
+          sizes="(max-width: 719px) 42vw, 240px" width="512" height="512" alt="" fetchpriority={s.ime === ILUSTRACIJE_V1[0].ime ? "high" : undefined} />
       ))}
     </div>
   </div>

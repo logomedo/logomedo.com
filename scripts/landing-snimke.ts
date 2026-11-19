@@ -4,6 +4,7 @@
 //   node scripts/landing-snimke.ts                 # sve snimke
 //   node scripts/landing-snimke.ts V-2 V-7         # samo te
 //   node scripts/landing-snimke.ts --pripremi      # jednom: probni zadaci, bilježnice i slika za pregled (vidi dolje)
+//   node scripts/landing-snimke.ts --rime          # samo upiše fiksne rime (RIME) u postojeći zadatak „Rima”
 //
 // Prijava: kolačić sesije iz env LOGOMEDO_KOLACIC ili ~/.cache/logomedo-staging/kolacic (samo vrijednost,
 // `scripts/staging-sesija.sh <email> | head -1 | cut -d= -f2`). Probni podaci (ID-jevi, slugovi) su u
@@ -418,6 +419,27 @@ async function spremi(page: Page, id: number, izmjene: Partial<PodaciEditora["za
   }, { id, tijelo });
 }
 
+/**
+ * Rime u zadatku „Rima” (Zimska bilježnica): fiksne, ne nasumične iz predloška (landing odluka 800). V-4 snima treći
+ * ekran (SLON – BALON), V-20 četvrti (CRKVA – MRKVA). Redak: zadana, ponuđene tri, indeks točne.
+ */
+const RIME: [string, [string, string, string], number][] = [
+  ["kapa", ["šapa", "miš", "brokula"], 0],
+  ["čaj", ["frula", "muha", "zmaj"], 2],
+  ["slon", ["kuća", "balon", "žlica"], 1],
+  ["crkva", ["kruška", "mačka", "mrkva"], 2],
+];
+
+async function postaviRime(page: Page, id: number) {
+  const { rijeci } = await editor(page, id);
+  const rid = (r: string) => {
+    const x = rijeci.find((w) => w.rijec.toLocaleLowerCase("hr") === r && w.slika);
+    if (!x) throw new Error(`Rima: nema riječi „${r}” sa slikom`);
+    return x.id;
+  };
+  await spremi(page, id, { sadrzaj: { odnos: "rima", stavke: RIME.map(([z, p, t]) => ({ zadana: rid(z), ponudeno: p.map(rid), tocno: t })) } });
+}
+
 const nasumicno = () => Math.random().toString(36).slice(2, 8);
 
 async function pripremi() {
@@ -444,6 +466,7 @@ async function pripremi() {
     await spremi(page, z.slogovi, { naslov: "Prebrajanje slogova" });
     z.rima = await noviZadatak(page, [["vrsta", "odabir"], ["podrucje", ""], ["nacin", "rima"], ["stavki", "4"]]);
     await spremi(page, z.rima, { naslov: "Rima" });
+    await postaviRime(page, z.rima);
     z.uljez = await noviZadatak(page, [["vrsta", "uljez"], ["podrucje", ""], ["nacin", "pocetni_glas"], ["stavki", "4"]]);
     await spremi(page, z.uljez, { naslov: "Izbaci uljeza" });
     z.istiGlas = await noviZadatak(page, [["vrsta", "odabir"], ["podrucje", ""], ["nacin", "pocetni_glas"], ["stavki", "4"]]);
@@ -510,5 +533,20 @@ async function pripremi() {
   }
 }
 
+/** --rime: samo upiše RIME u postojeći probni zadatak (bez novog --pripremi). */
+async function samoRime() {
+  const p: Probni = JSON.parse(readFileSync(PROBNI, "utf8"));
+  const b = await chromium.launch({ channel: "chrome" });
+  try {
+    const ctx = await kontekst(b, "desktop", "svijetla");
+    await postaviRime(await ctx.newPage(), p.zadaci.rima);
+    await ctx.unrouteAll({ behavior: "ignoreErrors" });
+    console.log("Rime upisane u zadatak „Rima”.");
+  } finally {
+    await b.close();
+  }
+}
+
 if (process.argv.includes("--pripremi")) await pripremi();
+else if (process.argv.includes("--rime")) await samoRime();
 else await snimaj(process.argv.slice(2).filter((a) => /^V-\d+$/.test(a)));

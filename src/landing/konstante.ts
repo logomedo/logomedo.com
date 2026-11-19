@@ -138,12 +138,12 @@ export const OG = {
 
 /** V-1 (sadrzaj.md odjeljak 4): četiri ilustracije iz kataloga, public/landing/<ime>-{256,512}.webp. */
 export const ILUSTRACIJE_V1 = [
-  { ime: "riba", glas: "R" },
+  { ime: "rukavice", glas: "R" },
   { ime: "sunce", glas: "S" },
-  { ime: "zaba", glas: "Ž" },
+  { ime: "zirafa", glas: "Ž" },
   { ime: "lav", glas: "L" },
 ] as const;
-export const ALT_V1 = "Ilustracije iz kataloga: riba, sunce, žaba i lav.";
+export const ALT_V1 = "Ilustracije iz kataloga: rukavice, sunce, žirafa i lav.";
 
 /** Redoslijed glasova iz kataloga (N-4): 25 suglasnika, pa 5 samoglasnika. */
 export const SUGLASNICI = ["C", "S", "Z", "Č", "Š", "Ž", "L", "R", "K", "Đ", "DŽ", "G", "M", "B", "P", "V", "F", "T", "D", "N", "J", "LJ", "NJ", "Ć", "H"];
@@ -203,6 +203,6 @@ export function snimkaDatoteke(v: SnimkaId) {
 export const ILUSTRACIJA_V25 = { src: "/landing/sova-512.webp", alt: "Ilustracija sove iz kataloga." } as const;
 
 export const PAROVI_STILOVA = [
-  { ime: "riba", alt: "Riba u dva stila: ilustracija u boji i crno-bijela bojanka." },
+  { ime: "rukavice", alt: "Rukavice u dva stila: ilustracija u boji i crno-bijela bojanka." },
   { ime: "sunce", alt: "Sunce u dva stila: ilustracija u boji i bojanka." },
 ] as const;

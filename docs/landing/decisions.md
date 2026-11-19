@@ -382,3 +382,13 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      staging je kopija produkcijske D1 sa stvarnim adresama, pa bez ključa ne šalje ništa. Neuspjeh slanja ne vraća
      odobrenje: admin vidi upozorenje i link kao rezervu. Resend je odabran umjesto Cloudflare Email Servicea (odluka
      710) jer je korisnik već imao ključ; obavijest superadminu o novom zahtjevu sad može ići istim putem.
+
+## Uređivanje sadržaja (od 800)
+
+800. **Ljepše slike i bolje rime u prvom planu** (korisnik, 19. 11. 2026.): u V-1 (hero naslovne, N-4, OG slika)
+     ŽIRAFA umjesto ŽABE i RUKAVICE umjesto RIBE (glasovi Ž i R ostaju); u „Dva stila” (V-8) par RUKAVICE umjesto RIBE.
+     Ključevi: `ilustracija/zhirafa/a8f5bfc0c09f4158.png`, `ilustracija/rukavice/e672bb66109e13c6.png`,
+     `bojanka/rukavice/f314aad932d163cb.png`; stare `riba-*`/`zaba-*` webp maknute. Zadatak „Rima” za snimke (Zimska
+     bilježnica) više nije nasumičan iz predloška (bile su FRULA–BROKULA i SLOVA–SOVA): `RIME` u
+     `scripts/landing-snimke.ts` (KAPA–ŠAPA, ČAJ–ZMAJ, SLON–BALON, CRKVA–MRKVA), `--rime` ih upiše u postojeći
+     probni zadatak. V-4 tako pokazuje SLON–BALON, V-20 CRKVA–MRKVA. `sadrzaj.md` i dalje vrijedi i usklađen je.

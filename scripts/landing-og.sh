@@ -11,7 +11,7 @@ IZLAZ="$KORIJEN/public/landing/og.png"
 FONT="$KORIJEN/node_modules/@fontsource-variable/fraunces"
 L="$KORIJEN/public/landing"
 mkdir -p "$RADNI"
-for s in riba sunce zaba lav; do [[ -f "$L/$s-512.webp" ]] || { echo "nema $L/$s-512.webp (scripts/landing-ilustracije.sh)" >&2; exit 1; }; done
+for s in rukavice sunce zirafa lav; do [[ -f "$L/$s-512.webp" ]] || { echo "nema $L/$s-512.webp (scripts/landing-ilustracije.sh)" >&2; exit 1; }; done
 
 cat >"$RADNI/og.html" <<HTML
 <!doctype html>
@@ -42,7 +42,7 @@ cat >"$RADNI/og.html" <<HTML
     <h1>Slike za<br>svaki glas.<br><em>Listić za tren.</em></h1>
   </div>
   <div class="slike">
-    <img src="file://$L/riba-512.webp"><img src="file://$L/sunce-512.webp"><img src="file://$L/zaba-512.webp"><img src="file://$L/lav-512.webp">
+    <img src="file://$L/rukavice-512.webp"><img src="file://$L/sunce-512.webp"><img src="file://$L/zirafa-512.webp"><img src="file://$L/lav-512.webp">
   </div>
 </body></html>
 HTML
