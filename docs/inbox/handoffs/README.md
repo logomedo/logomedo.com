@@ -21,7 +21,7 @@ Handoff se mijenja samo prema naprijed.
 | Sesija | Paket | Stanje | Commit | Testovi | Napomena |
 | --- | --- | --- | --- | --- | --- |
 | S0 | Plan | gotovo | 24d60ee | 333 | plan, koda inboxa nema; odluke 1–10 |
-| S1 | Istraživanje, temelj, webhook | otvoreno | | | |
+| S1 | Istraživanje, temelj, webhook | gotovo | f9c1cec | 360 | research s izvorima; staging probni webhook zelen (200/401/401/duplikat); odluke 100–111 |
 | S2 | Primanje na produkciji, e2e | otvoreno | | | |
 | S3 | `/admin/poruke`, odgovor, brzi odgovori | otvoreno | | | |
 | S4 | Retencija, obavijesti, SPF/DKIM, dokumentacija | otvoreno | | | |

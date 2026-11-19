@@ -16,13 +16,13 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F0: provjere i temelj (ništa vidljivo korisnicima)
 
-- [ ] Istraživanje u `research/`: Resend prima li `headers` `In-Reply-To`/`References` pri slanju; točan Svix algoritam
+- [x] Istraživanje u `research/`: Resend prima li `headers` `In-Reply-To`/`References` pri slanju; točan Svix algoritam
       (test vektor iz Svix dokumentacije); kako se uključuje primanje i koja je MX vrijednost za poddomenu → S1
-- [ ] Migracija `0039_inbox.sql`: `razgovori`, `poruke`, `privitci`, `brzi_odgovori` → S1
-- [ ] `src/lib/svix.ts` (WebCrypto, tolerancija vremena 5 min) s testom na službenom vektoru → S1
-- [ ] `src/lib/poruke.ts`: spremi dolaznu/odlaznu, nađi razgovor (adresa `odgovor+<kljuc>@…`, pa `In-Reply-To`, pa e-mail), nepročitano → S1
-- [ ] `POST /api/resend/webhook`: potpis, idempotentno po `email_id`, dohvat tijela, privitci u R2 → S1
-- [ ] Testovi bez mreže (fixture payloadi), `skipped 0` → S1
+- [x] Migracija `0039_inbox.sql`: `razgovori`, `poruke`, `privitci`, `brzi_odgovori` → S1
+- [x] `src/lib/svix.ts` (WebCrypto, tolerancija vremena 5 min) s testom na službenom vektoru → S1
+- [x] `src/lib/poruke.ts`: spremi dolaznu/odlaznu, nađi razgovor (adresa `odgovor+<kljuc>@…`, pa `In-Reply-To`, pa e-mail), nepročitano → S1
+- [x] `POST /api/resend/webhook`: potpis, idempotentno po `email_id`, dohvat tijela, privitci u R2 → S1
+- [x] Testovi bez mreže (fixture payloadi), `skipped 0` → S1
 
 ## F1: primanje na produkciji
 

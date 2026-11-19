@@ -53,3 +53,6 @@ Trošak: Resend besplatni plan (3000 mailova mjesečno) je dovoljan; LLM poziva 
 ## Gdje smo
 
 S0: plan, koda inboxa nema. Polazište je `main` s pozivnicom e-poštom i React Emailom (`7be67c9`).
+
+S1 (`f9c1cec`): migracija 0039, `svix.ts`, `poruke.ts`, webhook `/api/resend/webhook`, research; staging provjeren
+probnim potpisanim webhookom. Produkcija još ne prima ništa (nema MX ni webhooka).
