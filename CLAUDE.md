@@ -16,3 +16,9 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
 
 Plan od 16. 11. 2026. u `docs/rbac/` (`TODO.md`, `plan.md`, `decisions.md`, `handoffs/`). „Nastavi RBAC”
 znači prvi red koji nije „gotovo” u „Stanje lanca” u `docs/rbac/handoffs/README.md`; prompt je `SN.md`.
+
+## Lanac: landing stranice + staging
+
+Plan od 19. 11. 2026. u `docs/landing/` (`TODO.md`, `plan.md`, `decisions.md`, `handoffs/`). „Nastavi landing”
+znači prvi red koji nije „gotovo” u „Stanje lanca” u `docs/landing/handoffs/README.md`; prompt je `SN.md`.
+Landing kod živi na grani `landing` do vrata u S6; staging (`staging.logomedo.com`, `env.staging`) je u `main`.
