@@ -1,0 +1,11 @@
+---
+// K-4 Slike koje je netko pogledao. Vizual V-10 (samo desktop).
+import Sekcija from "../Sekcija.astro";
+import Snimka from "../Snimka.astro";
+---
+<Sekcija id="pregled" naslov="Svaku sliku pregleda logoped">
+  <p>U katalog ulazi samo odobrena slika. Recenzent je pregleda i odobri, ili je odbije i napiše što ne valja i kako treba. Odbijena slika
+    odmah nestaje iz kataloga, listića i igre.</p>
+  <p>Nedostaje vam slika? Učitajte svoju ili zatražite novu, u okviru tjednog limita. I nova slika prije objave prolazi pregled.</p>
+  <Snimka v={10} slot="vizual" />
+</Sekcija>

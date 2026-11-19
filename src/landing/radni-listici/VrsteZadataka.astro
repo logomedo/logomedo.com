@@ -1,0 +1,45 @@
+---
+// R-3 Vrste zadataka: uvod, V-15 (predlošci, svijetla i tamna), 11 kartica (h3 + tekst), pa V-16 i V-17.
+import Snimka from "../Snimka.astro";
+import { BROJKE } from "../konstante";
+import { VRSTE_ZADATAKA } from "./vrste";
+---
+<section class="sekcija" aria-labelledby="vrste">
+  <div class="omot">
+    <div class="glava">
+      <div>
+        <h2 class="landing-h2" id="vrste">{BROJKE.vrstaZadataka} vrsta zadataka</h2>
+        <p class="uvodni">Svaku vrstu složi predložak iz kataloga, a vi je uredite. Prije ispisa vidite zadatak točno kako ga vidi dijete.</p>
+      </div>
+      <Snimka v={15} />
+    </div>
+    <ol class="kartice">
+      {VRSTE_ZADATAKA.map((z) => (
+        <li>
+          <h3>{z.naslov}</h3>
+          <p>{z.tekst}</p>
+          {z.uskoroUIgri && <p class="uskoro">U igri uskoro.</p>}
+        </li>
+      ))}
+    </ol>
+    <div class="primjeri">
+      <Snimka v={16} />
+      <Snimka v={17} />
+    </div>
+  </div>
+</section>
+<style>
+  .glava { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 48px; align-items: center; }
+  .kartice { list-style: none; margin: 40px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    gap: 16px; }
+  li { display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: 16px; background: var(--povrsina); border: 1px solid var(--rub);
+    box-shadow: var(--sjena-1); }
+  h3 { margin: 0; font-family: var(--font-slova); font-size: 1.2rem; font-weight: 600; font-variation-settings: "SOFT" 100, "opsz" 48; }
+  li p { margin: 0; color: var(--blijedo); }
+  .uskoro { font-size: .85rem; font-weight: 600; color: var(--med-tamno) !important; }
+  .primjeri { margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 879px) {
+    .glava { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .primjeri { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>

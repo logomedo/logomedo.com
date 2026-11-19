@@ -116,3 +116,43 @@ export function sitemapXml(): string {
   const url = STRANICE.map((s) => `  <url><loc>${kanonski(s.putanja)}</loc></url>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${url}\n</urlset>\n`;
 }
+
+/**
+ * Snimke zaslona (sadrzaj.md odjeljak 4, odluka 209): public/landing/v<N>-desktop.webp (1280×800), uz `mobitel`
+ * još v<N>-mobitel.webp (390×844 @2x), uz `tamna` još -tamna varijante obje veličine. Alt doslovno iz tablice.
+ */
+export interface Snimka { alt: string; mobitel?: boolean; tamna?: boolean }
+export const SNIMKE = {
+  2: { alt: "Katalog u LogoMedu: mape glasova s brojem riječi u svakoj.", mobitel: true },
+  3: { alt: "Radni listić za glas R na početku riječi, spreman za ispis na A4.", mobitel: true },
+  4: { alt: "Igra za dijete na tabletu: zadatak sa slikama i bor s lampicama." },
+  6: { alt: `Katalog s ${BROJKE.glasova} mapa glasova, u stilu ilustracije.`, mobitel: true, tamna: true },
+  7: { alt: "Riječi s glasom R razvrstane po poziciji: početak, sredina, kraj i skupine.", mobitel: true },
+  10: { alt: "Pregled nove slike s gumbima Odobri i Odbij." },
+  11: { alt: "Slova, brojke i simboli u fontu za početno čitanje.", mobitel: true },
+  12: { alt: "Ilustracija scene Pečemo kolačiće sa slikama ispod." },
+  13: { alt: "Odabir glasa, pozicije i isključenih glasova za novi radni listić.", mobitel: true },
+  14: { alt: "Radni listić na stranici A4 s ukrasnim okvirom i praznom crtom za ime.", mobitel: true },
+  15: { alt: "Jedanaest vrsta zadataka u predlošcima.", mobitel: true, tamna: true },
+  16: { alt: "Kolo sa slovima stalo je na glasu; zatim dijete među slikama traži one koje počinju tim glasom." },
+  17: { alt: "Zadatak prebrajanja: ispod svake slike kružići za slogove." },
+  18: { alt: "Izbor okvira: rubovi, mašne i ukrasi za kutove." },
+  23: { alt: "Naslovnica bilježnice s borom čije lampice dijete boji." },
+} as const satisfies Record<number, Snimka>;
+export type SnimkaId = keyof typeof SNIMKE;
+export const SNIMKA_DESKTOP = { sirina: 1280, visina: 800 } as const;
+export const SNIMKA_MOBITEL = { sirina: 780, visina: 1688 } as const;
+
+/** Putanje datoteka jedne snimke (za <picture> i test postojanja). */
+export function snimkaDatoteke(v: SnimkaId) {
+  const s: Snimka = SNIMKE[v];
+  const put = (vel: "desktop" | "mobitel", tamna: boolean) => `/landing/v${v}-${vel}${tamna ? "-tamna" : ""}.webp`;
+  const varijante = s.tamna ? [false, true] : [false];
+  return varijante.map((tamna) => ({ tamna, desktop: put("desktop", tamna), mobitel: s.mobitel ? put("mobitel", tamna) : undefined }));
+}
+
+/** V-8, V-9 (K-3): ilustracija + bojanka, public/landing/<ime>-512.webp i <ime>-bojanka-512.webp. */
+export const PAROVI_STILOVA = [
+  { ime: "riba", alt: "Riba u dva stila: ilustracija u boji i crno-bijela bojanka." },
+  { ime: "sunce", alt: "Sunce u dva stila: ilustracija u boji i bojanka." },
+] as const;

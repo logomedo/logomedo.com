@@ -1,0 +1,11 @@
+---
+// R-6 Bilježnica. Vizual V-23 (naslovnica bilježnice, samo desktop).
+import Sekcija from "../Sekcija.astro";
+import Snimka from "../Snimka.astro";
+---
+<Sekcija id="biljeznica" naslov="Više zadataka u jednoj bilježnici">
+  <p>Zadatke složite u bilježnicu s temom. Ispišite je cijelu, s naslovnicom na kojoj dijete za svaki riješen red oboji lampicu na boru, ili
+    djetetu pošaljite link na igru.</p>
+  <a href="/igre">Kako izgleda igra<span aria-hidden="true">&nbsp;→</span></a>
+  <Snimka v={23} slot="vizual" />
+</Sekcija>

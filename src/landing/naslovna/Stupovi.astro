@@ -1,22 +1,26 @@
 ---
-// N-2 Što je LogoMedo (tri stupa). Snimke V-2, V-3, V-4 dolaze u S4; dotad stupci nemaju sliku.
-import { BROJKE } from "../konstante";
+// N-2 Što je LogoMedo (tri stupa). Svaki stupac ima snimku iznad h3: V-2 i V-3 (desktop + mobitel), V-4 (samo desktop).
+import Snimka from "../Snimka.astro";
+import { BROJKE, type SnimkaId } from "../konstante";
 
-const stupovi = [
+const stupovi: { naslov: string; tekst: string; link: { href: string; tekst: string }; snimka: SnimkaId }[] = [
   {
     naslov: "Katalog slika",
     tekst: `${BROJKE.glasova} glasova, ${BROJKE.rijeci} riječi i ${BROJKE.slika} slika, složenih po tome je li glas na početku, u sredini ili na kraju riječi. Svaka slika u dva stila: u boji i za bojanje.`,
     link: { href: "/katalog", tekst: "Pogledajte katalog" },
+    snimka: 2,
   },
   {
     naslov: "Radni listići",
     tekst: "Odaberite glas i poziciju, a listić se složi sam. Uz njega još deset vrsta zadataka, od uparivanja do kola slova, i gotov PDF za ispis.",
     link: { href: "/radni-listici", tekst: "Vrste zadataka" },
+    snimka: 3,
   },
   {
     naslov: "Igre za dijete",
     tekst: "Zadatke složite u bilježnicu i djetetu pošaljite link. Rješava ih na tabletu ili mobitelu, bez prijave.",
     link: { href: "/igre", tekst: "Kako izgleda igra" },
+    snimka: 4,
   },
 ];
 ---
@@ -26,9 +30,10 @@ const stupovi = [
     <ul class="stupovi">
       {stupovi.map((s) => (
         <li>
+          <Snimka v={s.snimka} class="slika-stupca" />
           <h3>{s.naslov}</h3>
           <p>{s.tekst}</p>
-          <a href={s.link.href}>{s.link.tekst}<span aria-hidden="true"> →</span></a>
+          <a href={s.link.href}>{s.link.tekst}<span aria-hidden="true">&nbsp;→</span></a>
         </li>
       ))}
     </ul>
@@ -38,6 +43,7 @@ const stupovi = [
   .stupovi { list-style: none; margin: 28px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
   li { display: flex; flex-direction: column; gap: 10px; padding: 26px; border-radius: 18px; background: var(--povrsina); border: 1px solid var(--rub);
     box-shadow: var(--sjena-1); }
+  li :global(.slika-stupca) { margin-bottom: 8px; box-shadow: var(--sjena-1); }
   h3 { margin: 0; font-family: var(--font-slova); font-size: 1.35rem; font-weight: 600; font-variation-settings: "SOFT" 100, "opsz" 48; }
   p { margin: 0; color: var(--blijedo); flex: 1; }
   a { display: inline-flex; align-items: center; min-height: 44px; color: var(--med-tamno); font-weight: 600; text-decoration: none; }

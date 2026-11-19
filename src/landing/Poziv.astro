@@ -1,0 +1,28 @@
+---
+// Završni poziv (N-6, K-7, R-7, …): h2 (slot "naslov"), opcionalni tekst (zadani slot), CTA i opcionalni link dalje.
+// Gumbi s praznom konstantom se ne renderiraju (Cta.astro, odluka 206).
+import Cta from "./Cta.astro";
+
+interface Props { id: string; gumbi: ("prijava" | "pristup" | "demo")[]; link?: { href: string; tekst: string } }
+const { id, gumbi, link } = Astro.props;
+const tekst = Astro.slots.has("default");
+---
+<section class="sekcija poziv" aria-labelledby={id}>
+  <div class="omot">
+    <div class="okvir">
+      <h2 class="landing-h2" id={id}><slot name="naslov" /></h2>
+      {tekst && <p class="uvodni"><slot /></p>}
+      <Cta gumbi={gumbi} />
+      {link && <a class="dalje" href={link.href}>{link.tekst}<span aria-hidden="true">&nbsp;→</span></a>}
+    </div>
+  </div>
+</section>
+<style>
+  .okvir { display: flex; flex-direction: column; gap: 20px; align-items: flex-start; padding: 40px; border-radius: 24px; background: var(--med-blago);
+    border: 1px solid var(--rub); }
+  .okvir .landing-h2 { margin: 0; }
+  .okvir .uvodni { color: var(--tinta); }
+  .dalje { display: inline-flex; align-items: center; min-height: 44px; color: var(--med-tamno); font-weight: 600; text-decoration: none; }
+  .dalje:hover { text-decoration: underline; }
+  @media (max-width: 719px) { .okvir { padding: 26px 20px; } }
+</style>

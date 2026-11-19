@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import * as K from "./konstante.ts";
+import { VRSTE_ZADATAKA } from "./radni-listici/vrste.ts";
 
 const korijen = new URL("../../", import.meta.url);
 const procitaj = (p: string) => readFileSync(new URL(p, korijen), "utf8");
@@ -141,4 +142,77 @@ test("landing: ilustracije V-1 (512, 256), V-26 (256), OG slika i tema.js postoj
   assert.equal(og.readUInt32BE(16), K.OG.sirina);
   assert.equal(og.readUInt32BE(20), K.OG.visina);
   assert.match(procitaj("public/tema.js"), /localStorage\.getItem\("logomedo-tema"\)/);
+});
+
+/** Izvor landinga: sve .astro u src/landing i stranice iz STRANICE + 404. */
+function izvorLandinga(): string[] {
+  return [
+    ...readdirSync(new URL("src/landing/", korijen), { recursive: true }).map((f) => `src/landing/${f}`).filter((f) => f.endsWith(".astro")),
+    ...K.STRANICE.map((s) => `src/pages/${s.putanja === "/" ? "index" : s.putanja.slice(1)}.astro`),
+    "src/pages/404.astro",
+  ];
+}
+
+/** Širina i visina WebP-a iz zaglavlja (VP8X, VP8, VP8L). */
+function webpVelicina(b: Buffer): [number, number] {
+  assert.equal(b.subarray(0, 4).toString(), "RIFF");
+  assert.equal(b.subarray(8, 12).toString(), "WEBP");
+  const vrsta = b.subarray(12, 16).toString();
+  if (vrsta === "VP8X") return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+  if (vrsta === "VP8 ") return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
+  assert.equal(vrsta, "VP8L");
+  const [b0, b1, b2, b3] = b.subarray(21, 25);
+  return [1 + (((b1 & 0x3f) << 8) | b0), 1 + (((b3 & 0xf) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6))];
+}
+
+test("landing: nijedna inline skripta ni is:inline u komponentama i stranicama landinga (CSP bez noncea)", () => {
+  for (const f of izvorLandinga()) {
+    const t = procitaj(f);
+    assert.doesNotMatch(t, /is:inline|set:html/, f);
+    for (const m of t.matchAll(/<script\b[^>]*>/g)) assert.match(m[0], /\ssrc=/, `${f}: ${m[0]}`);
+    assert.doesNotMatch(t, /\son[a-z]+=/, `${f}: inline handler`);
+  }
+});
+
+test("landing: svaka literalna /landing/*.webp referenca u izvoru ima datoteku", () => {
+  const ref = new Set(izvorLandinga().flatMap((f) => [...procitaj(f).matchAll(/\/landing\/[a-z0-9-]+\.webp/g)].map((m) => m[0])));
+  for (const r of ref) assert.ok(existsSync(new URL(`public${r}`, korijen)), r);
+});
+
+test("landing: V-8 i V-9 (ilustracija + bojanka 512 px) postoje", () => {
+  for (const p of K.PAROVI_STILOVA) {
+    for (const ime of [`${p.ime}-512`, `${p.ime}-bojanka-512`]) {
+      assert.deepEqual(webpVelicina(readFileSync(new URL(`public/landing/${ime}.webp`, korijen))), [512, 512], ime);
+    }
+  }
+});
+
+test("landing: svaka snimka iz SNIMKE postoji u public/landing u pravoj veličini (desktop 1280×800, mobitel 780×1688)", () => {
+  const nema: string[] = [];
+  for (const v of Object.keys(K.SNIMKE).map(Number) as K.SnimkaId[]) {
+    for (const d of K.snimkaDatoteke(v)) {
+      for (const [put, vel] of [[d.desktop, K.SNIMKA_DESKTOP], [d.mobitel, K.SNIMKA_MOBITEL]] as const) {
+        if (!put) continue;
+        const url = new URL(`public${put}`, korijen);
+        if (!existsSync(url)) { nema.push(put); continue; }
+        assert.deepEqual(webpVelicina(readFileSync(url)), [vel.sirina, vel.visina], put);
+      }
+    }
+  }
+  assert.deepEqual(nema, [], `nedostaju snimke: ${nema.join(", ")}`);
+});
+
+test("landing: snimke koje izvor koristi su u SNIMKE, a alt nema brojku mimo BROJKE", () => {
+  const koristene = new Set(izvorLandinga().flatMap((f) => [...procitaj(f).matchAll(/<Snimka v=\{(\d+)\}/g)].map((m) => Number(m[1]))));
+  for (const v of koristene) assert.ok(v in K.SNIMKE, `V-${v} nije u SNIMKE`);
+  for (const v of [6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 23]) assert.ok(koristene.has(v), `V-${v} se ne koristi`);
+  assert.equal(K.snimkaDatoteke(6).length, 2);
+  assert.equal(K.snimkaDatoteke(4)[0].mobitel, undefined);
+  assert.match(K.SNIMKE[6].alt, new RegExp(`^Katalog s ${K.BROJKE.glasova} mapa`));
+});
+
+test("landing: R-3 ima BROJKE.vrstaZadataka kartica, od toga dvije slušne „u igri uskoro”", () => {
+  assert.equal(VRSTE_ZADATAKA.length, K.BROJKE.vrstaZadataka);
+  assert.deepEqual(VRSTE_ZADATAKA.filter((z) => z.uskoroUIgri).map((z) => z.naslov), ["Koje slovo čuješ?", "Gdje je glas?"]);
+  assert.equal(new Set(VRSTE_ZADATAKA.map((z) => z.naslov)).size, VRSTE_ZADATAKA.length);
 });

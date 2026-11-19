@@ -1,0 +1,31 @@
+---
+// K-3 Dva stila. Vizual V-8 i V-9: par ilustracija + bojanka (512 px). Bojanka je uvijek na bijeloj kartici
+// (.kartica-slike, --papir-slike), pa je čitljiva i u tamnoj temi.
+import Sekcija from "../Sekcija.astro";
+import { PAROVI_STILOVA } from "../konstante";
+---
+<Sekcija id="dva-stila" naslov="U boji ili za bojanje" obrnuto>
+  <p>Svaka riječ ima dva stila slike. <strong>Ilustracija</strong> je akvarel u boji, za igru i razgovor. <strong>Bojanka</strong> je
+    crno-bijeli crtež koji dijete oboji. Stil birate jednim prekidačem, u katalogu i za svaki zadatak.</p>
+  <div class="parovi" slot="vizual">
+    {PAROVI_STILOVA.map((p) => (
+      <div class="par" role="img" aria-label={p.alt}>
+        <img class="kartica-slike" src={`/landing/${p.ime}-512.webp`} width="512" height="512" alt="" loading="lazy" decoding="async" />
+        <img class="kartica-slike" src={`/landing/${p.ime}-bojanka-512.webp`} width="512" height="512" alt="" loading="lazy" decoding="async" />
+      </div>
+    ))}
+  </div>
+</Sekcija>
+<style>
+  .parovi { display: grid; gap: 16px; }
+  .par { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .par + .par { margin-left: 12%; }
+  .par:first-child { margin-right: 12%; }
+  @media (max-width: 879px) {
+    .parovi { max-width: 440px; }
+  }
+  @media (max-width: 719px) {
+    .par + .par { margin-left: 0; }
+    .par:first-child { margin-right: 0; }
+  }
+</style>

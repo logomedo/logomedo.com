@@ -1,20 +1,30 @@
 ---
 // Hero sekcija podstranice (K-1, R-1, G-1, O-1, P-1): h1 (slot "naslov"), tekst (zadani slot), CTA, sitno.
-// Vizuali iz snimki zaslona (V-6, V-14, V-20) i V-25 dodaju S4/S5.
+// Opcionalni slot "vizual" (npr. <Snimka v={6} hero slot="vizual" />): tekst lijevo, vizual desno; na užem ekranu
+// vizual ispod teksta. Bez njega izgled je kao prije.
 import Cta from "./Cta.astro";
 
 interface Props { gumbi: ("prijava" | "pristup" | "demo")[]; sitno?: string }
 const { gumbi, sitno } = Astro.props;
+const vizual = Astro.slots.has("vizual");
 ---
 <section class="sekcija uvod" aria-labelledby="naslov">
-  <div class="omot">
-    <h1 class="landing-h1" id="naslov"><slot name="naslov" /></h1>
-    <p class="uvodni"><slot /></p>
-    <Cta gumbi={gumbi} />
-    {sitno && <p class="sitno">{sitno}</p>}
+  <div class:list={["omot", { "s-vizualom": vizual }]}>
+    <div class="tekst">
+      <h1 class="landing-h1" id="naslov"><slot name="naslov" /></h1>
+      <p class="uvodni"><slot /></p>
+      <Cta gumbi={gumbi} />
+      {sitno && <p class="sitno">{sitno}</p>}
+    </div>
+    {vizual && <div class="vizual"><slot name="vizual" /></div>}
   </div>
 </section>
 <style>
-  .uvod .omot { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
   .uvod { padding-top: 72px; }
+  .tekst { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+  .s-vizualom { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 48px; align-items: center; }
+  .s-vizualom .landing-h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); }
+  @media (max-width: 879px) {
+    .s-vizualom { grid-template-columns: minmax(0, 1fr); gap: 36px; }
+  }
 </style>

@@ -1,0 +1,11 @@
+---
+// K-5 Slova i znakovi. Vizual V-11.
+import Sekcija from "../Sekcija.astro";
+import Snimka from "../Snimka.astro";
+import { BROJKE } from "../konstante";
+---
+<Sekcija id="znakovi" naslov="Slova, brojke i znakovi" obrnuto>
+  <p>Uz slike, katalog ima {BROJKE.znakova} znakova: velika i mala slova, brojke i simbole. Pisani su fontom Andika, koji je napravljen za
+    početno čitanje, pa se b, d i p jasno razlikuju. Koristite ih u zadacima za slična slova i za par slovo–slika.</p>
+  <Snimka v={11} slot="vizual" />
+</Sekcija>

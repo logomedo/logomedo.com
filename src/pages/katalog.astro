@@ -1,7 +1,14 @@
 ---
-// /katalog: zasad samo K-1 (sadrzaj.md 3.2); K-2…K-7 i snimke dodaje S4.
+// /katalog (sadrzaj.md 3.2): K-1 hero s V-6, K-2…K-6 sekcije, K-7 poziv.
 import Okvir from "../landing/Okvir.astro";
 import Uvod from "../landing/Uvod.astro";
+import Snimka from "../landing/Snimka.astro";
+import Poziv from "../landing/Poziv.astro";
+import GlasoviPozicije from "../landing/katalog/GlasoviPozicije.astro";
+import DvaStila from "../landing/katalog/DvaStila.astro";
+import Pregled from "../landing/katalog/Pregled.astro";
+import Znakovi from "../landing/katalog/Znakovi.astro";
+import Scene from "../landing/katalog/Scene.astro";
 import { BROJKE } from "../landing/konstante";
 
 export const prerender = true;
@@ -10,5 +17,15 @@ export const prerender = true;
   <Uvod gumbi={["prijava", "pristup"]}>
     <Fragment slot="naslov">Katalog slika po glasovima</Fragment>
     {BROJKE.glasova} glasova, {BROJKE.rijeci} riječi i {BROJKE.slika} slika. Za svaku riječ znate gdje je glas: na početku, u sredini ili na kraju.
+    <Snimka v={6} hero slot="vizual" />
   </Uvod>
+  <GlasoviPozicije />
+  <DvaStila />
+  <Pregled />
+  <Znakovi />
+  <Scene />
+  <Poziv id="iznutra" gumbi={["pristup", "prijava"]} link={{ href: "/radni-listici", tekst: "Kako od slika nastaje listić" }}>
+    <Fragment slot="naslov">Pogledajte katalog iznutra</Fragment>
+    Katalog je dostupan logopedima s pozivnicom.
+  </Poziv>
 </Okvir>

@@ -1,0 +1,34 @@
+---
+// Sekcija podstranice: h2 + tekst (zadani slot: <p>, <ul>) i opcionalni vizual (slot "vizual") uz njega.
+// `obrnuto`: vizual lijevo na desktopu (izmjenjivanje niz stranicu). Ispod 880 px vizual je uvijek ispod teksta.
+interface Props { id: string; naslov: string; obrnuto?: boolean }
+const { id, naslov, obrnuto = false } = Astro.props;
+const vizual = Astro.slots.has("vizual");
+---
+<section class="sekcija" aria-labelledby={id}>
+  <div class:list={["omot", { dvije: vizual, obrnuto }]}>
+    <div class="tekst">
+      <h2 class="landing-h2" id={id}>{naslov}</h2>
+      <slot />
+    </div>
+    {vizual && <div class="vizual"><slot name="vizual" /></div>}
+  </div>
+</section>
+<style>
+  .dvije { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 48px; align-items: center; }
+  .dvije.obrnuto { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .obrnuto .vizual { order: -1; }
+  .tekst { max-width: 620px; }
+  .tekst :global(p) { margin: 0 0 14px; font-size: 1.08rem; color: var(--blijedo); }
+  .tekst :global(p.sitno) { font-size: .9rem; }
+  .tekst :global(strong) { color: var(--tinta); font-weight: 600; }
+  .tekst :global(ul) { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; }
+  .tekst :global(ul li) { position: relative; padding-left: 26px; font-size: 1.04rem; }
+  .tekst :global(ul li)::before { content: ""; position: absolute; left: 4px; top: .6em; width: 9px; height: 9px; border-radius: 50%; background: var(--med); }
+  .tekst :global(a) { display: inline-flex; align-items: center; min-height: 44px; color: var(--med-tamno); font-weight: 600; text-decoration: none; }
+  .tekst :global(a:hover) { text-decoration: underline; }
+  @media (max-width: 879px) {
+    .dvije, .dvije.obrnuto { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .obrnuto .vizual { order: 0; }
+  }
+</style>

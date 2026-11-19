@@ -1,7 +1,14 @@
 ---
-// /radni-listici: zasad samo R-1 (sadrzaj.md 3.3); R-2…R-7 i snimke dodaje S4.
+// /radni-listici (sadrzaj.md 3.3): R-1 hero s V-14, R-2…R-6 sekcije, R-7 poziv.
 import Okvir from "../landing/Okvir.astro";
 import Uvod from "../landing/Uvod.astro";
+import Snimka from "../landing/Snimka.astro";
+import Poziv from "../landing/Poziv.astro";
+import PoGlasovima from "../landing/radni-listici/PoGlasovima.astro";
+import VrsteZadataka from "../landing/radni-listici/VrsteZadataka.astro";
+import Pdf from "../landing/radni-listici/Pdf.astro";
+import Okviri from "../landing/radni-listici/Okviri.astro";
+import Biljeznica from "../landing/radni-listici/Biljeznica.astro";
 
 export const prerender = true;
 ---
@@ -9,5 +16,14 @@ export const prerender = true;
   <Uvod gumbi={["prijava", "pristup"]}>
     <Fragment slot="naslov">Radni listić u jednom kliku</Fragment>
     Odaberite glas i poziciju, a LogoMedo složi listić sa slikama iz kataloga. Uredite ga, preuzmite PDF i ispišite.
+    <Snimka v={14} hero slot="vizual" />
   </Uvod>
+  <PoGlasovima />
+  <VrsteZadataka />
+  <Pdf />
+  <Okviri />
+  <Biljeznica />
+  <Poziv id="prvi-listic" gumbi={["pristup", "prijava"]}>
+    <Fragment slot="naslov">Složite prvi listić</Fragment>
+  </Poziv>
 </Okvir>

@@ -1,0 +1,14 @@
+---
+// R-2 Radni listić po glasovima. Vizual V-13.
+import Sekcija from "../Sekcija.astro";
+import Snimka from "../Snimka.astro";
+---
+<Sekcija id="po-glasovima" naslov="Listić po glasovima">
+  <ul>
+    <li>Odaberite jedan ili više glasova i poziciju: početak, sredina, kraj.</li>
+    <li>Isključite glasove koje dijete još ne izgovara, npr. „bez L”.</li>
+    <li>„Uz samoglasnike”: samo riječi u kojima je glas uz samoglasnik (SOK, ne STOL).</li>
+    <li>Naslov se napiše sam, a slike složite u mrežu stupaca i redova, do 150 slika na više stranica.</li>
+  </ul>
+  <Snimka v={13} slot="vizual" />
+</Sekcija>
