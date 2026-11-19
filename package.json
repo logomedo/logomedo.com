@@ -18,7 +18,8 @@
     "seed:local": "wrangler d1 execute logomedo --local --file seed/katalog.sql",
     "build:staging": "sh scripts/staging-build.sh",
     "deploy:staging": "npm run build:staging && CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 wrangler deploy --config dist-staging/server/wrangler.json",
-    "db:migrate:staging": "CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 wrangler d1 migrations apply logomedo-staging --remote --config wrangler.jsonc --env staging"
+    "db:migrate:staging": "CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 wrangler d1 migrations apply logomedo-staging --remote --config wrangler.jsonc --env staging",
+    "landing:snimke": "node scripts/landing-snimke.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.4.3",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
     "@types/node": "^26.6.6",
+    "playwright-core": "1.65.1",
     "typescript": "^6.0.3",
     "wrangler": "^4.156.0"
   }
