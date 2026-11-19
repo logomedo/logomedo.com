@@ -392,3 +392,7 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      bilježnica) više nije nasumičan iz predloška (bile su FRULA–BROKULA i SLOVA–SOVA): `RIME` u
      `scripts/landing-snimke.ts` (KAPA–ŠAPA, ČAJ–ZMAJ, SLON–BALON, CRKVA–MRKVA), `--rime` ih upiše u postojeći
      probni zadatak. V-4 tako pokazuje SLON–BALON, V-20 CRKVA–MRKVA. `sadrzaj.md` i dalje vrijedi i usklađen je.
+801. **Bez ribe i na snimci pregleda** (korisnik): V-10 (`/katalog`, „Svaku sliku pregleda logoped”) pokazuje kandidata
+     CIRKUS (`ilustracija/cirkus/c2f5720c99964f3c.png`) umjesto RIBE. Kopija se više ne zrcali (natpis „TICKET” bio bi
+     naopak), nego dobije zasićenje +2 %, da sha nije isti kao odobrenoj. `scripts/landing-snimke.ts --pregled` stari
+     kandidat u staging D1 označi „odbijena” i učita novi.

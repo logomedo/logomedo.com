@@ -4,6 +4,7 @@
 //   node scripts/landing-snimke.ts                 # sve snimke
 //   node scripts/landing-snimke.ts V-2 V-7         # samo te
 //   node scripts/landing-snimke.ts --pripremi      # jednom: probni zadaci, bilježnice i slika za pregled (vidi dolje)
+//   node scripts/landing-snimke.ts --pregled       # nova slika-kandidat za V-10 (PREGLED), stara se odbije na stagingu
 //   node scripts/landing-snimke.ts --rime          # samo upiše fiksne rime (RIME) u postojeći zadatak „Rima”
 //
 // Prijava: kolačić sesije iz env LOGOMEDO_KOLACIC ili ~/.cache/logomedo-staging/kolacic (samo vrijednost,
@@ -20,8 +21,8 @@
 // --pripremi (nakon svakog `scripts/staging-osvjezi.sh`, jer osvježavanje briše staging podatke) kroz iste HTTP forme
 // kao admin UI napravi: listić „Glas R na početku” (dva: bez okvira i s okvirom), „Prvi glas” (kolo slova),
 // „Prebrajanje slogova”, „Rima”, „Izbaci uljeza”, „Isti prvi glas”, scenu „Pečemo kolačiće”, bilježnice „Zimska
-// bilježnica” (Božić) i „Proljetna bilježnica” (Proljeće), javne, i jednu sliku-kandidata za /admin/pregled (zrcaljena
-// kopija odobrene ilustracije ribe s cdn.logomedo.com, učitana kao upload). Ne generira ništa (Vertex, ElevenLabs, runner).
+// bilježnica” (Božić) i „Proljetna bilježnica” (Proljeće), javne, i jednu sliku-kandidata za /admin/pregled (malo
+// izmijenjena kopija odobrene ilustracije cirkusa s cdn.logomedo.com, učitana kao upload). Ne generira ništa (Vertex, ElevenLabs, runner).
 import { chromium, type Browser, type BrowserContext, type Page } from "playwright-core";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from "node:fs";
@@ -440,6 +441,37 @@ async function postaviRime(page: Page, id: number) {
   await spremi(page, id, { sadrzaj: { odnos: "rima", stavke: RIME.map(([z, p, t]) => ({ zadana: rid(z), ponudeno: p.map(rid), tocno: t })) } });
 }
 
+/**
+ * Slika za /admin/pregled (V-10): malo izmijenjena kopija odobrene ilustracije cirkusa, upload kao kandidat (ne generira se).
+ * Do odluke 801 bila je riba.
+ */
+const PREGLED = { rijec: "cirkus", kljuc: "ilustracija/cirkus/c2f5720c99964f3c.png" } as const;
+
+async function slikaZaPregled(page: Page, rijeci: PodaciEditora["rijeci"]): Promise<number | null> {
+  const r = rijeci.find((x) => x.rijec.toLocaleLowerCase("hr") === PREGLED.rijec);
+  if (!r) { console.warn(`Slika za pregled: nema riječi „${PREGLED.rijec}”.`); return null; }
+  const o = await fetch(`https://cdn.logomedo.com/${PREGLED.kljuc}`);
+  if (!o.ok) { console.warn(`Slika za pregled: CDN ${o.status}.`); return null; }
+  const png = join(mkdtempSync(join(tmpdir(), "snimke-upload-")), `${PREGLED.rijec}.png`);
+  writeFileSync(png, Buffer.from(await o.arrayBuffer()));
+  // Neznatno izmijenjena (zasićenje +2 %), da nije isti sha kao odobrena; ne zrcali se, jer bi natpis „TICKET” bio naopak.
+  execFileSync("magick", [png, "-modulate", "100,102", png], { stdio: "ignore" });
+  const b64 = readFileSync(png).toString("base64");
+  await page.goto(`${HOST}/admin/pregled`, { waitUntil: "domcontentloaded" });
+  const kamo = await page.evaluate(async ({ b64, rijec, ime }) => {
+    const bajtovi = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const f = new FormData();
+    f.append("slika", new File([bajtovi], ime, { type: "image/png" }));
+    f.append("rijec", String(rijec)); f.append("stil", "ilustracija"); f.append("next", "/admin/pregled");
+    f.append("prompt", "Probna slika za snimku landing stranice: kopija odobrene ilustracije.");
+    const o = await fetch("/admin/api/upload", { method: "POST", body: f });
+    return new URL(o.url).search;
+  }, { b64, rijec: r.id, ime: `${PREGLED.rijec}.png` });
+  const id = Number(new URLSearchParams(kamo).get("ucitano")) || null;
+  if (!id) console.warn("Upload slike za pregled nije uspio.");
+  return id;
+}
+
 const nasumicno = () => Math.random().toString(36).slice(2, 8);
 
 async function pripremi() {
@@ -499,31 +531,7 @@ async function pripremi() {
       proljetna: await biljeznica("Proljetna bilježnica", "proljece", [z.istiGlas, z.prviGlas, z.slogovi]),
     };
 
-    // Slika za /admin/pregled: zrcaljena kopija odobrene ilustracije ribe, upload kao kandidat (ne generira se).
-    let slikaPregleda: number | null = null;
-    const riba = pe.rijeci.find((x) => x.rijec.toLocaleLowerCase("hr") === "riba");
-    if (riba) {
-      const dir = mkdtempSync(join(tmpdir(), "snimke-upload-"));
-      const png = join(dir, "riba.png");
-      const o = await fetch("https://cdn.logomedo.com/ilustracija/riba/08b78c1b64f7ace1.png");
-      if (o.ok) {
-        writeFileSync(png, Buffer.from(await o.arrayBuffer()));
-        execFileSync("sips", ["-f", "horizontal", png], { stdio: "ignore" });
-        const b64 = readFileSync(png).toString("base64");
-        await page.goto(`${HOST}/admin/pregled`, { waitUntil: "domcontentloaded" });
-        const kamo = await page.evaluate(async ({ b64, rijec }) => {
-          const bajtovi = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-          const f = new FormData();
-          f.append("slika", new File([bajtovi], "riba.png", { type: "image/png" }));
-          f.append("rijec", String(rijec)); f.append("stil", "ilustracija"); f.append("next", "/admin/pregled");
-          f.append("prompt", "Probna slika za snimku landing stranice: zrcaljena kopija odobrene ilustracije.");
-          const o = await fetch("/admin/api/upload", { method: "POST", body: f });
-          return new URL(o.url).search;
-        }, { b64, rijec: riba.id });
-        slikaPregleda = Number(new URLSearchParams(kamo).get("ucitano")) || null;
-        if (!slikaPregleda) console.warn("Upload slike za pregled nije uspio.");
-      }
-    }
+    const slikaPregleda = await slikaZaPregled(page, pe.rijeci);
 
     mkdirSync(CACHE, { recursive: true });
     writeFileSync(PROBNI, JSON.stringify({ zadaci: z, biljeznice, slikaPregleda } satisfies Probni, null, 2), { mode: 0o600 });
@@ -547,6 +555,29 @@ async function samoRime() {
   }
 }
 
+/**
+ * --pregled: nova slika za V-10 (PREGLED). Stari kandidat u staging D1 postaje „odbijena” (wrangler, samo staging), da
+ * pregled ima točno jednu sliku; novi ID ide u probni.json.
+ */
+async function samoPregled() {
+  const p: Probni = JSON.parse(readFileSync(PROBNI, "utf8"));
+  if (p.slikaPregleda) execFileSync("npx", ["wrangler", "d1", "execute", "DB", "--remote", "--config", "wrangler.jsonc", "--env", "staging",
+    "--command", `UPDATE slike SET status = 'odbijena' WHERE id = ${Number(p.slikaPregleda)} AND status = 'kandidat'`],
+    { stdio: "ignore", cwd: join(import.meta.dirname, ".."), env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: "7dc7167b7e2e00923bfa7cd697df14e4" } });
+  const b = await chromium.launch({ channel: "chrome" });
+  try {
+    const ctx = await kontekst(b, "desktop", "svijetla");
+    const page = await ctx.newPage();
+    p.slikaPregleda = await slikaZaPregled(page, (await editor(page, p.zadaci.scena)).rijeci);
+    await ctx.unrouteAll({ behavior: "ignoreErrors" });
+    writeFileSync(PROBNI, JSON.stringify(p, null, 2), { mode: 0o600 });
+    console.log(`Slika za pregled: ${p.slikaPregleda ? "nova" : "nije uspjela"}.`);
+  } finally {
+    await b.close();
+  }
+}
+
 if (process.argv.includes("--pripremi")) await pripremi();
+else if (process.argv.includes("--pregled")) await samoPregled();
 else if (process.argv.includes("--rime")) await samoRime();
 else await snimaj(process.argv.slice(2).filter((a) => /^V-\d+$/.test(a)));
