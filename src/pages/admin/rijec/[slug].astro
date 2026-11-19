@@ -171,6 +171,12 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
             <figure class:list={{ prikazana: s.id === odobrena?.id }}>
               <a class="list" href={`/admin/rijec/${r.slug}?od=${encodeURIComponent(od)}&stil=${s.stil}`} title={`Prikaži gore: ${s.stil_naziv}`}
                 aria-current={s.id === odobrena?.id ? "true" : undefined}><img src={`/admin/slika/${s.id}`} alt={`${r.rijec}, ${s.stil_naziv}`} loading="lazy" /></a>
+              {smijeMijenjati(s) && (
+                <form method="post" action={`/admin/api/slika/${s.id}`} class="u-smece">
+                  <input type="hidden" name="next" value={`/admin/rijec/${r.slug}?od=${encodeURIComponent(od)}`} />
+                  <button name="akcija" value="smece" title={`Baci u odbijene (${(s.stil_naziv ?? "").toLowerCase()}); vraća se iz „Odobrene i odbijene”`} aria-label="Baci u odbijene"><Ikona ime="x" velicina={14} /></button>
+                </form>
+              )}
               <figcaption class="sitno blijedo">{s.stil_naziv}{moja(s) && <PremjestiStil slika={s} stilovi={stilovi} next={ovdje} />}</figcaption></figure>
           ))}
         </div>
@@ -355,7 +361,11 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   .spajanje { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
   .spajanje .red-gumba { display: flex; gap: 8px; }
   .odobrene { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; margin-top: 16px; }
-  .odobrene figure { margin: 0; text-align: center; min-width: 0; }
+  .odobrene figure { margin: 0; text-align: center; min-width: 0; position: relative; }
+  .u-smece { position: absolute; top: 4px; right: 4px; margin: 0; }
+  .u-smece button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--rub-jak); border-radius: 50%;
+    background: var(--povrsina); color: var(--blijedo); cursor: pointer; opacity: .85; }
+  .u-smece button:hover { opacity: 1; color: var(--greska, #c0392b); border-color: currentColor; }
   .odobrene a.list { display: block; border-radius: 10px; outline: 2px solid transparent; outline-offset: 2px; }
   .odobrene a.list:hover { outline-color: var(--rub-jak); }
   .odobrene .prikazana a.list { outline-color: var(--med); }

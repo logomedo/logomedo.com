@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { odluciIPonovi, promijeniStil, SAMO_SUPERADMIN_VRACA } from "../../../../../lib/generiranje";
+import { odluciIPonovi, promijeniStil, SAMO_SUPERADMIN_VRACA, uSmece } from "../../../../../lib/generiranje";
 import { safeNext } from "../../../../../lib/admin/sesija";
 import { postaviKvotuUAdresu } from "../../../../../lib/kvota";
 import { NIJE_TVOJA, smijeOSlici } from "../../../../../lib/zatrazio";
@@ -26,6 +26,14 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
       return new Response(null, { status: 303, headers: { location: u.pathname + u.search + u.hash } });
     }
     return new Response(null, { status: 303, headers: { location: safeNext(b.next) } });
+  }
+  // Odobrena slika ravno u odbijene (✕ na galeriji riječi): višak u istom stilu. Vraća se iz „Odobrene i odbijene”.
+  if (b.akcija === "smece") {
+    const ishod = bezTudjegEmaila(await uSmece(Number(params.id), locals.admin!.email), urednik, locals.admin!.email);
+    if (jsonZahtjev) return Response.json(ishod, { status: ishod.ok ? 200 : "zabranjeno" in ishod && ishod.zabranjeno ? 403 : 409 });
+    const u = new URL(safeNext(b.next), request.url);
+    if (!ishod.ok) u.searchParams.set("zabrana", "zabranjeno" in ishod && ishod.zabranjeno ? SAMO_SUPERADMIN_VRACA : "Slika se u međuvremenu promijenila.");
+    return new Response(null, { status: 303, headers: { location: u.pathname + u.search + u.hash } });
   }
   const akcija = b.akcija as "odobri" | "odbij" | "vrati";
   if (!["odobri", "odbij", "vrati"].includes(akcija)) return Response.json({ error: "akcija" }, { status: 400 });

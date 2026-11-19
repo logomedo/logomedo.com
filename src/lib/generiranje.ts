@@ -329,6 +329,14 @@ export async function odluci(slikaId: number, akcija: "odobri" | "odbij" | "vrat
   return { ok: true };
 }
 
+/** Odobrenu sliku baca u odbijene: „vrati” pa „odbij” u istoj grupi Aktivnosti (jedno poništavanje). */
+export async function uSmece(slikaId: number, email: string): Promise<Ishod> {
+  const grupa = novaGrupa();
+  const v = await odluci(slikaId, "vrati", email, undefined, grupa);
+  if (!v.ok) return v;
+  return odluci(slikaId, "odbij", email, undefined, grupa);
+}
+
 export interface Dorada {
   /** Kako treba biti (ide u prompt kao „Draw instead”). */
   dorada?: string;
