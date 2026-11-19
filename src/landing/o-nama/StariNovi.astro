@@ -1,0 +1,11 @@
+---
+// O-2 Stari i novi LogoMedo. Godina i „zbirka bojanki” nisu u inventuri (odluka 211): bez GODINA ostaje samo rečenica o
+// preuzetom katalogu, a naslov ne spominje bojanke (landing odluka 504).
+import Sekcija from "../Sekcija.astro";
+import { GODINA } from "../konstante";
+---
+<Sekcija id="stari-novi" naslov={GODINA ? "Od bojanki do igre" : "Stari i novi LogoMedo"}>
+  {GODINA && <p>Prvi LogoMedo {GODINA}. bio je zbirka bojanki po glasovima od kojih logoped složi radni listić i ispiše ga.</p>}
+  <p>Novi LogoMedo preuzeo je stari katalog, s istim razvrstavanjem po početku, sredini i kraju riječi, i nadogradio ga: više od dvjesto
+    novih riječi, slike u boji, deset novih vrsta zadataka i igru za dijete.</p>
+</Sekcija>

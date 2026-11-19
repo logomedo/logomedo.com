@@ -1,7 +1,12 @@
 ---
-// /privatnost: zasad samo P-1 (sadrzaj.md 3.6); P-2…P-5 dodaje S5. „Stanje na dan” samo uz DATUM_OBJAVE.
+// /privatnost (sadrzaj.md 3.6): P-1…P-4; P-5 samo uz VODITELJ_OBRADE i KONTAKT. „Stanje na dan” samo uz DATUM_OBJAVE.
+// Opisuje kako stranice i aplikacija rade danas, bez pravnih obećanja (odluka 210).
 import Okvir from "../landing/Okvir.astro";
 import Uvod from "../landing/Uvod.astro";
+import Stranice from "../landing/privatnost/Stranice.astro";
+import Igra from "../landing/privatnost/Igra.astro";
+import Logopedi from "../landing/privatnost/Logopedi.astro";
+import Voditelj from "../landing/privatnost/Voditelj.astro";
 import { DATUM_OBJAVE } from "../landing/konstante";
 
 export const prerender = true;
@@ -11,4 +16,8 @@ export const prerender = true;
     <Fragment slot="naslov">Privatnost</Fragment>
     Ukratko: ove stranice ne prikupljaju ništa, a o djetetu koje igra ne spremamo ništa. Ispod je točno što se gdje sprema.
   </Uvod>
+  <Stranice />
+  <Igra />
+  <Logopedi />
+  <Voditelj />
 </Okvir>

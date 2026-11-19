@@ -2,7 +2,7 @@
 // Snimka zaslona (V-…, sadrzaj.md odjeljak 4) u blagom „prozoru”. Na mobitelu (≤ 719 px) <source> daje uspravnu
 // snimku 390×844 @2x gdje postoji, uska i centrirana. Tamna varijanta (V-6, V-15): obje slike u HTML-u, CSS
 // prikaže onu koja odgovara temi, jer <picture media> ne prati ručni prekidač (data-tema). Skrivena lazy slika
-// se ne preuzima. U heroju je svijetla bez lazy (iznad pregiba).
+// se ne preuzima. U heroju je svijetla bez lazy (iznad pregiba). `samoMobitel` (V-21): samo uspravna slika, uvijek uska.
 import { SNIMKA_DESKTOP, SNIMKA_MOBITEL, SNIMKE, type Snimka, type SnimkaId, snimkaDatoteke } from "./konstante";
 
 interface Props { v: SnimkaId; hero?: boolean; class?: string }
@@ -10,10 +10,14 @@ const { v, hero = false, class: klasa } = Astro.props;
 const s: Snimka = SNIMKE[v];
 const varijante = snimkaDatoteke(v);
 ---
-<figure class:list={["snimka", { "ima-mobitel": s.mobitel }, klasa]}>
-  <span class="traka" aria-hidden="true"><i></i><i></i><i></i></span>
+<figure class:list={["snimka", { "ima-mobitel": s.mobitel, uspravna: s.samoMobitel }, klasa]}>
+  {!s.samoMobitel && <span class="traka" aria-hidden="true"><i></i><i></i><i></i></span>}
   {varijante.map((d) => {
     const odmah = hero && !d.tamna;
+    if (!d.desktop) return (
+      <img src={d.mobitel} width={SNIMKA_MOBITEL.sirina} height={SNIMKA_MOBITEL.visina} alt={s.alt}
+        loading={odmah ? undefined : "lazy"} decoding={odmah ? undefined : "async"} fetchpriority={odmah ? "high" : undefined} />
+    );
     return (
       <picture class:list={[{ "samo-svijetla": s.tamna && !d.tamna, "samo-tamna": d.tamna }]}>
         {d.mobitel && <source media="(max-width: 719px)" srcset={d.mobitel} width={SNIMKA_MOBITEL.sirina} height={SNIMKA_MOBITEL.visina} />}
@@ -36,7 +40,9 @@ const varijante = snimkaDatoteke(v);
     :global(:root:not([data-tema="svijetla"])) .samo-tamna { display: block; }
     :global(:root:not([data-tema="svijetla"])) .samo-svijetla { display: none; }
   }
+  .uspravna { width: 100%; max-width: 300px; margin-inline: auto; border-radius: 26px; border-width: 4px; }
   @media (max-width: 719px) {
+    .uspravna { max-width: 280px; }
     .ima-mobitel { width: 100%; max-width: 280px; margin-inline: auto; border-radius: 26px; border-width: 4px; }
     .ima-mobitel .traka { display: none; }
   }

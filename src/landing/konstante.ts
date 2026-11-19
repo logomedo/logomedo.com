@@ -22,6 +22,11 @@ export const KONTAKT = "";
 export const IME_TVRTKE = "";
 /** `[GODINA — S6]`: npr. "2026"; prazno = bez retka s autorskim pravom. */
 export const GODINA = "";
+/**
+ * `[VODITELJ OBRADE — S6]` (P-5 na /privatnost, odluka 210): ime voditelja obrade; P-5 se prikazuje samo kad su popunjeni
+ * i ovo i KONTAKT. Odvojeno od IME_TVRTKE jer ime u podnožju još nije pravna izjava (landing odluka 503).
+ */
+export const VODITELJ_OBRADE = "";
 /** `[DATUM OBJAVE — S6]` (P-1 na /privatnost): npr. "1. 12. 2026."; prazno = bez retka „Stanje na dan”. */
 export const DATUM_OBJAVE = "";
 
@@ -119,9 +124,10 @@ export function sitemapXml(): string {
 
 /**
  * Snimke zaslona (sadrzaj.md odjeljak 4, odluka 209): public/landing/v<N>-desktop.webp (1280×800), uz `mobitel`
- * još v<N>-mobitel.webp (390×844 @2x), uz `tamna` još -tamna varijante obje veličine. Alt doslovno iz tablice.
+ * još v<N>-mobitel.webp (390×844 @2x), uz `tamna` još -tamna varijante obje veličine. `samoMobitel`: postoji samo
+ * v<N>-mobitel.webp (V-21), prikazuje se uvijek uska, kao mobitel. Alt doslovno iz tablice.
  */
-export interface Snimka { alt: string; mobitel?: boolean; tamna?: boolean }
+export interface Snimka { alt: string; mobitel?: boolean; tamna?: boolean; samoMobitel?: boolean }
 export const SNIMKE = {
   2: { alt: "Katalog u LogoMedu: mape glasova s brojem riječi u svakoj.", mobitel: true },
   3: { alt: "Radni listić za glas R na početku riječi, spreman za ispis na A4.", mobitel: true },
@@ -137,7 +143,11 @@ export const SNIMKE = {
   16: { alt: "Kolo sa slovima stalo je na glasu; zatim dijete među slikama traži one koje počinju tim glasom." },
   17: { alt: "Zadatak prebrajanja: ispod svake slike kružići za slogove." },
   18: { alt: "Izbor okvira: rubovi, mašne i ukrasi za kutove." },
+  20: { alt: "Igra u temi Božić: zadatak na tabletu i bor s lampicama." },
+  21: { alt: "Igra u temi Proljeće na mobitelu: stablo jabuke i zadatak sa slikama.", samoMobitel: true },
+  22: { alt: "Završni ekran igre s porukom Bravo i gumbom Ponovi.", mobitel: true },
   23: { alt: "Naslovnica bilježnice s borom čije lampice dijete boji." },
+  24: { alt: "Bilježnica sa zadacima složenima po redu." },
 } as const satisfies Record<number, Snimka>;
 export type SnimkaId = keyof typeof SNIMKE;
 export const SNIMKA_DESKTOP = { sirina: 1280, visina: 800 } as const;
@@ -148,10 +158,17 @@ export function snimkaDatoteke(v: SnimkaId) {
   const s: Snimka = SNIMKE[v];
   const put = (vel: "desktop" | "mobitel", tamna: boolean) => `/landing/v${v}-${vel}${tamna ? "-tamna" : ""}.webp`;
   const varijante = s.tamna ? [false, true] : [false];
-  return varijante.map((tamna) => ({ tamna, desktop: put("desktop", tamna), mobitel: s.mobitel ? put("mobitel", tamna) : undefined }));
+  return varijante.map((tamna) => ({
+    tamna,
+    desktop: s.samoMobitel ? undefined : put("desktop", tamna),
+    mobitel: s.mobitel || s.samoMobitel ? put("mobitel", tamna) : undefined,
+  }));
 }
 
 /** V-8, V-9 (K-3): ilustracija + bojanka, public/landing/<ime>-512.webp i <ime>-bojanka-512.webp. */
+/** V-25 (O-1): ilustracija sove 512 px, public/landing/sova-512.webp. */
+export const ILUSTRACIJA_V25 = { src: "/landing/sova-512.webp", alt: "Ilustracija sove iz kataloga." } as const;
+
 export const PAROVI_STILOVA = [
   { ime: "riba", alt: "Riba u dva stila: ilustracija u boji i crno-bijela bojanka." },
   { ime: "sunce", alt: "Sunce u dva stila: ilustracija u boji i bojanka." },

@@ -1,0 +1,12 @@
+---
+// O-3 Probno razdoblje. Bez cijene i bez „besplatno” (odluka 204). Bez KONTAKT nema rečenice „javite se” ni gumba (odluka 303).
+import Sekcija from "../Sekcija.astro";
+import Cta from "../Cta.astro";
+import { KONTAKT } from "../konstante";
+---
+<Sekcija id="probno" naslov="Probno razdoblje">
+  <p>LogoMedo je u probnom razdoblju (alfi). Logopedi ulaze uz osobnu pozivnicu i prijavljuju se bez lozinke: otiskom prsta, licem ili
+    PIN-om uređaja. Svaki logoped vidi zajednički katalog, a svoje zadatke i bilježnice samo on.</p>
+  <p>Što nam logopedi kažu, ide ravno u sljedeću verziju.{KONTAKT && " Ako želite sudjelovati, javite se."}</p>
+  <Cta gumbi={["pristup"]} />
+</Sekcija>

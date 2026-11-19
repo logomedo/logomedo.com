@@ -53,6 +53,7 @@ for p in $PUTANJE; do
   elif [[ $LOKALNO == 0 ]]; then provjeri "$p bez x-robots-tag noindex (produkcija: '$xr')" test -z "$xr"; fi
   inline=$(grep -o '<script[^>]*>' "$RADNI/t" | grep -vc 'src=' || true)
   provjeri "$p bez inline <script> ($inline)" test "$inline" = 0
+  provjeri "$p bez placeholdera „— S6]”" bash -c '! grep -q "— S6\]" "$1"' _ "$RADNI/t"
   provjeri "$p link rel=canonical https://logomedo.com$p" grep -q "<link rel=\"canonical\" href=\"https://logomedo.com$p\"" "$RADNI/t"
   # Interni linkovi: href="/…", src="/…" i svaki URL u srcset="/… 256w, /… 512w"
   { grep -oE '(href|src)="/[^/"][^"]*"|(href|src)="/"' "$RADNI/t" | sed -E 's/^(href|src)="//; s/"$//'

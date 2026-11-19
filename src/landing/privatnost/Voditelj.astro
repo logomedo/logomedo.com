@@ -1,0 +1,10 @@
+---
+// P-5 Tko odgovara za podatke: samo uz VODITELJ_OBRADE i KONTAKT (odluka 210, landing odluka 503).
+import Sekcija from "../Sekcija.astro";
+import { KONTAKT, VODITELJ_OBRADE, kontaktTekst } from "../konstante";
+---
+{VODITELJ_OBRADE && KONTAKT && (
+  <Sekcija id="voditelj" naslov="Tko odgovara za podatke">
+    <p>Voditelj obrade je {VODITELJ_OBRADE}. Za pitanja o vašim podacima pišite na <a href={KONTAKT}>{kontaktTekst(KONTAKT)}</a>.</p>
+  </Sekcija>
+)}

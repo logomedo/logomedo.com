@@ -1,7 +1,11 @@
 ---
-// /o-nama: zasad samo O-1 (sadrzaj.md 3.5); O-2…O-4 i V-25 dodaje S5. CTA iz tablice 2.1.
+// /o-nama (sadrzaj.md 3.5): O-1 hero s V-25 (sova), O-2 stari i novi, O-3 probno razdoblje, O-4 kontakt (samo uz KONTAKT).
 import Okvir from "../landing/Okvir.astro";
 import Uvod from "../landing/Uvod.astro";
+import StariNovi from "../landing/o-nama/StariNovi.astro";
+import ProbnoRazdoblje from "../landing/o-nama/ProbnoRazdoblje.astro";
+import Kontakt from "../landing/o-nama/Kontakt.astro";
+import { ILUSTRACIJA_V25 } from "../landing/konstante";
 
 export const prerender = true;
 ---
@@ -10,5 +14,13 @@ export const prerender = true;
     <Fragment slot="naslov">Novi LogoMedo nastaje s logopedima</Fragment>
     LogoMedo radi mali tim koji ga gradi zajedno s logopedima iz prakse. Svaka nova vrsta zadatka i svaka slika prolazi kroz ruke nekoga tko
     radi s djecom.
+    <img class="kartica-slike sova" slot="vizual" src={ILUSTRACIJA_V25.src} width="512" height="512" alt={ILUSTRACIJA_V25.alt} fetchpriority="high" />
   </Uvod>
+  <StariNovi />
+  <ProbnoRazdoblje />
+  <Kontakt />
 </Okvir>
+<style>
+  .sova { width: 100%; max-width: 380px; height: auto; margin-inline: auto; }
+  @media (max-width: 879px) { .sova { max-width: 240px; } }
+</style>

@@ -1,7 +1,14 @@
 ---
-// /igre: zasad samo G-1 (sadrzaj.md 3.4); G-2…G-7 i snimke dodaje S5. „Isprobaj igru” samo uz DEMO_URL (odluka 205).
+// /igre (sadrzaj.md 3.4): G-1 hero s V-20, G-2…G-7. „Isprobaj igru” samo uz DEMO_URL (odluka 205), inače rezerva G-6R.
 import Okvir from "../landing/Okvir.astro";
 import Uvod from "../landing/Uvod.astro";
+import Snimka from "../landing/Snimka.astro";
+import KakoIgra from "../landing/igre/KakoIgra.astro";
+import Teme from "../landing/igre/Teme.astro";
+import Izgovor from "../landing/igre/Izgovor.astro";
+import PrivatnostDjeteta from "../landing/igre/PrivatnostDjeteta.astro";
+import Isprobaj from "../landing/igre/Isprobaj.astro";
+import ZaLogopeda from "../landing/igre/ZaLogopeda.astro";
 import { DEMO_URL } from "../landing/konstante";
 
 export const prerender = true;
@@ -10,5 +17,12 @@ export const prerender = true;
   <Uvod gumbi={DEMO_URL ? ["demo", "pristup"] : ["prijava", "pristup"]}>
     <Fragment slot="naslov">Igra za dijete, na tabletu</Fragment>
     Zadatke iz bilježnice dijete rješava na tabletu ili mobitelu. Pošaljete mu link i to je sve: bez prijave, bez instalacije.
+    <Snimka v={20} hero slot="vizual" />
   </Uvod>
+  <KakoIgra />
+  <Teme />
+  <Izgovor />
+  <PrivatnostDjeteta />
+  <ZaLogopeda />
+  <Isprobaj />
 </Okvir>

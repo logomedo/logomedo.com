@@ -1,0 +1,10 @@
+---
+// O-4 Kontakt: samo uz KONTAKT (odluka 206); ime tvrtke ispred adrese ako je popunjeno.
+import Sekcija from "../Sekcija.astro";
+import { IME_TVRTKE, KONTAKT, kontaktTekst } from "../konstante";
+---
+{KONTAKT && (
+  <Sekcija id="kontakt" naslov="Kontakt">
+    <p>{IME_TVRTKE && <>{IME_TVRTKE} · </>}<a href={KONTAKT}>{kontaktTekst(KONTAKT)}</a></p>
+  </Sekcija>
+)}

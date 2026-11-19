@@ -1,0 +1,23 @@
+---
+// G-2 Kako dijete igra. Vizual V-22 (završni ekran „Bravo!”, desktop i mobitel).
+import Sekcija from "../Sekcija.astro";
+import Snimka from "../Snimka.astro";
+---
+<Sekcija id="kako-igra" naslov="Kreni, riješi, Bravo!">
+  <ol class="koraci">
+    <li>Dijete dodirne „Kreni”.</li>
+    <li>Rješava zadatak po zadatak. Točan odgovor zasvijetli zeleno uz zvonce.</li>
+    <li>Za svaki riješen zadatak upali se lampica na boru ili pocrveni jabuka na stablu.</li>
+    <li>Na kraju ga čeka „Bravo!”, a „Ponovi” kreće ispočetka.</li>
+  </ol>
+  <p>U igri su sve vrste zadataka osim radnog listića, koji je za papir. Razvrstavanje dijete radi povlačenjem slike prstom, a kolo
+    slova zavrti dodirom.</p>
+  <p class="sitno">„Koje slovo čuješ?” i „Gdje je glas?” u igri stižu uskoro.</p>
+  <Snimka v={22} slot="vizual" />
+</Sekcija>
+<style>
+  .koraci { list-style: none; counter-reset: korak; margin: 0 0 20px; padding: 0; display: grid; gap: 12px; }
+  .koraci li { counter-increment: korak; position: relative; padding-left: 44px; font-size: 1.04rem; min-height: 32px; }
+  .koraci li::before { content: counter(korak); position: absolute; left: 0; top: -2px; width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--med); color: var(--med-tekst); font-weight: 700; font-size: .95rem; }
+</style>

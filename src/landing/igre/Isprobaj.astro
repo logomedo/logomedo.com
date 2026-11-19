@@ -1,0 +1,21 @@
+---
+// G-6 / G-6R (odluka 205): s DEMO_URL „Isprobaj igru” (obični link, bez skripte); bez njega rezerva sa snimkom V-4.
+// Rezerva ima jednu snimku umjesto galerije V-20…V-22, jer su te već gore na stranici (landing odluka 502).
+import Sekcija from "../Sekcija.astro";
+import Snimka from "../Snimka.astro";
+import Cta from "../Cta.astro";
+import { DEMO_URL, KONTAKT } from "../konstante";
+---
+{DEMO_URL ? (
+  <Sekcija id="isprobaj" naslov="Isprobajte sami">
+    <p>Otvorite probnu bilježnicu s nekoliko zadataka i riješite je kao dijete. Najbolje na tabletu.</p>
+    <Cta gumbi={["demo"]} />
+    <p class="sitno">Ovo je primjer; ništa što napravite u igri se ne sprema.</p>
+  </Sekcija>
+) : (
+  <Sekcija id="isprobaj" naslov="Ovako izgleda na tabletu" obrnuto>
+    <p>Igru dobiva dijete preko linka od svog logopeda.{KONTAKT && " Ako ste logoped i želite je isprobati sa svojim zadacima, zatražite pristup."}</p>
+    <Cta gumbi={["pristup", "prijava"]} />
+    <Snimka v={4} slot="vizual" />
+  </Sekcija>
+)}

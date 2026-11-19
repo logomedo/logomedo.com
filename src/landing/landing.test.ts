@@ -121,7 +121,7 @@ test("landing: nema „— S6]” ni u izvoru stranica ni u konstantama; placeho
   ];
   assert.ok(datoteke.length >= 14, `premalo datoteka: ${datoteke.length}`);
   for (const f of datoteke) assert.doesNotMatch(procitaj(f), /— S6\]|\[(KONTAKT|DEMO|GODINA|IME TVRTKE|DATUM OBJAVE)/, f);
-  for (const v of [K.DEMO_URL, K.KONTAKT, K.IME_TVRTKE, K.GODINA, K.DATUM_OBJAVE]) assert.doesNotMatch(v, /S6|\[/);
+  for (const v of [K.DEMO_URL, K.KONTAKT, K.IME_TVRTKE, K.GODINA, K.DATUM_OBJAVE, K.VODITELJ_OBRADE]) assert.doesNotMatch(v, /S6|\[/);
   assert.ok(K.DEMO_URL === "" || /^\/b\/[a-z0-9-]+$/.test(K.DEMO_URL), "DEMO_URL je /b/<slug>");
   assert.ok(K.KONTAKT === "" || /^(mailto:|https:\/\/)/.test(K.KONTAKT), "KONTAKT je mailto: ili https://");
   assert.ok(K.GODINA === "" || /^20\d\d$/.test(K.GODINA));
@@ -137,6 +137,7 @@ test("landing: brojke iz odluke 202 i glasovi iz kataloga", () => {
 test("landing: ilustracije V-1 (512, 256), V-26 (256), OG slika i tema.js postoje", () => {
   for (const s of K.ILUSTRACIJE_V1) for (const v of [256, 512]) assert.ok(existsSync(new URL(`public/landing/${s.ime}-${v}.webp`, korijen)), `${s.ime}-${v}`);
   assert.ok(existsSync(new URL("public/landing/mis-256.webp", korijen)));
+  assert.deepEqual(webpVelicina(readFileSync(new URL(`public${K.ILUSTRACIJA_V25.src}`, korijen))), [512, 512], "V-25 sova");
   const og = readFileSync(new URL("public/landing/og.png", korijen));
   assert.equal(og.subarray(1, 4).toString(), "PNG");
   assert.equal(og.readUInt32BE(16), K.OG.sirina);
@@ -205,9 +206,10 @@ test("landing: svaka snimka iz SNIMKE postoji u public/landing u pravoj veličin
 test("landing: snimke koje izvor koristi su u SNIMKE, a alt nema brojku mimo BROJKE", () => {
   const koristene = new Set(izvorLandinga().flatMap((f) => [...procitaj(f).matchAll(/<Snimka v=\{(\d+)\}/g)].map((m) => Number(m[1]))));
   for (const v of koristene) assert.ok(v in K.SNIMKE, `V-${v} nije u SNIMKE`);
-  for (const v of [6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 23]) assert.ok(koristene.has(v), `V-${v} se ne koristi`);
+  for (const v of [4, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24]) assert.ok(koristene.has(v), `V-${v} se ne koristi`);
   assert.equal(K.snimkaDatoteke(6).length, 2);
   assert.equal(K.snimkaDatoteke(4)[0].mobitel, undefined);
+  assert.deepEqual(K.snimkaDatoteke(21), [{ tamna: false, desktop: undefined, mobitel: "/landing/v21-mobitel.webp" }]);
   assert.match(K.SNIMKE[6].alt, new RegExp(`^Katalog s ${K.BROJKE.glasova} mapa`));
 });
 
