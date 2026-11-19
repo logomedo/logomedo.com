@@ -24,9 +24,10 @@ test("šalje na Resend s ispravnim poljima", async () => {
   env.RESEND_API_KEY = "re_test";
   let zahtjev: { url: string; init: RequestInit } | null = null;
   const r = await posaljiPozivnicu(P, (async (url: string, init: RequestInit) => {
+    if (init?.method !== "POST") return new Response(JSON.stringify({ id: "abc", message_id: "<abc-1@eu-west-1.amazonses.com>" }), { status: 200 });
     zahtjev = { url, init };
     return new Response(JSON.stringify({ id: "abc" }), { status: 200 });
-  }) as unknown as typeof fetch);
+  }) as unknown as typeof fetch, 0);
   assert.deepEqual(r, { ok: true, id: "abc" });
   assert.equal(zahtjev!.url, "https://api.resend.com/emails");
   assert.equal((zahtjev!.init.headers as Record<string, string>).Authorization, "Bearer re_test");
@@ -46,6 +47,7 @@ test("šalje na Resend s ispravnim poljima", async () => {
   assert.equal(m.smjer, "izlaz");
   assert.equal(m.resend_id, "abc");
   assert.equal(m.poslao, null);
+  assert.equal(m.message_id, "<abc-1@eu-west-1.amazonses.com>", "Message-ID iz GET /emails/{id} (odluka 206)");
   assert.ok(!String(m.text).includes("#tok") && !String(m.html).includes("#tok"), "token pozivnice se ne sprema");
   assert.ok(String(m.text).includes(SKRIVENA_POVEZNICA));
   assert.equal(rz!.neprocitano, 0);

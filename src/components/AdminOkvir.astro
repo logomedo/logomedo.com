@@ -11,9 +11,10 @@ import { smijeNa } from "../lib/admin/rute";
 import { pregledFiltar } from "../lib/admin/vlasnistvo";
 import { ZATRAZIO_SLIKE, ZATRAZIO_ZVUKA } from "../lib/zatrazio";
 import { brojNovih } from "../lib/admin/zahtjevi";
+import { brojNeprocitanih } from "../lib/poruke";
 import { kvotaIzAdrese, porukaZaKorisnika, preostalo, type StanjeKvote, type VrstaKvote } from "../lib/kvota";
 
-interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "zahtjevi" | "postavke"; puno?: boolean }
+interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "zahtjevi" | "poruke" | "postavke"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
@@ -35,6 +36,8 @@ if (admin) {
 }
 // Novi zahtjevi za pristup s /pristup (S7): samo superadmin ih vidi i broji.
 const zahtjeva = admin?.uloga === "superadmin" ? await brojNovih() : 0;
+// Nepročitane poruke u inboxu (docs/inbox/): isto samo superadmin.
+const neprocitanih = admin?.uloga === "superadmin" ? await brojNeprocitanih() : 0;
 // Logoped vidi koliko mu je AI kredita ostalo (lib/kvota.ts); superadmin je bez limita, pa ništa.
 const kvotaStanje: Record<VrstaKvote, StanjeKvote> | null =
   admin?.uloga === "logoped" && admin.korisnikId !== null ? await preostalo(admin.korisnikId) : null;
@@ -63,6 +66,7 @@ const sustav: Stavka[] = ([
   { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },
   { kod: "korisnici", href: "/admin/korisnici", tekst: "Korisnici", ikona: "korisnici", broj: 0 },
   { kod: "zahtjevi", href: "/admin/zahtjevi", tekst: "Zahtjevi", ikona: "pismo", broj: zahtjeva },
+  { kod: "poruke", href: "/admin/poruke", tekst: "Poruke", ikona: "poruke", broj: neprocitanih },
   { kod: "postavke", href: "/admin/postavke", tekst: "Postavke", ikona: "postavke", broj: 0 },
 ] satisfies Stavka[]).filter(vidljivo);
 for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);

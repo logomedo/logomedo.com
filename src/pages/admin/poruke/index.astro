@@ -1,0 +1,64 @@
+---
+// Inbox (docs/inbox/, S3): razgovori s logopedima iz odgovora na transakcijske mailove. Samo superadmin
+// (rute.ts i ovdje, ovlast `korisnici`). Nepročitani prvi, zatim po zadnjoj poruci. Sadržaj je osobni podatak.
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { kad } from "../../../lib/katalog";
+import { smije } from "../../../lib/admin/ovlasti";
+import { popisRazgovora, type StatusRazgovora } from "../../../lib/poruke";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+const razgovori = await popisRazgovora();
+const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvoren", nerasporedjen: "neraspoređen" };
+---
+<AdminOkvir naslov="Poruke" aktivno="poruke">
+  <div class="naslov">
+    <div>
+      <h1>Poruke</h1>
+      <p class="podnaslov">Odgovori na mailove iz LogoMeda (pozivnice, odgovori odavde). Stižu na
+        poruke.logomedo.com i ostaju ovdje; odgovara se iz razgovora.</p>
+    </div>
+    <a class="gumb mali" href="/admin/poruke/brzi"><Ikona ime="iskra" /> Brzi odgovori</a>
+  </div>
+
+  {razgovori.length === 0 ? <p class="blijedo" id="nema-poruka">Još nema razgovora.</p> : (
+    <ul class="razgovori ploha" id="razgovori">
+      {razgovori.map((r) => (
+        <li class:list={["razgovor", { novo: r.neprocitano > 0 }]}>
+          <a href={`/admin/poruke/${r.id}`} id={`razgovor-${r.id}`}>
+            <div class="red1">
+              <span class="tko">{r.ime ?? r.email}</span>
+              {r.neprocitano > 0 && <span class="broj" aria-label={`${r.neprocitano} nepročitano`}>{r.neprocitano}</span>}
+              {STATUS[r.status] && <span class:list={["status", r.status]}>{STATUS[r.status]}</span>}
+              <span class="kad">{kad(r.zadnja_at)}</span>
+            </div>
+            {r.ime && <div class="email">{r.email}</div>}
+            <div class="predmet">{r.predmet ?? "(bez predmeta)"}</div>
+            {r.isjecak && <div class="isjecak">{r.zadnji_smjer === "izlaz" && <span class="mi">Vi: </span>}{r.isjecak}</div>}
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
+</AdminOkvir>
+<style>
+  .naslov { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .razgovori { list-style: none; margin: 20px 0 0; padding: 0; overflow: hidden; }
+  .razgovor + .razgovor { border-top: 1px solid var(--rub); }
+  .razgovor a { display: flex; flex-direction: column; gap: 3px; padding: 14px 18px; color: inherit; text-decoration: none; min-width: 0; }
+  .razgovor a:hover { background: var(--povrsina-2); }
+  .razgovor.novo a { box-shadow: inset 3px 0 0 var(--med); }
+  .red1 { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+  .tko { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .novo .tko, .novo .predmet { font-weight: 700; }
+  .kad { margin-left: auto; flex-shrink: 0; font-size: .8rem; color: var(--blijedo); }
+  .broj { flex-shrink: 0; font-size: .75rem; font-weight: 700; background: var(--med); color: var(--med-tekst); border-radius: 999px; padding: 1px 7px; }
+  .email { font-size: .82rem; color: var(--blijedo); overflow-wrap: anywhere; }
+  .predmet { font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .isjecak { font-size: .86rem; color: var(--blijedo); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+  .mi { font-weight: 600; }
+  .status { flex-shrink: 0; font-size: .72rem; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--povrsina-2); color: var(--blijedo); }
+  .status.nerasporedjen { background: var(--med-blago); color: var(--med-tamno); }
+</style>

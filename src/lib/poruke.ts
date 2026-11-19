@@ -223,7 +223,10 @@ export async function spremiOdlaznu(o: Odlazna): Promise<number> {
         o.razgovorId, o.resendId, o.messageId ?? null, o.inReplyTo ?? null, o.reference?.join(" ") || null, o.od, o.za.join(", "),
         o.predmet, o.text, o.html, sada, sada, o.poslao,
       ),
-    db().prepare("UPDATE razgovori SET zadnja_at = MAX(zadnja_at, ?) WHERE id = ?").bind(sada, o.razgovorId),
+    // Odgovor iz admina znači da je razgovor razvrstan: 'nerasporedjen' postaje 'otvoren'.
+    db()
+      .prepare("UPDATE razgovori SET zadnja_at = MAX(zadnja_at, ?), status = CASE status WHEN 'nerasporedjen' THEN 'otvoren' ELSE status END WHERE id = ?")
+      .bind(sada, o.razgovorId),
   ]);
   return (r.results[0] as { id: number }).id;
 }
@@ -240,4 +243,184 @@ export async function oznaciProcitano(razgovorId: number, sada: string = new Dat
 export async function brojNeprocitanih(): Promise<number> {
   const r = await db().prepare("SELECT COALESCE(SUM(neprocitano), 0) AS n FROM razgovori WHERE neprocitano > 0").first<{ n: number }>();
   return r?.n ?? 0;
+}
+
+// ---- Admin (/admin/poruke, S3) ----
+
+export type StatusRazgovora = "otvoren" | "zatvoren" | "nerasporedjen";
+
+export interface Razgovor {
+  id: number; kljuc: string; email: string; ime: string | null; korisnik_id: number | null; predmet: string | null;
+  zadnja_at: string; neprocitano: number; status: StatusRazgovora; created_at: string;
+}
+
+export interface StavkaPopisa extends Razgovor { poruka: number; isjecak: string | null; zadnji_smjer: "ulaz" | "izlaz" | null }
+
+/** Linija kojom počinje citirani prethodni mail (Gmail, Outlook, Apple Mail; hr, en, de). */
+const UVOD_CITATA = /^(On .+ wrote:|.+ je napisao\/la:|.+ (je )?napisao:|.+ (je )?napisala:|Dana .+:|Am .+ schrieb .+:|-{2,} ?(Original|Izvorna) .+-{2,}|From: .+|Od: .+|Šalje: .+)\s*$/i;
+
+/**
+ * Tekst poruke bez citata prethodnih mailova: reže na prvoj liniji koja počinje s `>` ili na uvodu citata
+ * („On … wrote:”, „… je napisao/la:”, „-----Original Message-----”). Gmail uvod zna prelomiti u dva retka,
+ * pa se gleda i spoj s idućim retkom.
+ */
+export function razdvojiCitat(text: string | null): { tekst: string; citat: string } {
+  if (!text) return { tekst: "", citat: "" };
+  const linije = text.replace(/\r\n?/g, "\n").split("\n");
+  let kraj = linije.length;
+  for (let i = 0; i < linije.length; i++) {
+    const l = linije[i].trim();
+    if (l.startsWith(">") || UVOD_CITATA.test(l) || (i + 1 < linije.length && UVOD_CITATA.test(`${l} ${linije[i + 1].trim()}`) && /^(On|Dana|Am) /i.test(l))) {
+      kraj = i;
+      break;
+    }
+  }
+  const cisto = (x: string[]) => x.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return { tekst: cisto(linije.slice(0, kraj)), citat: cisto(linije.slice(kraj)) };
+}
+
+export const bezCitata = (text: string | null): string => razdvojiCitat(text).tekst;
+
+/** Kratak isječak za popis: tekst bez citata, razmaci stisnuti, do `max` znakova. */
+export function isjecak(text: string | null, max = 140): string {
+  const t = bezCitata(text).replace(/\s+/g, " ").trim();
+  return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t;
+}
+
+/** Popis razgovora: nepročitani prvi, zatim po zadnjoj poruci. */
+export async function popisRazgovora(limit = 300): Promise<StavkaPopisa[]> {
+  const r = await db()
+    .prepare(
+      `SELECT r.*,
+         (SELECT COUNT(*) FROM poruke WHERE razgovor_id = r.id) AS poruka,
+         (SELECT substr(COALESCE(text, ''), 1, 2000) FROM poruke WHERE razgovor_id = r.id ORDER BY created_at DESC, id DESC LIMIT 1) AS isjecak,
+         (SELECT smjer FROM poruke WHERE razgovor_id = r.id ORDER BY created_at DESC, id DESC LIMIT 1) AS zadnji_smjer
+       FROM razgovori r
+       ORDER BY (r.neprocitano > 0) DESC, r.zadnja_at DESC, r.id DESC
+       LIMIT ?`,
+    )
+    .bind(limit)
+    .all<StavkaPopisa>();
+  return r.results.map((x) => ({ ...x, isjecak: isjecak(x.isjecak) || null }));
+}
+
+export interface Privitak { id: number; poruka_id: number; r2_kljuc: string | null; ime: string; tip: string; velicina: number | null; content_id: string | null; napomena: string | null }
+
+export interface Poruka {
+  id: number; razgovor_id: number; smjer: "ulaz" | "izlaz"; resend_id: string | null; message_id: string | null;
+  in_reply_to: string | null; reference: string | null; od: string; za: string; predmet: string | null;
+  text: string | null; html: string | null; tijelo_fali: number; napomena: string | null; created_at: string;
+  procitano_at: string | null; poslao: string | null; privitci: Privitak[];
+}
+
+export async function razgovor(id: number): Promise<Razgovor | null> {
+  return db().prepare("SELECT * FROM razgovori WHERE id = ?").bind(id).first<Razgovor>();
+}
+
+/** Razgovor s porukama kronološki i privitcima uz svaku poruku; null ako ne postoji. */
+export async function nit(id: number): Promise<{ razgovor: Razgovor; poruke: Poruka[] } | null> {
+  const [r, p, x] = await db().batch([
+    db().prepare("SELECT * FROM razgovori WHERE id = ?").bind(id),
+    db().prepare("SELECT * FROM poruke WHERE razgovor_id = ? ORDER BY created_at, id").bind(id),
+    db().prepare("SELECT x.* FROM privitci x JOIN poruke p ON p.id = x.poruka_id WHERE p.razgovor_id = ? ORDER BY x.id").bind(id),
+  ]);
+  const rz = r.results[0] as Razgovor | undefined;
+  if (!rz) return null;
+  const privitci = x.results as unknown as Privitak[];
+  const poruke = (p.results as unknown as Omit<Poruka, "privitci">[]).map((m) => ({ ...m, privitci: privitci.filter((a) => a.poruka_id === m.id) }));
+  return { razgovor: rz, poruke };
+}
+
+/** Privitak za admin rutu preuzimanja. */
+export async function privitak(id: number): Promise<Privitak | null> {
+  return db().prepare("SELECT * FROM privitci WHERE id = ?").bind(id).first<Privitak>();
+}
+
+export async function postaviStatus(id: number, status: StatusRazgovora): Promise<boolean> {
+  const r = await db().prepare("UPDATE razgovori SET status = ? WHERE id = ?").bind(status, id).run();
+  return (r.meta.changes ?? 0) > 0;
+}
+
+export const putanjaPrivitka = (id: number) => `/admin/poruke/privitak/${id}`;
+
+const cidKljuc = (cid: string) => cid.trim().replace(/^<|>$/g, "").toLowerCase();
+
+/**
+ * HTML dolazne poruke za `iframe sandbox` (srcdoc): `cid:` slike koje se stvarno pojavljuju u HTML-u idu kroz
+ * admin rutu privitka (samo spremljene u R2), poveznice se otvaraju u novoj kartici. Vraća i id-jeve ugrađenih
+ * privitaka; ostali se prikazuju kao popis (Gmail šalje `content_id` i za obične privitke, odluka 206).
+ */
+export function htmlZaPrikaz(html: string, privitci: Pick<Privitak, "id" | "r2_kljuc" | "content_id">[]): { html: string; ugradeni: number[] } {
+  const poCid = new Map(privitci.filter((p) => p.content_id && p.r2_kljuc).map((p) => [cidKljuc(p.content_id!), p.id]));
+  const ugradeni = new Set<number>();
+  const prepisan = html.replace(/(["'(\s=])cid:([^"')\s>]+)/gi, (cijelo, prije: string, cid: string) => {
+    let k = cid;
+    try { k = decodeURIComponent(cid); } catch { /* ostaje */ }
+    const id = poCid.get(cidKljuc(k));
+    if (id === undefined) return cijelo;
+    ugradeni.add(id);
+    return `${prije}${putanjaPrivitka(id)}?prikaz=1`;
+  });
+  return { html: `<base target="_blank">${prepisan}`, ugradeni: [...ugradeni] };
+}
+
+/** Zadnja dolazna poruka (za citat i In-Reply-To) i zadnji poznati message_id odlazne (rezerva za nit). */
+export async function zaOdgovor(razgovorId: number): Promise<{
+  razgovor: Razgovor;
+  dolazna: Pick<Poruka, "message_id" | "reference" | "text" | "od" | "predmet" | "created_at"> | null;
+  odlazna: Pick<Poruka, "message_id" | "reference" | "predmet"> | null;
+} | null> {
+  const [r, d, o] = await db().batch([
+    db().prepare("SELECT * FROM razgovori WHERE id = ?").bind(razgovorId),
+    db().prepare("SELECT message_id, reference, text, od, predmet, created_at FROM poruke WHERE razgovor_id = ? AND smjer = 'ulaz' ORDER BY created_at DESC, id DESC LIMIT 1").bind(razgovorId),
+    db().prepare("SELECT message_id, reference, predmet FROM poruke WHERE razgovor_id = ? AND smjer = 'izlaz' AND message_id IS NOT NULL ORDER BY created_at DESC, id DESC LIMIT 1").bind(razgovorId),
+  ]);
+  const rz = r.results[0] as Razgovor | undefined;
+  if (!rz) return null;
+  return { razgovor: rz, dolazna: (d.results[0] as never) ?? null, odlazna: (o.results[0] as never) ?? null };
+}
+
+/** Spremi Message-ID odlazne poruke (dohvaćen iz Resenda nakon slanja, odluka 206). */
+export async function postaviMessageId(porukaId: number, messageId: string): Promise<void> {
+  await db().prepare("UPDATE poruke SET message_id = ? WHERE id = ?").bind(messageId, porukaId).run();
+}
+
+// ---- Brzi odgovori ----
+
+export interface BrziOdgovor { id: number; kratica: string; naslov: string; tekst: string; updated_at: string }
+
+export async function brziOdgovori(): Promise<BrziOdgovor[]> {
+  return (await db().prepare("SELECT * FROM brzi_odgovori ORDER BY kratica").all<BrziOdgovor>()).results;
+}
+
+/** Kratica: mala slova (i hrvatska), brojke, crtica i podvlaka, do 30 znakova; upisuje se bez kose crte. */
+export const KRATICA = /^[a-z0-9čćđšž_-]{1,30}$/;
+export const BRZI_TEKST_MAX = 5000;
+
+export type IshodBrzog = { ok: true; id: number } | { ok: false; greska: string };
+
+export async function spremiBrziOdgovor(b: { id?: number | null; kratica: string; naslov: string; tekst: string }): Promise<IshodBrzog> {
+  const kratica = b.kratica.trim().replace(/^\//, "").toLowerCase();
+  const naslov = b.naslov.trim();
+  const tekst = b.tekst.replace(/\r\n?/g, "\n").trim();
+  if (!KRATICA.test(kratica)) return { ok: false, greska: "Kratica smije imati samo mala slova, brojke, - i _ (do 30 znakova)." };
+  if (!naslov || naslov.length > 120) return { ok: false, greska: "Naslov je obavezan (do 120 znakova)." };
+  if (!tekst || tekst.length > BRZI_TEKST_MAX) return { ok: false, greska: `Tekst je obavezan (do ${BRZI_TEKST_MAX} znakova).` };
+  const sada = new Date().toISOString();
+  try {
+    if (b.id) {
+      const r = await db().prepare("UPDATE brzi_odgovori SET kratica = ?, naslov = ?, tekst = ?, updated_at = ? WHERE id = ? RETURNING id").bind(kratica, naslov, tekst, sada, b.id).first<{ id: number }>();
+      return r ? { ok: true, id: r.id } : { ok: false, greska: "Brzi odgovor više ne postoji." };
+    }
+    const r = await db().prepare("INSERT INTO brzi_odgovori (kratica, naslov, tekst, updated_at) VALUES (?, ?, ?, ?) RETURNING id").bind(kratica, naslov, tekst, sada).first<{ id: number }>();
+    return { ok: true, id: r!.id };
+  } catch (e) {
+    if (/UNIQUE constraint failed: brzi_odgovori\.kratica/.test(String((e as Error)?.message ?? e))) return { ok: false, greska: `Kratica /${kratica} već postoji.` };
+    throw e;
+  }
+}
+
+export async function obrisiBrziOdgovor(id: number): Promise<boolean> {
+  const r = await db().prepare("DELETE FROM brzi_odgovori WHERE id = ?").bind(id).run();
+  return (r.meta.changes ?? 0) > 0;
 }

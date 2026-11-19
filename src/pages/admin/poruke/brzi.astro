@@ -1,0 +1,106 @@
+---
+// Brzi odgovori za /admin/poruke (docs/inbox/, S3): česti odgovori logopedima. Samo superadmin. U obrascu
+// odgovora umeću se iz izbornika ili upisom `/kratica` + Tab (src/lib/poruke-klijent.ts).
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { kad } from "../../../lib/katalog";
+import { smije } from "../../../lib/admin/ovlasti";
+import { BRZI_TEKST_MAX, brziOdgovori, obrisiBrziOdgovor, spremiBrziOdgovor } from "../../../lib/poruke";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+const ok = Astro.url.searchParams.get("ok");
+const poruka = ok === "spremljen" ? "Brzi odgovor je spremljen." : ok === "obrisan" ? "Brzi odgovor je obrisan." : null;
+let greska: string | null = null;
+let nacrt: { id: number | null; kratica: string; naslov: string; tekst: string } | null = null;
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const akcija = String(f.get("akcija") ?? "");
+  const id = Number(f.get("id")) || null;
+  if (akcija === "spremi") {
+    nacrt = { id, kratica: String(f.get("kratica") ?? ""), naslov: String(f.get("naslov") ?? ""), tekst: String(f.get("tekst") ?? "") };
+    const r = await spremiBrziOdgovor(nacrt);
+    if (r.ok) return Astro.redirect(`/admin/poruke/brzi?ok=spremljen#brzi-${r.id}`, 303);
+    greska = r.greska;
+  } else if (akcija === "obrisi" && id) {
+    await obrisiBrziOdgovor(id);
+    return Astro.redirect("/admin/poruke/brzi?ok=obrisan", 303);
+  } else greska = "Nepoznata radnja.";
+  Astro.response.status = 400;
+}
+
+const brzi = await brziOdgovori();
+const novi = nacrt && !nacrt.id ? nacrt : { kratica: "", naslov: "", tekst: "" };
+const uredjivanje = (id: number) => (nacrt?.id === id ? nacrt : null);
+---
+<AdminOkvir naslov="Brzi odgovori" aktivno="poruke">
+  <p class="natrag"><a href="/admin/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
+  <h1>Brzi odgovori</h1>
+  <p class="podnaslov">Česti odgovori logopedima. U odgovoru ih umetni iz izbornika ili upiši <code>/kratica</code> pa Tab.</p>
+
+  {poruka && <p class="obavijest ok" role="status">{poruka}</p>}
+  {greska && <p class="obavijest greska" role="alert" id="greska">{greska}</p>}
+
+  <section class="ploha brzi novi" aria-labelledby="novi-naslov">
+    <h2 id="novi-naslov">Novi brzi odgovor</h2>
+    <form method="post" class="obrazac" id="novi-obrazac">
+      <input type="hidden" name="akcija" value="spremi" />
+      <div class="polja">
+        <label>Kratica <span class="s-crtom"><span>/</span><input name="kratica" required maxlength="31" pattern="/?[a-z0-9čćđšž_\-]{1,30}" placeholder="link" value={novi.kratica} autocomplete="off" /></span></label>
+        <label>Naslov <input name="naslov" required maxlength="120" placeholder="Novi link pozivnice" value={novi.naslov} /></label>
+      </div>
+      <label>Tekst <textarea name="tekst" rows="4" required maxlength={BRZI_TEKST_MAX}>{novi.tekst}</textarea></label>
+      <div class="akcije"><button class="gumb glavni mali" type="submit"><Ikona ime="plus" /> Dodaj</button></div>
+    </form>
+  </section>
+
+  {brzi.length === 0 ? <p class="blijedo" id="nema-brzih">Još nema brzih odgovora.</p> : (
+    <div class="popis" id="brzi-popis">
+      {brzi.map((b) => {
+        const u = uredjivanje(b.id) ?? b;
+        return (
+          <section class="ploha brzi" id={`brzi-${b.id}`}>
+            <form method="post" class="obrazac">
+              <input type="hidden" name="akcija" value="spremi" />
+              <input type="hidden" name="id" value={b.id} />
+              <div class="polja">
+                <label>Kratica <span class="s-crtom"><span>/</span><input name="kratica" required maxlength="31" pattern="/?[a-z0-9čćđšž_\-]{1,30}" value={u.kratica} autocomplete="off" /></span></label>
+                <label>Naslov <input name="naslov" required maxlength="120" value={u.naslov} /></label>
+              </div>
+              <label>Tekst <textarea name="tekst" rows="4" required maxlength={BRZI_TEKST_MAX}>{u.tekst}</textarea></label>
+              <div class="akcije">
+                <span class="blijedo sitno">Promijenjeno {kad(b.updated_at)}</span>
+                <button class="gumb mali opasno" type="submit" name="akcija" value="obrisi" formnovalidate><Ikona ime="x" /> Obriši</button>
+                <button class="gumb glavni mali" type="submit"><Ikona ime="kvacica" /> Spremi</button>
+              </div>
+            </form>
+          </section>
+        );
+      })}
+    </div>
+  )}
+</AdminOkvir>
+<style>
+  .natrag { margin: 0 0 8px; font-size: .88rem; }
+  .natrag a { display: inline-flex; align-items: center; gap: 4px; color: var(--blijedo); text-decoration: none; }
+  .natrag :global(svg) { width: 16px; height: 16px; }
+  .obavijest { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }
+  .obavijest.ok { color: var(--uspjeh); }
+  .obavijest.greska { color: var(--greska); }
+  .brzi { padding: 16px 18px; margin-top: 16px; max-width: 780px; box-sizing: border-box; }
+  .brzi h2 { margin: 0 0 10px; font-family: var(--font-slova); font-weight: 600; font-size: 1.05rem; }
+  .novi { border-color: var(--med); }
+  .obrazac { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+  .polja { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 10px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; font-weight: 600; min-width: 0; }
+  input, textarea { font: inherit; font-weight: 400; min-width: 0; box-sizing: border-box; width: 100%; }
+  textarea { resize: vertical; }
+  .s-crtom { display: flex; align-items: center; gap: 4px; }
+  .s-crtom > span { color: var(--blijedo); font-weight: 600; }
+  .akcije { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  .akcije .sitno { margin-right: auto; }
+  .sitno { font-size: .8rem; }
+  @media (max-width: 560px) { .polja { grid-template-columns: 1fr; } }
+</style>

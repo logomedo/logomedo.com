@@ -3,8 +3,12 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { render, toPlainText } from "@react-email/components";
 import Pozivnica, { NASLOV as POZIVNICA } from "../emails/Pozivnica";
+import Odgovor, { NASLOV as ODGOVOR } from "../emails/Odgovor";
 
-const predlosci = { pozivnica: { naslov: POZIVNICA, el: <Pozivnica /> } };
+const predlosci = {
+  pozivnica: { naslov: POZIVNICA, el: <Pozivnica /> },
+  odgovor: { naslov: ODGOVOR, el: <Odgovor /> },
+};
 
 let out = "// GENERIRANO: npm run emails (scripts/emails-export.tsx). Ne uređivati ručno, izvor je emails/*.tsx.\n\n";
 for (const [ime, p] of Object.entries(predlosci)) {
