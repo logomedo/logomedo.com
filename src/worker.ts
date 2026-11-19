@@ -19,7 +19,7 @@ async function ulaz(request: Request, e: Env, ctx: ExecutionContext): Promise<Re
 }
 
 export default {
-  // Staging (OKRUZENJE=staging, src/lib/staging.ts) je cijeli iza Basic Autha; produkcija ide ravno u ulaz().
+  // Staging (OKRUZENJE=staging, src/lib/staging.ts) dodaje noindex; produkcija ide ravno u ulaz().
   fetch: (request, e, ctx) => stagingVrata(request, env, () => ulaz(request, e, ctx)),
 
   // Poslovi jedan po jedan: ElevenLabs ograničava istodobne zahtjeve po planu.

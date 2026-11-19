@@ -1,7 +1,7 @@
 # Staging: staging.logomedo.com
 
 Od 19. 11. 2026. (landing lanac S1, landing odluke 4–9, 100–1xx u `docs/landing/decisions.md`).
-Zaseban Worker s kopijom produkcijske D1, iza lozinke. Produkcija se njime ne dira.
+Zaseban Worker s kopijom produkcijske D1; javni dio otvoren, `/admin` zaštićen kao na produkciji. Produkcija se njime ne dira.
 
 | | Produkcija | Staging |
 |---|---|---|
@@ -30,22 +30,18 @@ npm run db:migrate:staging    # migracije na logomedo-staging
   `--config wrangler.jsonc --env staging` (osim deploya, koji ide na `dist-staging`).
 - Zabranjeno za staging: `npm run deploy`, `npm run db:migrate`, `wrangler secret put` bez `--env staging`.
 
-## Lozinka (Basic Auth)
+## Zaštita (landing odluka 207, zamjenjuje odluku 7)
 
-Kad je `OKRUZENJE=staging` (samo `env.staging`), `src/worker.ts` sve zahtjeve propušta kroz
-`src/lib/staging.ts`: Basic Auth, korisničko ime proizvoljno, lozinka = secret `STAGING_LOZINKA`.
-Vrijedi i za statičke datoteke (`assets.run_worker_first: true`). Izuzeti su `/api/v1*` i
-`/api/runner/*` (vlastiti bearer). Bez secreta staging vraća 503. Svi odgovori imaju
-`x-robots-tag: noindex`.
+Javni dio staginga (landing, `/b/…`, statičke datoteke) je otvoren kao na produkciji: to je javno
+lice projekta. Basic Auth je uklonjen 19. 11. 2026. `/admin` štiti isti middleware kao na produkciji
+(sesija; prijava Accessom ili passkeyem), `/api/v1` i `/api/runner/*` vlastiti bearer. Kad je
+`OKRUZENJE=staging`, `src/lib/staging.ts` svim odgovorima, i statičkim datotekama
+(`assets.run_worker_first: true`), dodaje `x-robots-tag: noindex`.
 
-Lozinka je u `.env.staging` (gitignored) u radnoj kopiji koja ju je postavila
-(`/Users/ms/git/logomedo/logomedo.com-landing`). Promjena:
-
-```bash
-printf %s "<nova>" | CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 npx wrangler secret put STAGING_LOZINKA --config wrangler.jsonc --env staging
-```
-
-Preglednik pita lozinku jednom po sesiji; `curl -u x:"$STAGING_LOZINKA" https://staging.logomedo.com/`.
+Prijava u admin na stagingu: passkeyevi s produkcije ne vrijede (rpID je hostname), a dok nema Access
+aplikacije za `staging.logomedo.com` (`ACCESS_AUD` prazan), `/admin/sso` vraća 503. Do tada sesiju
+upisuje `scripts/staging-sesija.sh` (ispod); passkey registriran na stagingu nakon toga radi i dalje.
+Secret `STAGING_LOZINKA` se više ne čita (može se obrisati `wrangler secret delete … --env staging`).
 
 ## Podaci: kopija produkcije
 
@@ -90,13 +86,12 @@ podataka nestaje.
 - **Izgovor (ElevenLabs), runner, Vertex, čišćenje cachea:** nema secreta (`ELEVENLABS_API_KEY`,
   `RUNNER_TOKEN`, `CF_PURGE_TOKEN`), odluka 9. Poslovi izgovora padaju u redu i ponavljaju se.
 - **Passkey i sesije s produkcije**, **Access** (`/admin/sso` 503).
-- **Mobilna aplikacija** može na staging (`/api/v1` nije iza lozinke), ali tokeni s produkcije
+- **Mobilna aplikacija** može na staging (`/api/v1` ima vlastiti bearer), ali tokeni s produkcije
   vrijede samo dok se podaci ne osvježe.
 
 ## Access kasnije
 
-Wrangler OAuth nema Access ovlast (landing odluka 7). Kad korisnik u dashboardu napravi Access
-aplikaciju za `staging.logomedo.com`, Basic Auth može ostati kao drugi sloj. Da Access zamijeni
-lozinku, treba izmjena `src/lib/staging.ts` (npr. provjera `Cf-Access-Jwt-Assertion` kao u
-`src/lib/admin/`) s testom; samo brisanje secreta ne pomaže, jer bez njega staging vraća 503.
-Za `/admin/sso` na stagingu upisati AUD te aplikacije u `env.staging.vars.ACCESS_AUD`.
+Wrangler OAuth nema Access ovlast (landing odluka 7), pa aplikaciju radi korisnik u dashboardu:
+Zero Trust → Access → Applications → Self-hosted, domena `staging.logomedo.com`, putanja `admin/sso`,
+ista politika kao produkcijska aplikacija za `logomedo.com/admin/sso`. Njezin AUD tag se upiše u
+`env.staging.vars.ACCESS_AUD` u `wrangler.jsonc`, pa `npm run deploy:staging`.

@@ -19,5 +19,5 @@ fi
 T=$(openssl rand -hex 24); H=$(printf %s "$T" | shasum -a 256 | cut -d' ' -f1)
 npx wrangler d1 execute logomedo-staging "${STG[@]}" --command "INSERT INTO admin_sessions (token_hash,email,method,created_at,expires_at,last_seen_at) VALUES ('$H','$EMAIL','access',strftime('%Y-%m-%dT%H:%M:%fZ','now'),strftime('%Y-%m-%dT%H:%M:%fZ','now','+12 hours'),strftime('%Y-%m-%dT%H:%M:%fZ','now'))" >/dev/null
 echo "__Host-logomedo_admin=$T"
-echo "# vrijedi 12 h; uz Basic Auth (lozinka iz .env.staging), npr.:"
-echo "# curl -u x:\"\$STAGING_LOZINKA\" -b '__Host-logomedo_admin=$T' https://staging.logomedo.com/admin"
+echo "# vrijedi 12 h, npr.:"
+echo "# curl -b '__Host-logomedo_admin=$T' https://staging.logomedo.com/admin"

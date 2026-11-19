@@ -64,8 +64,8 @@
 
   // Staging (docs/staging.md, landing odluke 4–9): `npm run build:staging` / `deploy:staging`.
   // Bindingi se u okruženjima ne nasljeđuju, pa je sve navedeno; staging nikad ne binda
-  // produkcijske resurse. Basic Auth iza OKRUZENJE=staging (src/lib/staging.ts), i za statičke
-  // datoteke (assets.run_worker_first). ACCESS_AUD prazan: /admin/sso vraća 503.
+  // produkcijske resurse. OKRUZENJE=staging dodaje noindex (src/lib/staging.ts), i statičkim
+  // datotekama (assets.run_worker_first). ACCESS_AUD prazan: /admin/sso vraća 503.
   "env": {
     "staging": {
       "name": "logomedo-staging",
