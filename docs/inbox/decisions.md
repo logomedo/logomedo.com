@@ -88,3 +88,39 @@ kaže. Blokovi: S0 1–99, S1 100–199, S2 200–299, S3 300–399, S4 400–49
      smjestio u razgovor pozivnice po ključu u adresi. Zato vlastiti `Message-ID` ne postavljamo: S3 nakon slanja
      dohvati i spremi `message_id` i iz njega složi `In-Reply-To`/`References`. Gmail je obične privitke poslao s
      `content_id`, pa `content_id` sam ne znači ugrađenu sliku (S3, prikaz).
+
+## S3 (19. 11. 2026.)
+
+300. **Odgovor iz admina šalje `LogoMedo <bok@logomedo.com>`** (javna kontakt adresa), s `reply_to` razgovora; logopedov
+     odgovor tako ide u D1, ne u Gmail. Primatelj je `Ime <email>` razgovora.
+301. **Zaglavlja niti:** `In-Reply-To` = `message_id` zadnje dolazne; bez nje zadnja odlazna s poznatim `message_id`
+     (npr. pozivnica); `References` = reference te poruke + taj id (zadnjih 20). Bez ijednog `message_id` zaglavlja se
+     ne šalju (nit u D1 i dalje drži ključ u adresi). Predmet `Re: …` bez gomilanja `Re:/Odg:/AW:`.
+302. **`message_id` odlazne se dohvaća odmah** (`GET /emails/{id}`, `dohvatiMessageId`), uz jedan ponovljeni pokušaj
+     nakon 1,5 s; isto i pozivnica. Ako ga nema, ostaje `null`: nit u D1 to ne kvari (ključ, odluka 4).
+303. **U D1 se za odgovor sprema `text` = samo ono što je superadmin napisao** (bez okvira i citata, za čitljivu nit), a
+     `html` = poslani HTML. Pozivnica ostaje kako je bila (odluka 203).
+304. **Upis nakon slanja ne poništava slanje:** mail je otišao, greška upisa ide u log samo s Resend id-jem (bez
+     sadržaja). Neuspjelo slanje i staging bez ključa ne upisuju ništa i zadržavaju nacrt u obrascu.
+305. **Odgovor razvrstava razgovor** (`nerasporedjen` → `otvoren`, u `spremiOdlaznu`); ručno: „Zatvori”, „Otvori
+     ponovno”, „Razvrstaj kao otvoren”. Otvaranje razgovora označava dolazne pročitanima.
+306. **HTML poruke u `iframe sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"`**, bez
+     `allow-scripts`, kroz `srcdoc` s `<base target="_blank">`. srcdoc nasljeđuje CSP stranice, pa se vanjske slike
+     (trackeri) ne učitavaju (provjereno u Chromeu). `allow-same-origin` treba za `cid:` slike (kolačić sesije) i za
+     mjerenje visine okvira; bez skripti u okviru to ne otvara ništa. Tekst je zadani prikaz; HTML je otvoren samo kad
+     teksta nema.
+307. **Ugrađene slike:** `cid:` se prepisuje u `/admin/poruke/privitak/<id>?prikaz=1` samo za privitke spremljene u R2
+     čiji se `content_id` pojavljuje u HTML-u; svi privitci su i u popisu („u tekstu” uz ugrađene). Ruta je zadano
+     `attachment`, `inline` samo uz `?prikaz=1` i samo za jpeg/png/gif/webp.
+308. **Citati:** `razdvojiCitat` reže na prvoj liniji s `>` ili uvodu citata (Gmail „On … wrote:”, i prelomljen u dva
+     retka, „… je napisao/la:”, Outlook „-----Original Message-----”/„From:”). Nit prikazuje tekst, citat je u
+     „Citirani tekst”; isječak u popisu i citat u odgovoru su bez citata.
+309. **Citat u odgovoru:** do 12 redaka i 700 znakova, uvod `d. m. gggg. hh:mm, Ime <email>:` (bez rodnog „napisao/la”).
+310. **Brzi odgovori:** kratica `[a-z0-9čćđšž_-]{1,30}` (upisuje se bez `/`, jedinstvena), naslov do 120, tekst do
+     5000 znakova. `/kratica` + Tab umeće samo na početku ili iza razmaka (adresa `x/link` ne okida); izbornik umeće
+     na kursor s praznim redom. Logika je u `src/lib/poruke-klijent.ts` (testirana), stranica je uvozi iz `<script>`:
+     Astro mali bundle umetne u stranicu, a middleware mu da nonce; inline handlera nema.
+311. **Provjera izgleda admina bez produkcijske prijave:** lokalni `astro dev` s privremenim `.dev.vars`
+     (`ADMIN_EMAILS` testna adresa), sesija u lokalnom D1, privitci `wrangler r2 object put --local`, pa
+     `playwright-core` sa sustavnim Chromeom i zaglavljem `Cookie` (`addCookies` odbija `__Host-` kolačić na http).
+     Za razliku od statične kopije, to provjerava i CSP, iframe i skripte.

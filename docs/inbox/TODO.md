@@ -34,11 +34,12 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F2: admin sučelje
 
-- [ ] `/admin/poruke`: popis razgovora (nepročitani prvi), brojač u bočnoj traci superadmina → S3
-- [ ] `/admin/poruke/[id]`: nit, privitci (preuzimanje iz R2), označi pročitano → S3
-- [ ] Odgovor iz admina: `emails/Odgovor.tsx`, `In-Reply-To`/`References`, upis u nit → S3
-- [ ] Brzi odgovori: popis, dodaj/uredi/obriši, umetanje u odgovor (skripta s nonceom, bez inline) → S3
-- [ ] Mobilni izgled (memorija: statična kopija + headless Chrome) → S3
+- [x] `/admin/poruke`: popis razgovora (nepročitani prvi), brojač u bočnoj traci superadmina → S3
+- [x] `/admin/poruke/[id]`: nit, privitci (preuzimanje iz R2), označi pročitano → S3
+- [x] Odgovor iz admina: `emails/Odgovor.tsx`, `In-Reply-To`/`References`, upis u nit → S3
+- [x] Brzi odgovori: popis, dodaj/uredi/obriši, umetanje u odgovor (skripta s nonceom, bez inline) → S3
+- [x] Mobilni izgled (lokalni dev + headless Chrome, odluka 311) → S3
+- [ ] (!) Produkcija i e2e: odgovor iz admina u Gmail u istoj niti, odgovor na njega opet u razgovoru, brzi odgovor → S3
 
 ## F3: zatvaranje
 

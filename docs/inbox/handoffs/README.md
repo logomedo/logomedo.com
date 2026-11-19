@@ -23,7 +23,7 @@ Handoff se mijenja samo prema naprijed.
 | S0 | Plan | gotovo | 24d60ee | 333 | plan, koda inboxa nema; odluke 1–10 |
 | S1 | Istraživanje, temelj, webhook | gotovo | f9c1cec | 360 | research s izvorima; staging probni webhook zelen (200/401/401/duplikat); odluke 100–111 |
 | S2 | Primanje na produkciji, e2e | gotovo | d3e8251 | 361 | poddomena zaseban Resend domain, MX/DKIM/webhook/secret na produkciji; pozivnica s Reply-To; e2e: odgovor iz Gmaila u razgovoru 1 s 2 privitka u R2, In-Reply-To = SES message_id; odluke 200–206 |
-| S3 | `/admin/poruke`, odgovor, brzi odgovori | otvoreno | | | |
+| S3 | `/admin/poruke`, odgovor, brzi odgovori | u radu: kod gotov, čeka produkciju i e2e | 30637f5 | 374 | staging deployan; lokalno provjereno u Chromeu 1280/390; odluke 300–311 |
 | S4 | Retencija, obavijesti, SPF/DKIM, dokumentacija | otvoreno | | | |
 
 ## Zajednička pravila (svaka sesija)
