@@ -39,7 +39,9 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 - [x] `scripts/landing-snimke.ts`: snimke zaslona sa staginga (Playwright), bez osobnih podataka → S4
 - [x] Stranice `/katalog` i `/radni-listici` (kosturi s hero sekcijom postoje od S3, odluka 305); V-2…V-4 u N-2 naslovne → S4
-- [ ] Stranice `/igre`, `/o-nama`, `/privatnost`, 404 (bez `/aplikacija`, odluka 200) → S5
+- [x] Stranice `/igre`, `/o-nama`, `/privatnost`, 404 (bez `/aplikacija`, odluka 200) → S5
+- [x] Demo G-6 i rezerva G-6R u kodu (`DEMO_URL` prazan, odluka 506); koraci za produkcijsku demo bilježnicu na vrhu `S6.md` → S5
+- [ ] (!) Demo bilježnica na produkciji i `DEMO_URL` → S6
 
 ## F3: pregled i produkcija
 

@@ -371,7 +371,8 @@ RIBA, SUNCE, ŽABA, LAV [V-27]. Svaka stranica ima `og:title` = `<title>`, `og:d
 - **h2:** Ovako izgleda na tabletu
 - **Tekst:** Igru dobiva dijete preko linka od svog logopeda. Ako ste logoped i želite je isprobati sa svojim
   zadacima, zatražite pristup. [I-BIL-1], [I-BIL-2], [I-RBAC-2]
-- **Vizual:** galerija [V-20], [V-21], [V-22] (tri snimke jedna uz drugu, na mobitelu jedna ispod druge)
+- **Vizual:** galerija [V-20], [V-21], [V-22] (tri snimke jedna uz drugu, na mobitelu jedna ispod druge) — *S5: jedna
+  snimka [V-4], jer su V-20…V-22 već gore na stranici (landing odluka 502)*
 - **CTA:** „Zatraži pristup” · „Prijava”
 
 #### G-7 Za logopeda

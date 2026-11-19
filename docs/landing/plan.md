@@ -64,3 +64,7 @@ sitemap, OG, 404, `scripts/landing-provjera.sh` (staging 89 OK, 0 grešaka). 296
 
 S4 (19. 11. 2026.): `scripts/landing-snimke.ts` (32 snimke, pregledane), `/katalog`, `/radni-listici`, snimke u N-2;
 staging `a6d86944`, provjera 118 OK, 0 grešaka. 302 testa (pass 302, skipped 0).
+
+S5 (19. 11. 2026.): `/igre`, `/o-nama`, `/privatnost` sa snimkama i sovom (V-25); demo G-6 čeka produkcijsku bilježnicu
+(S6). Staging `b46a6a21`, provjera 130 OK, 0 grešaka. 302 testa (pass 302, skipped 0). Pravna pitanja privatnosti na vrhu
+`S6.md`.

@@ -215,3 +215,34 @@ Snimke: `research/2026-11-19-snimke.md` (32 snimke, svaka pregledana). Staging v
      glasom.” (snimka pokazuje zaustavljeno kolo; `sadrzaj.md` usklađen).
 411. **S4: dva Opus subagenta paralelno** (snimke; stranice), `effort: high`; pregled snimki, deploy i provjera u glavnoj
      sesiji. Pregled je vratio snimke jednom (odluka 403).
+
+## S5 (19. 11. 2026.)
+
+Provjera staginga: `research/2026-11-19-provjera-staging-s5.md` (130 OK, 0 grešaka, verzija `b46a6a21`).
+
+500. **S5 je rađen u glavnoj sesiji bez subagenata** (iznimka od pravila orkestracije, kao odluka 106): tekstovi su bili
+     gotovi u `sadrzaj.md`, snimke iz S4, a kod su tri stranice od malih sekcija po uzoru na `katalog/`. Provjera
+     (testovi, deploy, `landing-provjera.sh`, vizualni pregled 1280 / 360 px / tamna) je odvojen korak nakon commita.
+501. **V-21 je snimka samo za mobitel** (`samoMobitel` u `SNIMKE`): `snimkaDatoteke` vraća `desktop: undefined`, a
+     `Snimka.astro` je prikazuje uvijek usku (`.uspravna`, 300 px, bez trake prozora). Test provjerava datoteku i 780×1688.
+502. **Raspored `/igre`** (potvrditi): G-1 V-20 (hero), G-2 V-22 („Bravo!” uz naslov „Kreni, riješi, Bravo!”), G-3
+     V-21 (Proljeće; Božić je već u heroju), G-7 V-24, a **G-6/G-6R su zadnji**, da stranica završi pozivom. Rezerva
+     G-6R ima **jednu snimku V-4** umjesto galerije V-20…V-22, jer bi galerija ponovila tri snimke s iste stranice.
+     Bez `KONTAKT` u G-6R otpada rečenica „zatražite pristup” (odluka 303).
+503. **P-5 ima vlastiti placeholder `VODITELJ_OBRADE`** (potvrditi) i prikazuje se samo kad su popunjeni on i `KONTAKT`.
+     `IME_TVRTKE` u podnožju još nije pravna izjava o voditelju obrade (odluka 210), pa ga P-5 ne preuzima sam.
+504. **O-2 bez `GODINA`** ima naslov „Stari i novi LogoMedo” i samo rečenicu o preuzetom katalogu; s godinom naslov
+     „Od bojanki do igre” i rečenica o bojankama (odluka 211). „Više od dvjesto novih riječi” (234) i „deset novih
+     vrsta” (11 − listić) su tekst, ne `BROJKE` (kao odluka 408); S6 ih provjerava uz brojke iz inventure (potvrditi).
+505. **P-4 je provjeren na shemi i kodu**, i dopunjen s dvije istinite stavke koje u `sadrzaj.md` nije bilo:
+     passkey se sprema samo kao javni ključ s oznakom koju logoped upiše (`admin_passkeys.public_key`, `label`), a uz
+     sesiju se pamti preglednik (`admin_sessions.user_agent`). Sesija 12 h / 2 h neaktivnosti
+     (`src/lib/admin/sesija.ts`), kvota 7 dana (`src/lib/kvota.ts`), PDF u pregledniku (`src/lib/pdf/preglednik.ts`).
+     Rečenica „otisak i lice ne napuštaju uređaj” (OP-10) i dalje nije dodana.
+506. **`DEMO_URL` ostaje prazan** i na stagingu: konstanta je ista za oba builda, a slug probne bilježnice sa staginga
+     ne smije u javni repo (odluka 401). G-6 je napisan i provjeren buildom; uključuje ga S6 s produkcijskom demo
+     bilježnicom (koraci na vrhu `S6.md`).
+507. **404 je ostala iz S3** (rečenica o linku na igru za sve, OP-9 po preporuci). `landing-provjera.sh` sada za svaku
+     stranicu provjerava i da nema placeholdera „— S6]”.
+508. **Privatnost ne navodi obrađivače** (hosting, servisi za slike i izgovor), jer odluka 204 zabranjuje nazive
+     servisa na landingu; je li to pravno dovoljno, pitanje je vrata S6 (vrh `S6.md`).
