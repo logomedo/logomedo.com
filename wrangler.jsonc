@@ -60,5 +60,46 @@
     { "pattern": "logomedo.com", "custom_domain": true },
     { "pattern": "www.logomedo.com", "custom_domain": true }
   ],
-  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } }
+  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } },
+
+  // Staging (docs/staging.md, landing odluke 4–9): `npm run build:staging` / `deploy:staging`.
+  // Bindingi se u okruženjima ne nasljeđuju, pa je sve navedeno; staging nikad ne binda
+  // produkcijske resurse. Basic Auth iza OKRUZENJE=staging (src/lib/staging.ts), i za statičke
+  // datoteke (assets.run_worker_first). ACCESS_AUD prazan: /admin/sso vraća 503.
+  "env": {
+    "staging": {
+      "name": "logomedo-staging",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [{ "pattern": "staging.logomedo.com", "custom_domain": true }],
+      "assets": { "run_worker_first": true },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "logomedo-staging",
+          "database_id": "7d5c46bf-2af6-43b4-8c71-46cea0b5cf53",
+          "migrations_dir": "./migrations"
+        }
+      ],
+      "r2_buckets": [
+        { "binding": "SLIKE", "bucket_name": "logomedo-staging-slike" },
+        { "binding": "JAVNO", "bucket_name": "logomedo-staging-javno" }
+      ],
+      "queues": {
+        "producers": [{ "binding": "ZVUKOVI_RED", "queue": "logomedo-staging-zvukovi" }],
+        "consumers": [{ "queue": "logomedo-staging-zvukovi", "max_batch_size": 4, "max_batch_timeout": 2, "max_concurrency": 2, "max_retries": 6, "retry_delay": 60 }]
+      },
+      "durable_objects": { "bindings": [{ "name": "RUNNER_ZVONO", "class_name": "RunnerZvono" }] },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RunnerZvono"] }],
+      "vars": {
+        "ADMIN_HOST": "staging.logomedo.com",
+        "ACCESS_TEAM_DOMAIN": "domovina.cloudflareaccess.com",
+        "ACCESS_AUD": "",
+        "CDN_URL": "https://cdn.logomedo.com",
+        "ZONE_ID": "c12293517eb61e46975c4145f8e66a61",
+        "OKRUZENJE": "staging"
+      },
+      "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } }
+    }
+  }
 }

@@ -7,6 +7,10 @@ declare namespace Cloudflare {
     ADMIN_EMAILS: string;
     /** ElevenLabs (TTS + STT) za izgovor, docs/zvukovi.md. */
     ELEVENLABS_API_KEY: string;
+    /** Samo staging: lozinka Basic Autha (src/lib/staging.ts, docs/staging.md). */
+    STAGING_LOZINKA?: string;
+    /** "staging" samo u env.staging (wrangler.jsonc); u produkciji nije postavljen. */
+    OKRUZENJE?: string;
   }
 }
 

@@ -5,18 +5,22 @@ import { env } from "cloudflare:workers";
 import { runnerOk } from "./lib/runner-auth";
 import { obradi, type PorukaZvuka } from "./lib/zvukovi";
 import { GreskaElevenLabs } from "./lib/elevenlabs";
+import { stagingVrata } from "./lib/staging";
 
 export { RunnerZvono } from "./lib/runner-zvono";
 
+async function ulaz(request: Request, e: Env, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  if (url.pathname === "/api/runner/zvono") {
+    if (!(await runnerOk(request))) return new Response("unauthorized", { status: 401 });
+    return env.RUNNER_ZVONO.getByName("runner").fetch(request);
+  }
+  return handle(request, e, ctx);
+}
+
 export default {
-  async fetch(request, e, ctx) {
-    const url = new URL(request.url);
-    if (url.pathname === "/api/runner/zvono") {
-      if (!(await runnerOk(request))) return new Response("unauthorized", { status: 401 });
-      return env.RUNNER_ZVONO.getByName("runner").fetch(request);
-    }
-    return handle(request, e, ctx);
-  },
+  // Staging (OKRUZENJE=staging, src/lib/staging.ts) je cijeli iza Basic Autha; produkcija ide ravno u ulaz().
+  fetch: (request, e, ctx) => stagingVrata(request, env, () => ulaz(request, e, ctx)),
 
   // Poslovi jedan po jedan: ElevenLabs ograničava istodobne zahtjeve po planu.
   async queue(batch: MessageBatch) {
