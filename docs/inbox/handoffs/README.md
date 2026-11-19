@@ -20,7 +20,7 @@ Handoff se mijenja samo prema naprijed.
 
 | Sesija | Paket | Stanje | Commit | Testovi | Napomena |
 | --- | --- | --- | --- | --- | --- |
-| S0 | Plan | gotovo | (upisuje S0) | 333 | plan, koda inboxa nema; odluke 1–10 |
+| S0 | Plan | gotovo | 24d60ee | 333 | plan, koda inboxa nema; odluke 1–10 |
 | S1 | Istraživanje, temelj, webhook | otvoreno | | | |
 | S2 | Primanje na produkciji, e2e | otvoreno | | | |
 | S3 | `/admin/poruke`, odgovor, brzi odgovori | otvoreno | | | |
