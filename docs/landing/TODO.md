@@ -37,13 +37,14 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F2: stranice
 
-- [ ] `scripts/landing-snimke.ts`: snimke zaslona sa staginga (Playwright), bez osobnih podataka → S4
-- [ ] Stranice `/katalog` i `/radni-listici` (kosturi s hero sekcijom postoje od S3, odluka 305); V-2…V-4 u N-2 naslovne → S4
+- [x] `scripts/landing-snimke.ts`: snimke zaslona sa staginga (Playwright), bez osobnih podataka → S4
+- [x] Stranice `/katalog` i `/radni-listici` (kosturi s hero sekcijom postoje od S3, odluka 305); V-2…V-4 u N-2 naslovne → S4
 - [ ] Stranice `/igre`, `/o-nama`, `/privatnost`, 404 (bez `/aplikacija`, odluka 200) → S5
 
 ## F3: pregled i produkcija
 
 - [ ] Lighthouse po stranici (staging), a11y, mobitel 360 px, tamna tema; brojke u `research/` → S6
+- [ ] Nalaz iz S4 (odluka 405): admin na mobitelu, `.skupina` globalno i `main.sadrzaj` bez `min-width: 0`; popraviti izvan lanca ili u S6 uz pristanak → S6
 - [ ] `/code-review` grane `landing`, nalazi popravljeni ili zapisani → S6
 - [ ] (!) Korisnik pregleda staging i kaže „go”; otvorena pitanja (kontakt adresa) odgovorena → S6
 - [ ] (!) www → apex za statičke stranice (odluka 306) → S6

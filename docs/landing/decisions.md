@@ -179,3 +179,39 @@ Provjera staginga: `research/2026-11-19-provjera-staging-s3.md` (89 OK, 0 greša
      „Listić za tren.” bi bio umjetno nakošen.
 308. **S3: jedan Opus subagent za implementaciju** (`effort: high`); deploy staginga, provjera i rewrite
      `nemas-pristup` u glavnoj sesiji.
+
+## S4 (19. 11. 2026.)
+
+Snimke: `research/2026-11-19-snimke.md` (32 snimke, svaka pregledana). Staging verzija `a6d86944`,
+`scripts/landing-provjera.sh staging.logomedo.com` 118 OK, 0 grešaka.
+
+400. **`playwright-core` 1.65.1 kao točna devDependency, browser je sustavni Google Chrome** (`channel: "chrome"`),
+     bez preuzimanja browsera. `npm run landing:snimke [V-…]`; `--pripremi` kroz admin forme napravi probne podatke.
+401. **Logoped za snimke je aktivni korisnik iz staging `korisnici` s ulogom „logoped”**, a ne prvi redak: prvi je na
+     stagingu superadmin (`/admin/prompt` 200; secret `ADMIN_EMAILS` staginga je korisnikov e-mail, odluka 105). Provjera
+     403 je obavezna prije snimanja. E-mail, kolačić, ID-jevi i slugovi samo u `~/.cache/logomedo-staging/`
+     (`probni.json`, `kolacic`). S4 je to krivo pretpostavio iz handoffa S3.
+402. **Imena snimki** `public/landing/v<N>-<desktop|mobitel>[-tamna].webp`; desktop 1280×800 @1x, mobitel 390×844 @2x
+     (780×1688), samo viewport (V-23 naslovnica smanjena u 1280×800); `cwebp -q 80`. Alt i varijante su u `SNIMKE` u
+     `src/landing/konstante.ts`; test provjerava postojanje i dimenzije.
+403. **Na snimkama nema ni AI-ja ni limita** (odluka 204 vrijedi i za slike): sakriveni su blok „Preostalo (7 dana)”,
+     izgovor i „Generiraj zvukove”, panel izgovora na bilježnici, „Prompt”, „model …” u podnaslovu kataloga i brojke
+     „u redu za generiranje”. Skripta odbija snimku s e-mailom, slugom ili riječima AI, prompt, ElevenLabs, Vertex,
+     Gemini, STT, „Preostalo” (potvrditi).
+404. **Slike riječi na admin snimkama dolaze s `cdn.logomedo.com`**, jer je privatni R2 staginga prazan; ključeve
+     odobrenih slika skripta čita jednim SELECT-om iz staging D1. To su iste slike kao na produkciji.
+405. **Admin na mobitelu ima dva CSS propusta i na produkciji**: globalni `.skupina` iz `AdminOkvir.astro` i
+     `main.sadrzaj` bez `min-width: 0` (A4 list izlazi iz ekrana). Snimke ih zaobilaze CSS-om. Popravak je izvan lanca
+     (admin se ne dira); zapisano za S6 kao nalaz (potvrditi).
+406. **Probni podaci na stagingu** (listići, zadaci, scena, javna „Zimska” i „Proljetna bilježnica”, jedna učitana slika
+     za pregled) nestaju sa `scripts/staging-osvjezi.sh`; nakon osvježavanja ponovno `--pripremi`. V-4, V-20–V-24
+     (igre, S5) su već snimljeni.
+407. **R-4 bez slike**, jer je V-14 već hero iste stranice; **N-3 bez V-13** (nije bio u opsegu) (potvrditi).
+408. **Ograničenja proizvoda** („do 150 slika”, „12–15”, „4 do 12”, „5 mm”) su tekst, ne `BROJKE`: `BROJKE` drži samo
+     brojke kataloga koje S6 provjerava na produkciji.
+409. **Tamna varijanta snimke je CSS** (obje `<picture>` u HTML-u, `data-tema` i `prefers-color-scheme`); svijetla
+     hero snimka se učitava odmah, pa posjetitelj s tamnom temom preuzme jednu sliku više (prihvaćeno).
+410. **Alt V-16** je „Kolo sa slovima stalo je na glasu; zatim dijete među slikama traži one koje počinju tim
+     glasom.” (snimka pokazuje zaustavljeno kolo; `sadrzaj.md` usklađen).
+411. **S4: dva Opus subagenta paralelno** (snimke; stranice), `effort: high`; pregled snimki, deploy i provjera u glavnoj
+     sesiji. Pregled je vratio snimke jednom (odluka 403).

@@ -61,3 +61,6 @@ S2 (19. 11. 2026.): inventura (`research/2026-11-19-inventura.md`) i `sadrzaj.md
 
 S3 (19. 11. 2026.): kostur `src/landing/`, naslovna, kosturi ostalih pet stranica, `public/_headers`, robots,
 sitemap, OG, 404, `scripts/landing-provjera.sh` (staging 89 OK, 0 grešaka). 296 testova (pass 296, skipped 0).
+
+S4 (19. 11. 2026.): `scripts/landing-snimke.ts` (32 snimke, pregledane), `/katalog`, `/radni-listici`, snimke u N-2;
+staging `a6d86944`, provjera 118 OK, 0 grešaka. 302 testa (pass 302, skipped 0).

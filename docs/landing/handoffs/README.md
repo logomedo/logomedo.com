@@ -28,7 +28,7 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 | S1 | Staging | gotovo | 8566e75 | 294 | staging.logomedo.com iza lozinke, kopija produkcijske D1; odluke 100–106 |
 | S2 | Inventura i tekstovi | gotovo | ed07514 | 287 | `sadrzaj.md` (6 stranica + 404, bez `/aplikacija`), inventura; staging bez Basic Autha (odluka 207); odluke 200–212 |
 | S3 | Kostur i naslovna | gotovo | a5cd7f3 | 296 | `src/landing/`, naslovna, kosturi podstranica, `_headers`, SEO, OG; staging `607dd115`, provjera 89/0; odluke 300–308 |
-| S4 | Snimke, katalog, radni listići | otvoreno | | | |
+| S4 | Snimke, katalog, radni listići | gotovo | d332dc1 | 302 | `scripts/landing-snimke.ts`, 32 snimke pregledane (i V-4, V-20–V-24 za S5); `/katalog`, `/radni-listici`; staging `a6d86944`, provjera 118/0; odluke 400–411 |
 | S5 | Ostale stranice | otvoreno | | | |
 | S6 | Pregled, **vrata**, produkcija | otvoreno | | | |
 
