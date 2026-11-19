@@ -1,0 +1,102 @@
+---
+// Novi razgovor iz admina (docs/inbox/, S4): prvi mail logopedu ili podnositelju zahtjeva, s `reply_to` novog
+// razgovora, pa odgovor stiže u /admin/poruke. Polja se mogu predati kroz ?email=&ime=&predmet= (link s
+// /admin/zahtjevi i /admin/korisnici). Samo superadmin. Jednokratni ključ obrasca kao u odgovoru (odluka 312).
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { smije } from "../../../lib/admin/ovlasti";
+import { PREDMET_MAX, posaljiNoviRazgovor } from "../../../lib/email";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+const q = Astro.url.searchParams;
+const v = { email: q.get("email") ?? "", ime: q.get("ime") ?? "", predmet: q.get("predmet") ?? "", tekst: "" };
+let greska: string | null = null;
+const kljucSlanja = crypto.randomUUID();
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  for (const k of ["email", "ime", "predmet", "tekst"] as const) v[k] = String(f.get(k) ?? "");
+  if (v.tekst.length > 20000) greska = "Poruka je preduga (najviše 20 000 znakova).";
+  else {
+    const r = await posaljiNoviRazgovor({ ...v, poslao: s.email, kljucSlanja: String(f.get("kljuc") ?? "") });
+    if (r.ok) return Astro.redirect(`/admin/poruke/${r.razgovorId}?ok=poslano`, 303);
+    greska = {
+      nema_kljuca: "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY). Ništa nije poslano ni upisano.",
+      email: "E-mail nije ispravan.",
+      predmet: `Upiši predmet (najviše ${PREDMET_MAX} znakova).`,
+      prazno: "Poruka je prazna.",
+      u_tijeku: "Poruka se već šalje (dvostruki klik). Pogledaj popis poruka za trenutak.",
+      greska: "Slanje nije uspjelo, ništa nije upisano. Pokušaj ponovno za minutu.",
+    }[r.razlog];
+    if (r.razlog === "greska") console.error("novi razgovor nije poslan", r.detalj);
+  }
+  Astro.response.status = 400;
+}
+---
+<AdminOkvir naslov="Novi razgovor" aktivno="poruke">
+  <p class="natrag"><a href="/admin/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
+  <h1>Novi razgovor</h1>
+  <p class="podnaslov">Prvi mail šalje se s bok@logomedo.com; odgovor stiže ovamo, u Poruke.</p>
+
+  <section class="ploha obrazac-ploha">
+    {greska && <p class="obavijest greska" role="alert" id="greska">{greska}</p>}
+    <form method="post" class="obrazac" id="novi-obrazac">
+      <input type="hidden" name="kljuc" value={kljucSlanja} />
+      <div class="polja">
+        <label>E-mail <input type="email" name="email" required maxlength="254" value={v.email} autocomplete="off" /></label>
+        <label>Ime <input name="ime" maxlength="120" value={v.ime} autocomplete="off" /></label>
+      </div>
+      <label>Predmet <input name="predmet" required maxlength={PREDMET_MAX} value={v.predmet} /></label>
+      <label>Poruka <textarea name="tekst" rows="10" required maxlength="20000" placeholder="Pozdrav,…">{v.tekst}</textarea></label>
+      <div class="akcije">
+        <span class="stanje-slanja blijedo sitno" id="stanje-slanja" role="status" aria-live="polite"></span>
+        <button class="gumb glavni" type="submit" id="posalji"><Ikona ime="pismo" /> <span class="natpis-gumba">Pošalji</span></button>
+      </div>
+    </form>
+  </section>
+</AdminOkvir>
+<script>
+  // Gumb zaključan dok slanje traje; drugi submit se ignorira (server ima Idempotency-Key).
+  const obrazac = document.getElementById("novi-obrazac") as HTMLFormElement | null;
+  const gumb = document.getElementById("posalji") as HTMLButtonElement | null;
+  const stanje = document.getElementById("stanje-slanja");
+  obrazac?.addEventListener("submit", (e) => {
+    if (obrazac.dataset.salje) { e.preventDefault(); return; }
+    obrazac.dataset.salje = "1";
+    setTimeout(() => {
+      if (!gumb) return;
+      gumb.disabled = true;
+      gumb.setAttribute("aria-busy", "true");
+      const n = gumb.querySelector(".natpis-gumba");
+      if (n) n.textContent = "Šaljem…";
+      if (stanje) stanje.textContent = "Šaljem, pričekaj nekoliko sekundi.";
+    });
+  });
+  addEventListener("pageshow", (e) => {
+    if (!e.persisted || !obrazac || !gumb) return;
+    delete obrazac.dataset.salje;
+    gumb.disabled = false;
+    gumb.removeAttribute("aria-busy");
+    const n = gumb.querySelector(".natpis-gumba");
+    if (n) n.textContent = "Pošalji";
+    if (stanje) stanje.textContent = "";
+  });
+</script>
+<style>
+  .natrag { margin: 0 0 8px; font-size: .88rem; }
+  .natrag a { display: inline-flex; align-items: center; gap: 4px; color: var(--blijedo); text-decoration: none; }
+  .natrag :global(svg) { width: 16px; height: 16px; }
+  .obrazac-ploha { padding: 16px 18px; margin-top: 16px; max-width: 780px; box-sizing: border-box; }
+  .obavijest.greska { color: var(--greska); font-weight: 600; font-size: .9rem; margin: 0 0 10px; }
+  .obrazac { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+  .polja { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; font-weight: 600; min-width: 0; }
+  input, textarea { font: inherit; font-weight: 400; min-width: 0; box-sizing: border-box; width: 100%; }
+  textarea { resize: vertical; min-height: 160px; }
+  .akcije { display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  .sitno { font-size: .8rem; }
+  #posalji[aria-busy="true"] { cursor: progress; opacity: .85; }
+  @media (max-width: 560px) { .polja { grid-template-columns: 1fr; } }
+</style>

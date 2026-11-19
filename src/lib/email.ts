@@ -5,8 +5,9 @@ import { env } from "cloudflare:workers";
 import { odgovor, pozivnica } from "./emails/generirano";
 import {
   adresaZaOdgovor, bezCitata, messageIdovi, noviRazgovor, obrisiPrazanRazgovor, porukaPoResendId, postaviMessageId, razdvojiAdresu,
-  spremiOdlaznu, zaOdgovor,
+  razgovorPoruke, spremiOdlaznu, zaOdgovor,
 } from "./poruke";
+import { ispravanEmail, normalizirajEmail } from "./admin/pozivi";
 
 export const POSILJATELJ = "LogoMedo <pozivnica@logomedo.com>";
 /** Pošiljatelj odgovora iz /admin/poruke; odgovor na njega ide na `reply_to` razgovora, ne na ovu adresu. */
@@ -149,6 +150,8 @@ export interface Odgovor {
   razgovorId: number; tekst: string; /** E-mail superadmina. */ poslao: string;
   /** Jednokratni ključ obrasca: isti ključ = isto slanje (dvoklik, ponovljeni POST). Ide u Resend `Idempotency-Key`. */
   kljucSlanja?: string;
+  /** Prvi mail novog razgovora (S4): predmet bez „Re:”, ključ idempotencije ne ovisi o id-ju razgovora. */
+  prvi?: boolean;
 }
 
 export type IshodOdgovora = IshodSlanja | { ok: false; razlog: "nema_razgovora" | "prazno" | "u_tijeku" };
@@ -157,9 +160,9 @@ export type IshodOdgovora = IshodSlanja | { ok: false; razlog: "nema_razgovora" 
 export const KLJUC_SLANJA = /^[A-Za-z0-9-]{16,64}$/;
 
 /** Sadržaj odgovora iz predloška (emails/Odgovor.tsx). Čisto, bez D1 i mreže (testovi, pregled). */
-export function sadrzajOdgovora(p: { tekst: string; predmet: string | null; citat?: { od: string; kada: string; text: string | null } | null }): { subject: string; text: string; html: string } {
+export function sadrzajOdgovora(p: { tekst: string; predmet: string | null; citat?: { od: string; kada: string; text: string | null } | null; prvi?: boolean }): { subject: string; text: string; html: string } {
   const tekst = p.tekst.replace(/\r\n?/g, "\n").trim();
-  const subject = predmetOdgovora(p.predmet);
+  const subject = p.prvi ? (p.predmet ?? "").trim() || "LogoMedo" : predmetOdgovora(p.predmet);
   const c = p.citat ? kratkiCitat(p.citat.text) : "";
   let citatText = "", citatHtml = "";
   if (p.citat && c) {
@@ -198,13 +201,14 @@ export async function posaljiOdgovor(o: Odgovor, f: typeof fetch = fetch, cekaj 
     tekst,
     predmet: z.dolazna?.predmet ?? z.razgovor.predmet ?? z.odlazna?.predmet ?? null,
     citat: z.dolazna ? { od: z.dolazna.od, kada: z.dolazna.created_at, text: z.dolazna.text } : null,
+    prvi: o.prvi,
   });
   const headers: Record<string, string> = {};
   if (inReplyTo) { headers["In-Reply-To"] = inReplyTo; headers.References = reference.join(" "); }
   const za = z.razgovor.ime ? `${z.razgovor.ime.replace(/["<>\r\n]/g, "")} <${z.razgovor.email}>` : z.razgovor.email;
   const zaglavlja: Record<string, string> = { Authorization: `Bearer ${kljuc}`, "Content-Type": "application/json" };
   // Isti ključ unutar 24 h: Resend ne šalje ponovno nego vrati isti id (odluka 312).
-  if (o.kljucSlanja && KLJUC_SLANJA.test(o.kljucSlanja)) zaglavlja["Idempotency-Key"] = `odgovor-${z.razgovor.id}-${o.kljucSlanja}`;
+  if (o.kljucSlanja && KLJUC_SLANJA.test(o.kljucSlanja)) zaglavlja["Idempotency-Key"] = o.prvi ? `novi-${o.kljucSlanja}` : `odgovor-${z.razgovor.id}-${o.kljucSlanja}`;
   let ishod: IshodSlanja;
   try {
     const r = await f("https://api.resend.com/emails", {
@@ -237,4 +241,40 @@ export async function posaljiOdgovor(o: Odgovor, f: typeof fetch = fetch, cekaj 
     console.error("odgovor: poslan, ali upis u razgovor nije uspio", ishod.id, String((e as Error)?.message ?? e));
   }
   return ishod;
+}
+
+export interface NoviRazgovor {
+  email: string; ime: string; predmet: string; tekst: string; /** E-mail superadmina. */ poslao: string; kljucSlanja?: string;
+}
+export type IshodNovog =
+  | { ok: true; razgovorId: number }
+  | { ok: false; razlog: "nema_kljuca" | "greska" | "u_tijeku" | "prazno" | "email" | "predmet"; detalj?: string };
+
+export const PREDMET_MAX = 200;
+
+/**
+ * Novi razgovor iz admina (S4, npr. s /admin/zahtjevi): otvori razgovor, pošalji prvi mail kroz `posaljiOdgovor`
+ * (isti predložak, `reply_to` razgovora, bez citata i bez „Re:”) i upiši ga. Neuspjeh briše prazan razgovor.
+ * Ponovljeni POST s istim ključem obrasca: Resend vrati id već poslanog maila, pa se vraća onaj razgovor.
+ */
+export async function posaljiNoviRazgovor(n: NoviRazgovor, f: typeof fetch = fetch, cekaj = 1500): Promise<IshodNovog> {
+  if (!env.RESEND_API_KEY) return { ok: false, razlog: "nema_kljuca" };
+  const email = normalizirajEmail(n.email);
+  if (!ispravanEmail(email)) return { ok: false, razlog: "email" };
+  const predmet = n.predmet.replace(/[\r\n]+/g, " ").trim();
+  if (!predmet || predmet.length > PREDMET_MAX) return { ok: false, razlog: "predmet" };
+  if (!n.tekst.trim()) return { ok: false, razlog: "prazno" };
+  const ime = n.ime.replace(/[\r\n"<>]+/g, " ").trim().slice(0, 120) || null;
+  const raz = await noviRazgovor({ email, ime, predmet });
+  const r = await posaljiOdgovor({ razgovorId: raz.id, tekst: n.tekst, poslao: n.poslao, kljucSlanja: n.kljucSlanja, prvi: true }, f, cekaj);
+  if (!r.ok) {
+    await obrisiPrazanRazgovor(raz.id);
+    return r.razlog === "nema_razgovora" ? { ok: false, razlog: "greska" } : { ok: false, razlog: r.razlog, detalj: "detalj" in r ? r.detalj : undefined };
+  }
+  const vlasnik = await razgovorPoruke(r.id);
+  if (vlasnik && vlasnik !== raz.id) {
+    await obrisiPrazanRazgovor(raz.id);
+    return { ok: true, razgovorId: vlasnik };
+  }
+  return { ok: true, razgovorId: raz.id };
 }

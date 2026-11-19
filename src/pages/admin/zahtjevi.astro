@@ -96,6 +96,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
               <input type="hidden" name="id" value={z.id} />
               <button class="gumb mali opasno" type="submit"><Ikona ime="x" /> Odbij</button>
             </form>
+            <a class="gumb mali" href={`/admin/poruke/novi?${new URLSearchParams({ email: z.email, ime: z.ime, predmet: "Vaš zahtjev za pristup LogoMedu" })}`}><Ikona ime="pismo" /> Napiši</a>
           </div>
         </article>
       ))}

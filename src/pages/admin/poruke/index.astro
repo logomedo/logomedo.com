@@ -24,7 +24,10 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
       <p class="podnaslov">Odgovori na mailove iz LogoMeda (pozivnice, odgovori odavde). Stižu na
         poruke.logomedo.com i ostaju ovdje; odgovara se iz razgovora.</p>
     </div>
-    <a class="gumb mali" href="/admin/poruke/brzi"><Ikona ime="iskra" /> Brzi odgovori</a>
+    <div class="gumbi">
+      <a class="gumb mali" href="/admin/poruke/brzi"><Ikona ime="iskra" /> Brzi odgovori</a>
+      <a class="gumb glavni mali" href="/admin/poruke/novi"><Ikona ime="plus" /> Novi razgovor</a>
+    </div>
   </div>
 
   {razgovori.length === 0 ? <p class="blijedo" id="nema-poruka">Još nema razgovora.</p> : (
@@ -54,6 +57,7 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
   if (p?.dataset.url) pratiPoruke(p.dataset.url, p.dataset.potpis ?? "", () => location.reload());
 </script>
 <style>
+  .gumbi { display: flex; gap: 8px; flex-wrap: wrap; }
   .naslov { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
   .razgovori { list-style: none; margin: 20px 0 0; padding: 0; overflow: hidden; }
   .razgovor + .razgovor { border-top: 1px solid var(--rub); }

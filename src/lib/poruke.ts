@@ -232,6 +232,12 @@ export async function spremiOdlaznu(o: Odlazna): Promise<number> {
 }
 
 /** Postoji li već poruka s tim Resend id-jem (ponovljeno slanje s istim Idempotency-Key). */
+/** Razgovor kojem pripada poruka s ovim Resend id-jem (ponovljeno slanje novog razgovora). */
+export async function razgovorPoruke(resendId: string): Promise<number | null> {
+  const r = await db().prepare("SELECT razgovor_id FROM poruke WHERE resend_id = ?").bind(resendId).first<{ razgovor_id: number }>();
+  return r?.razgovor_id ?? null;
+}
+
 export async function porukaPoResendId(resendId: string): Promise<number | null> {
   return (await db().prepare("SELECT id FROM poruke WHERE resend_id = ?").bind(resendId).first<{ id: number }>())?.id ?? null;
 }
