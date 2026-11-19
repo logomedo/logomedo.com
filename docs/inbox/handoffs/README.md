@@ -24,7 +24,8 @@ Handoff se mijenja samo prema naprijed.
 | S1 | Istraživanje, temelj, webhook | gotovo | f9c1cec | 360 | research s izvorima; staging probni webhook zelen (200/401/401/duplikat); odluke 100–111 |
 | S2 | Primanje na produkciji, e2e | gotovo | d3e8251 | 361 | poddomena zaseban Resend domain, MX/DKIM/webhook/secret na produkciji; pozivnica s Reply-To; e2e: odgovor iz Gmaila u razgovoru 1 s 2 privitka u R2, In-Reply-To = SES message_id; odluke 200–206 |
 | S3 | `/admin/poruke`, odgovor, brzi odgovori | gotovo | faccd21 | 378 | e2e na produkciji 19. 11. (nit u Gmailu, odgovor natrag u razgovor 1, brzi odgovor); dodano: zaključan gumb + Idempotency-Key (312), polling novih poruka (313); odluke 300–313 |
-| S4 | Retencija, obavijesti, SPF/DKIM, dokumentacija | otvoreno | | | |
+| S4 | Retencija, obavijesti, SPF/DKIM, dokumentacija | gotovo | 70f4a0f | 395 | produkcija 495af0f7 + migracija 0040; e2e: obavijest o zahtjevu isporučena superadminima; `docs/inbox.md`; apex SPF s Googleom (uz korisnikov „da”); Google DKIM čeka korisnika (S5); odluke 400–406 |
+| S5 | Google DKIM apexa | čeka korisnika | | | pitanje na vrhu `S5.md`; bez toga je lanac zatvoren |
 
 ## Zajednička pravila (svaka sesija)
 

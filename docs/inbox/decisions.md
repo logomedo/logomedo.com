@@ -135,3 +135,36 @@ kaže. Blokovi: S0 1–99, S1 100–199, S2 200–299, S3 300–399, S4 400–49
      kad postane vidljiva). Kad se potpis promijeni, popis se osvježi, a nit se osvježi tek nakon što se nacrt odgovora
      spremi u `sessionStorage` i poslije vrati; dok slanje traje, nit se ne osvježava. Trošak: jedan mali D1 upit po
      otvorenoj kartici svakih 12 s.
+
+## S4 (19. 11. 2026.)
+
+400. **Retencija** (`src/lib/poruke-retencija.ts`, `pocistiPoruke`): pri otvaranju `/admin/poruke` (kao `pocisti()` za
+     zahtjeve, bez crona) brišu se razgovori kojima je zadnja poruka starija od `PORUKE_ROK_MJESECI` (24), sa svim
+     porukama, privitcima u D1 i R2 i redom u `obavijesti`, te razgovori bez ijedne poruke stariji od 24 h (ostatak
+     neuspjele pozivnice). Prvo R2, pa D1 u jednom batchu: ako R2 padne, D1 ostaje i sljedeće otvaranje ponovi. Brisanje
+     po tablicama, ne kroz `ON DELETE CASCADE`. Najviše 200 razgovora po otvaranju. Greška ne ruši popis.
+401. **Obavijest superadminu** (`src/lib/obavijesti.ts`, `emails/Obavijest.tsx`): šalje `LogoMedo <obavijesti@logomedo.com>`
+     (domena je već verificirana u Resendu), `reply_to` `bok@logomedo.com`, na sve adrese iz `ADMIN_EMAILS` u jednom mailu.
+     Mail nema ime, adresu ni sadržaj, samo link (`/admin/poruke/<id>` ili `/admin/zahtjevi`): ide u vanjski pretinac,
+     a sve ostalo je iza prijave. Najviše jedna na sat po razgovoru, odnosno jedna na sat za sve zahtjeve (tablica
+     `obavijesti`, migracija 0040, atomski upsert s uvjetom); neuspjelo slanje oslobađa mjesto. Ne baca: webhook i
+     `/pristup` nikad ne padnu zbog obavijesti. Zahtjev koji se nije upisao (otvoreni za isti e-mail, honeypot) ne
+     obavještava. Mijenja odluku 710 landinga (umjesto Cloudflare Email Servicea ide Resend). (potvrditi: bez imena)
+402. **Novi razgovor iz admina** (`/admin/poruke/novi`, `posaljiNoviRazgovor` u `src/lib/email.ts`): e-mail, ime, predmet,
+     poruka; polja se mogu predati kroz `?email=&ime=&predmet=`. Gumb „Napiši” na `/admin/zahtjevi` i „Novi razgovor” na
+     `/admin/poruke`. Šalje kroz `posaljiOdgovor` (`prvi: true`): predmet bez „Re:”, bez citata i `In-Reply-To`,
+     `Idempotency-Key` `novi-<ključ obrasca>` (ne ovisi o id-ju razgovora). Ponovljeni POST vraća razgovor već poslanog
+     maila i briše prazan novi; neuspjeh briše prazan razgovor. `/admin/korisnici` zasad nema poveznicu (dodati po potrebi).
+403. **E2e na produkciji** (verzija `495af0f7`): probni zahtjev na `/pristup` (adresa `@primjer.test`) → Resend
+     „Novi zahtjev za pristup LogoMedu” `delivered`, 3 primatelja (ADMIN_EMAILS); probni zahtjev i red `obavijesti`
+     zatim obrisani. Grana obavijesti iz webhooka (nova poruka) pokrivena je testom; na produkciji se vidi pri prvom
+     sljedećem stvarnom odgovoru.
+404. **Rok čuvanja 24 mjeseca** od zadnje poruke ostaje (odluka 204; pitanje u S4 bez odgovora korisnika u roku). (auto, potvrditi)
+405. **SPF apexa uključuje Google** (korisnikov „da” kroz orkestratora, 19. 11.): u Cloudflare dashboardu (Brave)
+     zapis `v=spf1 include:_spf.firebasemail.com ~all` promijenjen u
+     `v=spf1 include:_spf.google.com include:_spf.firebasemail.com ~all` (provjereno `dig @1.1.1.1` i `@8.8.8.8`);
+     ništa drugo u zoni nije dirano. Firebase ostaje dok se ne potvrdi da stari app više ne šalje. **Google DKIM čeka
+     korisnika** (`google._domainkey.logomedo.com` ne postoji; generira se u Google Adminu): koraci su na vrhu
+     `handoffs/S5.md`. DMARC ostaje `p=none`.
+406. **Resend API ključ logomedo.com je lokalno** u `~/.config/logomedo/secrets.env` (odluka 201 vrijedi; S4 ga je
+     koristio samo za `GET /emails`, bez ispisa).

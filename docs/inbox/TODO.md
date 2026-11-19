@@ -43,10 +43,14 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F3: zatvaranje
 
-- [ ] Retencija poruka i privitaka (pri otvaranju `/admin/poruke`, kao `pristup.ts`) → S4
-- [ ] Obavijest superadminu e-poštom o novoj poruci i novom zahtjevu za pristup (odluka 710 landinga) → S4
-- [ ] Novi zahtjev na `/pristup` i ručni „Novi razgovor” iz admina → S4
+- [x] Retencija poruka i privitaka (pri otvaranju `/admin/poruke`, kao `pristup.ts`), odluka 400 → S4
+- [x] Obavijest superadminu e-poštom o novoj poruci i novom zahtjevu za pristup (odluka 401; e2e isporučeno, 403) → S4
+- [x] Novi zahtjev na `/pristup` (obavijest) i ručni „Novi razgovor” iz admina (`/admin/poruke/novi`, odluka 402) → S4
 - [x] Gumb „Pošalji” zaključan uz „Šaljem…”, Idempotency-Key protiv dvostrukog slanja (odluka 312) → S3
 - [x] Nove poruke bez ručnog osvježavanja: polling 12 s dok je kartica vidljiva (odluka 313) → S3
-- [ ] (!) Apex `logomedo.com`: `include:_spf.google.com` u SPF i Google DKIM (Google Admin) prije DMARC `quarantine` → S4 / korisnik
-- [ ] Produkcija, e2e, `docs/inbox.md` (kako radi) → S4
+- [x] Apex SPF `include:_spf.google.com` (firebasemail ostaje), odluka 405 → S4
+- [ ] (!) Google DKIM za `logomedo.com` (Google Admin → TXT `google._domainkey` u Cloudflare) prije DMARC `quarantine` → S5 / korisnik
+- [ ] DMARC `p=quarantine` nakon 2–4 tjedna izvještaja s Google SPF/DKIM bez neuspjeha (Cloudflare DMARC Management) → korisnik
+- [ ] `_spf.firebasemail.com` iz SPF-a kad se potvrdi da stari app više ne šalje → korisnik
+- [ ] Poveznica „Napiši” na `/admin/korisnici` (po potrebi)
+- [x] Produkcija (`495af0f7`), e2e obavijesti, `docs/inbox.md` (kako radi) → S4

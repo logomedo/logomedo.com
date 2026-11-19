@@ -61,3 +61,9 @@ S2 (`d3e8251`): `poruke.logomedo.com` je zaseban Resend domain (samo primanje), 
 secret na produkciji, migracija 0039 na produkciji; pozivnica šalje `reply_to` razgovora i upisuje kopiju bez tokena;
 `/privatnost` ima dopisivanje i Resend. E2e prošao: odgovor iz Gmaila s dva privitka je u razgovoru pozivnice,
 `In-Reply-To` je Resendov (SES) `message_id` odlaznog maila.
+
+S3 (`faccd21`): `/admin/poruke` (popis, nit, HTML u sandboxu, privitci), odgovor iz admina u istoj niti, brzi
+odgovori, Idempotency-Key, polling novih poruka. E2e na produkciji prošao.
+
+S4 (`70f4a0f`, produkcija `495af0f7`): retencija 24 mj., obavijesti superadminu (nova poruka, novi zahtjev; e2e
+isporučeno), novi razgovor iz admina, `docs/inbox.md`. Apex SPF uključuje Google. Otvoreno: Google DKIM čeka korisnika (`handoffs/S5.md`).
