@@ -9,17 +9,17 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F0: staging (na `main`, produkcija se ne mijenja)
 
-- [ ] Izmjeriti kako `@astrojs/cloudflare` bira okruženje (`CLOUDFLARE_ENV`) i kamo piše `wrangler.json`; zapis u `research/` → S1
-- [ ] `env.staging` u `wrangler.jsonc`: Worker `logomedo-staging`, ruta `staging.logomedo.com` (custom domain), vlastiti D1/R2/queue/DO, `vars` za staging → S1
-- [ ] Dokaz da je produkcijski build nepromijenjen: `dist/server/wrangler.json` prije i poslije jednak (diff prazan) → S1
-- [ ] Staging build ne dijeli `dist/` s produkcijskim (paralelne sesije) → S1
-- [ ] `npm run deploy:staging`, `npm run db:migrate:staging` → S1
-- [ ] Resursi: `wrangler d1 create logomedo-staging`, R2 `logomedo-staging-slike` i `logomedo-staging-javno`, queue `logomedo-staging-zvukovi` → S1
-- [ ] Zaštita staginga: Basic Auth za cijeli host kad je `OKRUZENJE=staging` (osim `/api/v1`, `/api/runner/*`), i za statičke datoteke; `x-robots-tag: noindex`; testovi da produkcija bez `OKRUZENJE` radi kao prije → S1
-- [ ] Kopija produkcijske D1 u `logomedo-staging` (`scripts/staging-osvjezi.sh`), dump samo izvan repoa i obrisan nakon importa → S1
-- [ ] Prijava u admin na stagingu bez Accessa i passkeya: `scripts/staging-sesija.sh` upisuje sesiju u staging D1 → S1
-- [ ] e2e: `curl` bez lozinke 401, s lozinkom 200 na `/`, admin sa sesijom 200, broj redaka ključnih tablica staging = produkcija u trenutku kopije → S1
-- [ ] `docs/staging.md` (kako se deploya, osvježava, prijavljuje, što ne radi) → S1
+- [x] Izmjeriti kako `@astrojs/cloudflare` bira okruženje (`CLOUDFLARE_ENV`) i kamo piše `wrangler.json`; zapis u `research/` → S1
+- [x] `env.staging` u `wrangler.jsonc`: Worker `logomedo-staging`, ruta `staging.logomedo.com` (custom domain), vlastiti D1/R2/queue/DO, `vars` za staging → S1
+- [x] Dokaz da je produkcijski build nepromijenjen: `dist/server/wrangler.json` prije i poslije jednak (diff prazan) → S1
+- [x] Staging build ne dijeli `dist/` s produkcijskim (paralelne sesije) → S1
+- [x] `npm run deploy:staging`, `npm run db:migrate:staging` → S1
+- [x] Resursi: `wrangler d1 create logomedo-staging`, R2 `logomedo-staging-slike` i `logomedo-staging-javno`, queue `logomedo-staging-zvukovi` → S1
+- [x] Zaštita staginga: Basic Auth za cijeli host kad je `OKRUZENJE=staging` (osim `/api/v1`, `/api/runner/*`), i za statičke datoteke; `x-robots-tag: noindex`; testovi da produkcija bez `OKRUZENJE` radi kao prije → S1
+- [x] Kopija produkcijske D1 u `logomedo-staging` (`scripts/staging-osvjezi.sh`), dump samo izvan repoa i obrisan nakon importa → S1
+- [x] Prijava u admin na stagingu bez Accessa i passkeya: `scripts/staging-sesija.sh` upisuje sesiju u staging D1 → S1
+- [x] e2e: `curl` bez lozinke 401, s lozinkom 200 na `/`, admin sa sesijom 200, broj redaka ključnih tablica staging = produkcija u trenutku kopije → S1
+- [x] `docs/staging.md` (kako se deploya, osvježava, prijavljuje, što ne radi) → S1
 
 ## F1: sadržaj i kostur (grana `landing`)
 

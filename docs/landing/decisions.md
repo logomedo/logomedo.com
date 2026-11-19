@@ -71,3 +71,35 @@ izvan ovog direktorija piši „landing odluka N”.
     `landing` i na kraju objavi staging u `main` s `git fetch && git rebase origin/main && git push
     origin HEAD:main` (fast-forward), pa pusha i `landing`. S2–S5 pushaju samo `landing`. S6 nakon
     „go” isto tako (`git push origin HEAD:main`). Glavna radna kopija se iz lanca nikad ne dira.
+
+## S1 (19. 11. 2026.)
+
+100. **Staging build u `dist-staging/`** (`npm run build:staging`, `scripts/staging-build.sh`), deploy
+     s `--config dist-staging/server/wrangler.json`. `@cloudflare/vite-plugin` pri svakom buildu
+     prepiše `.wrangler/deploy/config.json`, pa ga skripta vraća na `dist/server`; staging naredbe
+     uvijek imaju `--config wrangler.jsonc --env staging`. Razlog: paralelni `npm run deploy` ili
+     `npm run db:migrate` ne smiju pokupiti staging. Revizija: ako plugin dobije opciju za redirect.
+101. **Razlika `definedEnvironments: ["staging"]` u produkcijskom `dist/server/wrangler.json` je
+     prihvaćena** (potvrditi). Jedini učinak: produkcijski deploy doda Workeru tag
+     `cf:service=logomedo` (grupiranje u dashboardu) i ispiše upozorenje o okruženjima. Kod, bindingi,
+     rute i `vars` su isti (research `2026-11-19-astro-cloudflare-okruzenja.md`). Revizija: ako S6
+     nakon deploya vidi bilo koju drugu promjenu.
+102. **Zaštita staginga je u `src/worker.ts`** (omotač `stagingVrata` iz `src/lib/staging.ts`), ne u
+     `src/middleware.ts`: tako pokriva i statičke datoteke (`assets.run_worker_first: true` samo u
+     `env.staging`) i `/api/runner/zvono`. Usporedba lozinke: SHA-256 obiju strana pa XOR (radi i u
+     `node --test`). Izuzeci `/api/v1*` i `/api/runner/*` se provjeravaju na dekodiranoj putanji bez
+     `..` i `//`. Produkcija bez `OKRUZENJE` vraća točno odgovor iz `ulaz()`.
+103. **`OKRUZENJE` i `STAGING_LOZINKA` su opcionalni u `src/env.d.ts`**, a `wrangler types` se nije
+     pokretao (potvrditi): s `env.staging` bi generirani tipovi `vars` postali unije i promijenili
+     `worker-configuration.d.ts` bez koristi. Worker ih čita iz `env` iz `cloudflare:workers`.
+104. **Kopija produkcije: shema iz migracija + `export --no-schema`.** Puni dump se ne može
+     importati (redoslijed tablica, D1 import u dijelovima, samoreference), pa
+     `src/lib/staging-dump.ts` slaže naredbe roditelj → dijete i samoreference upisuje `UPDATE`-om.
+     Export blokira produkcijsku D1 4–7 s. Revizija: ako Cloudflare doda export bez blokiranja ili
+     import iz Time Travel kopije.
+105. **Superadmin na stagingu je zaseban secret `ADMIN_EMAILS` staginga** (potvrditi), postavlja ga
+     `scripts/staging-sesija.sh <email> --superadmin` (prepiše popis jednim e-mailom). U S1 postavljen
+     na e-mail korisnika za e2e. Logopedi iz kopije `korisnici` rade sa sesijom bez toga.
+106. **S1 je rađen u glavnoj sesiji bez subagenata** (iznimka od pravila orkestracije): paket je bio
+     niz ovisnih infrastrukturnih koraka (resursi → konfiguracija → deploy → podaci → e2e), a kod
+     je bio mali (dvije datoteke s testovima). S2–S5 se vraćaju na pravilo.
