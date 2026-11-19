@@ -24,7 +24,7 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 
 | Sesija | Paket | Stanje | Commit | Testovi | Napomena |
 | --- | --- | --- | --- | --- | --- |
-| S0 | Plan | gotovo | (upisuje S0) | 276 | plan, koda nema; odluke 1–17 |
+| S0 | Plan | gotovo | 26e55c6 | 276 | plan, koda nema; odluke 1–17 |
 | S1 | Staging | otvoreno | | | |
 | S2 | Inventura i tekstovi | otvoreno | | | |
 | S3 | Kostur i naslovna | otvoreno | | | |
