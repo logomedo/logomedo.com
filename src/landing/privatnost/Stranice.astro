@@ -1,5 +1,6 @@
 ---
 // P-2 Ove stranice (odluka 12: bez analitike, kolačića i vanjskih skripti; landing nema skripti ni obrazaca).
+// Zapisi hostinga (Cloudflare) navedeni su jer ih GDPR traži (landing odluka 603).
 import Sekcija from "../Sekcija.astro";
 ---
 <Sekcija id="stranice" naslov="Stranice logomedo.com">
@@ -7,5 +8,7 @@ import Sekcija from "../Sekcija.astro";
     <li>Bez kolačića, analitike i praćenja.</li>
     <li>Bez vanjskih skripti i fontova: sve se učitava s logomedo.com.</li>
     <li>Nema obrasca koji bi skupljao podatke.</li>
+    <li>Kao i kod svake web stranice, poslužitelj za svaki zahtjev vidi tehničke podatke: IP adresu, vrijeme, adresu stranice i
+      preglednik. Koristimo ih samo za sigurnost i ispravan rad stranica.</li>
   </ul>
 </Sekcija>

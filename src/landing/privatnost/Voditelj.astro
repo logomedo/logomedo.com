@@ -1,10 +1,10 @@
 ---
-// P-5 Tko odgovara za podatke: samo uz VODITELJ_OBRADE i KONTAKT (odluka 210, landing odluka 503).
+// P-5 Tko odgovara za podatke (odluka 210; landing odluke 503, 600): voditelj obrade je ITalk d.o.o., pitanja na TVRTKA.privatnost.
 import Sekcija from "../Sekcija.astro";
-import { KONTAKT, VODITELJ_OBRADE, kontaktTekst } from "../konstante";
+import { TVRTKA } from "../konstante";
 ---
-{VODITELJ_OBRADE && KONTAKT && (
-  <Sekcija id="voditelj" naslov="Tko odgovara za podatke">
-    <p>Voditelj obrade je {VODITELJ_OBRADE}. Za pitanja o vašim podacima pišite na <a href={KONTAKT}>{kontaktTekst(KONTAKT)}</a>.</p>
-  </Sekcija>
-)}
+<Sekcija id="voditelj" naslov="Tko odgovara za podatke">
+  <p>Voditelj obrade je <strong>{TVRTKA.naziv}</strong>, OIB {TVRTKA.oib}, {TVRTKA.adresa}.</p>
+  <p>Za pitanja o vašim podacima i za zahtjeve iz ove stranice pišite na
+    <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a>.</p>
+</Sekcija>

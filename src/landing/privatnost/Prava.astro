@@ -1,0 +1,14 @@
+---
+// P-10 Prava ispitanika (čl. 15.–22. GDPR-a) i pritužba AZOP-u (landing odluka 603).
+import Sekcija from "../Sekcija.astro";
+import { TVRTKA } from "../konstante";
+---
+<Sekcija id="prava" naslov="Vaša prava">
+  <p>Imate pravo zatražiti pristup svojim podacima, njihov ispravak ili brisanje, ograničenje obrade i kopiju u strojno čitljivom
+    obliku, i prigovoriti obradi koja se temelji na legitimnom interesu. Ime i e-mail možete i sami promijeniti u postavkama računa.</p>
+  <p>Zahtjev pošaljite na <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a>. Odgovaramo najkasnije u roku od mjesec
+    dana.</p>
+  <p>Ako mislite da podatke obrađujemo protivno propisima, možete podnijeti pritužbu Agenciji za zaštitu osobnih podataka (AZOP),
+    Selska cesta 136, 10000 Zagreb, <a href="https://azop.hr">azop.hr</a>.</p>
+  <p>Ako se ova stranica bitno promijeni, logopede s računom obavijestit ćemo e-poštom. Datum zadnje izmjene je na vrhu stranice.</p>
+</Sekcija>

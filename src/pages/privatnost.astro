@@ -1,12 +1,17 @@
 ---
-// /privatnost (sadrzaj.md 3.6): P-1…P-4; P-5 samo uz VODITELJ_OBRADE i KONTAKT. „Stanje na dan” samo uz DATUM_OBJAVE.
-// Opisuje kako stranice i aplikacija rade danas, bez pravnih obećanja (odluka 210).
+// /privatnost (sadrzaj.md 3.6): P-1…P-5, i od S6 politika privatnosti po GDPR-u (P-6…P-10, landing odluke 600–606).
+// Prvo kratko i konkretno (što se gdje sprema), zatim voditelj obrade, osnove, obrađivači, kolačići, rokovi i prava.
 import Okvir from "../landing/Okvir.astro";
 import Uvod from "../landing/Uvod.astro";
 import Stranice from "../landing/privatnost/Stranice.astro";
 import Igra from "../landing/privatnost/Igra.astro";
 import Logopedi from "../landing/privatnost/Logopedi.astro";
 import Voditelj from "../landing/privatnost/Voditelj.astro";
+import Osnove from "../landing/privatnost/Osnove.astro";
+import Obradivaci from "../landing/privatnost/Obradivaci.astro";
+import Kolacici from "../landing/privatnost/Kolacici.astro";
+import Cuvanje from "../landing/privatnost/Cuvanje.astro";
+import Prava from "../landing/privatnost/Prava.astro";
 import { DATUM_OBJAVE } from "../landing/konstante";
 
 export const prerender = true;
@@ -20,4 +25,9 @@ export const prerender = true;
   <Igra />
   <Logopedi />
   <Voditelj />
+  <Osnove />
+  <Obradivaci />
+  <Kolacici />
+  <Cuvanje />
+  <Prava />
 </Okvir>

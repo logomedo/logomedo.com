@@ -1,0 +1,22 @@
+---
+// P-7 Izvršitelji obrade (čl. 28. GDPR-a). Iznimka od odluke 204 samo za /privatnost (landing odluka 604).
+// Popis prema kodu: Cloudflare (Workers, D1, R2, Access, wrangler.jsonc), Vertex AI (scripts/runner.sh,
+// scripts/vertex-slika.py), ElevenLabs (src/lib/elevenlabs.ts: TTS i STT), e-pošta tvrtke (Google Workspace).
+import Sekcija from "../Sekcija.astro";
+---
+<Sekcija id="obradivaci" naslov="Tko obrađuje podatke za nas">
+  <p>Za rad LogoMeda koristimo vanjske pružatelje usluga. S njima imamo ugovore o obradi podataka i dobivaju samo ono što
+    trebaju za svoj dio posla.</p>
+  <ul>
+    <li><strong>Cloudflare</strong> (Cloudflare, Inc., SAD): hosting stranica i aplikacije, baza, pohrana slika i prijava. Kod njega
+      su svi podaci opisani na ovoj stranici.</li>
+    <li><strong>Google Cloud</strong> (Vertex AI): izrada novih slika za katalog. Šalje se samo opis slike i, kad treba, slika na koju
+      se nova oslanja. E-mail i ime se ne šalju.</li>
+    <li><strong>ElevenLabs</strong> (ElevenLabs, Inc., SAD): izgovor teksta iz zadataka i automatska provjera izgovora. Šalje se samo
+      tekst koji treba izgovoriti.</li>
+    <li><strong>Google Workspace</strong>: e-pošta, kad nam pišete.</li>
+  </ul>
+  <p>Neki od njih podatke mogu obrađivati i izvan Europske unije. Tada se prijenos temelji na Okviru EU-SAD za privatnost podataka,
+    gdje je pružatelj u njemu, a inače na standardnim ugovornim klauzulama Europske komisije.</p>
+  <p>U opis slike i tekst zadatka zato ne upisujte ime djeteta ni druge osobne podatke.</p>
+</Sekcija>

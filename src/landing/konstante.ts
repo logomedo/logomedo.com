@@ -15,20 +15,36 @@ export const BROJKE = {
 } as const;
 
 /** `[DEMO — S6]`: putanja `/b/<demo-slug>`; prazno = rezerva bez demoa (odluka 205). */
-export const DEMO_URL = "";
-/** `[KONTAKT — S6]`: href („mailto:…” ili URL) za „Zatraži pristup” i „Kontakt:”; prazno = bez tih elemenata. */
-export const KONTAKT = "";
-/** `[IME TVRTKE — S6]`: uz „© GODINA.” u podnožju; prazno = bez retka s autorskim pravom. */
-export const IME_TVRTKE = "";
-/** `[GODINA — S6]`: npr. "2026"; prazno = bez retka s autorskim pravom. */
-export const GODINA = "";
+export const DEMO_URL: string = "";
+/** Kontakt (landing odluka 602): href („mailto:…” ili URL) za „Zatraži pristup” i „Kontakt:”; prazno = bez tih elemenata. */
+export const KONTAKT: string = "mailto:hello@italk.hr";
+/** Ime tvrtke uz „© GODINA.” u podnožju (landing odluka 600). */
+export const IME_TVRTKE: string = "ITalk d.o.o.";
+/** Godina u retku s autorskim pravom u podnožju. */
+export const GODINA: string = "2026";
 /**
- * `[VODITELJ OBRADE — S6]` (P-5 na /privatnost, odluka 210): ime voditelja obrade; P-5 se prikazuje samo kad su popunjeni
- * i ovo i KONTAKT. Odvojeno od IME_TVRTKE jer ime u podnožju još nije pravna izjava (landing odluka 503).
+ * Godina prvog LogoMeda (O-2 na /o-nama): najstariji radni listići u izvozu starog appa su iz 2017.
+ * (`../preuzimanje/docs/legacy-data-stats.txt`, landing odluka 601). Prazno = naslov „Stari i novi LogoMedo”.
  */
-export const VODITELJ_OBRADE = "";
-/** `[DATUM OBJAVE — S6]` (P-1 na /privatnost): npr. "1. 12. 2026."; prazno = bez retka „Stanje na dan”. */
-export const DATUM_OBJAVE = "";
+export const GODINA_PRVOG: string = "2017";
+/**
+ * Pružatelj usluge i voditelj obrade (javni podaci iz sudskog registra; landing odluka 600). Na /privatnost (voditelj
+ * obrade) i /uvjeti (pružatelj, Zakon o elektroničkoj trgovini čl. 6). Bez osobnih e-mailova i telefona.
+ */
+export const TVRTKA = {
+  naziv: "ITalk d.o.o. za informacijske tehnologije",
+  kratko: "ITalk d.o.o.",
+  oib: "54872935051",
+  mbs: "081042440",
+  sud: "Trgovački sud u Zagrebu",
+  adresa: "IX. Južna obala 20, 10000 Zagreb, Hrvatska",
+  /** Pitanja o osobnim podacima i zahtjevi iz GDPR-a. */
+  privatnost: "privacy@italk.hr",
+} as const;
+/** Ime voditelja obrade za P-5 (landing odluke 503, 600). */
+export const VODITELJ_OBRADE = TVRTKA.naziv;
+/** `[DATUM OBJAVE — S6]` (P-1 na /privatnost, /uvjeti): datum od kojeg tekst vrijedi; prazno = bez retka „Stanje na dan”. */
+export const DATUM_OBJAVE: string = "19. 11. 2026.";
 
 export const PRIJAVA = "/admin/login";
 
@@ -79,6 +95,12 @@ export const STRANICE: Stranica[] = [
     naslov: "Privatnost · LogoMedo",
     opis: "Stranice LogoMeda ne koriste kolačiće ni praćenje. Što se sprema za logopede i zašto se o djetetu ne sprema ništa.",
     izbornik: "Privatnost",
+  },
+  {
+    putanja: "/uvjeti",
+    naslov: "Uvjeti korištenja · LogoMedo",
+    opis: "Tko pruža LogoMedo, tko ga smije koristiti, čije su slike i zadaci i što vrijedi dok je aplikacija u probnom razdoblju.",
+    izbornik: "Uvjeti korištenja",
   },
 ];
 

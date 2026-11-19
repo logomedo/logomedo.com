@@ -1,0 +1,16 @@
+---
+// P-9 Rokovi čuvanja (landing odluka 606, vrata 4 iz S5: brisanje na zahtjev, ručno u D1, rok 30 dana).
+// Istekle sesije brišu se same (src/lib/admin/sesija.ts, src/lib/app/sesija.ts).
+import Sekcija from "../Sekcija.astro";
+import { TVRTKA } from "../konstante";
+---
+<Sekcija id="cuvanje" naslov="Koliko dugo čuvamo">
+  <ul>
+    <li><strong>Račun i vaš rad:</strong> dok koristite LogoMedo. Ako želite da obrišemo račun, pišite na
+      <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a>. Račun, prijave, zadatke i bilježnice obrisat ćemo najkasnije u
+      roku od 30 dana, a u povijesti izmjena kataloga umjesto vašeg e-maila ostat će oznaka bez osobnih podataka.</li>
+    <li><strong>Sesije:</strong> istekle prijave brišu se same.</li>
+    <li><strong>Tehnički podaci zahtjeva:</strong> kratko, u pravilu nekoliko dana, kod pružatelja hostinga.</li>
+    <li><strong>E-pošta:</strong> dok je potrebno da odgovorimo i riješimo vaš upit.</li>
+  </ul>
+</Sekcija>

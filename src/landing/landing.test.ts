@@ -40,14 +40,14 @@ function pravila(tekst: string): Map<string, Map<string, string>> {
 }
 
 test("landing: title ≤ 60 i description ≤ 155 znakova, sve putanje različite", () => {
-  assert.equal(K.STRANICE.length, 6);
+  assert.equal(K.STRANICE.length, 7);
   for (const s of K.STRANICE) {
     assert.ok(s.naslov.length <= 60, `${s.putanja}: title ${s.naslov.length}`);
     assert.ok(s.opis.length > 50 && s.opis.length <= 155, `${s.putanja}: description ${s.opis.length}`);
     assert.match(s.naslov, /LogoMedo/);
   }
   assert.ok(K.STRANICA_404.naslov.length <= 60);
-  assert.equal(new Set(K.STRANICE.map((s) => s.putanja)).size, 6);
+  assert.equal(new Set(K.STRANICE.map((s) => s.putanja)).size, 7);
 });
 
 test("landing: svaka stranica iz STRANICE postoji i prerenderira se, 404 isto", () => {
@@ -60,7 +60,7 @@ test("landing: svaka stranica iz STRANICE postoji i prerenderira se, 404 isto", 
   assert.ok(!K.STRANICE.some((s) => /^\/(admin|api|b|cdn)(\/|$)/.test(s.putanja)));
 });
 
-test("landing: sitemap ima šest kanonskih URL-ova bez kose crte na kraju i bez 404", () => {
+test("landing: sitemap ima sedam kanonskih URL-ova bez kose crte na kraju i bez 404", () => {
   const xml = K.sitemapXml();
   const loc = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   assert.deepEqual(loc, [
@@ -70,6 +70,7 @@ test("landing: sitemap ima šest kanonskih URL-ova bez kose crte na kraju i bez 
     "https://logomedo.com/igre",
     "https://logomedo.com/o-nama",
     "https://logomedo.com/privatnost",
+    "https://logomedo.com/uvjeti",
   ]);
   assert.match(xml, /^<\?xml version="1.0" encoding="UTF-8"\?>\n<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/);
   assert.doesNotMatch(xml, /404/);
@@ -121,10 +122,11 @@ test("landing: nema „— S6]” ni u izvoru stranica ni u konstantama; placeho
   ];
   assert.ok(datoteke.length >= 14, `premalo datoteka: ${datoteke.length}`);
   for (const f of datoteke) assert.doesNotMatch(procitaj(f), /— S6\]|\[(KONTAKT|DEMO|GODINA|IME TVRTKE|DATUM OBJAVE)/, f);
-  for (const v of [K.DEMO_URL, K.KONTAKT, K.IME_TVRTKE, K.GODINA, K.DATUM_OBJAVE, K.VODITELJ_OBRADE]) assert.doesNotMatch(v, /S6|\[/);
+  for (const v of [K.DEMO_URL, K.KONTAKT, K.IME_TVRTKE, K.GODINA, K.GODINA_PRVOG, K.DATUM_OBJAVE, K.VODITELJ_OBRADE]) assert.doesNotMatch(v, /S6|\[/);
   assert.ok(K.DEMO_URL === "" || /^\/b\/[a-z0-9-]+$/.test(K.DEMO_URL), "DEMO_URL je /b/<slug>");
   assert.ok(K.KONTAKT === "" || /^(mailto:|https:\/\/)/.test(K.KONTAKT), "KONTAKT je mailto: ili https://");
   assert.ok(K.GODINA === "" || /^20\d\d$/.test(K.GODINA));
+  assert.ok(K.GODINA_PRVOG === "" || /^20\d\d$/.test(K.GODINA_PRVOG));
 });
 
 test("landing: brojke iz odluke 202 i glasovi iz kataloga", () => {
@@ -217,4 +219,16 @@ test("landing: R-3 ima BROJKE.vrstaZadataka kartica, od toga dvije slušne „u 
   assert.equal(VRSTE_ZADATAKA.length, K.BROJKE.vrstaZadataka);
   assert.deepEqual(VRSTE_ZADATAKA.filter((z) => z.uskoroUIgri).map((z) => z.naslov), ["Koje slovo čuješ?", "Gdje je glas?"]);
   assert.equal(new Set(VRSTE_ZADATAKA.map((z) => z.naslov)).size, VRSTE_ZADATAKA.length);
+});
+
+test("landing: pravne stranice imaju voditelja obrade i pružatelja, bez osobnih kontakata (odluke 600, 607)", () => {
+  assert.equal(K.VODITELJ_OBRADE, K.TVRTKA.naziv);
+  assert.match(K.TVRTKA.oib, /^\d{11}$/);
+  assert.match(K.TVRTKA.mbs, /^\d{9}$/);
+  assert.match(K.TVRTKA.privatnost, /^[a-z]+@italk\.hr$/);
+  const izvor = ["src/pages/privatnost.astro", "src/pages/uvjeti.astro", ...readdirSync(new URL("src/landing/privatnost/", korijen)).map((f) => `src/landing/privatnost/${f}`),
+    ...readdirSync(new URL("src/landing/uvjeti/", korijen)).map((f) => `src/landing/uvjeti/${f}`)].map(procitaj).join("\n");
+  for (const id of ["voditelj", "osnove", "obradivaci", "kolacici", "cuvanje", "prava", "pruzatelj", "odgovornost"]) assert.match(izvor, new RegExp(`id="${id}"`), id);
+  assert.doesNotMatch(izvor, /\+385|gmail\.com|ms@/);
+  assert.doesNotMatch(izvor, /besplatn/i);
 });

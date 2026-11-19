@@ -1,0 +1,55 @@
+---
+// U-3…U-9 Uvjeti korištenja (landing odluka 607). Tvrdnje prema onome što aplikacija radi: pristup samo uz pozivnicu
+// (src/lib/admin/pozivi.ts), zajednički katalog (rbac odluke), deaktivacija računa (korisnici.aktivan), limit (src/lib/kvota.ts).
+// Bez cijene (odluka 204).
+import Sekcija from "../Sekcija.astro";
+import { TVRTKA } from "../konstante";
+---
+<Sekcija id="pristup" naslov="Tko može koristiti LogoMedo">
+  <ul>
+    <li>LogoMedo je alat za logopede. Račun se otvara samo uz pozivnicu.</li>
+    <li>Račun je osoban: prijavu ne dijelite s drugima i čuvajte uređaj na kojem je vaš passkey.</li>
+    <li>Igru iz bilježnice dijete otvara preko linka koji mu je dao logoped, bez računa. Link dijelite samo s onima kojima je namijenjen.</li>
+  </ul>
+</Sekcija>
+<Sekcija id="probno" naslov="Probno razdoblje">
+  <p>LogoMedo je u probnom razdoblju i nastaje zajedno s logopedima. Funkcije se mogu mijenjati, a neke i nestati.</p>
+  <p>Ako uvedemo naplatu, uvjete ćemo objaviti unaprijed i javiti ih logopedima s računom. Bez vašeg pristanka ništa nećemo naplatiti.</p>
+</Sekcija>
+<Sekcija id="sadrzaj" naslov="Čije su slike i zadaci">
+  <ul>
+    <li><strong>Katalog</strong> (slike, riječi, zvukovi i predlošci) pripada pružatelju. Slike smijete koristiti u svom radu: na ekranu,
+      u igrama i na ispisanim listićima za djecu i roditelje s kojima radite.</li>
+    <li>Slike iz kataloga ne smijete preprodavati, objavljivati kao zbirku ni koristiti za učenje modela umjetne inteligencije.</li>
+    <li><strong>Vaši zadaci i bilježnice</strong> ostaju vaši. Spremamo ih i prikazujemo samo vama i onima s kojima podijelite link.</li>
+    <li>Nove slike koje zatražite ili učitate za riječi iz kataloga nakon pregleda postaju dio zajedničkog kataloga koji vide svi
+      logopedi. Učitavajte samo slike na koje imate pravo.</li>
+  </ul>
+</Sekcija>
+<Sekcija id="pravila" naslov="Što se ne smije">
+  <ul>
+    <li>Upisivati ime djeteta ili druge osobne podatke u naslove, zadatke i opise slika.</li>
+    <li>Zaobilaziti limit novih slika i izgovora, ometati rad aplikacije ili pristupati tuđim računima i podacima.</li>
+    <li>Koristiti LogoMedo protivno zakonu ili ovim uvjetima.</li>
+  </ul>
+  <p>Ako se uvjeti krše, račun možemo privremeno ili trajno isključiti.</p>
+</Sekcija>
+<Sekcija id="odgovornost" naslov="Dostupnost i odgovornost">
+  <ul>
+    <li>Trudimo se da LogoMedo radi bez prekida, ali to ne možemo jamčiti, posebno dok traje probno razdoblje.</li>
+    <li>LogoMedo je pomoć u radu, a ne medicinski proizvod. Za terapiju i izbor materijala za dijete odgovoran je logoped.</li>
+    <li>Za štetu odgovaramo samo ako je prouzročena namjerno ili krajnjom nepažnjom, osim kad propisi određuju drukčije.</li>
+  </ul>
+</Sekcija>
+<Sekcija id="prestanak" naslov="Prestanak korištenja">
+  <p>LogoMedo možete prestati koristiti kad god želite. Ako želite da obrišemo vaš račun, pišite na
+    <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a> (<a href="/privatnost#cuvanje">rokovi brisanja</a>).</p>
+  <p>Ako LogoMedo prestane raditi ili završi probno razdoblje, logopede s računom obavijestit ćemo unaprijed, da stignu ispisati
+    ili spremiti ono što trebaju.</p>
+</Sekcija>
+<Sekcija id="izmjene" naslov="Izmjene i mjerodavno pravo">
+  <p>Izmjene uvjeta objavljujemo na ovoj stranici, a o bitnim izmjenama logopede s računom obavještavamo e-poštom prije nego što
+    počnu vrijediti.</p>
+  <p>Na ove uvjete primjenjuje se pravo Republike Hrvatske. Za sporove je nadležan sud u Zagrebu, osim ako propisi o zaštiti
+    potrošača određuju drukčije.</p>
+</Sekcija>

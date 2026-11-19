@@ -1,0 +1,19 @@
+---
+// /uvjeti: uvjeti korištenja i podaci o pružatelju (landing odluka 607). Vrijede za web, aplikaciju i igre na /b/….
+import Okvir from "../landing/Okvir.astro";
+import Uvod from "../landing/Uvod.astro";
+import Pruzatelj from "../landing/uvjeti/Pruzatelj.astro";
+import Odredbe from "../landing/uvjeti/Odredbe.astro";
+import { DATUM_OBJAVE } from "../landing/konstante";
+
+export const prerender = true;
+---
+<Okvir putanja="/uvjeti">
+  <Uvod gumbi={["pristup"]} sitno={DATUM_OBJAVE ? `Stanje na dan ${DATUM_OBJAVE}` : undefined}>
+    <Fragment slot="naslov">Uvjeti korištenja</Fragment>
+    Ovi uvjeti vrijede za logomedo.com, aplikaciju LogoMedo za mobitel i tablet i igre koje logopedi dijele preko linka. Kako postupamo
+    s podacima, piše na stranici <a href="/privatnost">Privatnost</a>.
+  </Uvod>
+  <Pruzatelj />
+  <Odredbe />
+</Okvir>

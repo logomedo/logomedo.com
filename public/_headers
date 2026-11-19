@@ -20,3 +20,5 @@
   Cache-Control: no-cache
 /privatnost
   Cache-Control: no-cache
+/uvjeti
+  Cache-Control: no-cache
