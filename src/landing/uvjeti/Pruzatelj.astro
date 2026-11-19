@@ -2,12 +2,15 @@
 // U-2 Pružatelj usluge: podaci iz Zakona o elektroničkoj trgovini (čl. 6.), javni podaci iz sudskog registra (landing odluka 607).
 import Sekcija from "../Sekcija.astro";
 import { KONTAKT, TVRTKA, kontaktTekst } from "../konstante";
+
+// Isti e-mail za kontakt i osobne podatke (bok@logomedo.com) ide u jedan redak.
+const dvaKontakta = !KONTAKT || kontaktTekst(KONTAKT) !== TVRTKA.privatnost;
 ---
 <Sekcija id="pruzatelj" naslov="Tko pruža LogoMedo">
   <ul>
     <li><strong>{TVRTKA.naziv}</strong>, {TVRTKA.adresa}</li>
     <li>OIB {TVRTKA.oib}, MBS {TVRTKA.mbs}, upisano u sudski registar ({TVRTKA.sud})</li>
-    {KONTAKT && <li>Kontakt: <a href={KONTAKT}>{kontaktTekst(KONTAKT)}</a></li>}
-    <li>Osobni podaci: <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a></li>
+    {KONTAKT && <li>Kontakt{dvaKontakta ? "" : " (i za osobne podatke)"}: <a href={KONTAKT}>{kontaktTekst(KONTAKT)}</a></li>}
+    {dvaKontakta && <li>Osobni podaci: <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a></li>}
   </ul>
 </Sekcija>

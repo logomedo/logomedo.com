@@ -1,8 +1,8 @@
 ---
-// Podnožje (sadrzaj.md 2.4). „Zatraži pristup”, „Kontakt:” i „© GODINA. IME TVRTKE” se ne renderiraju dok su
-// njihove konstante prazne (odluka 206).
+// Podnožje (sadrzaj.md 2.4). „Zatraži pristup” vodi na obrazac /pristup (S7). „Kontakt:” i „© GODINA. IME TVRTKE”
+// se ne renderiraju dok su njihove konstante prazne (odluka 206).
 import Marka from "../components/Marka.astro";
-import { GODINA, IME_TVRTKE, IZBORNIK, KONTAKT, PRIJAVA, kontaktTekst, stranica } from "./konstante";
+import { GODINA, IME_TVRTKE, IZBORNIK, KONTAKT, PRIJAVA, PRISTUP, kontaktTekst, stranica } from "./konstante";
 
 interface Props { putanja?: string }
 const { putanja } = Astro.props;
@@ -22,7 +22,7 @@ const autorsko = GODINA && IME_TVRTKE ? `© ${GODINA}. ${IME_TVRTKE}` : "";
       <h2 id="pod-pomoc">Pomoć</h2>
       <ul>
         <li><a href={PRIJAVA}>Prijava</a></li>
-        {KONTAKT && <li><a href={KONTAKT}>Zatraži pristup</a></li>}
+        <li><a href={PRISTUP} aria-current={putanja === PRISTUP ? "page" : undefined}>Zatraži pristup</a></li>
         <li><a href="/privatnost" aria-current={putanja === "/privatnost" ? "page" : undefined}>{stranica("/privatnost").izbornik}</a></li>
         <li><a href="/uvjeti" aria-current={putanja === "/uvjeti" ? "page" : undefined}>{stranica("/uvjeti").izbornik}</a></li>
       </ul>

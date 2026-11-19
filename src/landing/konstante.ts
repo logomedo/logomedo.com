@@ -16,8 +16,8 @@ export const BROJKE = {
 
 /** `[DEMO — S6]`: putanja `/b/<demo-slug>`; prazno = rezerva bez demoa (odluka 205). */
 export const DEMO_URL: string = "";
-/** Kontakt (landing odluka 602): href („mailto:…” ili URL) za „Zatraži pristup” i „Kontakt:”; prazno = bez tih elemenata. */
-export const KONTAKT: string = "mailto:hello@italk.hr";
+/** Kontakt (landing odluka 602): href („mailto:…” ili URL) za „Kontakt:” u podnožju, O-4 i /uvjeti; prazno = bez tih elemenata. */
+export const KONTAKT: string = "mailto:bok@logomedo.com";
 /** Ime tvrtke uz „© GODINA.” u podnožju (landing odluka 600). */
 export const IME_TVRTKE: string = "ITalk d.o.o.";
 /** Godina u retku s autorskim pravom u podnožju. */
@@ -38,8 +38,8 @@ export const TVRTKA = {
   mbs: "081042440",
   sud: "Trgovački sud u Zagrebu",
   adresa: "IX. Južna obala 20, 10000 Zagreb, Hrvatska",
-  /** Pitanja o osobnim podacima i zahtjevi iz GDPR-a. */
-  privatnost: "privacy@italk.hr",
+  /** Pitanja o osobnim podacima i zahtjevi iz GDPR-a (isti kao KONTAKT, odluka korisnika 19. 11. 2026.). */
+  privatnost: "bok@logomedo.com",
 } as const;
 /** Ime voditelja obrade za P-5 (landing odluke 503, 600). */
 export const VODITELJ_OBRADE = TVRTKA.naziv;
@@ -47,6 +47,8 @@ export const VODITELJ_OBRADE = TVRTKA.naziv;
 export const DATUM_OBJAVE: string = "19. 11. 2026.";
 
 export const PRIJAVA = "/admin/login";
+/** Obrazac „Zatraži pristup” za privatnu betu (S7): svi gumbi i linkovi „Zatraži pristup” vode ovamo. */
+export const PRISTUP = "/pristup";
 
 /** Tekst za „Kontakt:” iz hrefa (mailto: bez prefiksa). */
 export const kontaktTekst = (href: string) => href.replace(/^mailto:/, "");
@@ -57,6 +59,8 @@ export interface Stranica {
   opis: string;
   /** Tekst linka u zaglavlju/podnožju. */
   izbornik?: string;
+  /** SSR umjesto prerendera (obrađuje POST; zaglavlja iz middlewarea, ne iz public/_headers). */
+  ssr?: true;
 }
 
 /** SEO po stranici (sadrzaj.md 2.1). Redoslijed = sitemap. Title ≤ 60, description ≤ 155 (test). */
@@ -89,6 +93,13 @@ export const STRANICE: Stranica[] = [
     naslov: "O nama · LogoMedo",
     opis: "Novi LogoMedo nastaje zajedno s logopedima. Tko ga radi, odakle dolazi i kako se uključiti u probno razdoblje.",
     izbornik: "O nama",
+  },
+  {
+    putanja: "/pristup",
+    naslov: "Zatraži pristup · LogoMedo",
+    opis: "LogoMedo je u privatnoj beti za logopede. Pošaljite zahtjev s imenom, e-mailom i ustanovom, a pozivnicu za prijavu šaljemo osobno.",
+    izbornik: "Zatraži pristup",
+    ssr: true,
   },
   {
     putanja: "/privatnost",

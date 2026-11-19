@@ -1,7 +1,7 @@
 ---
 // N-1 Hero (sadrzaj.md 3.1). Vizual V-1: četiri ilustracije, 512 px, bez lazy (iznad pregiba).
 import Cta from "../Cta.astro";
-import { ALT_V1, ILUSTRACIJE_V1, KONTAKT } from "../konstante";
+import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
 ---
 <section class="sekcija hero" aria-labelledby="naslov">
   <div class="omot mreza">
@@ -11,7 +11,7 @@ import { ALT_V1, ILUSTRACIJE_V1, KONTAKT } from "../konstante";
       <p class="uvodni">LogoMedo je radni alat za logopede: katalog slika po glasovima i pozicijama, radni listići koje ispišete u
         jednom kliku i igre koje dijete rješava na tabletu.</p>
       <Cta gumbi={["prijava", "pristup"]} />
-      <p class="sitno">Za prijavu vam treba pozivnica.{KONTAKT && <> Nemate je? <a href={KONTAKT}>Zatražite pristup.</a></>}</p>
+      <p class="sitno">Za prijavu vam treba pozivnica. Nemate je? <a href={PRISTUP}>Zatražite pristup.</a></p>
     </div>
     <div class="slike" role="img" aria-label={ALT_V1}>
       {ILUSTRACIJE_V1.map((s) => (

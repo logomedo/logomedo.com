@@ -1,0 +1,178 @@
+---
+// /pristup (S7 landinga): obrazac „Zatraži pristup” za privatnu betu. SSR, ne prerender: obrađuje POST i svaki
+// prikaz nosi vremenski žig. CSP s nonceom i ostala zaglavlja daje middleware (zastiti); CSRF provjera iz
+// middlewarea vrijedi samo za /admin, pa Origin provjerava ova stranica. Bez JavaScripta i bez inline skripte.
+// Logika i zaštita od spama: src/lib/pristup.ts. Uspjeh: PRG, 303 na /pristup?poslano=1.
+import Okvir from "../landing/Okvir.astro";
+import { PRIJAVA } from "../landing/konstante";
+import {
+  HONEYPOT, MAX, ZIG, istiOrigin, posalji, prazanUnos, vremenskiZig, type Greske, type Polje, type Unos,
+} from "../lib/pristup";
+
+export const prerender = false;
+
+Astro.response.headers.set("cache-control", "no-store");
+
+let stanje: "obrazac" | "hvala" | "previse" = Astro.url.searchParams.get("poslano") === "1" ? "hvala" : "obrazac";
+let unos: Unos = prazanUnos();
+let greske: Greske = {};
+let zig: string | null = null;
+
+if (Astro.request.method === "POST") {
+  if (!istiOrigin(Astro.request, Astro.url.origin)) {
+    return new Response("Zabranjeno: zahtjev nije poslan s ove stranice.", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } });
+  }
+  const ishod = await posalji(await Astro.request.formData(), Astro.request.headers.get("cf-connecting-ip"));
+  if (ishod.vrsta === "hvala") return Astro.redirect("/pristup?poslano=1", 303);
+  if (ishod.vrsta === "previse") {
+    stanje = "previse";
+    Astro.response.status = 429;
+  } else {
+    stanje = "obrazac";
+    ({ unos, greske, zig } = ishod);
+    Astro.response.status = 400;
+  }
+} else if (Astro.request.method !== "GET" && Astro.request.method !== "HEAD") {
+  return new Response(null, { status: 405, headers: { allow: "GET, HEAD, POST" } });
+}
+if (stanje === "obrazac") zig ??= await vremenskiZig();
+
+const imaGresaka = Object.keys(greske).length > 0;
+/** aria atributi polja: opis (ako postoji) i greška. */
+const aria = (p: Polje, opis?: string) => {
+  const ids = [opis, greske[p] ? `greska-${p}` : undefined].filter(Boolean).join(" ");
+  return { "aria-invalid": greske[p] ? ("true" as const) : undefined, "aria-describedby": ids || undefined };
+};
+---
+<Okvir putanja="/pristup">
+  <section class="sekcija pristup" aria-labelledby="naslov">
+    <div class="omot raspored">
+      <div class="uvod">
+        {stanje === "hvala" ? (
+          <>
+            <h1 class="landing-h1" id="naslov">Hvala, javit ćemo se.</h1>
+            <p class="uvodni">Zahtjev je stigao. Kad pripremimo pristup, poslat ćemo vam osobnu pozivnicu na e-mail koji ste upisali.</p>
+            <p class="sitno"><a href="/">Natrag na naslovnu</a></p>
+          </>
+        ) : (
+          <>
+            <h1 class="landing-h1" id="naslov">Privatna beta</h1>
+            <p class="uvodni">LogoMedo je zasad u privatnoj beti za logopede. Pristup otvaramo pozivnicom: pošaljite nam zahtjev, a mi
+              ćemo vam se javiti s osobnim linkom za prijavu.</p>
+            <p class="sitno">Već imate pozivnicu? <a href={PRIJAVA}>Prijava</a></p>
+          </>
+        )}
+      </div>
+
+      {stanje === "previse" && (
+        <div class="kartica" role="alert">
+          <h2 class="naslov-kartice">Previše zahtjeva</h2>
+          <p>S ove mreže je u zadnjih sat vremena stiglo previše zahtjeva. Pokušajte ponovno za sat vremena.</p>
+          <p><a href="/pristup">Natrag na obrazac</a></p>
+        </div>
+      )}
+
+      {stanje === "obrazac" && (
+        <form class="kartica" method="post" action="/pristup" aria-describedby={greske.obrazac ? "greska-obrazac" : undefined}>
+          {imaGresaka && (
+            <p class="greska-sazetak" id="greska-obrazac" role="alert">
+              {greske.obrazac ?? "Provjerite označena polja."}
+            </p>
+          )}
+          <input type="hidden" name={ZIG} value={zig ?? ""} />
+
+          <div class="polje">
+            <label for="ime">Ime i prezime</label>
+            <input id="ime" name="ime" type="text" autocomplete="name" required maxlength={MAX.ime} value={unos.ime} {...aria("ime")} />
+            {greske.ime && <p class="greska" id="greska-ime">{greske.ime}</p>}
+          </div>
+
+          <div class="polje">
+            <label for="email">E-mail</label>
+            <input id="email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="254" value={unos.email}
+              {...aria("email", "opis-email")} />
+            <p class="opis" id="opis-email">Na njega stiže pozivnica.</p>
+            {greske.email && <p class="greska" id="greska-email">{greske.email}</p>}
+          </div>
+
+          <div class="dva">
+            <div class="polje">
+              <label for="ustanova">Ustanova</label>
+              <input id="ustanova" name="ustanova" type="text" autocomplete="organization" required maxlength={MAX.ustanova}
+                value={unos.ustanova} {...aria("ustanova", "opis-ustanova")} />
+              <p class="opis" id="opis-ustanova">Npr. vrtić, škola ili privatna praksa.</p>
+              {greske.ustanova && <p class="greska" id="greska-ustanova">{greske.ustanova}</p>}
+            </div>
+            <div class="polje">
+              <label for="grad">Grad</label>
+              <input id="grad" name="grad" type="text" autocomplete="address-level2" required maxlength={MAX.grad} value={unos.grad}
+                {...aria("grad")} />
+              {greske.grad && <p class="greska" id="greska-grad">{greske.grad}</p>}
+            </div>
+          </div>
+
+          <div class="polje">
+            <label for="poruka">Kratka poruka <span class="neobavezno">(nije obavezno)</span></label>
+            <textarea id="poruka" name="poruka" rows="4" maxlength={MAX.poruka} {...aria("poruka", "opis-poruka")}>{unos.poruka}</textarea>
+            <p class="opis" id="opis-poruka">Npr. s kojom djecom radite ili što biste htjeli isprobati.</p>
+            {greske.poruka && <p class="greska" id="greska-poruka">{greske.poruka}</p>}
+          </div>
+
+          <div class="hp" aria-hidden="true">
+            <label for={HONEYPOT}>Web stranica (ostavite prazno)</label>
+            <input id={HONEYPOT} name={HONEYPOT} type="text" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <div class="polje kvacica">
+            <input id="privola" name="privola" type="checkbox" value="da" required checked={unos.privola} {...aria("privola")} />
+            <label for="privola">Upoznat/a sam s tim kako LogoMedo koristi i čuva ove podatke
+              (<a href="/privatnost#pristup">Privatnost</a>).</label>
+            {greske.privola && <p class="greska" id="greska-privola">{greske.privola}</p>}
+          </div>
+
+          <button class="gumb" type="submit">Zatraži pristup</button>
+        </form>
+      )}
+    </div>
+  </section>
+</Okvir>
+<style>
+  .pristup { padding-top: 72px; }
+  .raspored { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 56px; align-items: start; }
+  .uvod { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
+  .uvod .sitno a, .kartica a { color: var(--med-tamno); font-weight: 600; }
+  .kartica { display: flex; flex-direction: column; gap: 18px; padding: 28px; border-radius: 22px; background: var(--povrsina);
+    border: 1px solid var(--rub); box-shadow: var(--sjena-1); }
+  .kartica p { margin: 0; }
+  .naslov-kartice { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.4rem; }
+  .polje { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .dva { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+  label { font-weight: 600; font-size: .95rem; color: var(--tinta); }
+  .neobavezno { font-weight: 400; color: var(--blijedo); }
+  input[type="text"], input[type="email"], textarea { width: 100%; box-sizing: border-box; min-height: 48px; padding: 11px 14px;
+    font: inherit; font-size: 1rem; color: var(--tinta); background: var(--papir); border: 1px solid var(--rub-jak); border-radius: 12px; }
+  textarea { min-height: 110px; resize: vertical; }
+  input[type="text"]:focus, input[type="email"]:focus, textarea:focus { border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+  [aria-invalid="true"] { border-color: var(--greska) !important; }
+  .opis { font-size: .85rem; color: var(--blijedo); }
+  .greska { font-size: .88rem; font-weight: 600; color: var(--greska); }
+  .greska-sazetak { padding: 12px 14px; border-radius: 12px; background: var(--greska-blago); color: var(--greska); font-weight: 600; }
+  .kvacica { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 6px; align-items: start; }
+  .kvacica input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--med); }
+  .kvacica label { font-weight: 400; font-size: .95rem; color: var(--blijedo); line-height: 1.5; }
+  .kvacica .greska { grid-column: 2; }
+  .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+  .gumb { align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 28px;
+    border: 0; border-radius: 999px; background: var(--med); color: var(--med-tekst); font: inherit; font-weight: 600; font-size: 1.02rem;
+    box-shadow: var(--sjena-1); cursor: pointer; }
+  .gumb:hover { filter: brightness(1.05); }
+  @media (max-width: 879px) {
+    .raspored { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  }
+  @media (max-width: 559px) {
+    .pristup { padding-top: 44px; }
+    .kartica { padding: 20px 16px; border-radius: 18px; }
+    .dva { grid-template-columns: minmax(0, 1fr); }
+    .gumb { align-self: stretch; }
+  }
+</style>

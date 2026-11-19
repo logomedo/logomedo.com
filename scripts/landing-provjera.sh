@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Provjera landinga na živom hostu (landing odluka 13, docs/landing/plan.md S3): samo GET/HEAD, bez prijave i lozinki.
+# Provjera landinga na živom hostu (landing odluka 13, docs/landing/plan.md S3): GET/HEAD bez prijave i lozinki, uz dva
+# POST-a na /pristup koji ništa ne upisuju (prazan obrazac → 400, tuđi Origin → 403).
 #   ./scripts/landing-provjera.sh staging.logomedo.com
 #   ./scripts/landing-provjera.sh http://localhost:8787     (npm run build && npx wrangler dev --config dist/server/wrangler.json)
 # Jedan redak po provjeri (OK / GREŠKA), na kraju zbroj; exit 1 ako išta padne.
@@ -34,7 +35,7 @@ cp "$RADNI/t" "$RADNI/sitemap.xml"
 provjeri "/sitemap.xml ispravan XML" xmllint --noout "$RADNI/sitemap.xml"
 LOC=$(grep -o '<loc>[^<]*</loc>' "$RADNI/sitemap.xml" | sed 's#</*loc>##g')
 n=$(printf '%s\n' "$LOC" | grep -c '^https://logomedo.com/' || true)
-provjeri "/sitemap.xml ima 7 <loc> na https://logomedo.com ($n)" test "$n" = 7
+provjeri "/sitemap.xml ima 8 <loc> na https://logomedo.com ($n)" test "$n" = 8
 PUTANJE=$(printf '%s\n' "$LOC" | sed 's#^https://logomedo.com##' | grep '^/' || true)
 
 : >"$RADNI/linkovi"
@@ -42,12 +43,16 @@ for p in $PUTANJE; do
   s="$(dohvati "$p")"
   provjeri "$p 200 ($s)" test "$s" = 200
   c="$(zaglavlje content-security-policy)"
+  if [[ "$p" == /pristup ]]; then  # SSR (S7): CSP s nonceom i no-store iz middlewarea; provjere niže
+    cp "$RADNI/t" "$RADNI/pristup.html"
+  else
   provjeri "$p CSP točno kao u _headers (jedno zaglavlje)" test "$c" = "$CSP"
   provjeri "$p x-content-type-options nosniff" test "$(zaglavlje x-content-type-options)" = nosniff
   provjeri "$p referrer-policy strict-origin-when-cross-origin" test "$(zaglavlje referrer-policy)" = strict-origin-when-cross-origin
   provjeri "$p x-frame-options DENY" test "$(zaglavlje x-frame-options)" = DENY
   cc="$(zaglavlje cache-control | paste -sd '|' -)"
   provjeri "$p cache-control no-cache ($cc)" test "$cc" = no-cache
+  fi
   xr="$(zaglavlje x-robots-tag | paste -sd '|' -)"
   if [[ $STAGING == 1 ]]; then provjeri "$p x-robots-tag noindex (staging)" test "$xr" = noindex
   elif [[ $LOKALNO == 0 ]]; then provjeri "$p bez x-robots-tag noindex (produkcija: '$xr')" test -z "$xr"; fi
@@ -90,6 +95,23 @@ provjeri "/admin 302 ($s)" test "$s" = 302
 provjeri "/admin preusmjerava na /admin/login" grep -q '/admin/login' <<<"$(zaglavlje location)"
 s="$(dohvati /api/v1/ja)"
 provjeri "/api/v1/ja 401 ($s)" test "$s" = 401
+
+# /pristup (S7): SSR obrazac. CSP iz middlewarea (nonce, form-action 'self'), no-store; POST sam provjerava Origin.
+s="$(dohvati /pristup)"
+provjeri "/pristup 200 ($s)" test "$s" = 200
+c="$(zaglavlje content-security-policy)"
+provjeri "/pristup CSP ima form-action 'self'" grep -q "form-action 'self'" <<<"$c"
+provjeri "/pristup CSP iz middlewarea (nonce-)" grep -q "nonce-" <<<"$c"
+nds=$(grep -o 'default-src' <<<"$c" | wc -l | tr -d ' ')
+provjeri "/pristup CSP nije spojen s _headers (default-src ×$nds)" test "$nds" = 1
+cc="$(zaglavlje cache-control | paste -sd '|' -)"
+provjeri "/pristup cache-control no-store ($cc)" test "$cc" = no-store
+provjeri "/pristup ima obrazac s method=post" grep -q '<form[^>]*method="post"' "$RADNI/t"
+ORIGIN="$(sed -E 's#^(https?://[^/]+).*#\1#' <<<"$BAZA")"
+s="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' -X POST -H "Origin: $ORIGIN" --data '' "$BAZA/pristup" 2>/dev/null || echo 000)"
+provjeri "POST /pristup bez polja, isti Origin → 400 ($s)" test "$s" = 400
+s="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' -X POST -H "Origin: https://primjer.example" --data '' "$BAZA/pristup" 2>/dev/null || echo 000)"
+provjeri "POST /pristup s tuđim Originom → 403 ($s)" test "$s" = 403
 
 echo "Zbroj: $OK OK, $GRESKE GREŠKA"
 [[ $GRESKE == 0 ]]

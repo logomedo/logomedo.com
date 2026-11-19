@@ -1,0 +1,21 @@
+---
+// P-11 Zahtjev za pristup (S7): obrazac na /pristup (src/lib/pristup.ts, migracija 0038). Rokovi iz
+// src/lib/pristup-rokovi.ts, isti kao u kodu retencije. Osnova: radnje na zahtjev ispitanika prije ugovora.
+import Sekcija from "../Sekcija.astro";
+import { PRISTUP, TVRTKA } from "../konstante";
+import { IP_SATI, ROK_MJESECI } from "../../lib/pristup-rokovi";
+---
+<Sekcija id="pristup" naslov="Zahtjev za pristup">
+  <p>Kad pošaljete <a href={PRISTUP}>obrazac „Zatraži pristup”</a>, spremamo:</p>
+  <ul>
+    <li><strong>Što upišete:</strong> ime i prezime, e-mail, ustanovu, grad i poruku ako je napišete.</li>
+    <li><strong>Vrijeme slanja</strong> i potvrdu da ste pročitali ovaj odjeljak.</li>
+    <li><strong>Sažetak IP adrese</strong> (hash, ne sama adresa), da spriječimo zlouporabu obrasca. Briše se nakon {IP_SATI} sata.</li>
+  </ul>
+  <p><strong>Svrha:</strong> da odgovorimo na vaš zahtjev i, ako ga odobrimo, pošaljemo vam pozivnicu. <strong>Osnova:</strong> radnje na
+    vaš zahtjev prije sklapanja ugovora (čl. 6. st. 1. t. (b) GDPR-a).</p>
+  <p><strong>Koliko dugo:</strong> neodgovorene i odbijene zahtjeve brišemo {ROK_MJESECI} mjeseci nakon slanja. Odobreni zahtjev brišemo
+    čim iskoristite pozivnicu, a najkasnije {ROK_MJESECI} mjeseci nakon odobrenja; nakon toga vrijedi ono što piše za
+    <a href="#logopedi">logopede s računom</a>.</p>
+  <p>Ako želite da zahtjev obrišemo ranije, pišite na <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a>.</p>
+</Sekcija>

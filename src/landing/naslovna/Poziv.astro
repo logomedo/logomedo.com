@@ -1,9 +1,8 @@
 ---
-// N-6 Završni poziv. Bez KONTAKT-a nema „Zatraži pristup” ni rečenice „… javite nam se.” (nema kamo; odluka 206).
+// N-6 Završni poziv. „Zatraži pristup” vodi na obrazac /pristup (S7).
 import Poziv from "../Poziv.astro";
-import { KONTAKT } from "../konstante";
 ---
 <Poziv id="probno" gumbi={["pristup", "prijava"]}>
   <Fragment slot="naslov">LogoMedo je u probnom razdoblju</Fragment>
-  Gradimo ga zajedno s logopedima i pristup je zasad samo uz pozivnicu.{KONTAKT && " Ako želite isprobati katalog, listiće i igre u svom radu, javite nam se."}
+  Gradimo ga zajedno s logopedima i pristup je zasad samo uz pozivnicu. Ako želite isprobati katalog, listiće i igre u svom radu, zatražite pristup.
 </Poziv>

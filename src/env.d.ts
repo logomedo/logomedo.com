@@ -9,6 +9,8 @@ declare namespace Cloudflare {
     ELEVENLABS_API_KEY: string;
     /** "staging" samo u env.staging (wrangler.jsonc); u produkciji nije postavljen. */
     OKRUZENJE?: string;
+    /** Opcionalan: potpis vremenskog žiga i papar za ip_hash na /pristup (src/lib/pristup.ts). Bez njega žig je goli ms. */
+    PRISTUP_TAJNA?: string;
   }
 }
 

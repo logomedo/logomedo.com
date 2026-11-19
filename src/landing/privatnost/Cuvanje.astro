@@ -3,12 +3,15 @@
 // Istekle sesije brišu se same (src/lib/admin/sesija.ts, src/lib/app/sesija.ts).
 import Sekcija from "../Sekcija.astro";
 import { TVRTKA } from "../konstante";
+import { IP_SATI, ROK_MJESECI } from "../../lib/pristup-rokovi";
 ---
 <Sekcija id="cuvanje" naslov="Koliko dugo čuvamo">
   <ul>
     <li><strong>Račun i vaš rad:</strong> dok koristite LogoMedo. Ako želite da obrišemo račun, pišite na
       <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a>. Račun, prijave, zadatke i bilježnice obrisat ćemo najkasnije u
       roku od 30 dana, a u povijesti izmjena kataloga umjesto vašeg e-maila ostat će oznaka bez osobnih podataka.</li>
+    <li><strong>Zahtjev za pristup:</strong> neodgovoreni i odbijeni {ROK_MJESECI} mjeseci, odobreni do iskorištenja pozivnice, a
+      najviše {ROK_MJESECI} mjeseci. Sažetak IP adrese {IP_SATI} sata. Briše se samo (<a href="#pristup">detalji</a>).</li>
     <li><strong>Sesije:</strong> istekle prijave brišu se same.</li>
     <li><strong>Tehnički podaci zahtjeva:</strong> kratko, u pravilu nekoliko dana, kod pružatelja hostinga.</li>
     <li><strong>E-pošta:</strong> dok je potrebno da odgovorimo i riješimo vaš upit.</li>

@@ -4,7 +4,7 @@
 import Sekcija from "../Sekcija.astro";
 import Snimka from "../Snimka.astro";
 import Cta from "../Cta.astro";
-import { DEMO_URL, KONTAKT } from "../konstante";
+import { DEMO_URL } from "../konstante";
 ---
 {DEMO_URL ? (
   <Sekcija id="isprobaj" naslov="Isprobajte sami">
@@ -14,7 +14,7 @@ import { DEMO_URL, KONTAKT } from "../konstante";
   </Sekcija>
 ) : (
   <Sekcija id="isprobaj" naslov="Ovako izgleda na tabletu" obrnuto>
-    <p>Igru dobiva dijete preko linka od svog logopeda.{KONTAKT && " Ako ste logoped i želite je isprobati sa svojim zadacima, zatražite pristup."}</p>
+    <p>Igru dobiva dijete preko linka od svog logopeda. Ako ste logoped i želite je isprobati sa svojim zadacima, zatražite pristup.</p>
     <Cta gumbi={["pristup", "prijava"]} />
     <Snimka v={4} slot="vizual" />
   </Sekcija>

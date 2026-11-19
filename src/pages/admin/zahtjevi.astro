@@ -1,0 +1,156 @@
+---
+// Zahtjevi za pristup s /pristup (S7 landinga). Samo superadmin (rute.ts, ovlast `korisnici`), i GET i POST.
+// „Odobri” izdaje pozivnicu (src/lib/admin/zahtjevi.ts) i link prikaže jednom, kao /admin/korisnici; nigdje se
+// ne sprema. Pri svakom učitavanju briše se ono čemu je istekao rok (retencija, src/lib/pristup.ts).
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { kad } from "../../lib/katalog";
+import { smije } from "../../lib/admin/ovlasti";
+import { PORUKE_ODBIJANJA } from "../../lib/admin/pozivi";
+import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../lib/admin/zahtjevi";
+import { ROK_MJESECI, pocisti } from "../../lib/pristup";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+let poruka: string | null = Astro.url.searchParams.get("ok") === "odbijen" ? "Zahtjev je odbijen." : null;
+let greska: string | null = null;
+let link: { url: string; email: string; istjece: string } | null = null;
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const akcija = String(f.get("akcija") ?? "");
+  const id = Number(f.get("id"));
+  if (!Number.isInteger(id) || id <= 0) greska = "Nepoznat zahtjev.";
+  else if (akcija === "odobri") {
+    const r = await odobri(id, s.email);
+    if (r.ok) link = { url: `${Astro.url.origin}/admin/poziv#${r.token}`, email: r.email, istjece: r.istjece };
+    else if (r.razlog === "obradjen") greska = "Zahtjev je već obrađen (možda u drugoj kartici). Nova pozivnica nije izdana.";
+    else greska = `${PORUKE_ODBIJANJA[r.razlog]} Zahtjev je i dalje otvoren: ako pozivnica ne treba, zatvori ga gumbom „Odbij”.`;
+  } else if (akcija === "odbij") {
+    if (await odbij(id, s.email)) return Astro.redirect("/admin/zahtjevi?ok=odbijen", 303);
+    greska = "Zahtjev je već obrađen.";
+  } else greska = "Nepoznata radnja.";
+  poruka = null;
+  if (greska) Astro.response.status = 400;
+}
+
+await pocisti();
+const [novi, obradjeni] = await Promise.all([noviZahtjevi(), obradjeniZahtjevi()]);
+const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren", odbijen: "odbijen" };
+---
+<AdminOkvir naslov="Zahtjevi za pristup" aktivno="zahtjevi">
+  <div class="naslov">
+    <div>
+      <h1>Zahtjevi za pristup</h1>
+      <p class="podnaslov">S obrasca na <a href="/pristup">/pristup</a>. „Odobri” izdaje pozivnicu (link vrijedi 72 h, jednom) koju
+        šalješ osobno. Zahtjevi se brišu nakon {ROK_MJESECI} mjeseci; odobreni čim je pozivnica iskorištena.</p>
+    </div>
+  </div>
+
+  {poruka && <p class="poruka ok" role="status">{poruka}</p>}
+  {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
+  {link && (
+    <section class="ploha link" id="poziv-rezultat">
+      <h2>Pozivnica za {link.email}</h2>
+      <p class="blijedo sitno">Pošalji link osobno (poruka, ne javni kanal). Vidi se samo sada; vrijedi do {kad(link.istjece)}.
+        Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
+      <div class="red-linka">
+        <input id="poziv-link" type="text" readonly value={link.url} aria-label="Link pozivnice" />
+        <button id="kopiraj-link" class="gumb glavni mali" type="button">Kopiraj</button>
+      </div>
+    </section>
+  )}
+
+  <h2 class="podnaslov-popisa">Novi ({novi.length})</h2>
+  {novi.length === 0 ? <p class="blijedo" id="nema-novih">Nema novih zahtjeva.</p> : (
+    <div class="zahtjevi">
+      {novi.map((z) => (
+        <article class="ploha zahtjev" id={`zahtjev-${z.id}`}>
+          <header>
+            <h3>{z.ime}</h3>
+            <span class="blijedo sitno">{kad(z.created_at)}</span>
+          </header>
+          <p class="email">{z.email}</p>
+          <p class="blijedo">{[z.ustanova, z.grad].filter(Boolean).join(" · ") || "—"}</p>
+          {z.poruka && <p class="poruka-zahtjeva">{z.poruka}</p>}
+          <div class="akcije">
+            <form method="post">
+              <input type="hidden" name="akcija" value="odobri" />
+              <input type="hidden" name="id" value={z.id} />
+              <button class="gumb glavni mali" type="submit"><Ikona ime="kvacica" /> Odobri</button>
+            </form>
+            <form method="post">
+              <input type="hidden" name="akcija" value="odbij" />
+              <input type="hidden" name="id" value={z.id} />
+              <button class="gumb mali opasno" type="submit"><Ikona ime="x" /> Odbij</button>
+            </form>
+          </div>
+        </article>
+      ))}
+    </div>
+  )}
+
+  {obradjeni.length > 0 && (
+    <>
+      <h2 class="podnaslov-popisa">Zadnji obrađeni</h2>
+      <div class="ploha tablica">
+        <table id="obradjeni">
+          <thead><tr><th>Zahtjev</th><th>Status</th><th>Obradio</th><th>Kada</th></tr></thead>
+          <tbody>
+            {obradjeni.map((z) => (
+              <tr>
+                <td><b>{z.ime}</b><br /><span class="blijedo sitno">{z.email}</span></td>
+                <td><span class:list={["status", z.status]}>{STATUS[z.status]}</span></td>
+                <td class="sitno">{z.obradio ?? "—"}</td>
+                <td class="sitno">{kad(z.obradjen_at)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )}
+</AdminOkvir>
+<script>
+  const gumb = document.getElementById("kopiraj-link");
+  gumb?.addEventListener("click", async () => {
+    const polje = document.getElementById("poziv-link") as HTMLInputElement;
+    polje.select();
+    try {
+      await navigator.clipboard.writeText(polje.value);
+      gumb.textContent = "Kopirano";
+    } catch {
+      gumb.textContent = "Označeno: Ctrl+C";
+    }
+  });
+</script>
+<style>
+  .podnaslov a { color: var(--med-tamno); }
+  .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }
+  .poruka.ok { color: var(--uspjeh); }
+  .poruka.greska { color: var(--greska); }
+  .sitno { font-size: .82rem; margin: 0; }
+  .link { margin-top: 16px; padding: 20px; display: flex; flex-direction: column; gap: 10px; border-color: var(--med); }
+  .link h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; }
+  .red-linka { display: flex; gap: 8px; }
+  .red-linka input { flex: 1; min-width: 0; font-family: ui-monospace, "SF Mono", monospace; font-size: .82rem; }
+  .podnaslov-popisa { margin: 28px 0 12px; font-family: var(--font-slova); font-weight: 600; font-size: 1.15rem; }
+  .zahtjevi { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+  .zahtjev { padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .zahtjev header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .zahtjev h3 { margin: 0; font-size: 1.02rem; }
+  .zahtjev p { margin: 0; overflow-wrap: anywhere; }
+  .email { font-weight: 600; }
+  .poruka-zahtjeva { white-space: pre-line; padding: 10px 12px; border-radius: 10px; background: var(--povrsina-2); font-size: .9rem; }
+  .akcije { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  form { margin: 0; }
+  .tablica { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rub); vertical-align: top; }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--blijedo); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  .status { font-size: .8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .status.odobren { background: var(--uspjeh-blago); color: var(--uspjeh); }
+  .status.odbijen { background: var(--greska-blago); color: var(--greska); }
+</style>

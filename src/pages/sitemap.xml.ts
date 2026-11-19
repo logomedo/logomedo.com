@@ -1,4 +1,4 @@
-// sitemap.xml landinga: šest stranica iz src/landing/konstante.ts (odluka 200). Prerenderirano u dist/client.
+// sitemap.xml landinga: stranice iz STRANICE u src/landing/konstante.ts (odluka 200; od S7 i /pristup). Prerenderirano u dist/client.
 import type { APIRoute } from "astro";
 import { sitemapXml } from "../landing/konstante";
 

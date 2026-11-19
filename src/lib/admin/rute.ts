@@ -8,6 +8,8 @@ export const SAMO_SUPERADMIN = [
   "/admin/prompt",
   "/admin/red",
   "/admin/korisnici",
+  // Zahtjevi za pristup s /pristup (S7 landinga): odobravanje izdaje pozivnicu.
+  "/admin/zahtjevi",
   "/admin/zvukovi/glasovi",
   "/admin/api/zvuk-proba",
   "/admin/app/prijava",

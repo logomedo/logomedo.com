@@ -14,7 +14,7 @@ test("svaka ruta, s podputanjom i kosom crtom na kraju", () => {
 test("popis ruta je točno ovaj", () => {
   assert.deepEqual([...SAMO_SUPERADMIN].sort(), [
     "/admin/api/app-kod", "/admin/api/novi-glas", "/admin/api/rijec", "/admin/api/zvuk-proba", "/admin/app/prijava", "/admin/korisnici",
-    "/admin/novi-glas", "/admin/prompt", "/admin/red", "/admin/zvukovi/glasovi",
+    "/admin/novi-glas", "/admin/prompt", "/admin/red", "/admin/zahtjevi", "/admin/zvukovi/glasovi",
   ]);
 });
 
@@ -53,4 +53,13 @@ test("smijeNa: superadmin sve, logoped ne administraciju", () => {
   assert.equal(smijeNa("superadmin", "/admin/prompt"), true);
   assert.equal(smijeNa("logoped", "/admin/prompt"), false);
   assert.equal(smijeNa("logoped", "/admin/zadaci"), true);
+});
+
+test("/admin/zahtjevi (S7 landinga): samo superadmin; javni obrazac /pristup nije admin ruta", () => {
+  for (const p of ["/admin/zahtjevi", "/admin/zahtjevi/", "/ADMIN/Zahtjevi", "/admin%2Fzahtjevi", "//admin//zahtjevi"]) {
+    assert.equal(rutaSamoSuperadmin(p), true, p);
+  }
+  for (const p of ["/admin/zahtjevix", "/pristup", "/admin/poziv"]) assert.equal(rutaSamoSuperadmin(p), false, p);
+  assert.equal(smijeNa("superadmin", "/admin/zahtjevi"), true);
+  assert.equal(smijeNa("logoped", "/admin/zahtjevi"), false);
 });

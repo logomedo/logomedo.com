@@ -40,27 +40,28 @@ function pravila(tekst: string): Map<string, Map<string, string>> {
 }
 
 test("landing: title ≤ 60 i description ≤ 155 znakova, sve putanje različite", () => {
-  assert.equal(K.STRANICE.length, 7);
+  assert.equal(K.STRANICE.length, 8);
   for (const s of K.STRANICE) {
     assert.ok(s.naslov.length <= 60, `${s.putanja}: title ${s.naslov.length}`);
     assert.ok(s.opis.length > 50 && s.opis.length <= 155, `${s.putanja}: description ${s.opis.length}`);
     assert.match(s.naslov, /LogoMedo/);
   }
   assert.ok(K.STRANICA_404.naslov.length <= 60);
-  assert.equal(new Set(K.STRANICE.map((s) => s.putanja)).size, 7);
+  assert.equal(new Set(K.STRANICE.map((s) => s.putanja)).size, 8);
 });
 
-test("landing: svaka stranica iz STRANICE postoji i prerenderira se, 404 isto", () => {
+test("landing: svaka stranica iz STRANICE postoji i prerenderira se (osim ssr: /pristup), 404 isto", () => {
+  assert.deepEqual(K.STRANICE.filter((s) => s.ssr).map((s) => s.putanja), [K.PRISTUP]);
   for (const s of K.STRANICE) {
     const datoteka = `src/pages/${s.putanja === "/" ? "index" : s.putanja.slice(1)}.astro`;
-    assert.match(procitaj(datoteka), /export const prerender = true;/, datoteka);
+    assert.match(procitaj(datoteka), s.ssr ? /export const prerender = false;/ : /export const prerender = true;/, datoteka);
     assert.match(procitaj(datoteka), new RegExp(`<Okvir putanja="${s.putanja}">`), datoteka);
   }
   assert.match(procitaj("src/pages/404.astro"), /export const prerender = true;/);
   assert.ok(!K.STRANICE.some((s) => /^\/(admin|api|b|cdn)(\/|$)/.test(s.putanja)));
 });
 
-test("landing: sitemap ima sedam kanonskih URL-ova bez kose crte na kraju i bez 404", () => {
+test("landing: sitemap ima osam kanonskih URL-ova bez kose crte na kraju i bez 404", () => {
   const xml = K.sitemapXml();
   const loc = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   assert.deepEqual(loc, [
@@ -69,6 +70,7 @@ test("landing: sitemap ima sedam kanonskih URL-ova bez kose crte na kraju i bez 
     "https://logomedo.com/radni-listici",
     "https://logomedo.com/igre",
     "https://logomedo.com/o-nama",
+    "https://logomedo.com/pristup",
     "https://logomedo.com/privatnost",
     "https://logomedo.com/uvjeti",
   ]);
@@ -88,7 +90,8 @@ test("landing: _headers ima CSP kao zastiti() bez noncea i cache-control samo na
   assert.equal(sve.get("x-frame-options"), "DENY");
   assert.ok(!sve.has("cache-control"), "cache-control na /* bi se spojio s /_astro/* immutable");
   const html = [...p.keys()].filter((k) => k !== "/*");
-  assert.deepEqual(html.sort(), K.STRANICE.map((s) => s.putanja).sort());
+  // /pristup je SSR: zaglavlja (CSP s nonceom, cache-control no-store) daju middleware i stranica.
+  assert.deepEqual(html.sort(), K.STRANICE.filter((s) => !s.ssr).map((s) => s.putanja).sort());
   for (const k of html) assert.deepEqual([...p.get(k)!], [["cache-control", "no-cache"]], k);
 });
 
@@ -225,10 +228,11 @@ test("landing: pravne stranice imaju voditelja obrade i pružatelja, bez osobnih
   assert.equal(K.VODITELJ_OBRADE, K.TVRTKA.naziv);
   assert.match(K.TVRTKA.oib, /^\d{11}$/);
   assert.match(K.TVRTKA.mbs, /^\d{9}$/);
-  assert.match(K.TVRTKA.privatnost, /^[a-z]+@italk\.hr$/);
+  assert.equal(K.TVRTKA.privatnost, "bok@logomedo.com");
+  assert.equal(K.KONTAKT, `mailto:${K.TVRTKA.privatnost}`);
   const izvor = ["src/pages/privatnost.astro", "src/pages/uvjeti.astro", ...readdirSync(new URL("src/landing/privatnost/", korijen)).map((f) => `src/landing/privatnost/${f}`),
     ...readdirSync(new URL("src/landing/uvjeti/", korijen)).map((f) => `src/landing/uvjeti/${f}`)].map(procitaj).join("\n");
-  for (const id of ["voditelj", "osnove", "obradivaci", "kolacici", "cuvanje", "prava", "pruzatelj", "odgovornost"]) assert.match(izvor, new RegExp(`id="${id}"`), id);
+  for (const id of ["pristup", "voditelj", "osnove", "obradivaci", "kolacici", "cuvanje", "prava", "pruzatelj", "odgovornost"]) assert.match(izvor, new RegExp(`id="${id}"`), id);
   assert.doesNotMatch(izvor, /\+385|gmail\.com|ms@/);
   assert.doesNotMatch(izvor, /besplatn/i);
 });

@@ -11,7 +11,7 @@ test("sve migracije se primijene, redom kao wrangler", async () => {
   const imena = migracije();
   assert.ok(imena.length >= 33);
   assert.ok(imena.indexOf("0030_okvir_zadatka.sql") < imena.indexOf("0030_zvuk_nacini_probe.sql"));
-  assert.equal(imena.at(-1), "0037_slike_predlozio.sql");
+  assert.equal(imena.at(-1), "0038_zahtjevi_pristupa.sql");
   const db = napraviD1();
   const t = await db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table'").first<number>("n");
   assert.ok(t! > 10);
@@ -118,4 +118,20 @@ test("0035: slušne vrste prolaze CHECK, područja pod predvještinama", async (
   assert.deepEqual(results.map((x) => x.slug), ["glas-slovo", "pozicija-glasa"]);
   const k = await db.prepare("INSERT INTO korisnici (email, uloga) VALUES ('t@t', 'admin') RETURNING id").first<number>("id");
   await db.prepare("INSERT INTO zadaci (autor_id, vrsta) VALUES (?, 'koje_slovo'), (?, 'pozicija_glasa')").bind(k, k).run();
+});
+
+test("0038: zahtjevi_pristupa, CHECK statusa i indeksi", async () => {
+  const db = napraviD1();
+  assert.deepEqual(await stupci(db, "zahtjevi_pristupa"), [
+    "id", "ime", "email", "ustanova", "grad", "poruka", "privola_at", "created_at", "status", "obradio", "obradjen_at", "poziv_token_hash", "ip_hash",
+  ]);
+  const ubaci = (status?: string) => db.prepare(
+    `INSERT INTO zahtjevi_pristupa (ime, email, privola_at, created_at${status ? ", status" : ""}) VALUES ('A', 'a@primjer.test', 't', 't'${status ? ", ?" : ""}) RETURNING status`,
+  ).bind(...(status ? [status] : []));
+  assert.equal(await ubaci().first("status"), "novi");
+  for (const s of ["odobren", "odbijen"]) assert.equal(await ubaci(s).first("status"), s);
+  await assert.rejects(ubaci("nesto").run());
+  await assert.rejects(db.prepare("INSERT INTO zahtjevi_pristupa (ime, email, created_at) VALUES ('A', 'a@primjer.test', 't')").run(), "privola_at je obavezna");
+  const idx = (await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'zahtjevi_pristupa' AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>()).results;
+  assert.deepEqual(idx.map((i) => i.name), ["zahtjevi_pristupa_email", "zahtjevi_pristupa_ip", "zahtjevi_pristupa_status"]);
 });

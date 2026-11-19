@@ -1,7 +1,7 @@
 ---
 // Gumbi poziva na akciju. Redoslijed = važnost (prvi je istaknut). Gumb s praznom konstantom se ne renderira
-// (KONTAKT, DEMO_URL; odluke 205, 206), pa prvi preostali postaje istaknut.
-import { DEMO_URL, KONTAKT, PRIJAVA } from "./konstante";
+// (DEMO_URL; odluke 205, 206), pa prvi preostali postaje istaknut. „Zatraži pristup” vodi na obrazac /pristup (S7).
+import { DEMO_URL, PRIJAVA, PRISTUP } from "./konstante";
 
 type Vrsta = "prijava" | "pristup" | "demo";
 interface Gumb { href: string; tekst: string }
@@ -9,7 +9,7 @@ interface Props { gumbi: (Vrsta | Gumb)[] }
 const { gumbi } = Astro.props;
 const svi: Record<Vrsta, Gumb> = {
   prijava: { href: PRIJAVA, tekst: "Prijava" },
-  pristup: { href: KONTAKT, tekst: "Zatraži pristup" },
+  pristup: { href: PRISTUP, tekst: "Zatraži pristup" },
   demo: { href: DEMO_URL, tekst: "Isprobaj igru" },
 };
 const vidljivi = gumbi.map((g) => (typeof g === "string" ? svi[g] : g)).filter((g) => g.href);
