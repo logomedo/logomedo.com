@@ -39,12 +39,14 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [x] Odgovor iz admina: `emails/Odgovor.tsx`, `In-Reply-To`/`References`, upis u nit → S3
 - [x] Brzi odgovori: popis, dodaj/uredi/obriši, umetanje u odgovor (skripta s nonceom, bez inline) → S3
 - [x] Mobilni izgled (lokalni dev + headless Chrome, odluka 311) → S3
-- [ ] (!) Produkcija i e2e: odgovor iz admina u Gmail u istoj niti, odgovor na njega opet u razgovoru, brzi odgovor → S3
+- [x] (!) Produkcija i e2e: odgovor iz admina u Gmail u istoj niti, odgovor na njega opet u razgovoru, brzi odgovor → S3
 
 ## F3: zatvaranje
 
 - [ ] Retencija poruka i privitaka (pri otvaranju `/admin/poruke`, kao `pristup.ts`) → S4
 - [ ] Obavijest superadminu e-poštom o novoj poruci i novom zahtjevu za pristup (odluka 710 landinga) → S4
 - [ ] Novi zahtjev na `/pristup` i ručni „Novi razgovor” iz admina → S4
+- [x] Gumb „Pošalji” zaključan uz „Šaljem…”, Idempotency-Key protiv dvostrukog slanja (odluka 312) → S3
+- [x] Nove poruke bez ručnog osvježavanja: polling 12 s dok je kartica vidljiva (odluka 313) → S3
 - [ ] (!) Apex `logomedo.com`: `include:_spf.google.com` u SPF i Google DKIM (Google Admin) prije DMARC `quarantine` → S4 / korisnik
 - [ ] Produkcija, e2e, `docs/inbox.md` (kako radi) → S4
