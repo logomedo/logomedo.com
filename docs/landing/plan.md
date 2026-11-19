@@ -41,7 +41,9 @@ statičke datoteke; admin, API, `/b/…` i `/cdn` ostaju SSR kroz `src/worker.ts
 | S3 | F1 | Kostur, `_headers`, SEO, naslovna, provjera | 300–399 | `scripts/landing-provjera.sh staging.logomedo.com` zelen; `curl -I /` ima CSP iz `_headers` |
 | S4 | F2 | Snimke zaslona, stranice katalog i radni listići | 400–499 | stranice na stagingu, provjera zelena, snimke pregledane (popis u `research/`) |
 | S5 | F2 | Igre, aplikacija, o nama, privatnost | 500–599 | sve stranice iz `sadrzaj.md` na stagingu, provjera zelena |
-| S6 | F3 | Lighthouse, code review, **vrata**, produkcija | 600–699 | nakon „go”: `scripts/landing-provjera.sh logomedo.com` zelen, admin radi, `wrangler deployments list` pokazuje ovu verziju |
+| S6 | F3 | Lighthouse, code review, pravni tekstovi, **vrata**, produkcija | 600–699 | nakon „go”: `scripts/landing-provjera.sh logomedo.com` zelen, admin radi, `wrangler deployments list` pokazuje ovu verziju |
+
+| S7 | F4 | Obrazac „Zatraži pristup”, admin odobravanje, privatnost (dodan u S6, odluka 611) | 700–799 | na stagingu zahtjev → odobrenje → pozivnica; provjera zelena |
 
 **Procjena:** 6 sesija (S1–S6), S4 ili S5 se mogu razdvojiti ako snimke ili interaktivni demo
 narastu. **Vrata:** samo S6 (odluka 16). Ako S1 ne može stvoriti R2 ili domenu s postojećim
@@ -68,3 +70,7 @@ staging `a6d86944`, provjera 118 OK, 0 grešaka. 302 testa (pass 302, skipped 0)
 S5 (19. 11. 2026.): `/igre`, `/o-nama`, `/privatnost` sa snimkama i sovom (V-25); demo G-6 čeka produkcijsku bilježnicu
 (S6). Staging `b46a6a21`, provjera 130 OK, 0 grešaka. 302 testa (pass 302, skipped 0). Pravna pitanja privatnosti na vrhu
 `S6.md`.
+
+S6 (19. 11. 2026.): pravni tekstovi (ITalk d.o.o. voditelj obrade i pružatelj; `/privatnost` po GDPR-u, nova `/uvjeti`),
+`KONTAKT` hello@italk.hr, aktivna stranica i prekidač teme, Lighthouse (a11y 100 nakon popravka kontrasta), code review.
+Staging `05029b71`, provjera 141 OK, 0 grešaka. Produkcija čeka „go” (vrh `S6.md`); obrazac za pristup je S7.

@@ -45,9 +45,19 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F3: pregled i produkcija
 
-- [ ] Lighthouse po stranici (staging), a11y, mobitel 360 px, tamna tema; brojke u `research/` → S6
+- [x] Lighthouse po stranici (staging), a11y, mobitel 360 px, tamna tema; brojke u `research/2026-11-19-lighthouse.md` → S6
 - [ ] Nalaz iz S4 (odluka 405): admin na mobitelu, `.skupina` globalno i `main.sadrzaj` bez `min-width: 0`; popraviti izvan lanca ili u S6 uz pristanak → S6
-- [ ] `/code-review` grane `landing`, nalazi popravljeni ili zapisani → S6
-- [ ] (!) Korisnik pregleda staging i kaže „go”; otvorena pitanja (kontakt adresa) odgovorena → S6
+- [x] `/code-review` grane `landing`, nalazi popravljeni ili zapisani → S6
+- [x] Pravni tekstovi: politika privatnosti po GDPR-u, `/uvjeti`, voditelj obrade, obrađivači, kolačići, brisanje (odluke 600–607) → S6
+- [x] Zaglavlje: aktivna stranica i prekidač teme (odluke 608, 609) → S6
+- [x] Kontakt adresa `hello@italk.hr` (odluka 602, potvrditi) → S6
+- [ ] (!) Korisnik pregleda staging i kaže „go” (pitanja na vrhu `S6.md`) → S6
 - [ ] (!) www → apex za statičke stranice (odluka 306) → S6
 - [ ] Merge `landing` u `main`, `npm run deploy`, provjera `scripts/landing-provjera.sh logomedo.com` i admina → S6
+
+## F4: zahtjev za pristup (privatna beta, odluka 611)
+
+- [ ] Migracija `zahtjevi_pristupa`, obrazac `/pristup` (honeypot, rate limit, bez inline skripte) → S7
+- [ ] `/admin/zahtjevi` (superadmin): odobri = postojeća pozivnica, odbij; brojač → S7
+- [ ] `/privatnost#pristup`, CTA „Zatraži pristup” na `/pristup` → S7
+- [ ] e2e na stagingu: zahtjev → odobrenje → pozivnica → S7

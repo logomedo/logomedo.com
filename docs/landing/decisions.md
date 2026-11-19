@@ -246,3 +246,63 @@ Provjera staginga: `research/2026-11-19-provjera-staging-s5.md` (130 OK, 0 greš
      stranicu provjerava i da nema placeholdera „— S6]”.
 508. **Privatnost ne navodi obrađivače** (hosting, servisi za slike i izgovor), jer odluka 204 zabranjuje nazive
      servisa na landingu; je li to pravno dovoljno, pitanje je vrata S6 (vrh `S6.md`).
+
+## S6 (19. 11. 2026.)
+
+Pravni tekstovi napisani autonomno po korisnikovoj ovlasti od 19. 11. 2026. (ITalk d.o.o. je pravna osoba iza LogoMeda;
+izvori: ITalk politike u `../../italk/italk-hr/src/content/legal/hr/` i `domovina.ai/docs/compliance/`, samo čitanje).
+Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 141 OK, 0 grešaka.
+
+600. **Voditelj obrade i pružatelj je ITalk d.o.o. za informacijske tehnologije** (OIB 54872935051, MBS 081042440,
+     Trgovački sud u Zagrebu, IX. Južna obala 20, Zagreb): `TVRTKA` u `src/landing/konstante.ts`. Javni podaci iz registra
+     smiju u javni repo; telefon i osobni e-mailovi ne (test). `VODITELJ_OBRADE = TVRTKA.naziv`, `IME_TVRTKE = "ITalk d.o.o."`,
+     `GODINA = "2026"` (podnožje). Pitanja o podacima idu na `privacy@italk.hr` (vrata 2 iz S5: riješeno).
+601. **`GODINA_PRVOG = "2017"`** je odvojena od godine u podnožju (jedna konstanta je radila oboje). Izvor: najstariji listići
+     u izvozu starog appa su iz 2017., i to su bojanke (`../preuzimanje/docs/legacy-data-stats.txt`, `legacy-app.md`).
+     O-2 zato ima naslov „Od bojanki do igre”. Brojke iz odluke 504 provjerene na produkciji (samo SELECT): 659 aktivnih
+     riječi, od toga 234 dodane (`izvor='admin'`) → „više od dvjesto”; 11 vrsta u `src/lib/zadaci/vrste.ts` → „deset novih”
+     uz listić. Ostale `BROJKE` iste: 30 glasova, 659 → 650+, 1320 odobrenih slika → 1300+, 2 stila, 90 znakova; produkcija
+     ima zadnju migraciju `0037_slike_predlozio.sql` kao repo.
+602. **`KONTAKT = "mailto:hello@italk.hr"`** (javna opća adresa tvrtke; odgovor orkestratora „a”, auto, potvrditi). Uključuje
+     „Zatraži pristup”, „Kontakt:” i rečenice „javite se”. S7 ga zamjenjuje obrascem.
+603. **`/privatnost` je sad politika privatnosti po GDPR-u**: zadržan je kratki konkretni dio (P-1…P-4, dopunjen zapisima
+     hostinga i aplikacijom za mobitel: naziv uređaja, 30 / 7 dana), a dodani su P-5 voditelj (uvijek), P-6 osnove (čl. 6.
+     t. b i f, bez privole i marketinga), P-7 obrađivači, P-8 kolačići, P-9 rokovi, P-10 prava i AZOP.
+604. **Obrađivači su imenovani na `/privatnost`** (vrata 3 iz S5: b): Cloudflare, Google Cloud (Vertex AI), ElevenLabs, Google
+     Workspace (e-pošta), prema kodu. Odluka 204 se mijenja samo za tu stranicu. Prijenos izvan EU: Okvir EU-SAD gdje je
+     pružatelj certificiran, inače standardne ugovorne klauzule (potvrditi ugovore o obradi s korisnikom).
+605. **Kolačići**: landing i igra bez kolačića; nakon prijave kolačić sesije i dva kolačića postavki kataloga (365 dana),
+     localStorage teme, trake i podjele predložaka. Svi nužni ili postavke, pa nema bannera ni privole (čl. 5(3) ePrivacy).
+     Zasebna politika kolačića nije potrebna; sekcija je na `/privatnost#kolacici`.
+606. **Brisanje računa na zahtjev** (vrata 4 iz S5: b): „pišite na privacy@italk.hr, brišemo najkasnije u 30 dana; u povijesti
+     izmjena kataloga umjesto e-maila ostaje oznaka bez osobnih podataka”. U aplikaciji tog postupka nema: radi se ručno u D1
+     (superadmin). Runbook za brisanje (koje tablice, zamjena `aktivnost.tko`) je posao nakon objave (potvrditi).
+607. **Nova stranica `/uvjeti`** (Uvjeti korištenja i podaci o pružatelju po Zakonu o elektroničkoj trgovini čl. 6.): u
+     `STRANICE` (sitemap 7 URL-ova, `landing-provjera.sh` očekuje 7), link u podnožju, `Cache-Control` u `_headers`. Sadržaj:
+     pristup uz pozivnicu, probno razdoblje (bez cijene, odluka 204; naplata samo uz pristanak), katalog pripada pružatelju
+     (korištenje u radu, bez preprodaje i učenja modela), zadaci i bilježnice ostaju logopedovi, nove slike za riječi idu u
+     zajednički katalog, odgovornost samo za namjeru i krajnju nepažnju, pravo RH, sud u Zagrebu uz iznimku za potrošače.
+     Impressum kao zasebna stranica nije potreban (pružatelj je na vrhu `/uvjeti`).
+608. **Aktivna stranica u zaglavlju** (zahtjev korisnika u S6): `aria-current="page"` je postojao samo s tankom crtom; sad ima
+     pozadinu `--med-blago` i crtu, u mobilnom izborniku lijevu crtu. Podnožje dobiva `putanja` i ističe i Privatnost i Uvjete.
+609. **Prekidač teme** (zahtjev korisnika u S6): gumb u zaglavlju (≥ 720 px), u mobilnom izborniku redak „Tamna tema”, jer bi
+     četvrti element u zaglavlju na 360 px izlazio iz ekrana. Logika u `public/tema.js` (već se učitava u `<head>` prije
+     crtanja, pa nema bljeska i CSP ostaje `script-src 'self'`); isti ključ `logomedo-tema` kao admin; `aria-pressed` = tamna.
+610. **Lighthouse**: kontrast gumba u `Sekcija` popravljen (`a:not(.gumb)`); SEO `is-crawlable` na stagingu je namjeran
+     (odluka 207); `image-aspect-ratio` na `/katalog` mobitel je ograničenje audita za `<picture><source width height>`,
+     ostavljeno.
+611. **Obrazac „Zatraži pristup” je paket S7** (zahtjev korisnika u S6): javni POST, nova tablica i migracija, zaštita od
+     spama, admin ekran za odobravanje koji stvara postojeću pozivnicu, izmjena `/privatnost`. To je izmjena `src/lib/admin`,
+     middlewarea i sheme, dakle izvan opsega S6 („admin, API i `src/lib/` se ne mijenjaju”) i veće od jedne sesije uz
+     pregled i vrata. S6 staje na vratima kao do sada; S7 radi na grani `landing` i stagingu, produkcija tek uz isti „go”.
+612. **`DATUM_OBJAVE = "19. 11. 2026."`** na `/privatnost` i `/uvjeti` (datum teksta). Nakon „go” postaviti na datum objave
+     ako je kasniji.
+613. **`/code-review high` grane `landing` naspram `main`** (6 nalaza): popravljeni test prekidača teme (klasa
+     `prekidac-teme gore`), `staging-osvjezi.sh` koji je brisao `d1_migrations` staginga i uvozio produkcijske (S7 dodaje
+     migraciju 0038, pa bi sljedeći `db:migrate:staging` pao), `straniKljucevi()` koji nije vidio strani ključ iza
+     `-- komentara`, i zaostali tip `STAGING_LOZINKA`. Commit `d70adf8`.
+614. **www → apex za prerenderirane stranice** (nalaz reviewa) je poznat od odluke 306: ostaje pitanje vrata (Redirect Rule
+     u dashboardu, preporuka), jer je to vanjska radnja na produkcijskoj zoni.
+615. **E-mailovi tvrtke u javnom repou** (nalaz reviewa: pravilo „nikakav e-mail” u `../CLAUDE.md`): `privacy@italk.hr`
+     korisnik je izričito odobrio 19. 11. 2026. (javni podaci tvrtke), `hello@italk.hr` je javna adresa s italk.hr
+     (odluka 602, potvrditi). Iznimka zapisana u `../CLAUDE.md`: javne adrese tvrtke smiju, osobne i dalje ne.
