@@ -21,4 +21,4 @@ znači prvi red koji nije „gotovo” u „Stanje lanca” u `docs/rbac/handoff
 
 Plan od 19. 11. 2026. u `docs/landing/` (`TODO.md`, `plan.md`, `decisions.md`, `handoffs/`). „Nastavi landing”
 znači prvi red koji nije „gotovo” u „Stanje lanca” u `docs/landing/handoffs/README.md`; prompt je `SN.md`.
-Landing kod živi na grani `landing` do vrata u S6; staging (`staging.logomedo.com`, `env.staging`) je u `main`.
+Lanac radi u worktreeju `../logomedo.com-landing` (grana `landing`), ne u ovoj radnoj kopiji; landing ide u `main` tek u S6 nakon „go”.

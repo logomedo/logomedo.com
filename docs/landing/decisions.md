@@ -64,3 +64,10 @@ izvan ovog direktorija piši „landing odluka N”.
     nisu dopušteni.
 17. **Provjera:** `npm test && npm run check && npm run build` prije svakog commita, a od S3 i
     `scripts/landing-provjera.sh staging.logomedo.com`.
+18. **Lanac radi u zasebnom worktreeju** `/Users/ms/git/logomedo/logomedo.com-landing` na grani
+    `landing` (zamjenjuje dio odluka 2 i 3 o tome gdje se radi). Razlog: u
+    `/Users/ms/git/logomedo/logomedo.com` paralelno radi neovisna sesija na adminu (`main`);
+    prebacivanje grana ili necommitane izmjene u istoj radnoj kopiji bi joj smetale. S1 commita na
+    `landing` i na kraju objavi staging u `main` s `git fetch && git rebase origin/main && git push
+    origin HEAD:main` (fast-forward), pa pusha i `landing`. S2–S5 pushaju samo `landing`. S6 nakon
+    „go” isto tako (`git push origin HEAD:main`). Glavna radna kopija se iz lanca nikad ne dira.

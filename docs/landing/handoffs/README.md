@@ -34,12 +34,15 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 
 ## Zajednička pravila (svaka sesija)
 
-- **Polazak:** u `logomedo.com/` `npm test && npm run check && npm run build`, i jedna rečenica da
-  je zeleno. Ako nije, prvo to popravi. Git uvijek `git -C /Users/ms/git/logomedo/logomedo.com`.
-  Od S2: `git fetch && git switch landing && git rebase origin/main`; konflikt riješi ili stani.
-- **Grane:** S1 radi na `main`. S2–S5 rade na grani `landing` i pushaju nju, nikad landing kod u
-  `main`. S6 merga nakon „go”. Plan i handoffi (`docs/landing/`) se ažuriraju na grani na kojoj
-  sesija radi; S6 ih merga s ostalim.
+- **Radna kopija (odluka 18):** lanac radi isključivo u worktreeju
+  `/Users/ms/git/logomedo/logomedo.com-landing` (grana `landing`). Git uvijek
+  `git -C /Users/ms/git/logomedo/logomedo.com-landing`. `/Users/ms/git/logomedo/logomedo.com` je
+  radna kopija druge sesije i lanac je ne dira (ni `git switch`, ni build, ni deploy odande).
+- **Polazak:** `git fetch && git rebase origin/main` (konflikt riješi ili stani), pa
+  `npm test && npm run check && npm run build`, i jedna rečenica da je zeleno. Ako nije, prvo to popravi.
+- **Grane:** sve sesije commitaju na `landing` i pushaju `landing`. S1 (staging) na kraju objavi i
+  u `main`: `git push origin HEAD:main` nakon rebasea (fast-forward). S2–S5 nikad ne pushaju u `main`.
+  S6 nakon „go” isto kao S1.
 - **Opseg:** samo `logomedo.com/`. `../app` i `../preuzimanje` se ne diraju. Admin, API i
   `src/lib/` se ne mijenjaju osim onoga što paket izričito traži (S1: zaštita staginga).
 - **Produkcija:** `npm run deploy`, `npm run db:migrate`, `wrangler secret put` bez `--env staging`
