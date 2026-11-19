@@ -6,10 +6,13 @@ import Ikona from "../../../components/Ikona.astro";
 import { kad } from "../../../lib/katalog";
 import { smije } from "../../../lib/admin/ovlasti";
 import { popisRazgovora, potpisPoruka, type StatusRazgovora } from "../../../lib/poruke";
+import { pocistiPoruke } from "../../../lib/poruke-retencija";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
 
+// Retencija (odluka 400): istekli razgovori nestaju prije prikaza. Greška (npr. R2) ne ruši popis; sljedeće otvaranje ponovi.
+await pocistiPoruke().catch((e) => console.error("inbox: retencija nije uspjela", String((e as Error)?.message ?? e)));
 const [razgovori, potpis] = await Promise.all([popisRazgovora(), potpisPoruka()]);
 const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvoren", nerasporedjen: "neraspoređen" };
 ---
