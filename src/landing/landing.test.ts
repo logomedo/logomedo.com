@@ -236,9 +236,11 @@ test("landing: pravne stranice imaju voditelja obrade i pružatelja, bez osobnih
 test("landing: zaglavlje ima aktivnu stranicu i prekidač teme bez inline skripte (odluke 608, 609)", () => {
   const z = procitaj("src/landing/Zaglavlje.astro");
   assert.match(z, /aria-current=\{trenutna\(l\.href\)\}/);
-  assert.match(z, /<button type="button" class="prekidac-teme gore" aria-label="[^"]+"[^>]*aria-pressed=/);
+  assert.match(z, /<button type="button" class="prekidac-teme gore" aria-label="Tamna tema"/);
+  assert.match(z, /class="samo-dan">[\s\S]*?Tamna tema<\/span><span class="samo-noc">[\s\S]*?Svijetla tema<\/span>/);
   assert.match(procitaj("src/landing/Okvir.astro"), /<Podnozje putanja=\{putanja\} \/>/);
   const js = procitaj("public/tema.js");
   assert.match(js, /\.prekidac-teme/);
   assert.match(js, /localStorage\.setItem\("logomedo-tema"/);
+  assert.match(js, /tamno\(\) \? "Svijetla tema" : "Tamna tema"/);
 });

@@ -1,7 +1,8 @@
 ---
 // Zaglavlje (sadrzaj.md 2.2, 2.3; odluka 201): logo, četiri linka, gumb „Prijava”. Ispod 720 px linkovi su u
 // <details> („Izbornik”), bez skripte (CSP). Dodirne površine najmanje 44 px. Aktivna stranica ima aria-current i
-// istaknutu pozadinu; prekidač teme radi kroz /tema.js (landing odluke 608, 609).
+// istaknutu pozadinu; prekidač teme radi kroz /tema.js (landing odluke 608, 609, 616): natpis kaže u koju temu gumb
+// prebacuje, kao ikona (mjesec = „Tamna tema”, sunce = „Svijetla tema”); u izborniku CSS-om, aria-label na desktopu skriptom.
 import Marka from "../components/Marka.astro";
 import Ikona from "../components/Ikona.astro";
 import { IZBORNIK, PRIJAVA } from "./konstante";
@@ -18,7 +19,7 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
         {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
       </ul>
     </nav>
-    <button type="button" class="prekidac-teme gore" aria-label="Tamna tema" title="Svijetla ili tamna tema" aria-pressed="false">
+    <button type="button" class="prekidac-teme gore" aria-label="Tamna tema" title="Tamna tema">
       <span class="samo-dan"><Ikona ime="mjesec" /></span><span class="samo-noc"><Ikona ime="sunce" /></span>
     </button>
     <a class="gumb-prijava" href={PRIJAVA}>Prijava</a>
@@ -28,8 +29,8 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
         <ul>
           {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
           <li>
-            <button type="button" class="prekidac-teme u-izborniku" aria-pressed="false">
-              <span class="samo-dan"><Ikona ime="mjesec" /></span><span class="samo-noc"><Ikona ime="sunce" /></span> Tamna tema
+            <button type="button" class="prekidac-teme u-izborniku">
+              <span class="samo-dan"><Ikona ime="mjesec" /> Tamna tema</span><span class="samo-noc"><Ikona ime="sunce" /> Svijetla tema</span>
             </button>
           </li>
         </ul>
@@ -60,7 +61,7 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
     .siroka { display: none; }
     .prekidac-teme.gore { display: none; }
     .gumb-prijava { margin-left: auto; padding: 0 14px; }
-    .u-izborniku { display: flex; gap: 10px; justify-content: flex-start; width: 100%; height: 48px; padding: 0 8px; border: 0; border-radius: 10px;
+    .u-izborniku { display: flex; justify-content: flex-start; width: 100%; height: 48px; padding: 0 8px; border: 0; border-radius: 10px;
       color: inherit; font: inherit; font-size: 1.05rem; font-weight: 500; }
     .izbornik { display: block; }
     summary { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--rub-jak); border-radius: 999px;
@@ -75,6 +76,7 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
     .izbornik a { display: flex; align-items: center; min-height: 48px; padding: 0 8px; border-radius: 10px; text-decoration: none; font-size: 1.05rem;
       font-weight: 500; }
     .izbornik li + li { border-top: 1px solid var(--rub); }
+    .u-izborniku > span { align-items: center; gap: 10px; }
     .izbornik a[aria-current="page"] { font-weight: 600; box-shadow: inset 4px 0 0 var(--med); padding-left: 14px; }
   }
   @media (max-width: 419px) {
