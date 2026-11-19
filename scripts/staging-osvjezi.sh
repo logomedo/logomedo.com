@@ -38,8 +38,8 @@ if [ "$(wc -l < "$ISPRAZNI")" -gt 1 ]; then $W d1 execute logomedo-staging "${ST
 
 echo "== shema staginga (migracije ove kopije)"
 npm run -s db:migrate:staging >/dev/null </dev/null
-# Migracije same upisuju retke (glasovi, stilovi, prompt_verzije…), a podaci produkcije donose
-# i svoje d1_migrations: sve tablice se isprazne, dijete → roditelj.
+# Migracije same upisuju retke (glasovi, stilovi, prompt_verzije…): sve tablice se isprazne, dijete → roditelj,
+# osim d1_migrations, koja ostaje staginga (dump produkcije je ne puni; src/lib/staging-dump.ts).
 shema
 $DUMPLIB brisanje "$SHEMA" > "$ISPRAZNI"
 $W d1 execute logomedo-staging "${STG[@]}" --yes --file "$ISPRAZNI" >/dev/null

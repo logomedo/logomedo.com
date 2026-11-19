@@ -5,13 +5,18 @@
 //    prije roditelja (npr. stilovi → prompt_verzije) padne na FK. Naredbe se slože roditelj → dijete.
 // 2. Samoreferenca (slike.zamjenjuje, podrucja…) može pokazivati na kasniji redak: INSERT s NULL,
 //    prava vrijednost UPDATE-om na kraju dumpa.
-// 3. Zaštita: strani ključ prema tablici koja ne postoji ruši svaki INSERT, pa ta vrijednost postaje
+// 3. `d1_migrations` staginga ostaje njegova: shema dolazi iz migracija ove kopije, pa prazni ni dump produkcije
+//    ne smiju u nju (inače migracija koje produkcija još nema nestane iz popisa i sljedeći migrate je ponovi).
+// 4. Zaštita: strani ključ prema tablici koja ne postoji ruši svaki INSERT, pa ta vrijednost postaje
 //    NULL (i javlja se na stderr). Na D1 se to ne događa (RENAME u migraciji 0033 ažurira
 //    REFERENCES), ali lokalni sqlite3 s istim migracijama ostavi `REFERENCES aktivnost_nova`.
 //
 // CLI: node src/lib/staging-dump.ts brisanje|drop <shema.json>   → DELETE/DROP naredbe, dijete → roditelj
 //      node src/lib/staging-dump.ts slozi <shema.json> <dump.sql> → složeni dump na stdout, izvještaj na stderr
 // shema.json je izlaz `wrangler d1 execute --json --command "SELECT name, sql FROM sqlite_master …"`.
+
+/** Tablica koju puni `wrangler d1 migrations apply`; na stagingu se ne briše i ne puni iz produkcije. */
+export const MIGRACIJE = "d1_migrations";
 
 export interface Tablica { name: string; sql: string | null }
 
@@ -37,7 +42,8 @@ export function redoslijed(tablice: Tablica[]): string[] {
 
 /** Stupci s REFERENCES iz CREATE TABLE (i stupci dodani s ALTER TABLE, koji su u istom tekstu). */
 export function straniKljucevi(t: Tablica): { stupac: string; roditelj: string }[] {
-  const sql = t.sql ?? "";
+  // Komentari van, prije rastavljanja: `a INT, -- b, c` bi inače progutao početak sljedećeg stupca.
+  const sql = (t.sql ?? "").replace(/--[^\n]*/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
   const tijelo = sql.slice(sql.indexOf("(") + 1, sql.lastIndexOf(")"));
   const out: { stupac: string; roditelj: string }[] = [];
   for (const def of rastavi(tijelo)) {
@@ -133,7 +139,7 @@ export function slozi(dump: string, tablice: Tablica[]): { dump: string; nuliran
   const nulirano = new Map<string, number>();
   const naknadno: string[] = [];
   const r = (t: string | null) => (t === null ? -1 : rang.get(t) ?? rang.size);
-  const sve = naredbe(dump).map((n, i) => {
+  const sve = naredbe(dump).filter((n) => n.tablica !== MIGRACIJE).map((n, i) => {
     if (!n.tablica) return { ...n, i };
     let tekst = n.tekst;
     const v = visece.get(n.tablica);
@@ -165,6 +171,7 @@ async function cli(argv: string[]) {
   if (argv[0] === "brisanje" || argv[0] === "drop") {
     console.log("PRAGMA defer_foreign_keys = on;");
     for (const t of redoslijed(tablice).reverse()) {
+      if (argv[0] === "brisanje" && t === MIGRACIJE) continue;
       console.log(argv[0] === "drop" ? `DROP TABLE IF EXISTS "${t}";` : `DELETE FROM "${t}";`);
     }
   } else if (argv[0] === "slozi") {

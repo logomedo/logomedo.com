@@ -63,3 +63,16 @@ test("slozi: roditelji prvi, viseći ključ NULL, samoreferenca UPDATE-om na kra
   assert.deepEqual([...x.nulirano], [["aktivnost", 1]]);
   assert.equal(reci.length, 8);
 });
+
+test("staging-dump: d1_migrations staginga se ne prazni i ne puni iz produkcije", () => {
+  const tablice = [{ name: "d1_migrations", sql: "CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY, name TEXT)" }, { name: "a", sql: "CREATE TABLE a (id INTEGER PRIMARY KEY)" }];
+  const dump = [`INSERT INTO "d1_migrations" ("id","name") VALUES(1,'0001.sql');`, `INSERT INTO "a" ("id") VALUES(1);`].join("\n");
+  const x = slozi(dump, tablice);
+  assert.doesNotMatch(x.dump, /d1_migrations/);
+  assert.match(x.dump, /INSERT INTO "a"/);
+});
+
+test("staging-dump: strani ključ odmah iza komentara se prepozna", () => {
+  const t = { name: "z", sql: "CREATE TABLE z (\n  id INTEGER PRIMARY KEY,\n  a TEXT, -- napomena, s zarezom\n  roditelj_id INTEGER REFERENCES z(id) /* x, y */\n)" };
+  assert.deepEqual(straniKljucevi(t), [{ stupac: "roditelj_id", roditelj: "z" }]);
+});

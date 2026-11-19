@@ -236,7 +236,7 @@ test("landing: pravne stranice imaju voditelja obrade i pružatelja, bez osobnih
 test("landing: zaglavlje ima aktivnu stranicu i prekidač teme bez inline skripte (odluke 608, 609)", () => {
   const z = procitaj("src/landing/Zaglavlje.astro");
   assert.match(z, /aria-current=\{trenutna\(l\.href\)\}/);
-  assert.match(z, /<button type="button" class="prekidac-teme" aria-label="[^"]+"[^>]*aria-pressed=/);
+  assert.match(z, /<button type="button" class="prekidac-teme gore" aria-label="[^"]+"[^>]*aria-pressed=/);
   assert.match(procitaj("src/landing/Okvir.astro"), /<Podnozje putanja=\{putanja\} \/>/);
   const js = procitaj("public/tema.js");
   assert.match(js, /\.prekidac-teme/);
