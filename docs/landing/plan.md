@@ -74,3 +74,8 @@ S5 (19. 11. 2026.): `/igre`, `/o-nama`, `/privatnost` sa snimkama i sovom (V-25)
 S6 (19. 11. 2026.): pravni tekstovi (ITalk d.o.o. voditelj obrade i pružatelj; `/privatnost` po GDPR-u, nova `/uvjeti`),
 `KONTAKT` hello@italk.hr, aktivna stranica i prekidač teme, Lighthouse (a11y 100 nakon popravka kontrasta), code review.
 Staging `05029b71`, provjera 141 OK, 0 grešaka. Produkcija čeka „go” (vrh `S6.md`). S7 (obrazac za pristup) gotov na stagingu `5b85c60d`, provjera 157/0.
+
+S6, objava (19. 11. 2026.): „go” korisnika. `main` = `e11741f` (fast-forward), migracija 0038 i secret `PRISTUP_TAJNA` na
+produkciji, deploy `d6005500`, `scripts/landing-provjera.sh logomedo.com` 157 OK, 0 grešaka, Lighthouse SEO 100 na svim
+stranicama, www → 301. 329 testova (pass 329, skipped 0). **Lanac završen**; dalje uređivanje sadržaja u novoj sesiji
+(`handoffs/uredivanje-sadrzaja.md`).

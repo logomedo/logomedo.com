@@ -41,19 +41,23 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [x] Stranice `/katalog` i `/radni-listici` (kosturi s hero sekcijom postoje od S3, odluka 305); V-2…V-4 u N-2 naslovne → S4
 - [x] Stranice `/igre`, `/o-nama`, `/privatnost`, 404 (bez `/aplikacija`, odluka 200) → S5
 - [x] Demo G-6 i rezerva G-6R u kodu (`DEMO_URL` prazan, odluka 506); koraci za produkcijsku demo bilježnicu na vrhu `S6.md` → S5
-- [ ] (!) Demo bilježnica na produkciji i `DEMO_URL` → S6
+- [ ] (!) Demo bilježnica na produkciji i `DEMO_URL`: ne u prvoj objavi, vrijedi G-6R (odluka 620); superadmin je složi kasnije → nakon lanca
 
 ## F3: pregled i produkcija
 
 - [x] Lighthouse po stranici (staging), a11y, mobitel 360 px, tamna tema; brojke u `research/2026-11-19-lighthouse.md` → S6
-- [ ] Nalaz iz S4 (odluka 405): admin na mobitelu, `.skupina` globalno i `main.sadrzaj` bez `min-width: 0`; popraviti izvan lanca ili u S6 uz pristanak → S6
+- [ ] Nalaz iz S4 (odluka 405): admin na mobitelu, `.skupina` globalno i `main.sadrzaj` bez `min-width: 0` → izvan lanca
 - [x] `/code-review` grane `landing`, nalazi popravljeni ili zapisani → S6
 - [x] Pravni tekstovi: politika privatnosti po GDPR-u, `/uvjeti`, voditelj obrade, obrađivači, kolačići, brisanje (odluke 600–607) → S6
 - [x] Zaglavlje: aktivna stranica i prekidač teme (odluke 608, 609) → S6
 - [x] Kontakt adresa `hello@italk.hr` (odluka 602, potvrditi) → S6
-- [ ] (!) Korisnik pregleda staging i kaže „go” (pitanja na vrhu `S6.md`) → S6
-- [ ] (!) www → apex za statičke stranice (odluka 306): Redirect Rule radi korisnik; nakon „go” `curl -I` → 301 → S6
-- [ ] Merge `landing` u `main`, `npm run deploy`, provjera `scripts/landing-provjera.sh logomedo.com` i admina → S6
+- [x] Korisnik pregledao staging i rekao „go” (19. 11. 2026.) → S6
+- [x] www → apex (odluka 306): `curl -I https://www.logomedo.com/` → 301 na `https://logomedo.com/` (odluka 619) → S6
+- [x] Merge `landing` u `main` (`e11741f`), `npm run deploy` (`d6005500`), `scripts/landing-provjera.sh logomedo.com` 157/0, `/admin` 302, `/admin/login` 200, `/api/v1` 401, `/b/<slug>` 200 → S6
+- [x] Lighthouse na produkciji: SEO 100 na svim stranicama, bez `noindex` (`research/2026-11-19-lighthouse.md`) → S6
+- [ ] (!) Potvrda ugovora o obradi (DPA) s Cloudflareom, Googleom i ElevenLabsom u njihovim konzolama (odluke 604, 621) → korisnik
+- [ ] (!) Probni zahtjev kroz `/pristup` i „Odbij” u `/admin/zahtjevi` na produkciji (prijava passkeyem) → korisnik
+- [ ] Uređivanje sadržaja landinga (nova sesija, `handoffs/uredivanje-sadrzaja.md`) → nakon lanca
 
 ## F4: zahtjev za pristup (privatna beta, odluka 611)
 
@@ -61,5 +65,5 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [x] `/admin/zahtjevi` (superadmin): odobri = postojeća pozivnica, odbij; brojač → S7
 - [x] `/privatnost#pristup`, CTA „Zatraži pristup” na `/pristup` → S7
 - [x] e2e na stagingu: zahtjev → odobrenje → pozivnica → S7 (commit `d55ef00`, staging `5b85c60d`)
-- [ ] Produkcija: `npm run db:migrate` (0038) i secret `PRISTUP_TAJNA` prije deploya (odluke 702, 711) → S6 nakon „go”
+- [x] Produkcija: `npm run db:migrate` (0038) i secret `PRISTUP_TAJNA` prije deploya (odluke 702, 617) → S6
 - [ ] Prijedlog: obavijest superadminu e-poštom o novom zahtjevu (odluka 710) → kasnije

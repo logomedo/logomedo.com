@@ -348,3 +348,27 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      (spominje italk.hr adrese) treba uskladiti: nije mijenjana iz ove sesije (potvrditi, orkestrator/korisnik).
 712. **www → apex**: Redirect Rule u dashboardu dodaje korisnik (odgovor na pitanje 4 u `S6.md`); nakon „go” samo
      `curl -I https://www.logomedo.com/` → 301.
+
+## S6, objava (19. 11. 2026.)
+
+617. **Objava po „go”** (korisnik, 19. 11. 2026.: „ok, go … ajde neka sve ide na logomedo.com”). `origin/main` (`642099d`)
+     bio je predak `landing`, pa rebase nije trebao; `npm test` 329/329, check 0 grešaka, build prolazi. Redoslijed:
+     `npm run db:migrate` (samo 0038, `CREATE`), `openssl rand -base64 32 | wrangler secret put PRISTUP_TAJNA` (Worker
+     `logomedo`, top-level env), `npm run deploy` iz čistog stabla (verzija `d6005500`, zadnja u `wrangler deployments
+     list`), `git push origin HEAD:main` (`642099d..e11741f`, fast-forward).
+618. **Prva provjera nakon deploya nije mjerodavna.** Prvi `landing-provjera.sh logomedo.com` dao je 12/12, drugi 21/3
+     (prolazni 404 na `/pristup`, `/sitemap.xml` dok se nova verzija širi po rubu), treći 157 OK, 0 grešaka. Isto kao na
+     stagingu u S7 (149/1). Pravilo: nakon deploya pričekati pola minute ili ponoviti provjeru prije zaključka.
+619. **www → apex radi:** `curl -I https://www.logomedo.com/` → `301`, `location: https://logomedo.com/` (Redirect Rule
+     korisnika, odluka 712). Nije otvorena stavka.
+620. **Demo bilježnica nije u prvoj objavi** (korisnik): `DEMO_URL` ostaje prazan, vrijedi G-6R. Superadmin je složi kasnije
+     sam (prijava passkeyem); tada `DEMO_URL`, build, deploy.
+621. **Pravni tekstovi prihvaćeni kakvi jesu** (korisnik). Potvrda prihvaćenih DPA-ova (Cloudflare, Google, ElevenLabs,
+     odluka 604) ostaje korisnikov korak, otvorena stavka u `TODO.md`.
+622. **Provjere na produkciji samo bez prijave** (curl): `/admin` 302, `/admin/login` 200, `/api/v1/katalog` 401, javna
+     `/b/<slug>` 200 (slug iz `SELECT`, ne zapisuje se), `/b/nepostoji-xyz` 404, `x-robots-tag` i `meta robots` na
+     produkciji nema. Probni zahtjev kroz obrazac i „Odbij” ostavljeni korisniku (pisanje u produkcijsku D1 i prijava).
+623. **Lighthouse na produkciji** (mobitel i desktop, 8 stranica): SEO 100 i accessibility 100 svuda; najniže
+     performance 90 (`/katalog`, mobitel), best practices 96 (`/katalog`, mobitel). Brojke u `research/2026-11-19-lighthouse.md`.
+624. **Lanac zatvoren.** Uređivanje sadržaja ide u novu sesiju bez lanca (`handoffs/uredivanje-sadrzaja.md`); grana
+     `landing` ostaje na `e11741f`, nove izmjene idu na `main`.

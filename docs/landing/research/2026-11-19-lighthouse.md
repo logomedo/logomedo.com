@@ -33,3 +33,20 @@ Prvo mjerenje: staging `a8c5a4db` (commit `150c7ca`). Redoslijed brojki: perform
   okvir iz `<source>` dimenzija; Lighthouse uspoređuje samo atribute `<img>`. Ostavljeno (≥ 90, odluka 610).
 - Performance na mobitelu 81–86 na `/` i `/katalog` u prvom mjerenju (hero snimke); u drugom mjerenju `/katalog`
   95. Ispod praga 90 nema ničega u accessibility ni SEO osim `is-crawlable`.
+
+## Produkcija nakon objave (19. 11. 2026., verzija `d6005500`)
+
+Ista naredba nad `https://logomedo.com<putanja>`. Performance / accessibility / best practices / SEO.
+
+| Stranica | Mobitel | Desktop |
+| --- | --- | --- |
+| `/` | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| `/katalog` | 90 / 100 / 96 / 100 | 100 / 100 / 100 / 100 |
+| `/radni-listici` | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| `/igre` | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| `/o-nama` | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| `/privatnost` | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| `/uvjeti` | 94 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+| `/pristup` | 100 / 100 / 100 / 100 | 100 / 100 / 100 / 100 |
+
+SEO 100 svuda: produkcija nema `noindex` (staging ga ima, zato je ondje SEO bio niži).

@@ -31,8 +31,22 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 | S3 | Kostur i naslovna | gotovo | a5cd7f3 | 296 | `src/landing/`, naslovna, kosturi podstranica, `_headers`, SEO, OG; staging `607dd115`, provjera 89/0; odluke 300–308 |
 | S4 | Snimke, katalog, radni listići | gotovo | d332dc1 | 302 | `scripts/landing-snimke.ts`, 32 snimke pregledane (i V-4, V-20–V-24 za S5); `/katalog`, `/radni-listici`; staging `a6d86944`, provjera 118/0; odluke 400–411 |
 | S5 | Ostale stranice | gotovo | fd46cae | 302 | `/igre`, `/o-nama`, `/privatnost` (404 iz S3), sova V-25, `DEMO_URL` prazan; staging `b46a6a21`, provjera 130/0; odluke 500–508; pravna pitanja na vrhu `S6.md` |
-| S6 | Pregled, **vrata**, produkcija | čeka „go”, **sljedeći** | d70adf8 | 306 | koraci 0–3 gotovi: pravni tekstovi (ITalk d.o.o.), `/uvjeti`, kontakt, aktivna stranica i prekidač teme, Lighthouse (a11y 100), code review; staging `d9304de5`, provjera 141/0; odluke 600–616; korisnik: prvo S7, pa jedan „go”; pitanja za „go” na vrhu `S6.md` |
+| S6 | Pregled, **vrata**, produkcija | gotovo | e11741f | 329 | „go” 19. 11. 2026.; `main` = `e11741f` (fast-forward), migracija 0038 i `PRISTUP_TAJNA` na produkciji, produkcija `d6005500`, `landing-provjera.sh logomedo.com` 157/0, Lighthouse SEO 100 svuda, www → 301; odluke 600–624 |
 | S7 | Obrazac „Zatraži pristup” (privatna beta) | gotovo | d55ef00 | 329 | `/pristup` (honeypot, žig, 3/h, PRG), migracija 0038, `/admin/zahtjevi` (odobri = pozivnica, brojač), `/privatnost#pristup`, kontakt `bok@logomedo.com`; e2e na stagingu zeleno; staging `5b85c60d`, provjera 157/0; odluke 700–712; produkcija ide s „go” u S6 |
+
+## Zaključak lanca (19. 11. 2026.)
+
+Lanac je završen. Na `logomedo.com` je od 19. 11. 2026. višestranični landing (`/`, `/katalog`, `/radni-listici`,
+`/igre`, `/o-nama`, `/privatnost`, `/uvjeti`, `/pristup`, 404) i obrazac „Zatraži pristup” s `/admin/zahtjevi`;
+staging (`staging.logomedo.com`) je kopija produkcijske D1, javan i `noindex`. Grana `landing` je spojena u `main`
+(fast-forward) i više nije potrebna za deploy staginga.
+
+Otvoreno, izvan lanca (`TODO.md`): potvrda DPA-ova (Cloudflare, Google, ElevenLabs) u konzolama (korisnik), demo
+bilježnica (G-6, sada G-6R), Access AUD za staging (odluka 208), probni zahtjev kroz obrazac i „Odbij” na
+produkciji (korisnik, prijava), nalaz 405 (admin na mobitelu), obavijest e-poštom o zahtjevu (odluka 710).
+
+Sljedeći posao, nova sesija bez lanca: **uređivanje sadržaja landinga**, prompt u
+[`uredivanje-sadrzaja.md`](uredivanje-sadrzaja.md).
 
 ## Zajednička pravila (svaka sesija)
 
