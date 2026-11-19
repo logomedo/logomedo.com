@@ -49,7 +49,7 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [x] Gumb „Pošalji” zaključan uz „Šaljem…”, Idempotency-Key protiv dvostrukog slanja (odluka 312) → S3
 - [x] Nove poruke bez ručnog osvježavanja: polling 12 s dok je kartica vidljiva (odluka 313) → S3
 - [x] Apex SPF `include:_spf.google.com` (firebasemail ostaje), odluka 405 → S4
-- [ ] (!) Google DKIM za `logomedo.com` (Google Admin → TXT `google._domainkey` u Cloudflare) prije DMARC `quarantine` → S5 / korisnik
+- [x] Google DKIM za `logomedo.com`: TXT `google._domainkey` u Cloudflareu, „Start authentication” u Google Adminu (odluka 500) → S5
 - [ ] DMARC `p=quarantine` nakon 2–4 tjedna izvještaja s Google SPF/DKIM bez neuspjeha (Cloudflare DMARC Management) → korisnik
 - [ ] `_spf.firebasemail.com` iz SPF-a kad se potvrdi da stari app više ne šalje → korisnik
 - [ ] Poveznica „Napiši” na `/admin/korisnici` (po potrebi)

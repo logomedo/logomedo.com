@@ -168,3 +168,12 @@ kaže. Blokovi: S0 1–99, S1 100–199, S2 200–299, S3 300–399, S4 400–49
      `handoffs/S5.md`. DMARC ostaje `p=none`.
 406. **Resend API ključ logomedo.com je lokalno** u `~/.config/logomedo/secrets.env` (odluka 201 vrijedi; S4 ga je
      koristio samo za `GET /emails`, bez ispisa).
+
+## S5 (19. 11. 2026.)
+
+500. **Google DKIM apexa** (korisnikov „dkim daj postavi” kroz orkestratora, 19. 11.): u Cloudflare dashboardu (Brave,
+     račun D.O.M., zona `logomedo.com`) dodan novi TXT `google._domainkey` (DNS only, TTL Auto) s javnim ključem koji je
+     korisnik generirao u Google Adminu (2048 bit, prefiks `google`). `dig +short TXT google._domainkey.logomedo.com`
+     `@1.1.1.1` i `@8.8.8.8` vraća točno tu vrijednost (410 znakova). Ništa drugo u zoni nije dirano (MX, SPF iz 405,
+     DMARC). Korisnik je zatim u Google Adminu kliknuo „Start authentication”. DMARC ostaje `p=none`; `quarantine`
+     nakon 2–4 tjedna izvještaja bez neuspjeha ostaje korisnikov korak u TODO-u.

@@ -46,7 +46,7 @@ Kod: `src/lib/poruke.ts` (D1), `src/lib/poruke-webhook.ts` (webhook), `src/lib/s
 | `TXT resend._domainkey`, `send` MX+TXT, `rsend` CNAME | iz Resenda | slanje s `logomedo.com` |
 | `MX @` | Google (5 zapisa) | `bok@logomedo.com` u Gmailu; **ne dirati** |
 | `TXT @` SPF | `v=spf1 include:_spf.google.com include:_spf.firebasemail.com ~all` | Gmail (`bok@`) i stari app (Firebase, ukloniti kad stane) |
-| `TXT google._domainkey` | još ne postoji | Google DKIM, generira se u Google Adminu (S5, čeka korisnika) |
+| `TXT google._domainkey` | `v=DKIM1; k=rsa; p=…` (2048 bit, iz Google Admina) | Google DKIM za `bok@logomedo.com` (S5, odluka 500); novi ključ se generira u Google Adminu → Gmail → Authenticate email |
 | `TXT _dmarc` | `p=none`, izvještaji u Cloudflare DMARC Management | `quarantine` tek nakon Google SPF/DKIM i 2–4 tjedna izvještaja |
 
 DNS se mijenja u Cloudflare dashboardu (račun D.O.M.); wrangler OAuth nema pravo na DNS.

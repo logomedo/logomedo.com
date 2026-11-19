@@ -1,4 +1,4 @@
-# Handoffi: inbox za transakcijske mailove (S1–S4)
+# Handoffi: inbox za transakcijske mailove (S1–S5)
 
 Plan je u `docs/inbox/plan.md`, odluke u `docs/inbox/decisions.md`, radna lista u `docs/inbox/TODO.md`.
 „Nastavi inbox” znači prvi red koji nije „gotovo” u „Stanje lanca”; prompt je `SN.md`. Lanac se može vrtjeti i
@@ -25,7 +25,7 @@ Handoff se mijenja samo prema naprijed.
 | S2 | Primanje na produkciji, e2e | gotovo | d3e8251 | 361 | poddomena zaseban Resend domain, MX/DKIM/webhook/secret na produkciji; pozivnica s Reply-To; e2e: odgovor iz Gmaila u razgovoru 1 s 2 privitka u R2, In-Reply-To = SES message_id; odluke 200–206 |
 | S3 | `/admin/poruke`, odgovor, brzi odgovori | gotovo | faccd21 | 378 | e2e na produkciji 19. 11. (nit u Gmailu, odgovor natrag u razgovor 1, brzi odgovor); dodano: zaključan gumb + Idempotency-Key (312), polling novih poruka (313); odluke 300–313 |
 | S4 | Retencija, obavijesti, SPF/DKIM, dokumentacija | gotovo | 70f4a0f | 395 | produkcija 495af0f7 + migracija 0040; e2e: obavijest o zahtjevu isporučena superadminima; `docs/inbox.md`; apex SPF s Googleom (uz korisnikov „da”); Google DKIM čeka korisnika (S5); odluke 400–406 |
-| S5 | Google DKIM apexa | čeka korisnika | | | pitanje na vrhu `S5.md`; bez toga je lanac zatvoren |
+| S5 | Google DKIM apexa | gotovo | 45db6ba | 395 | TXT `google._domainkey` u Cloudflareu (dig @1.1.1.1 i @8.8.8.8 poklapa se), korisnik uključio „Start authentication”; DMARC `p=none`; odluka 500. **Lanac zatvoren** |
 
 ## Zajednička pravila (svaka sesija)
 
