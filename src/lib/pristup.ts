@@ -7,6 +7,7 @@ import { env } from "cloudflare:workers";
 import { ispravanEmail, normalizirajEmail } from "./admin/pozivi";
 import { sha256Hex } from "./admin/sesija";
 import { IP_SATI, ROK_MJESECI } from "./pristup-rokovi";
+import { obavijesti } from "./obavijesti";
 
 export { IP_SATI, ROK_MJESECI };
 /** Najviše spremljenih zahtjeva s iste IP adrese u zadnjih sat vremena. */
@@ -136,7 +137,7 @@ export type Ishod =
  * (prebrz ili nevaljao tiho; istekao 400 s porukom), limit po IP-u (429), pa upis koji ništa ne radi ako za
  * isti e-mail već postoji otvoreni zahtjev. Polja prije žiga: prazan ili nepotpun obrazac uvijek dobije 400.
  */
-export async function posalji(f: FormData, ip: string | null, sada = new Date()): Promise<Ishod> {
+export async function posalji(f: FormData, ip: string | null, sada = new Date(), dohvat: typeof fetch = fetch): Promise<Ishod> {
   const hp = f.get(HONEYPOT);
   if (typeof hp === "string" && hp.trim() !== "") return { vrsta: "hvala" };
   const unos = procitajUnos(f);
@@ -163,7 +164,7 @@ export async function posalji(f: FormData, ip: string | null, sada = new Date())
   }
 
   const email = normalizirajEmail(unos.email);
-  await env.DB.batch([
+  const rez = await env.DB.batch([
     ...naredbeCiscenja(sada),
     env.DB.prepare(
       `INSERT INTO zahtjevi_pristupa (ime, email, ustanova, grad, poruka, privola_at, created_at, ip_hash)
@@ -171,5 +172,7 @@ export async function posalji(f: FormData, ip: string | null, sada = new Date())
        WHERE NOT EXISTS (SELECT 1 FROM zahtjevi_pristupa WHERE email = ? AND status = 'novi')`,
     ).bind(unos.ime, email, unos.ustanova, unos.grad, unos.poruka || null, at, at, hash, email),
   ]);
+  // Obavijest superadminu (S4 inboxa) samo za stvarno upisan zahtjev; ne baca, najviše jedna na sat.
+  if (rez.at(-1)?.meta.changes) await obavijesti({ vrsta: "zahtjev" }, dohvat, sada);
   return { vrsta: "hvala" };
 }

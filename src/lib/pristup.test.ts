@@ -218,3 +218,24 @@ test("retencija se radi i pri upisu novog zahtjeva", async () => {
   await posalji(obrazac(), IP, SADA);
   assert.deepEqual((await redovi()).map((r) => r.email), ["ana@vrtic.example.test"]);
 });
+
+test("posalji: upisan zahtjev šalje obavijest superadminu, odbačen (otvoreni već postoji) ne", async () => {
+  env.RESEND_API_KEY = "re_test";
+  const poslano: Record<string, unknown>[] = [];
+  const f = (async (_url: string, init?: RequestInit) => {
+    poslano.push(JSON.parse(String(init?.body)));
+    return Response.json({ id: "ob_1" });
+  }) as unknown as typeof fetch;
+  try {
+    assert.deepEqual(await posalji(obrazac(), IP, SADA, f), { vrsta: "hvala" });
+    assert.equal(poslano.length, 1);
+    assert.equal(poslano[0].subject, "Novi zahtjev za pristup LogoMedu");
+    assert.deepEqual(poslano[0].to, ["sa@primjer.test"]);
+    assert.ok(!JSON.stringify(poslano[0]).includes("ana@vrtic"), "bez adrese podnositelja");
+    // Isti e-mail s otvorenim zahtjevom: ništa se ne upisuje, pa ni obavijest.
+    await posalji(obrazac(), IP, new Date(SADA.getTime() + 2 * 3600_000), f);
+    assert.equal(poslano.length, 1);
+  } finally {
+    delete env.RESEND_API_KEY;
+  }
+});

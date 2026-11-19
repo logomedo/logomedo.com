@@ -185,3 +185,28 @@ test("predug tekst se skraćuje, predug HTML ne sprema", async () => {
   assert.equal(p!.html, null);
   assert.equal(p!.napomena, "tekst skraćen; HTML predug, nije spremljen");
 });
+
+test("nova poruka šalje obavijest superadminu (bez sadržaja), duplikat ne", async () => {
+  env.RESEND_API_KEY = "re_test";
+  env.ADMIN_EMAILS = "sa@primjer.test";
+  const { f } = lazniResend();
+  const poslano: Record<string, unknown>[] = [];
+  const g = (async (url: string, init?: RequestInit) => {
+    if (url === "https://api.resend.com/emails" && init?.method === "POST") {
+      poslano.push(JSON.parse(String(init.body)));
+      return Response.json({ id: "ob_1" });
+    }
+    return f(url, init);
+  }) as unknown as typeof fetch;
+  try {
+    const tijelo = dogadjaj();
+    assert.equal((await primiWebhook(await zahtjev(tijelo), g, SADA)).status, 200);
+    assert.equal((await primiWebhook(await zahtjev(tijelo, { id: "msg_2" }), g, SADA)).status, 200);
+    assert.equal(poslano.length, 1);
+    assert.deepEqual(poslano[0].to, ["sa@primjer.test"]);
+    assert.equal(poslano[0].subject, "Nova poruka u LogoMedu");
+    assert.ok(!JSON.stringify(poslano[0]).includes("Hvala, stiglo je."), "sadržaj poruke nije u obavijesti");
+  } finally {
+    delete env.ADMIN_EMAILS;
+  }
+});

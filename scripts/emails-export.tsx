@@ -4,10 +4,12 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { render, toPlainText } from "@react-email/components";
 import Pozivnica, { NASLOV as POZIVNICA } from "../emails/Pozivnica";
 import Odgovor, { NASLOV as ODGOVOR } from "../emails/Odgovor";
+import Obavijest, { NASLOV as OBAVIJEST } from "../emails/Obavijest";
 
 const predlosci = {
   pozivnica: { naslov: POZIVNICA, el: <Pozivnica /> },
   odgovor: { naslov: ODGOVOR, el: <Odgovor /> },
+  obavijest: { naslov: OBAVIJEST, el: <Obavijest /> },
 };
 
 let out = "// GENERIRANO: npm run emails (scripts/emails-export.tsx). Ne uređivati ručno, izvor je emails/*.tsx.\n\n";

@@ -4,6 +4,7 @@
 // Sve što može pasti (Resend API, R2) ide prije upisa u D1 i vraća 5xx, pa Svix ponovi; ponovljeni upis u R2 pod
 // istim ključem je bezopasan. Bez RESEND_API_KEY (staging) spremaju se samo metapodaci, `tijelo_fali = 1`.
 // Ne logira sadržaj ni adrese (osobni podaci), samo statuse.
+import { obavijesti } from "./obavijesti";
 import { env } from "cloudflare:workers";
 import { provjeriPotpis } from "./svix";
 import { messageIdovi, spremiDolaznu, type PrivitakZapis } from "./poruke";
@@ -164,5 +165,8 @@ export async function primiWebhook(request: Request, f: typeof fetch = fetch, sa
     privitci,
     createdAt: d.created_at ?? new Date(sada).toISOString(),
   });
-  return ishod.nova ? json({ ok: true, poruka: ishod.porukaId, razgovor: ishod.razgovorId }) : json({ ok: true, duplikat: true });
+  if (!ishod.nova) return json({ ok: true, duplikat: true });
+  // Obavijest superadminu (S4): ne baca i najviše jedna na sat po razgovoru; webhook je već upisao poruku.
+  await obavijesti({ vrsta: "poruka", razgovorId: ishod.razgovorId }, f, new Date(sada));
+  return json({ ok: true, poruka: ishod.porukaId, razgovor: ishod.razgovorId });
 }
