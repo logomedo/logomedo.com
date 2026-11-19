@@ -231,6 +231,11 @@ export async function spremiOdlaznu(o: Odlazna): Promise<number> {
   return (r.results[0] as { id: number }).id;
 }
 
+/** Postoji li već poruka s tim Resend id-jem (ponovljeno slanje s istim Idempotency-Key). */
+export async function porukaPoResendId(resendId: string): Promise<number | null> {
+  return (await db().prepare("SELECT id FROM poruke WHERE resend_id = ?").bind(resendId).first<{ id: number }>())?.id ?? null;
+}
+
 /** Označi sve dolazne poruke razgovora pročitanima. */
 export async function oznaciProcitano(razgovorId: number, sada: string = new Date().toISOString()): Promise<void> {
   await db().batch([

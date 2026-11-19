@@ -19,7 +19,11 @@ if (!Number.isInteger(id) || id <= 0) return new Response("Nema razgovora", { st
 let greska: string | null = null;
 let nacrt = "";
 const ok = Astro.url.searchParams.get("ok");
-const poruka = ok === "poslano" ? "Odgovor je poslan." : ok === "status" ? "Status je promijenjen." : null;
+const poruka = ok === "poslano" ? "Odgovor je poslan."
+  : ok === "u_tijeku" ? "Odgovor se već šalje (dvostruki klik); poslan je samo jednom i pojavit će se u niti za trenutak."
+  : ok === "status" ? "Status je promijenjen." : null;
+// Jednokratni ključ obrasca (odluka 312): ponovljeni POST s istim ključem ne šalje mail dvaput.
+const kljucSlanja = crypto.randomUUID();
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -28,8 +32,10 @@ if (Astro.request.method === "POST") {
     nacrt = String(f.get("tekst") ?? "");
     if (nacrt.length > 20000) greska = "Odgovor je predug (najviše 20 000 znakova).";
     else {
-      const r = await posaljiOdgovor({ razgovorId: id, tekst: nacrt, poslao: s.email });
+      const kljuc = String(f.get("kljuc") ?? "");
+      const r = await posaljiOdgovor({ razgovorId: id, tekst: nacrt, poslao: s.email, kljucSlanja: kljuc });
       if (r.ok) return Astro.redirect(`/admin/poruke/${id}?ok=poslano#odgovor`, 303);
+      if (r.razlog === "u_tijeku") return Astro.redirect(`/admin/poruke/${id}?ok=u_tijeku#odgovor`, 303);
       if (r.razlog === "nema_razgovora") return new Response("Nema razgovora", { status: 404 });
       greska = r.razlog === "nema_kljuca" ? "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY). Ništa nije poslano ni upisano."
         : r.razlog === "prazno" ? "Odgovor je prazan."
@@ -125,6 +131,7 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
     {greska && <p class="obavijest greska" role="alert" id="greska">{greska}</p>}
     <form method="post" id="odgovor-obrazac">
       <input type="hidden" name="akcija" value="odgovor" />
+      <input type="hidden" name="kljuc" value={kljucSlanja} />
       {brzi.length > 0 && (
         <div class="brzi-red">
           <label for="brzi-izbor">Brzi odgovor</label>
@@ -142,7 +149,8 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
         <a href="/admin/poruke/brzi">Uredi brze odgovore</a>
       </p>
       <div class="akcije">
-        <button class="gumb glavni" type="submit"><Ikona ime="pismo" /> Pošalji</button>
+        <button class="gumb glavni" type="submit" id="posalji"><Ikona ime="pismo" /> <span class="oznaka">Pošalji</span><span class="vrtilica" aria-hidden="true"></span></button>
+        <span class="stanje-slanja blijedo sitno" id="stanje-slanja" role="status" aria-live="polite"></span>
       </div>
     </form>
   </section>
@@ -174,6 +182,35 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
     if (!polje || tekst === undefined) return;
     postavi(umetniNaKursor(polje.value, polje.selectionStart, polje.selectionEnd, tekst));
   });
+
+  // Slanje: gumb odmah zaključan, „Šaljem…” dok traje zahtjev (Resend + Message-ID traju nekoliko sekundi);
+  // drugi submit se ignorira. Server ima vlastitu zaštitu (Idempotency-Key, odluka 312).
+  const obrazac = document.getElementById("odgovor-obrazac") as HTMLFormElement | null;
+  const gumb = document.getElementById("posalji") as HTMLButtonElement | null;
+  const stanje = document.getElementById("stanje-slanja");
+  const oznaka = gumb?.querySelector(".oznaka");
+  const otkljucaj = () => {
+    if (!obrazac || !gumb) return;
+    delete obrazac.dataset.salje;
+    gumb.disabled = false;
+    gumb.removeAttribute("aria-busy");
+    if (oznaka) oznaka.textContent = "Pošalji";
+    if (stanje) stanje.textContent = "";
+  };
+  obrazac?.addEventListener("submit", (e) => {
+    if (obrazac.dataset.salje) { e.preventDefault(); return; }
+    obrazac.dataset.salje = "1";
+    // Nakon što preglednik preuzme podatke obrasca, pa se ništa ne gubi.
+    setTimeout(() => {
+      if (!gumb) return;
+      gumb.disabled = true;
+      gumb.setAttribute("aria-busy", "true");
+      if (oznaka) oznaka.textContent = "Šaljem…";
+      if (stanje) stanje.textContent = "Šaljem odgovor, pričekaj nekoliko sekundi.";
+    });
+  });
+  // Povratak strelicom „natrag” (bfcache) ne smije ostaviti zaključan gumb.
+  addEventListener("pageshow", (e) => { if (e.persisted) otkljucaj(); });
 
   // Visina iframea prema sadržaju (sandbox ima allow-same-origin, bez skripti u njemu).
   for (const f of Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe.html-okvir"))) {
@@ -234,6 +271,14 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
   .brzi-red label { font-size: .88rem; font-weight: 600; }
   .brzi-red select { min-width: 0; max-width: 100%; }
   textarea { width: 100%; box-sizing: border-box; font: inherit; resize: vertical; min-height: 140px; }
-  .akcije { margin-top: 10px; display: flex; justify-content: flex-end; }
+  .akcije { margin-top: 10px; display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .akcije .stanje-slanja { order: -1; }
   form { margin: 0; }
+  #posalji[aria-busy="true"] { cursor: progress; opacity: .85; }
+  .vrtilica { display: none; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: vrti .7s linear infinite; }
+  #posalji[aria-busy="true"] .vrtilica { display: inline-block; }
+  #posalji[aria-busy="true"] :global(svg) { display: none; }
+  .stanje-slanja { align-self: center; }
+  @keyframes vrti { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .vrtilica { animation-duration: 2s; } }
 </style>

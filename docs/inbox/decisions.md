@@ -124,3 +124,8 @@ kaže. Blokovi: S0 1–99, S1 100–199, S2 200–299, S3 300–399, S4 400–49
      (`ADMIN_EMAILS` testna adresa), sesija u lokalnom D1, privitci `wrangler r2 object put --local`, pa
      `playwright-core` sa sustavnim Chromeom i zaglavljem `Cookie` (`addCookies` odbija `__Host-` kolačić na http).
      Za razliku od statične kopije, to provjerava i CSP, iframe i skripte.
+312. **Dvostruko slanje odgovora (zahtjev korisnika nakon e2e):** obrazac nosi jednokratni `kljuc` (`crypto.randomUUID()` pri
+     renderu), koji ide u Resend `Idempotency-Key` (`odgovor-<razgovor>-<kljuc>`, 24 h). Ponovljeni POST dobije isti
+     id i ne upisuje se dvaput (`porukaPoResendId`), a istodobni dobije 409 `concurrent_idempotent_requests` → „u tijeku”
+     (redirect s porukom, ništa se ne upisuje). U pregledniku se gumb odmah zaključa (`aria-busy`, vrtilica, „Šaljem…”),
+     drugi submit se ignorira, a `pageshow` iz bfcachea ga otključa.

@@ -143,3 +143,38 @@ test("predmet, kratki citat i sadržaj", () => {
   assert.ok(!/\{\{/.test(s.html + s.text));
   assert.ok(s.text.includes("Na ovu poruku možete odgovoriti"));
 });
+
+test("ključ obrasca ide u Idempotency-Key; ponovljeni POST s istim id-jem ne upisuje drugu poruku", async () => {
+  env.RESEND_API_KEY = "re_test";
+  const r = await razgovorIzS2();
+  const l = lazniResend({ id: "odg_isti" });
+  const kljuc = "0b6c1c2e-8f1a-4d1e-9a3b-5c6d7e8f9a0b";
+  const prije = await broj("poruke");
+  assert.deepEqual(await posaljiOdgovor({ razgovorId: r.id, tekst: "Bok", poslao: "a@primjer.test", kljucSlanja: kljuc }, l.f, 0), { ok: true, id: "odg_isti" });
+  assert.deepEqual(await posaljiOdgovor({ razgovorId: r.id, tekst: "Bok", poslao: "a@primjer.test", kljucSlanja: kljuc }, l.f, 0), { ok: true, id: "odg_isti" });
+  const postovi = l.pozivi.filter((p) => p.init?.method === "POST");
+  assert.equal(postovi.length, 2);
+  for (const p of postovi) assert.equal((p.init!.headers as Record<string, string>)["Idempotency-Key"], `odgovor-${r.id}-${kljuc}`);
+  assert.equal(await broj("poruke"), prije + 1);
+});
+
+test("neispravan ključ se ne šalje kao Idempotency-Key", async () => {
+  env.RESEND_API_KEY = "re_test";
+  const r = await razgovorIzS2();
+  const l = lazniResend();
+  await posaljiOdgovor({ razgovorId: r.id, tekst: "Bok", poslao: "a", kljucSlanja: "kratko\r\nX: y" }, l.f, 0);
+  const post = l.pozivi.find((p) => p.init?.method === "POST")!;
+  assert.equal("Idempotency-Key" in (post.init!.headers as Record<string, string>), false);
+});
+
+test("409 concurrent_idempotent_requests: „u tijeku”, ništa se ne upisuje", async () => {
+  env.RESEND_API_KEY = "re_test";
+  const r = await razgovorIzS2();
+  const f = (async () => new Response(JSON.stringify({ name: "concurrent_idempotent_requests", message: "x" }), { status: 409 })) as unknown as typeof fetch;
+  const prije = await broj("poruke");
+  assert.deepEqual(
+    await posaljiOdgovor({ razgovorId: r.id, tekst: "Bok", poslao: "a", kljucSlanja: "0b6c1c2e-8f1a-4d1e-9a3b-5c6d7e8f9a0b" }, f, 0),
+    { ok: false, razlog: "u_tijeku" },
+  );
+  assert.equal(await broj("poruke"), prije);
+});

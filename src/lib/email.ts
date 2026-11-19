@@ -4,7 +4,7 @@
 import { env } from "cloudflare:workers";
 import { odgovor, pozivnica } from "./emails/generirano";
 import {
-  adresaZaOdgovor, bezCitata, messageIdovi, noviRazgovor, obrisiPrazanRazgovor, postaviMessageId, razdvojiAdresu,
+  adresaZaOdgovor, bezCitata, messageIdovi, noviRazgovor, obrisiPrazanRazgovor, porukaPoResendId, postaviMessageId, razdvojiAdresu,
   spremiOdlaznu, zaOdgovor,
 } from "./poruke";
 
@@ -145,9 +145,16 @@ function datumKratko(iso: string): string {
   return new Date(iso).toLocaleString("hr-HR", { timeZone: "Europe/Zagreb", day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export interface Odgovor { razgovorId: number; tekst: string; /** E-mail superadmina. */ poslao: string }
+export interface Odgovor {
+  razgovorId: number; tekst: string; /** E-mail superadmina. */ poslao: string;
+  /** Jednokratni ključ obrasca: isti ključ = isto slanje (dvoklik, ponovljeni POST). Ide u Resend `Idempotency-Key`. */
+  kljucSlanja?: string;
+}
 
-export type IshodOdgovora = IshodSlanja | { ok: false; razlog: "nema_razgovora" | "prazno" };
+export type IshodOdgovora = IshodSlanja | { ok: false; razlog: "nema_razgovora" | "prazno" | "u_tijeku" };
+
+/** Ključ obrasca odgovora: nasumičan, samo sigurni znakovi (Resend dopušta do 256). */
+export const KLJUC_SLANJA = /^[A-Za-z0-9-]{16,64}$/;
 
 /** Sadržaj odgovora iz predloška (emails/Odgovor.tsx). Čisto, bez D1 i mreže (testovi, pregled). */
 export function sadrzajOdgovora(p: { tekst: string; predmet: string | null; citat?: { od: string; kada: string; text: string | null } | null }): { subject: string; text: string; html: string } {
@@ -195,22 +202,29 @@ export async function posaljiOdgovor(o: Odgovor, f: typeof fetch = fetch, cekaj 
   const headers: Record<string, string> = {};
   if (inReplyTo) { headers["In-Reply-To"] = inReplyTo; headers.References = reference.join(" "); }
   const za = z.razgovor.ime ? `${z.razgovor.ime.replace(/["<>\r\n]/g, "")} <${z.razgovor.email}>` : z.razgovor.email;
+  const zaglavlja: Record<string, string> = { Authorization: `Bearer ${kljuc}`, "Content-Type": "application/json" };
+  // Isti ključ unutar 24 h: Resend ne šalje ponovno nego vrati isti id (odluka 312).
+  if (o.kljucSlanja && KLJUC_SLANJA.test(o.kljucSlanja)) zaglavlja["Idempotency-Key"] = `odgovor-${z.razgovor.id}-${o.kljucSlanja}`;
   let ishod: IshodSlanja;
   try {
     const r = await f("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${kljuc}`, "Content-Type": "application/json" },
+      headers: zaglavlja,
       body: JSON.stringify({
         from: POSILJATELJ_ODGOVORA, to: [za], reply_to: adresaZaOdgovor(z.razgovor.kljuc), subject, text, html,
         ...(inReplyTo ? { headers } : {}),
       }),
     });
-    const j = (await r.json().catch(() => ({}))) as { id?: string; message?: string };
+    const j = (await r.json().catch(() => ({}))) as { id?: string; message?: string; name?: string };
+    // 409 concurrent_idempotent_requests: isti ključ se upravo šalje (drugi klik/kartica); taj zahtjev upiše poruku.
+    if (r.status === 409 && j.name === "concurrent_idempotent_requests") return { ok: false, razlog: "u_tijeku" };
     ishod = !r.ok || !j.id ? { ok: false, razlog: "greska", detalj: `${r.status} ${j.message ?? ""}`.trim() } : { ok: true, id: j.id };
   } catch (e) {
     ishod = { ok: false, razlog: "greska", detalj: String(e) };
   }
   if (!ishod.ok) return ishod;
+  // Ponovljeni ključ: Resend je vratio id već upisanog odgovora, pa se ništa ne upisuje dvaput.
+  if (await porukaPoResendId(ishod.id)) return ishod;
   // Mail je otišao: upis ne smije pasti tiho, ali ni poništiti slanje. Greška upisa ide u log (bez sadržaja).
   try {
     const porukaId = await spremiOdlaznu({
