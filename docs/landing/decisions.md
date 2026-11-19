@@ -310,3 +310,41 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      mjesec i „Tamna tema”, u tamnoj sunce i „Svijetla tema”. U mobilnom izborniku oba natpisa su u HTML-u u `.samo-dan` /
      `.samo-noc` (CSS, bez bljeska i bez skripte); na desktopu `/tema.js` postavlja `aria-label` i `title`, i na promjenu teme
      sustava. `aria-pressed` je uklonjen, jer uz natpis koji opisuje radnju zbunjuje čitač zaslona.
+
+## S7 (19. 11. 2026.)
+
+700. **`/pristup` je SSR** (`prerender = false`), jer obrađuje POST i nosi vremenski žig; u sitemapu je, u glavnom izborniku
+     nije. CSRF iz middlewarea vrijedi samo za `/admin`, pa `/pristup` sam traži `Origin` = svoj origin (inače 403).
+     `Cache-Control: no-store`. Bez JavaScripta i bez inline skripte (CSP iz `zastiti()`).
+701. **Zaštita od spama bez vanjske skripte:** skriveno polje `web_stranica`, vrijeme ispunjavanja 3 s – 24 h, najviše 3
+     upisana zahtjeva na sat po `ip_hash`, jedan otvoreni zahtjev po e-mailu. **Turnstile nije uveden** (traži CSP iznimku
+     za `challenges.cloudflare.com` i vanjsku skriptu; uvesti tek ako spam prođe ove zaštite).
+702. **`PRISTUP_TAJNA` (secret)**: kad postoji, vremenski žig je potpisan (HMAC-SHA256) i ulazi u hash IP adrese; bez njega
+     žig je goli broj i hash IPv4 se može izračunati unatrag. Postavljen na stagingu (slučajna vrijednost, nigdje zapisana);
+     **na produkciji postaviti prije deploya** (`openssl rand -base64 32 | wrangler secret put PRISTUP_TAJNA`), korak nakon „go”.
+703. **Odgovori:** skriveno polje, prebrz žig i ponovljeni e-mail tiho dobiju isti „Hvala” (303, ništa se ne upisuje, ne otkriva
+     postoji li zahtjev ili račun); prazan ili neispravan obrazac i obrazac stariji od 24 h dobiju 400 s porukom i upisanim
+     podacima (čovjek mora znati da nije poslano); preko limita 429. Nakon greške ostaje stari žig.
+704. **Retencija** (brisanje pri upisu i pri otvaranju `/admin/zahtjevi`, bez crona): `novi` i `odbijen` 6 mjeseci od upisa,
+     `odobren` kad je pozivnica iskorištena ili 6 mjeseci od odobrenja; `ip_hash` se briše nakon 24 h. Brojevi su u
+     `src/lib/pristup-rokovi.ts` i isti se ispisuju na `/privatnost`.
+705. **Zahtjevi ne idu u `aktivnost`** (CHECK na `tablica` ih ne poznaje, a pregradnja tablice nije vrijedna toga): trag je
+     `obradio`/`obradjen_at`; izdaj() ionako bilježi `poziv.izdan`.
+706. **„Odobri” prvo zaključa zahtjev** (`UPDATE … WHERE status = 'novi'`), pa izda pozivnicu; ako izdaj() odbije (npr. već
+     aktivan logoped), zahtjev se vraća u `novi` s porukom. Dvostruki klik: drugi dobije 400 „već obrađen” (provjereno na
+     stagingu). Prekid točno između zaključavanja i izdavanja ostavlja `odobren` bez pozivnice: pozivnica se tada izda ručno.
+     Link pozivnice prikazuje se samo u tom odgovoru (token u fragmentu, kao `/admin/poziv`).
+707. **Ustanova i grad su obavezni u obrascu, poruka nije**; u bazi su stupci NULL, da se to može promijeniti bez migracije.
+708. **Kvačica je potvrda upoznatosti, ne privola** („Upoznat/a sam s tim kako LogoMedo koristi i čuva ove podatke”), jer je
+     osnova čl. 6. st. 1. t. (b) GDPR-a; stupac se ipak zove `privola_at` kako je tražio paket.
+709. **Svi „Zatraži pristup” vode na `/pristup`** (konstanta `PRISTUP`): CTA, podnožje, hero, N-6, G-6R, O-3.
+710. **Obavijest superadminu e-poštom o novom zahtjevu nije u S7** (prijedlog za kasnije): traži Cloudflare Email Service i
+     postavljanje domene za slanje (vanjska radnja). Do tada brojač u bočnoj traci superadmina.
+711. **Kontakt na landingu je `bok@logomedo.com`** (odluka korisnika u S7, kroz orkestratora): i `KONTAKT` i adresa u bloku
+     voditelja obrade na `/privatnost`; voditelj ostaje ITalk d.o.o. s OIB-om i adresom. `hello@italk.hr` i `privacy@italk.hr`
+     više nisu na landingu (`grep -rn "italk.hr" src public` prazan). Mijenja odluke 602 i 615. Pošta za logomedo.com ide kroz
+     Google (MX), korisnik je potvrdio da radi; Cloudflare Email Routing u zoni nije uključen i ne treba (uključivanje bi
+     zamijenilo MX). Na `/uvjeti` jedan redak „Kontakt (i za osobne podatke)”. Iznimku o javnim adresama u `../CLAUDE.md`
+     (spominje italk.hr adrese) treba uskladiti: nije mijenjana iz ove sesije (potvrditi, orkestrator/korisnik).
+712. **www → apex**: Redirect Rule u dashboardu dodaje korisnik (odgovor na pitanje 4 u `S6.md`); nakon „go” samo
+     `curl -I https://www.logomedo.com/` → 301.

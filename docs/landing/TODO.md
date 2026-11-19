@@ -52,12 +52,14 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [x] Zaglavlje: aktivna stranica i prekidač teme (odluke 608, 609) → S6
 - [x] Kontakt adresa `hello@italk.hr` (odluka 602, potvrditi) → S6
 - [ ] (!) Korisnik pregleda staging i kaže „go” (pitanja na vrhu `S6.md`) → S6
-- [ ] (!) www → apex za statičke stranice (odluka 306) → S6
+- [ ] (!) www → apex za statičke stranice (odluka 306): Redirect Rule radi korisnik; nakon „go” `curl -I` → 301 → S6
 - [ ] Merge `landing` u `main`, `npm run deploy`, provjera `scripts/landing-provjera.sh logomedo.com` i admina → S6
 
 ## F4: zahtjev za pristup (privatna beta, odluka 611)
 
-- [ ] Migracija `zahtjevi_pristupa`, obrazac `/pristup` (honeypot, rate limit, bez inline skripte) → S7
-- [ ] `/admin/zahtjevi` (superadmin): odobri = postojeća pozivnica, odbij; brojač → S7
-- [ ] `/privatnost#pristup`, CTA „Zatraži pristup” na `/pristup` → S7
-- [ ] e2e na stagingu: zahtjev → odobrenje → pozivnica → S7
+- [x] Migracija `zahtjevi_pristupa`, obrazac `/pristup` (honeypot, rate limit, bez inline skripte) → S7
+- [x] `/admin/zahtjevi` (superadmin): odobri = postojeća pozivnica, odbij; brojač → S7
+- [x] `/privatnost#pristup`, CTA „Zatraži pristup” na `/pristup` → S7
+- [x] e2e na stagingu: zahtjev → odobrenje → pozivnica → S7 (commit `d55ef00`, staging `5b85c60d`)
+- [ ] Produkcija: `npm run db:migrate` (0038) i secret `PRISTUP_TAJNA` prije deploya (odluke 702, 711) → S6 nakon „go”
+- [ ] Prijedlog: obavijest superadminu e-poštom o novom zahtjevu (odluka 710) → kasnije

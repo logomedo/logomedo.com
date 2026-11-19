@@ -31,8 +31,8 @@ Handoff se mijenja samo prema naprijed: gotovi `SN` se ne prepisuju.
 | S3 | Kostur i naslovna | gotovo | a5cd7f3 | 296 | `src/landing/`, naslovna, kosturi podstranica, `_headers`, SEO, OG; staging `607dd115`, provjera 89/0; odluke 300–308 |
 | S4 | Snimke, katalog, radni listići | gotovo | d332dc1 | 302 | `scripts/landing-snimke.ts`, 32 snimke pregledane (i V-4, V-20–V-24 za S5); `/katalog`, `/radni-listici`; staging `a6d86944`, provjera 118/0; odluke 400–411 |
 | S5 | Ostale stranice | gotovo | fd46cae | 302 | `/igre`, `/o-nama`, `/privatnost` (404 iz S3), sova V-25, `DEMO_URL` prazan; staging `b46a6a21`, provjera 130/0; odluke 500–508; pravna pitanja na vrhu `S6.md` |
-| S6 | Pregled, **vrata**, produkcija | čeka „go” | d70adf8 | 306 | koraci 0–3 gotovi: pravni tekstovi (ITalk d.o.o.), `/uvjeti`, kontakt, aktivna stranica i prekidač teme, Lighthouse (a11y 100), code review; staging `d9304de5`, provjera 141/0; odluke 600–616; korisnik: prvo S7, pa jedan „go”; pitanja za „go” na vrhu `S6.md` |
-| S7 | Obrazac „Zatraži pristup” (privatna beta) | otvoreno, **sljedeći** | | | dodan u S6 (odluka 611); samo staging, prije „go” (odluka korisnika); prompt `S7.md`; nakon njega opet `S6.md` (vrata) |
+| S6 | Pregled, **vrata**, produkcija | čeka „go”, **sljedeći** | d70adf8 | 306 | koraci 0–3 gotovi: pravni tekstovi (ITalk d.o.o.), `/uvjeti`, kontakt, aktivna stranica i prekidač teme, Lighthouse (a11y 100), code review; staging `d9304de5`, provjera 141/0; odluke 600–616; korisnik: prvo S7, pa jedan „go”; pitanja za „go” na vrhu `S6.md` |
+| S7 | Obrazac „Zatraži pristup” (privatna beta) | gotovo | d55ef00 | 329 | `/pristup` (honeypot, žig, 3/h, PRG), migracija 0038, `/admin/zahtjevi` (odobri = pozivnica, brojač), `/privatnost#pristup`, kontakt `bok@logomedo.com`; e2e na stagingu zeleno; staging `5b85c60d`, provjera 157/0; odluke 700–712; produkcija ide s „go” u S6 |
 
 ## Zajednička pravila (svaka sesija)
 
