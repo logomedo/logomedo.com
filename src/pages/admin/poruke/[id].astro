@@ -63,7 +63,7 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
 <AdminOkvir naslov={r.predmet ?? "Razgovor"} aktivno="poruke">
   <p class="natrag"><a href="/admin/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
   <div class="naslov">
-    <div class="tko">
+    <div class="sugovornik">
       <h1>{r.predmet ?? "(bez predmeta)"}</h1>
       <p class="podnaslov"><b>{r.ime ?? r.email}</b>{r.ime && <> · {r.email}</>}
         <span class:list={["status", r.status]}>{STATUS[r.status]}</span></p>
@@ -138,7 +138,7 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
         aria-describedby="odgovor-pomoc" placeholder="Pozdrav,…">{nacrt}</textarea>
       <p class="blijedo sitno" id="odgovor-pomoc">
         {brzi.length > 0 ? <>Upiši <code>/kratica</code> pa Tab za brzi odgovor. </> : null}
-        Šalje se s bok@logomedo.com, s kratkim citatom zadnje poruke; odgovor stiže natrag ovamo.
+        Šalje se s bok@logomedo.com, s kratkim citatom zadnje poruke; odgovor stiže natrag ovamo.{" "}
         <a href="/admin/poruke/brzi">Uredi brze odgovore</a>
       </p>
       <div class="akcije">
@@ -179,8 +179,12 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
   for (const f of Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe.html-okvir"))) {
     const prilagodi = () => {
       try {
-        const h = f.contentDocument?.documentElement.scrollHeight ?? 0;
-        if (h) f.style.height = `${Math.min(Math.max(h + 8, 120), 2000)}px`;
+        // documentElement je visok barem kao okvir, pa se mjeri body (i njegove margine).
+        const b = f.contentDocument?.body;
+        if (!b) return;
+        const m = parseFloat(getComputedStyle(b).marginTop) + parseFloat(getComputedStyle(b).marginBottom);
+        const h = Math.max(b.scrollHeight, b.offsetHeight) + (m || 0);
+        if (h) f.style.height = `${Math.min(Math.max(h + 4, 80), 2000)}px`;
       } catch { /* ostaje zadana visina */ }
     };
     f.addEventListener("load", prilagodi);
@@ -195,8 +199,8 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
   .natrag a { display: inline-flex; align-items: center; gap: 4px; color: var(--blijedo); text-decoration: none; }
   .natrag :global(svg) { width: 16px; height: 16px; }
   .naslov { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-  .tko { min-width: 0; }
-  .tko h1 { overflow-wrap: anywhere; }
+  .sugovornik { min-width: 0; }
+  .sugovornik h1 { overflow-wrap: anywhere; }
   .podnaslov { overflow-wrap: anywhere; }
   .status-obrazac { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
   .status { margin-left: 8px; font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--povrsina-2); color: var(--blijedo); }

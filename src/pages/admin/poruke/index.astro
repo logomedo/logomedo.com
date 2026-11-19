@@ -29,7 +29,7 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
         <li class:list={["razgovor", { novo: r.neprocitano > 0 }]}>
           <a href={`/admin/poruke/${r.id}`} id={`razgovor-${r.id}`}>
             <div class="red1">
-              <span class="tko">{r.ime ?? r.email}</span>
+              <span class="sugovornik">{r.ime ?? r.email}</span>
               {r.neprocitano > 0 && <span class="broj" aria-label={`${r.neprocitano} nepročitano`}>{r.neprocitano}</span>}
               {STATUS[r.status] && <span class:list={["status", r.status]}>{STATUS[r.status]}</span>}
               <span class="kad">{kad(r.zadnja_at)}</span>
@@ -51,8 +51,8 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
   .razgovor a:hover { background: var(--povrsina-2); }
   .razgovor.novo a { box-shadow: inset 3px 0 0 var(--med); }
   .red1 { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-  .tko { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-  .novo .tko, .novo .predmet { font-weight: 700; }
+  .sugovornik { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .novo .sugovornik, .novo .predmet { font-weight: 700; }
   .kad { margin-left: auto; flex-shrink: 0; font-size: .8rem; color: var(--blijedo); }
   .broj { flex-shrink: 0; font-size: .75rem; font-weight: 700; background: var(--med); color: var(--med-tekst); border-radius: 999px; padding: 1px 7px; }
   .email { font-size: .82rem; color: var(--blijedo); overflow-wrap: anywhere; }
