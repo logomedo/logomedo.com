@@ -21,11 +21,14 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [x] e2e: `curl` bez lozinke 401, s lozinkom 200 na `/`, admin sa sesijom 200, broj redaka ključnih tablica staging = produkcija u trenutku kopije → S1
 - [x] `docs/staging.md` (kako se deploya, osvježava, prijavljuje, što ne radi) → S1
 
+- [x] Staging bez Basic Autha, javni dio otvoren, noindex, `/admin` kao produkcija (odluka 207) → S2
+- [ ] (!) Access aplikacija za `staging.logomedo.com/admin/sso`, AUD u `env.staging` (odluka 208) → kad korisnik pošalje AUD
+
 ## F1: sadržaj i kostur (grana `landing`)
 
-- [ ] Inventura funkcija koje danas rade na produkciji, s putanjom koda i dokazom → S2
-- [ ] Arhitektura stranica i tekstovi na hrvatskom u `docs/landing/sadrzaj.md` → S2
-- [ ] Popis snimki zaslona i ilustracija (izvor, stranica, provjera osobnih podataka) → S2
+- [x] Inventura funkcija koje danas rade na produkciji, s putanjom koda i dokazom → S2
+- [x] Arhitektura stranica i tekstovi na hrvatskom u `docs/landing/sadrzaj.md` → S2
+- [x] Popis snimki zaslona i ilustracija (izvor, stranica, provjera osobnih podataka) → S2
 - [ ] `src/landing/` (layout, zaglavlje, podnožje, sekcije), stranice s `export const prerender = true` → S3
 - [ ] `public/_headers`: CSP i ostala zaglavlja za statičke stranice, jednako stroga kao `zastiti()` u `src/middleware.ts` → S3
 - [ ] `robots.txt`, `sitemap.xml`, OG slika i meta po stranici, 404 → S3
@@ -35,8 +38,8 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 ## F2: stranice
 
 - [ ] `scripts/landing-snimke.ts`: snimke zaslona sa staginga (Playwright), bez osobnih podataka → S4
-- [ ] Stranice za katalog i radne listiće (konačna imena iz S2) → S4
-- [ ] Stranice za igre/vježbe, aplikaciju, o nama, privatnost (konačna imena iz S2) → S5
+- [ ] Stranice `/katalog` i `/radni-listici` → S4
+- [ ] Stranice `/igre`, `/o-nama`, `/privatnost`, 404 (bez `/aplikacija`, odluka 200) → S5
 
 ## F3: pregled i produkcija
 

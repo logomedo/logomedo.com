@@ -103,3 +103,47 @@ izvan ovog direktorija piši „landing odluka N”.
 106. **S1 je rađen u glavnoj sesiji bez subagenata** (iznimka od pravila orkestracije): paket je bio
      niz ovisnih infrastrukturnih koraka (resursi → konfiguracija → deploy → podaci → e2e), a kod
      je bio mali (dvije datoteke s testovima). S2–S5 se vraćaju na pravilo.
+
+## S2 (19. 11. 2026.)
+
+Inventura: `research/2026-11-19-inventura.md`. Sadržaj: `sadrzaj.md` (prijedlozi odluka u njegovom
+odjeljku 6 su ovdje prihvaćeni).
+
+200. **Stranice** (zamjenjuje prijedlog u odluci 11): `/`, `/katalog`, `/radni-listici`, `/igre`, `/o-nama`,
+     `/privatnost` i 404. **Bez `/aplikacija`** (auto, potvrditi): Flutter aplikacija je samo za superadmina
+     i nije u trgovinama (I-APP), pa je na naslovnoj samo „Aplikacija za tablet i mobitel: uskoro”.
+     Sitemap: šest stranica; `robots.txt` zabranjuje `/admin`, `/api`, `/b`. Revizija: kad aplikacija izađe.
+201. **Navigacija:** zaglavlje Katalog · Radni listići · Igre · O nama + gumb „Prijava” (`/admin/login`);
+     na mobitelu `<details>` bez skripte (CSP, odluka 13); Privatnost samo u podnožju.
+202. **Brojke su zaokružene konstante na jednom mjestu u kodu** (30 glasova, 650+ riječi, 1300+ slika,
+     2 stila, 11 vrsta, 90 znakova, 2 teme). S6 ponavlja upite iz inventure na produkciji prije objave.
+203. **Slušne vrste** („Koje slovo čuješ?”, „Gdje je glas?”) broje se među 11 vrsta jer rade na papiru; za
+     igru piše „uskoro” (0 snimki glasova). **Izgovor** samo kao „upute i odabrane riječi”, nikad „svaka riječ”.
+204. **Izostavlja se:** „AI” i nazivi servisa, praćenje napretka djeteta, aplikacija u trgovinama,
+     registracija bez pozivnice, cijena, brojevi tjednog limita, upute za vježbenice. Alfa se na stranicama
+     zove „probno razdoblje”; logopedu se obraća s „vi”.
+205. **Demo je uvjetna sekcija** (G-6, „Isprobaj igru” na `/b/<demo>`) s rezervom bez demoa (G-6R, snimke).
+     Kod ima konstantu `DEMO_URL`; prazna = rezerva. Demo bilježnica na produkciji je pitanje vrata S6
+     (pisanje u produkcijsku D1); na stagingu se za snimke smije napraviti.
+206. **Placeholderi** `[KONTAKT — S6]`, `[IME TVRTKE — S6]`, `[DEMO — S6]`, `[GODINA — S6]` su u kodu
+     konstante; prazna konstanta uklanja element. Do odgovora u S6 je jedini CTA „Prijava” (odluka 14).
+     Provjera S6: `grep -r "— S6]" dist/` prazan.
+207. **Staging bez Basic Autha** (korisnik, 19. 11. 2026.; zamjenjuje odluku 7 i dio odluke 102). Javni dio
+     staginga je otvoren kao produkcija („landing je public facing”); `/admin` štiti isti middleware kao na
+     produkciji, `/api/v1` i `/api/runner/*` vlastiti bearer. `src/lib/staging.ts` samo dodaje
+     `x-robots-tag: noindex` (i statičkim datotekama). Secret `STAGING_LOZINKA` se ne čita. Provjereno
+     `curl`om nakon deploya `c32052c9`: `/` 200, `/admin` 302 na prijavu, `/api/v1/ja` 401, sve noindex.
+     Kopija produkcijske D1 na stagingu je time izložena jednako kao produkcija (iza iste prijave).
+208. **Access na stagingu zasad ne** (korisnik, b). Admin na stagingu ostaje na sesiji iz
+     `scripts/staging-sesija.sh`; korisnik će Access aplikaciju za `staging.logomedo.com/admin/sso` dodati u
+     dashboardu i poslati AUD tag (upute u `docs/staging.md`, „Access kasnije”), pa ga sesija upiše u
+     `env.staging.vars.ACCESS_AUD` i deploya staging.
+209. **Snimke se rade kao logoped** (sesija bez `--superadmin`), uz CSS koji sakrije `.tko` i ostale
+     selektore iz `sadrzaj.md` odjeljak 4; probne bilježnice na stagingu neutralnih naslova. Ilustracije su
+     `.webp` 512/256 px u `public/landing/`, preuzete jednom s `cdn.logomedo.com`; **OG slika je PNG
+     1200 × 630** (pregledi linkova).
+210. **Privatnost bez pravnih obećanja;** P-5 (voditelj obrade) se objavljuje tek nakon odgovora u S6.
+211. **Godina starog LogoMeda i opis „zbirka bojanki”** u O-2 su iz privatnog `preuzimanje/`, ne iz
+     inventure, pa su placeholder `[GODINA — S6]` do potvrde (iznimka od pravila reference, potvrditi).
+212. **S2 je rađen s dva Opus subagenta** (inventura, tekstovi; `effort: medium`), jedan za drugim; izmjenu
+     staginga (207) je napravila glavna sesija jer je bila mala i tražena usred paketa.

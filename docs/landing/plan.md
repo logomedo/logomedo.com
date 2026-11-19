@@ -17,7 +17,7 @@ je stari Firebase).
 | D1 | `logomedo` | `logomedo-staging` (kopija produkcije, odluka 5) |
 | R2 | `logomedo-slike`, `logomedo-javno` | `logomedo-staging-slike`, `logomedo-staging-javno` |
 | Slike na stranicama | `cdn.logomedo.com` | `cdn.logomedo.com` (samo čitanje, odluka 6) |
-| Zaštita | Access na `/admin/sso` + passkey | Basic Auth na cijelom hostu (odluka 7) |
+| Zaštita | Access na `/admin/sso` + passkey | javno + noindex, `/admin` kao produkcija (odluka 207) |
 | Deploy | `npm run deploy` (s `main`) | `npm run deploy:staging` (s grane `landing` ili `main`) |
 
 Landing stranice su prerenderirane (`export const prerender = true`) i servira ih Cloudflare kao
@@ -55,3 +55,6 @@ S1 mjeri adapter prije izmjene i dokazuje prazan diff. Drugi rizik je CSP stati�
 
 S0 (19. 11. 2026.): plan napisan, koda nema. Polazno stanje: 276 testova (pass 276, skipped 0),
 `check` 0 grešaka, build prolazi.
+
+S2 (19. 11. 2026.): inventura (`research/2026-11-19-inventura.md`) i `sadrzaj.md`: šest stranica i 404, bez
+`/aplikacija` (odluka 200). Staging bez Basic Autha (odluka 207). 287 testova (pass 287, skipped 0).
