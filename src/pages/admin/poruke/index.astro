@@ -5,15 +5,16 @@ import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import { kad } from "../../../lib/katalog";
 import { smije } from "../../../lib/admin/ovlasti";
-import { popisRazgovora, type StatusRazgovora } from "../../../lib/poruke";
+import { popisRazgovora, potpisPoruka, type StatusRazgovora } from "../../../lib/poruke";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
 
-const razgovori = await popisRazgovora();
+const [razgovori, potpis] = await Promise.all([popisRazgovora(), potpisPoruka()]);
 const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvoren", nerasporedjen: "neraspoređen" };
 ---
 <AdminOkvir naslov="Poruke" aktivno="poruke">
+  <div id="pracenje" hidden data-url="/admin/poruke/stanje" data-potpis={potpis}></div>
   <div class="naslov">
     <div>
       <h1>Poruke</h1>
@@ -43,6 +44,12 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
     </ul>
   )}
 </AdminOkvir>
+<script>
+  // Nova poruka ili promjena nepročitanih (odluka 313): popis se osvježi sam dok je tab vidljiv.
+  import { pratiPoruke } from "../../../lib/poruke-pracenje";
+  const p = document.getElementById("pracenje");
+  if (p?.dataset.url) pratiPoruke(p.dataset.url, p.dataset.potpis ?? "", () => location.reload());
+</script>
 <style>
   .naslov { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
   .razgovori { list-style: none; margin: 20px 0 0; padding: 0; overflow: hidden; }

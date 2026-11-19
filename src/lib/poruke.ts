@@ -250,6 +250,17 @@ export async function brojNeprocitanih(): Promise<number> {
   return r?.n ?? 0;
 }
 
+/**
+ * Potpis stanja za praćenje bez WebSocketa (odluka 313): zadnji id poruke razgovora, odnosno za popis zadnji id
+ * i broj nepročitanih. Stranica ga dohvaća svakih ~12 s dok je tab vidljiv i osvježi se kad se promijeni. Bez sadržaja.
+ */
+export async function potpisPoruka(razgovorId?: number): Promise<string> {
+  const r = razgovorId
+    ? await db().prepare("SELECT COALESCE(MAX(id), 0) AS z FROM poruke WHERE razgovor_id = ?").bind(razgovorId).first<{ z: number }>()
+    : await db().prepare("SELECT COALESCE(MAX(id), 0) AS z FROM poruke").first<{ z: number }>();
+  return razgovorId ? `${r?.z ?? 0}` : `${r?.z ?? 0}:${await brojNeprocitanih()}`;
+}
+
 // ---- Admin (/admin/poruke, S3) ----
 
 export type StatusRazgovora = "otvoren" | "zatvoren" | "nerasporedjen";

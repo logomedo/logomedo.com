@@ -129,3 +129,9 @@ kaže. Blokovi: S0 1–99, S1 100–199, S2 200–299, S3 300–399, S4 400–49
      id i ne upisuje se dvaput (`porukaPoResendId`), a istodobni dobije 409 `concurrent_idempotent_requests` → „u tijeku”
      (redirect s porukom, ništa se ne upisuje). U pregledniku se gumb odmah zaključa (`aria-busy`, vrtilica, „Šaljem…”),
      drugi submit se ignorira, a `pageshow` iz bfcachea ga otključa.
+313. **Nove poruke bez ručnog osvježavanja (zahtjev korisnika nakon e2e):** zasad polling, ne WebSocket ni Durable
+     Objects. `GET /admin/poruke/stanje[?razgovor=id]` vraća samo potpis (zadnji id poruke; za popis i broj
+     nepročitanih), bez sadržaja. `src/lib/poruke-pracenje.ts` ga dohvaća svakih 12 s dok je kartica vidljiva (i odmah
+     kad postane vidljiva). Kad se potpis promijeni, popis se osvježi, a nit se osvježi tek nakon što se nacrt odgovora
+     spremi u `sessionStorage` i poslije vrati; dok slanje traje, nit se ne osvježava. Trošak: jedan mali D1 upit po
+     otvorenoj kartici svakih 12 s.

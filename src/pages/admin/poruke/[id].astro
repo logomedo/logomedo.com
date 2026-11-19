@@ -7,7 +7,7 @@ import Ikona from "../../../components/Ikona.astro";
 import { kad } from "../../../lib/katalog";
 import { smije } from "../../../lib/admin/ovlasti";
 import {
-  brziOdgovori, htmlZaPrikaz, nit, oznaciProcitano, postaviStatus, putanjaPrivitka, razdvojiAdresu, razdvojiCitat, type StatusRazgovora,
+  brziOdgovori, htmlZaPrikaz, potpisPoruka, nit, oznaciProcitano, postaviStatus, putanjaPrivitka, razdvojiAdresu, razdvojiCitat, type StatusRazgovora,
 } from "../../../lib/poruke";
 import { posaljiOdgovor } from "../../../lib/email";
 
@@ -56,6 +56,7 @@ if (!t) return new Response("Nema razgovora", { status: 404 });
 const { razgovor: r } = t;
 if (r.neprocitano > 0) await oznaciProcitano(id);
 const brzi = await brziOdgovori();
+const potpis = await potpisPoruka(id);
 
 const poruke = t.poruke.map((m) => {
   const { tekst: cist, citat } = razdvojiCitat(m.text);
@@ -67,6 +68,7 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "otvoren", zatvoren: 
 const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} kB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
 ---
 <AdminOkvir naslov={r.predmet ?? "Razgovor"} aktivno="poruke">
+  <div id="pracenje" hidden data-url={`/admin/poruke/stanje?razgovor=${id}`} data-potpis={potpis} data-razgovor={id}></div>
   <p class="natrag"><a href="/admin/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
   <div class="naslov">
     <div class="sugovornik">
@@ -149,7 +151,7 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
         <a href="/admin/poruke/brzi">Uredi brze odgovore</a>
       </p>
       <div class="akcije">
-        <button class="gumb glavni" type="submit" id="posalji"><Ikona ime="pismo" /> <span class="oznaka">Pošalji</span><span class="vrtilica" aria-hidden="true"></span></button>
+        <button class="gumb glavni" type="submit" id="posalji"><Ikona ime="pismo" /> <span class="natpis-gumba">Pošalji</span><span class="vrtilica" aria-hidden="true"></span></button>
         <span class="stanje-slanja blijedo sitno" id="stanje-slanja" role="status" aria-live="polite"></span>
       </div>
     </form>
@@ -157,6 +159,7 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
 </AdminOkvir>
 <script>
   import { umetniKraticu, umetniNaKursor } from "../../../lib/poruke-klijent";
+  import { nacrtKljuc, pratiPoruke } from "../../../lib/poruke-pracenje";
 
   const polje = document.getElementById("odgovor-tekst") as HTMLTextAreaElement | null;
   const izbor = document.getElementById("brzi-izbor") as HTMLSelectElement | null;
@@ -188,7 +191,7 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
   const obrazac = document.getElementById("odgovor-obrazac") as HTMLFormElement | null;
   const gumb = document.getElementById("posalji") as HTMLButtonElement | null;
   const stanje = document.getElementById("stanje-slanja");
-  const oznaka = gumb?.querySelector(".oznaka");
+  const oznaka = gumb?.querySelector(".natpis-gumba");
   const otkljucaj = () => {
     if (!obrazac || !gumb) return;
     delete obrazac.dataset.salje;
@@ -211,6 +214,25 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
   });
   // Povratak strelicom „natrag” (bfcache) ne smije ostaviti zaključan gumb.
   addEventListener("pageshow", (e) => { if (e.persisted) otkljucaj(); });
+
+  // Nova poruka u niti (odluka 313): osvježi stranicu, a nacrt odgovora sačuvaj i vrati.
+  const pracenje = document.getElementById("pracenje");
+  const kljucNacrta = nacrtKljuc(pracenje?.dataset.razgovor ?? "");
+  try {
+    const sacuvan = sessionStorage.getItem(kljucNacrta);
+    if (sacuvan !== null && polje) {
+      sessionStorage.removeItem(kljucNacrta);
+      polje.value = sacuvan;
+      if (sacuvan) { polje.focus(); polje.setSelectionRange(sacuvan.length, sacuvan.length); }
+    }
+  } catch { /* bez sessionStoragea: ostaje nacrt sa servera */ }
+  if (pracenje?.dataset.url) {
+    pratiPoruke(pracenje.dataset.url, pracenje.dataset.potpis ?? "", () => {
+      if (obrazac?.dataset.salje) return; // slanje u tijeku: njegov redirect ionako osvježi nit
+      try { if (polje?.value) sessionStorage.setItem(kljucNacrta, polje.value); } catch { /* nacrt bi se izgubio: ne osvježavaj */ if (polje?.value) return; }
+      location.replace(location.pathname);
+    });
+  }
 
   // Visina iframea prema sadržaju (sandbox ima allow-same-origin, bez skripti u njemu).
   for (const f of Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe.html-okvir"))) {
