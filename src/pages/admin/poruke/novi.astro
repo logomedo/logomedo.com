@@ -46,9 +46,9 @@ if (Astro.request.method === "POST") {
       <input type="hidden" name="kljuc" value={kljucSlanja} />
       <div class="polja">
         <label>E-mail <input type="email" name="email" required maxlength="254" value={v.email} autocomplete="off" /></label>
-        <label>Ime <input name="ime" maxlength="120" value={v.ime} autocomplete="off" /></label>
+        <label>Ime <input type="text" name="ime" maxlength="120" value={v.ime} autocomplete="off" /></label>
       </div>
-      <label>Predmet <input name="predmet" required maxlength={PREDMET_MAX} value={v.predmet} /></label>
+      <label>Predmet <input type="text" name="predmet" required maxlength={PREDMET_MAX} value={v.predmet} /></label>
       <label>Poruka <textarea name="tekst" rows="10" required maxlength="20000" placeholder="Pozdrav,…">{v.tekst}</textarea></label>
       <div class="akcije">
         <span class="stanje-slanja blijedo sitno" id="stanje-slanja" role="status" aria-live="polite"></span>
