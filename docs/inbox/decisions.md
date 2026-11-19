@@ -58,3 +58,28 @@ kaže. Blokovi: S0 1–99, S1 100–199, S2 200–299, S3 300–399, S4 400–49
      `src/lib/poruke-webhook.ts` (fetch se ubacuje u testovima), ruta je jedan red.
 111. **Testni webhook secret staginga** je lokalno u `~/.cache/logomedo-staging/inbox-webhook-secret` (izvan gita),
      a `scripts/inbox-probni-webhook.ts` ga čita iz okruženja.
+
+## S2 (19. 11. 2026.)
+
+200. **`poruke.logomedo.com` je zaseban Resend domain objekt** (`POST /domains`, `eu-west-1`, `sending: disabled`,
+     `receiving: enabled`), ne prekidač na `logomedo.com`: primanje na `logomedo.com` bi tražilo apex MX, koji je
+     Googleov (odluka 3). API je odmah vratio dva zapisa, oba na poddomeni: TXT `resend._domainkey.poruke` (DKIM)
+     i MX `poruke` → `receive-euw1.forge.rmta.net`, prioritet 10. Dodani u Cloudflare dashboardu (DNS only); apex
+     MX (5 Googleovih) nije diran. Dashboard Resenda nije trebao.
+201. **Webhook kroz API** (`POST /webhooks`, samo `email.received`, endpoint `https://logomedo.com/api/resend/webhook`);
+     `signing_secret` je išao cijevi ravno u `wrangler secret put RESEND_WEBHOOK_SECRET`, nije ispisan ni spremljen.
+     Resend API ključ za logomedo.com je lokalno u `~/.config/logomedo/secrets.env` (chmod 600, izvan repoa);
+     `~/.config/bizops/secrets.env` je drugi Resend račun (domovina.ai) i ne koristi se.
+202. **Pozivnica otvara razgovor prije slanja** (`noviRazgovor`, predmet = naslov maila), šalje s `reply_to`
+     `odgovor+<kljuc>@poruke.logomedo.com` i nakon uspjeha upisuje odlaznu poruku (`poslao: null`). Neuspjelo slanje
+     briše prazan razgovor (`obrisiPrazanRazgovor`). Ako D1 padne prije slanja, pozivnica ipak ide, s rezervnim
+     `reply_to` `bok@logomedo.com`: pozivnica je važnija od niti. `Message-ID` se ne postavlja dok e2e ne pokaže
+     što Resend radi sa zaglavljima (research §3).
+203. **Kopija pozivnice u D1 je bez tokena** (poveznica zamijenjena s `SKRIVENA_POVEZNICA`): token vrijedi do isteka
+     i ne smije ležati u `poruke`, koje čita admin sučelje i backup. Revizija: nikad za tokene.
+204. **Rok čuvanja dopisivanja 24 mjeseca od zadnje poruke** u razgovoru, u `src/lib/poruke-rokovi.ts`
+     (`PORUKE_ROK_MJESECI`), isti broj za `/privatnost` i retenciju u S4. (potvrditi) Konzervativno usklađeno s
+     „dok traje suradnja”; korisnik može skratiti promjenom jedne konstante.
+205. **`/privatnost`**: nova sekcija `#dopisivanje` iza `#pristup` (što se sprema, tko vidi, svrha i osnova čl. 6.
+     st. 1. t. (b) i (f), rok, Resend u EU); Resend dodan u `#obradivaci` (već je slao pozivnice, a nije bio
+     naveden); `#cuvanje` razdvaja odgovore u LogoMedu od pošte na `bok@`.

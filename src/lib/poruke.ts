@@ -101,6 +101,11 @@ export async function noviRazgovor(p: { email: string; ime?: string | null; pred
   return { id: r!.id, kljuc };
 }
 
+/** Obriši razgovor samo ako nema nijedne poruke (npr. slanje pozivnice nije uspjelo). */
+export async function obrisiPrazanRazgovor(id: number): Promise<void> {
+  await db().prepare("DELETE FROM razgovori WHERE id = ? AND NOT EXISTS (SELECT 1 FROM poruke WHERE razgovor_id = ?)").bind(id, id).run();
+}
+
 export interface PrivitakZapis { r2Kljuc: string | null; ime: string; tip: string; velicina: number | null; contentId?: string | null; napomena?: string | null }
 
 export interface Dolazna {

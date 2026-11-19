@@ -4,6 +4,7 @@
 import Sekcija from "../Sekcija.astro";
 import { TVRTKA } from "../konstante";
 import { IP_SATI, ROK_MJESECI } from "../../lib/pristup-rokovi";
+import { PORUKE_ROK_MJESECI } from "../../lib/poruke-rokovi";
 ---
 <Sekcija id="cuvanje" naslov="Koliko dugo čuvamo">
   <ul>
@@ -14,6 +15,8 @@ import { IP_SATI, ROK_MJESECI } from "../../lib/pristup-rokovi";
       najviše {ROK_MJESECI} mjeseci. Sažetak IP adrese {IP_SATI} sata. Briše se samo (<a href="#pristup">detalji</a>).</li>
     <li><strong>Sesije:</strong> istekle prijave brišu se same.</li>
     <li><strong>Tehnički podaci zahtjeva:</strong> kratko, u pravilu nekoliko dana, kod pružatelja hostinga.</li>
-    <li><strong>E-pošta:</strong> dok je potrebno da odgovorimo i riješimo vaš upit.</li>
+    <li><strong>Odgovori na e-poštu iz LogoMeda:</strong> {PORUKE_ROK_MJESECI} mjeseci nakon zadnje poruke u razgovoru
+      (<a href="#dopisivanje">detalji</a>).</li>
+    <li><strong>E-pošta na {TVRTKA.privatnost}:</strong> dok je potrebno da odgovorimo i riješimo vaš upit.</li>
   </ul>
 </Sekcija>

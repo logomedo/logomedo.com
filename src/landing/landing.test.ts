@@ -232,7 +232,7 @@ test("landing: pravne stranice imaju voditelja obrade i pružatelja, bez osobnih
   assert.equal(K.KONTAKT, `mailto:${K.TVRTKA.privatnost}`);
   const izvor = ["src/pages/privatnost.astro", "src/pages/uvjeti.astro", ...readdirSync(new URL("src/landing/privatnost/", korijen)).map((f) => `src/landing/privatnost/${f}`),
     ...readdirSync(new URL("src/landing/uvjeti/", korijen)).map((f) => `src/landing/uvjeti/${f}`)].map(procitaj).join("\n");
-  for (const id of ["pristup", "voditelj", "osnove", "obradivaci", "kolacici", "cuvanje", "prava", "pruzatelj", "odgovornost"]) assert.match(izvor, new RegExp(`id="${id}"`), id);
+  for (const id of ["pristup", "dopisivanje", "voditelj", "osnove", "obradivaci", "kolacici", "cuvanje", "prava", "pruzatelj", "odgovornost"]) assert.match(izvor, new RegExp(`id="${id}"`), id);
   assert.doesNotMatch(izvor, /\+385|gmail\.com|ms@/);
   assert.doesNotMatch(izvor, /besplatn/i);
 });

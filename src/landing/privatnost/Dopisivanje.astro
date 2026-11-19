@@ -1,0 +1,21 @@
+---
+// Dopisivanje e-poštom (inbox, docs/inbox/ S2, odluka 203): odgovori na mailove iz aplikacije stižu kroz Resend
+// (regija EU) u bazu i vidi ih samo superadmin u /admin/poruke. Rok iz src/lib/poruke-rokovi.ts, isti kao retencija (S4).
+import Sekcija from "../Sekcija.astro";
+import { TVRTKA } from "../konstante";
+import { PORUKE_ROK_MJESECI } from "../../lib/poruke-rokovi";
+---
+<Sekcija id="dopisivanje" naslov="Dopisivanje e-poštom">
+  <p>LogoMedo vam šalje e-poštu, na primjer pozivnicu. Kad na takvu poruku odgovorite, odgovor stiže u LogoMedo, a ne u
+    nečiji osobni pretinac. Spremamo:</p>
+  <ul>
+    <li><strong>Poruke koje smo vam poslali</strong> i vaše odgovore: adrese, predmet, tekst i vrijeme. Iz pozivnice ne spremamo
+      poveznicu za prijavu.</li>
+    <li><strong>Privitke</strong> koje pošaljete uz odgovor.</li>
+  </ul>
+  <p><strong>Tko vidi:</strong> samo administrator LogoMeda koji odgovara na poruke. Sadržaj poruka ne ide u zapisnik aktivnosti ni u
+    logove. <strong>Svrha i osnova:</strong> da odgovorimo na vaš upit i vodimo suradnju s vama (čl. 6. st. 1. t. (b) i (f) GDPR-a).</p>
+  <p><strong>Koliko dugo:</strong> razgovor s privitcima brišemo {PORUKE_ROK_MJESECI} mjeseci nakon zadnje poruke u njemu. Ako želite da ga
+    obrišemo ranije, pišite na <a href={`mailto:${TVRTKA.privatnost}`}>{TVRTKA.privatnost}</a>.</p>
+  <p>Poruke šaljemo i primamo kroz uslugu <a href="#obradivaci">Resend</a>, na poslužiteljima u Europskoj uniji (Irska).</p>
+</Sekcija>

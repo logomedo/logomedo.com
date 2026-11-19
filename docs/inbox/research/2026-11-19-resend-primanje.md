@@ -35,7 +35,13 @@ Službeni test vektori (u `src/lib/svix.test.ts`):
 | Ako root već ima MX, preporuka je poddomena (npr. `subdomain.example.com`) s Resendovim MX-om; MX vrijedi samo za poddomenu na kojoj je | custom-domains; https://resend.com/docs/knowledge-base/how-do-i-avoid-conflicting-with-my-mx-records |
 | MX vrijednost dokumentacija ne navodi (pokaže je dashboard); primjeri: `receive.forge.rmta.net`, `receive-euw1.forge.rmta.net`, `inbound-smtp.<regija>.amazonaws.com`. Resendov MX mora imati najmanji broj prioriteta za tu domenu | custom-domains |
 
-**Otvoreno za S2:** mora li `poruke.logomedo.com` biti zaseban unos u `/domains` (s vlastitom verifikacijom)
+**Ishod S2 (19. 11. 2026., odluka 200):** `GET /domains` vraća `capabilities` i za `logomedo.com` je bilo
+`receiving: disabled`. `POST /domains` `{ name: "poruke.logomedo.com", region: "eu-west-1", capabilities: { sending:
+"disabled", receiving: "enabled" } }` je prošao na besplatnom planu i vratio dva zapisa: TXT
+`resend._domainkey.poruke` (DKIM, potreban i za domenu koja samo prima) i MX `poruke` → `receive-euw1.forge.rmta.net`,
+prioritet 10. Dakle: poddomena je zaseban unos u `/domains`, dashboard ne treba.
+
+**Polazno pitanje (S1):** mora li `poruke.logomedo.com` biti zaseban unos u `/domains` (s vlastitom verifikacijom)
 ili se primanje za poddomenu uključuje na `logomedo.com`. Dokumentacija to ne kaže izravno; budući da se
 verificira „domain object”, vjerojatnije je zaseban unos (`POST /domains` `{ name: "poruke.logomedo.com",
 region: "eu-west-1", capabilities: { sending: "disabled", receiving: "enabled" } }`). S2 to provjeri kroz API
