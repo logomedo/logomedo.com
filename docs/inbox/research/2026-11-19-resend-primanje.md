@@ -102,3 +102,9 @@ S2/S3 (e2e):** prolaze li netaknuti do Gmaila (Gmail spaja nit po `References` i
 dobiva naš odlazni mail (odgovor `POST /emails` vraća samo Resendov `id`). Dok to nije poznato, nit u D1 drži
 ključ u adresi za odgovor (odluka 4), a `References` dolaznog maila se uspoređuju sa svim spremljenim
 `message_id` (i dolaznim), pa nit nađe i kad naš odlazni `Message-ID` nije poznat.
+
+**Ishod e2e S2 (19. 11. 2026., odluka 206):** `GET /emails/{id}` odlazne pozivnice vraća `message_id` oblika
+`<…-000000@eu-west-1.amazonses.com>` (Resend šalje kroz SES). Gmailov odgovor ima `In-Reply-To` jednak tom
+`message_id` i isti id u `References`. Odgovor je stigao u razgovor pozivnice po ključu u `reply_to`; tijelo
+(tekst i HTML) i dva privitka (PNG, PDF) su spremljeni, objekti u R2 imaju točnu veličinu. Gmail je i obične
+privitke označio s `content_id`.

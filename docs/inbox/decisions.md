@@ -83,3 +83,8 @@ kaže. Blokovi: S0 1–99, S1 100–199, S2 200–299, S3 300–399, S4 400–49
 205. **`/privatnost`**: nova sekcija `#dopisivanje` iza `#pristup` (što se sprema, tko vidi, svrha i osnova čl. 6.
      st. 1. t. (b) i (f), rok, Resend u EU); Resend dodan u `#obradivaci` (već je slao pozivnice, a nije bio
      naveden); `#cuvanje` razdvaja odgovore u LogoMedu od pošte na `bok@`.
+206. **Niti preko SES `message_id`** (e2e 19. 11.): `GET /emails/{id}` odlaznog maila vraća `message_id`
+     `<…@eu-west-1.amazonses.com>`, a Gmailov odgovor ga nosi u `In-Reply-To` i `References`; webhook je odgovor
+     smjestio u razgovor pozivnice po ključu u adresi. Zato vlastiti `Message-ID` ne postavljamo: S3 nakon slanja
+     dohvati i spremi `message_id` i iz njega složi `In-Reply-To`/`References`. Gmail je obične privitke poslao s
+     `content_id`, pa `content_id` sam ne znači ugrađenu sliku (S3, prikaz).

@@ -56,3 +56,8 @@ S0: plan, koda inboxa nema. Polazište je `main` s pozivnicom e-poštom i React 
 
 S1 (`f9c1cec`): migracija 0039, `svix.ts`, `poruke.ts`, webhook `/api/resend/webhook`, research; staging provjeren
 probnim potpisanim webhookom. Produkcija još ne prima ništa (nema MX ni webhooka).
+
+S2 (`d3e8251`): `poruke.logomedo.com` je zaseban Resend domain (samo primanje), MX i DKIM u Cloudflareu, webhook i
+secret na produkciji, migracija 0039 na produkciji; pozivnica šalje `reply_to` razgovora i upisuje kopiju bez tokena;
+`/privatnost` ima dopisivanje i Resend. E2e prošao: odgovor iz Gmaila s dva privitka je u razgovoru pozivnice,
+`In-Reply-To` je Resendov (SES) `message_id` odlaznog maila.

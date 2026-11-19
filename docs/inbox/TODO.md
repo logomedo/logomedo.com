@@ -26,11 +26,11 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 
 ## F1: primanje na produkciji
 
-- [ ] (!) MX za `poruke.logomedo.com` u Cloudflareu + primanje uključeno u Resendu → S2
-- [ ] Webhook `email.received` kreiran kroz API, `RESEND_WEBHOOK_SECRET` secret na produkciji → S2
-- [ ] Pozivnica dobiva `reply_to` `odgovor+<kljuc>@poruke.logomedo.com`; odlazni mail se upisuje u razgovor → S2
-- [ ] `/privatnost`: dopisivanje se čuva u bazi, rok čuvanja → S2
-- [ ] (!) e2e: pozivnica na vlastitu adresu, odgovor iz Gmaila, poruka u D1 s tijelom i privitkom → S2
+- [x] (!) MX za `poruke.logomedo.com` u Cloudflareu + primanje uključeno u Resendu → S2
+- [x] Webhook `email.received` kreiran kroz API, `RESEND_WEBHOOK_SECRET` secret na produkciji → S2
+- [x] Pozivnica dobiva `reply_to` `odgovor+<kljuc>@poruke.logomedo.com`; odlazni mail se upisuje u razgovor → S2
+- [x] `/privatnost`: dopisivanje se čuva u bazi, rok čuvanja → S2
+- [x] (!) e2e: pozivnica na vlastitu adresu, odgovor iz Gmaila, poruka u D1 s tijelom i privitkom → S2
 
 ## F2: admin sučelje
 
