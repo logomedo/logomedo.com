@@ -19,7 +19,9 @@
     "build:staging": "sh scripts/staging-build.sh",
     "deploy:staging": "npm run build:staging && CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 wrangler deploy --config dist-staging/server/wrangler.json",
     "db:migrate:staging": "CLOUDFLARE_ACCOUNT_ID=7dc7167b7e2e00923bfa7cd697df14e4 wrangler d1 migrations apply logomedo-staging --remote --config wrangler.jsonc --env staging",
-    "landing:snimke": "node scripts/landing-snimke.ts"
+    "landing:snimke": "node scripts/landing-snimke.ts",
+    "emails": "tsx --tsconfig emails/tsconfig.json scripts/emails-export.tsx",
+    "emails:dev": "email dev --dir emails --port 3030"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.4.3",
@@ -35,8 +37,14 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.12",
+    "@react-email/components": "^1.0.12",
     "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
     "playwright-core": "1.65.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-email": "^6.11.16",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "wrangler": "^4.156.0"
   }

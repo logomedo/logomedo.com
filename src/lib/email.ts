@@ -2,6 +2,7 @@
 // resend._domainkey, MX i SPF apexa ostaju Googleovi). Ključ je secret RESEND_API_KEY samo u produkciji:
 // staging je kopija produkcijske D1 sa stvarnim adresama, pa bez ključa ne šalje ništa i admin dobije link kao prije.
 import { env } from "cloudflare:workers";
+import { pozivnica } from "./emails/generirano";
 
 export const POSILJATELJ = "LogoMedo <pozivnica@logomedo.com>";
 export const ODGOVOR_NA = "bok@logomedo.com";
@@ -20,34 +21,19 @@ function datum(iso: string): string {
   });
 }
 
-/** Tekst i HTML pozivnice (izdvojeno radi testa). */
+/** Popuni {{ključ}} u predlošku; u HTML-u su vrijednosti escapane. Nepoznat ključ baca (greška u predlošku). */
+export function popuni(predlozak: string, v: Record<string, string>, html: boolean): string {
+  return predlozak.replace(/\{\{(\w+)\}\}/g, (_, k: string) => {
+    if (!(k in v)) throw new Error(`predložak: nema vrijednosti za {{${k}}}`);
+    return html ? escape(v[k]) : v[k];
+  });
+}
+
+/** Tekst i HTML pozivnice iz React Email predloška (emails/Pozivnica.tsx, izvoz `npm run emails`). */
 export function sadrzajPozivnice(p: Pozivnica): { subject: string; text: string; html: string } {
   const ime = p.ime.trim().split(/\s+/)[0] || "";
-  const pozdrav = ime ? `Pozdrav ${ime},` : "Pozdrav,";
-  const do_ = datum(p.istjece);
-  const text = [
-    pozdrav,
-    "",
-    "vaš zahtjev za pristup LogoMedu je odobren.",
-    "Otvorite link ispod i postavite prijavu (passkey). Link vrijedi do " + do_ + " i može se iskoristiti jednom.",
-    "",
-    p.url,
-    "",
-    "Ako vam link istekne ili ne radi, samo odgovorite na ovu poruku.",
-    "",
-    "LogoMedo",
-    "https://logomedo.com",
-  ].join("\n");
-  const html = `<!doctype html><html lang="hr"><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#222;line-height:1.5;max-width:560px;margin:0 auto;padding:24px">
-<p>${escape(pozdrav)}</p>
-<p>vaš zahtjev za pristup LogoMedu je odobren.</p>
-<p>Otvorite link ispod i postavite prijavu (passkey). Link vrijedi do <strong>${escape(do_)}</strong> i može se iskoristiti jednom.</p>
-<p style="margin:28px 0"><a href="${escape(p.url)}" style="background:#f5b335;color:#1d1a14;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600;display:inline-block">Prihvati pozivnicu</a></p>
-<p style="font-size:13px;color:#666">Ako gumb ne radi, kopirajte ovaj link u preglednik:<br><span style="word-break:break-all">${escape(p.url)}</span></p>
-<p style="font-size:13px;color:#666">Ako vam link istekne ili ne radi, samo odgovorite na ovu poruku.</p>
-<p>LogoMedo<br><a href="https://logomedo.com" style="color:#666">logomedo.com</a></p>
-</body></html>`;
-  return { subject: "Vaš pristup LogoMedu je odobren", text, html };
+  const v = { pozdrav: ime ? `Pozdrav ${ime},` : "Pozdrav,", url: p.url, istjece: datum(p.istjece) };
+  return { subject: pozivnica.naslov, text: popuni(pozivnica.text, v, false), html: popuni(pozivnica.html, v, true) };
 }
 
 /** Pošalji pozivnicu. Ne baca: neuspjeh vraća razlog, a admin i dalje ima link za ručno slanje. */

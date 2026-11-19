@@ -43,6 +43,7 @@ test("ime je escapano u HTML-u, link je u tekstu", () => {
   const s = sadrzajPozivnice(P);
   assert.ok(!s.html.includes("<b>"));
   assert.ok(s.html.includes("&lt;b&gt;"));
-  assert.ok(s.text.startsWith("Pozdrav <b>Ana</b>,"));
+  assert.ok(s.text.includes("Pozdrav <b>Ana</b>,"));
+  assert.ok(!/\{\{/.test(s.html + s.text), "svi placeholderi popunjeni");
   assert.ok(s.html.includes('href="https://logomedo.com/admin/poziv#tok"'));
 });
