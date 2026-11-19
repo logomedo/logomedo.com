@@ -29,16 +29,16 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [x] Inventura funkcija koje danas rade na produkciji, s putanjom koda i dokazom → S2
 - [x] Arhitektura stranica i tekstovi na hrvatskom u `docs/landing/sadrzaj.md` → S2
 - [x] Popis snimki zaslona i ilustracija (izvor, stranica, provjera osobnih podataka) → S2
-- [ ] `src/landing/` (layout, zaglavlje, podnožje, sekcije), stranice s `export const prerender = true` → S3
-- [ ] `public/_headers`: CSP i ostala zaglavlja za statičke stranice, jednako stroga kao `zastiti()` u `src/middleware.ts` → S3
-- [ ] `robots.txt`, `sitemap.xml`, OG slika i meta po stranici, 404 → S3
-- [ ] Naslovna `/` → S3
-- [ ] `scripts/landing-provjera.sh <host>`: svaka stranica 200, zaglavlja, interni linkovi bez 404, sitemap → S3
+- [x] `src/landing/` (layout, zaglavlje, podnožje, sekcije), stranice s `export const prerender = true` → S3
+- [x] `public/_headers`: CSP i ostala zaglavlja za statičke stranice, jednako stroga kao `zastiti()` u `src/middleware.ts` → S3
+- [x] `robots.txt`, `sitemap.xml`, OG slika i meta po stranici, 404 → S3
+- [x] Naslovna `/` → S3
+- [x] `scripts/landing-provjera.sh <host>`: svaka stranica 200, zaglavlja, interni linkovi bez 404, sitemap → S3
 
 ## F2: stranice
 
 - [ ] `scripts/landing-snimke.ts`: snimke zaslona sa staginga (Playwright), bez osobnih podataka → S4
-- [ ] Stranice `/katalog` i `/radni-listici` → S4
+- [ ] Stranice `/katalog` i `/radni-listici` (kosturi s hero sekcijom postoje od S3, odluka 305); V-2…V-4 u N-2 naslovne → S4
 - [ ] Stranice `/igre`, `/o-nama`, `/privatnost`, 404 (bez `/aplikacija`, odluka 200) → S5
 
 ## F3: pregled i produkcija
@@ -46,4 +46,5 @@ Legenda: `[x]` gotovo · `[ ]` otvoreno · `[~]` u radu · `(!)` traži korisnik
 - [ ] Lighthouse po stranici (staging), a11y, mobitel 360 px, tamna tema; brojke u `research/` → S6
 - [ ] `/code-review` grane `landing`, nalazi popravljeni ili zapisani → S6
 - [ ] (!) Korisnik pregleda staging i kaže „go”; otvorena pitanja (kontakt adresa) odgovorena → S6
+- [ ] (!) www → apex za statičke stranice (odluka 306) → S6
 - [ ] Merge `landing` u `main`, `npm run deploy`, provjera `scripts/landing-provjera.sh logomedo.com` i admina → S6

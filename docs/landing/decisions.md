@@ -147,3 +147,35 @@ odjeljku 6 su ovdje prihvaćeni).
      inventure, pa su placeholder `[GODINA — S6]` do potvrde (iznimka od pravila reference, potvrditi).
 212. **S2 je rađen s dva Opus subagenta** (inventura, tekstovi; `effort: medium`), jedan za drugim; izmjenu
      staginga (207) je napravila glavna sesija jer je bila mala i tražena usred paketa.
+
+## S3 (19. 11. 2026.)
+
+Provjera staginga: `research/2026-11-19-provjera-staging-s3.md` (89 OK, 0 grešaka, verzija `607dd115`).
+
+300. **`build: { format: "file" }`** u `astro.config.mjs`: stranice su `katalog.html`, URL `/katalog` bez kose
+     crte (kanonski), a `/katalog/` preusmjerava na `/katalog`. S `index.html` po direktoriju Cloudflare bi
+     preusmjeravao obrnuto. Popis datoteka u `dist/server` je isti. Rizik (SSR rewrite bez kose crte) provjeren
+     na stagingu: logoped na `/admin/prompt` dobiva 403 s pravom stranicom „Nemaš pristup · LogoMedo admin”.
+301. **`public/_headers`: sigurnosna zaglavlja na `/*`, `Cache-Control: no-cache` samo na šest HTML putanja.**
+     Cloudflare spaja istoimena zaglavlja iz više pravila zarezom, a adapter dopisuje `/_astro/*` s immutable
+     cache-controlom. Popis putanja mora pratiti `STRANICE` u `src/landing/konstante.ts` (test to provjerava).
+     SSR odgovori `_headers` ne dobivaju; `/admin/login` ima samo CSP s nonceom (provjera: `default-src` ×1).
+302. **Tema na landingu je vanjski `/tema.js`** (prop `vanjskaSkripta` u `Tema.astro`), jer CSP iz `_headers`
+     nema nonce. Admin dobiva isti HTML kao prije (inline + nonce iz middlewarea).
+303. **Prazan `KONTAKT` uklanja i rečenice koje upućuju na kontakt** (N-1 „Nemate je? Zatražite pristup.”, N-6
+     „Ako želite … javite nam se.”), ne samo gumb (potvrditi): tekst ne smije obećavati nešto čega nema.
+     Redak „© …” se prikazuje tek kad su popunjeni i `GODINA` i `IME_TVRTKE`.
+304. **`DATUM_OBJAVE` je peti placeholder S6** (P-1 „Stanje na dan …”), po pravilu odluke 206 (potvrditi).
+     Placeholderi su prazne konstante, pa S6 umjesto `grep "— S6]" dist/` provjerava konstante u
+     `src/landing/konstante.ts`.
+305. **Podstranice su u S3 kosturi** (samo hero K-1, R-1, G-1, O-1, P-1 i CTA, pravi title i description)
+     (potvrditi): zaglavlje i sitemap na njih upućuju, pa moraju vratiti 200. S4 i S5 ih dovršavaju. Stupci N-2
+     su zasad bez snimki (V-2…V-4 nastaju u S4).
+306. **www → apex za prerenderirane stranice ne radi na produkciji** (potvrditi u S6): statičke datoteke idu
+     mimo Workera, pa `www.logomedo.com/` vraća landing umjesto 301 (prije je naslovna bila SSR). `canonical`
+     pokriva SEO. S6 bira: Redirect Rule u Cloudflare dashboardu (preporuka, bez koda) ili `run_worker_first`
+     za HTML putanje.
+307. **Landing uvozi i kurziv Fraunces** (`wght-italic.css`), jer `Tema.astro` uvozi samo uspravni rez i
+     „Listić za tren.” bi bio umjetno nakošen.
+308. **S3: jedan Opus subagent za implementaciju** (`effort: high`); deploy staginga, provjera i rewrite
+     `nemas-pristup` u glavnoj sesiji.

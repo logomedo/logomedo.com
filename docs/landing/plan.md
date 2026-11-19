@@ -58,3 +58,6 @@ S0 (19. 11. 2026.): plan napisan, koda nema. Polazno stanje: 276 testova (pass 2
 
 S2 (19. 11. 2026.): inventura (`research/2026-11-19-inventura.md`) i `sadrzaj.md`: šest stranica i 404, bez
 `/aplikacija` (odluka 200). Staging bez Basic Autha (odluka 207). 287 testova (pass 287, skipped 0).
+
+S3 (19. 11. 2026.): kostur `src/landing/`, naslovna, kosturi ostalih pet stranica, `public/_headers`, robots,
+sitemap, OG, 404, `scripts/landing-provjera.sh` (staging 89 OK, 0 grešaka). 296 testova (pass 296, skipped 0).
