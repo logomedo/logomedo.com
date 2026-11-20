@@ -39,10 +39,10 @@ function pravila(tekst: string): Map<string, Map<string, string>> {
   return m;
 }
 
-test("landing: title ≤ 60 i description ≤ 155 znakova, sve putanje različite", () => {
+test("landing: title ≤ 70 (odluka 811) i description ≤ 155 znakova, sve putanje različite", () => {
   assert.equal(K.STRANICE.length, 8);
   for (const s of K.STRANICE) {
-    assert.ok(s.naslov.length <= 60, `${s.putanja}: title ${s.naslov.length}`);
+    assert.ok(s.naslov.length <= 70, `${s.putanja}: title ${s.naslov.length}`);
     assert.ok(s.opis.length > 50 && s.opis.length <= 155, `${s.putanja}: description ${s.opis.length}`);
     assert.match(s.naslov, /LogoMedo/);
   }

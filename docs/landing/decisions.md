@@ -431,3 +431,6 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
 810. **SEO naslovne za širu publiku** (Anitin feedback, 20. 11. 2026., kao 804): title (i og:title) „LogoMedo · pametan
      alat za dječje radne materijale i igre”, description (i og:description) „Sve što trebate za rad i učenje s djecom, na
      jednom mjestu: …”. Prije: „…za logopede”. Podstranice ostaju; `/pristup` i dalje kaže „privatna beta za logopede”.
+811. **Title naslovne doslovno** (korisnik): „LogoMedo — pametan alat za izradu dječjih radnih materijala i igara”
+     (67 znakova), kao podnaslov hera; skraćena inačica iz 810 odbijena. Test dopušta title do 70 (Google prikaže ~60, kraj
+     može biti odrezan; Facebook/WhatsApp ga prikažu cijelog).
