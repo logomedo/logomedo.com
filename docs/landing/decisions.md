@@ -416,3 +416,5 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
 806. **Smireniji h1 naslovne** (korisnik, 20. 11. 2026.: „Slike za svaki glas. Listić za tren.” je preteatralno; treba biti
      jasno djeci, roditeljima i logopedima što je aplikacija): h1 je „Slike, listići i igre za vježbu s djecom”, bez
      kurziva. Isto u OG slici (`scripts/landing-og.sh`, ponovno snimljena) i `OG.alt`. Kurziv Fraunces se više ne učitava.
+807. **H1 odraslim jezikom, s kurzivom u boji** (korisnik: 806 zvuči djetinjasto i preobično): „Radni listići i igre za
+     djecu, *pripremljeni za nekoliko minuta*”; drugi dio kurzivom u `--med-tamno` kao izvorni h1. Isto u OG slici i `OG.alt`.

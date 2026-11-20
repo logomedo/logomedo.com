@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # OG slika landinga (V-27, docs/landing/sadrzaj.md 2.5): public/landing/og.png, PNG 1200 × 630.
-# Lijevo naslov kao h1 naslovne (Fraunces; odluka 806, bez kurziva), desno četiri ilustracije V-1.
+# Lijevo naslov kao h1 naslovne (Fraunces, drugi dio kurzivom u --med-tamno; odluka 807), desno četiri ilustracije V-1.
 # Ručno, nakon scripts/landing-ilustracije.sh: ./scripts/landing-og.sh [radni-dir]
 # HTML se slaže u radni dir (zadano mktemp) i snima headless Chromeom; ništa ne ide na mrežu.
 set -euo pipefail
@@ -24,7 +24,7 @@ cat >"$RADNI/og.html" <<HTML
     grid-template-columns: 1fr 470px; align-items: center; gap: 40px; padding: 0 64px 0 80px; box-sizing: border-box; }
   .marka { display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 500; font-variation-settings: "SOFT" 100, "opsz" 48; }
   .marka b { font-weight: 700; color: #9c6300; }
-  h1 { margin: 34px 0 0; font-weight: 600; font-size: 70px; line-height: 1.05; letter-spacing: -.025em; font-variation-settings: "SOFT" 100, "opsz" 144; }
+  h1 { margin: 34px 0 0; font-weight: 600; font-size: 64px; line-height: 1.05; letter-spacing: -.025em; font-variation-settings: "SOFT" 100, "opsz" 144; }
   h1 em { font-style: italic; font-weight: 500; color: #9c6300; }
   .slike { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .slike img { width: 100%; border-radius: 22px; border: 1px solid #e7e0d4; background: #fff;
@@ -39,7 +39,7 @@ cat >"$RADNI/og.html" <<HTML
         <path d="M12 9.5v12.5h8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Logo<b>Medo</b></span>
     </div>
-    <h1>Slike, listići<br>i igre za vježbu<br>s djecom</h1>
+    <h1>Radni listići<br>i igre za djecu,<br><em>pripremljeni za<br>nekoliko minuta</em></h1>
   </div>
   <div class="slike">
     <img src="file://$L/rukavice-512.webp"><img src="file://$L/sunce-512.webp"><img src="file://$L/zirafa-512.webp"><img src="file://$L/lav-512.webp">

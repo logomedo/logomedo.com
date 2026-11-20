@@ -1,6 +1,7 @@
 ---
 // Okvir landing stranice (docs/landing/sadrzaj.md 2.1–2.5): head sa SEO i OG, zaglavlje, sadržaj, podnožje.
 // Prerenderirano, CSP iz public/_headers bez noncea: nijedna inline skripta (tema je /tema.js).
+import "@fontsource-variable/fraunces/wght-italic.css"; // pravi kurziv za drugi dio h1 naslovne (Tema ima samo uspravni)
 import Tema from "../components/Tema.astro";
 import Zaglavlje from "./Zaglavlje.astro";
 import Podnozje from "./Podnozje.astro";
@@ -60,6 +61,7 @@ const naslov = s?.naslov ?? STRANICA_404.naslov;
   .sekcija + .sekcija { border-top: 1px solid var(--rub); }
   .landing-h1 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: clamp(2.2rem, 6.4vw, 4.2rem); line-height: 1.04;
     letter-spacing: -.025em; font-variation-settings: "SOFT" 100, "opsz" 144; text-wrap: balance; }
+  .landing-h1 em { font-style: italic; color: var(--med-tamno); font-weight: 500; }
   .landing-h2 { margin: 0 0 18px; font-family: var(--font-slova); font-weight: 600; font-size: clamp(1.6rem, 4vw, 2.3rem); line-height: 1.12;
     letter-spacing: -.015em; font-variation-settings: "SOFT" 100, "opsz" 96; text-wrap: balance; }
   .uvodni { margin: 0; max-width: 620px; font-size: 1.15rem; color: var(--blijedo); }

@@ -9,7 +9,7 @@ import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
   <div class="omot mreza">
     <div class="tekst">
       <p class="oznaka">Probno razdoblje · samo uz pozivnicu</p>
-      <h1 class="landing-h1" id="naslov">Slike, listići i igre za vježbu s djecom</h1>
+      <h1 class="landing-h1" id="naslov">Radni listići i igre za djecu, <em>pripremljeni za nekoliko minuta</em></h1>
       <p class="podnaslov">LogoMedo — pametan alat za izradu dječjih radnih materijala i igara</p>
       <p class="uvodni">Sve što trebate za rad i učenje s djecom, na jednom mjestu. Odaberite slike, stvorite radni listić za ispis
         ili pokrenite igru na tabletu — u samo nekoliko klikova.</p>
@@ -37,6 +37,8 @@ import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
   .tekst { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
   .oznaka { margin: 0; display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--med-blago); color: var(--med-tamno);
     font-size: .85rem; font-weight: 600; }
+  /* Dulji h1 (odluka 807): manji nego na podstranicama, da na desktopu stane u tri reda. */
+  h1 { font-size: clamp(2.1rem, 5.2vw, 3.5rem); }
   .podnaslov { margin: 0 0 -10px; font-size: 1.2rem; font-weight: 600; color: var(--tinta); line-height: 1.4; }
   .slike { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .slike .kartica:nth-child(2), .slike .kartica:nth-child(4) { transform: translateY(18px); }
