@@ -149,6 +149,40 @@ export const ILUSTRACIJE_V1 = [
 ] as const;
 export const ALT_V1 = "Ilustracije iz kataloga: rukavice, sunce, žirafa i lav.";
 
+/**
+ * N-4 (odluka 805): slika uz svako slovo, public/landing/<ime>-256.webp. R, S, Ž, L su iz V-1 i vide se odmah;
+ * ostale se pokažu kad posjetitelj klikne slovo (public/landing/glasovi.js).
+ */
+export const SLIKE_GLASOVA: Record<string, string> = {
+  ...Object.fromEntries(ILUSTRACIJE_V1.map((s) => [s.glas, s.ime])),
+  "C": "cvijet",
+  "Z": "zebra",
+  "Č": "cokolada",
+  "Š": "sesir",
+  "K": "kornjaca",
+  "Đ": "dumbirko",
+  "DŽ": "dzip",
+  "G": "gitara",
+  "M": "macka",
+  "B": "balon",
+  "P": "pas",
+  "V": "vlak",
+  "F": "foka",
+  "T": "traktor",
+  "D": "delfin",
+  "N": "naranca",
+  "J": "jabuka",
+  "LJ": "ljuljacka",
+  "NJ": "njuska",
+  "Ć": "cuk",
+  "H": "helikopter",
+  "A": "ananas",
+  "E": "eskim",
+  "I": "iglu",
+  "O": "ovca",
+  "U": "uho",
+};
+
 /** Redoslijed glasova iz kataloga (N-4): 25 suglasnika, pa 5 samoglasnika. */
 export const SUGLASNICI = ["C", "S", "Z", "Č", "Š", "Ž", "L", "R", "K", "Đ", "DŽ", "G", "M", "B", "P", "V", "F", "T", "D", "N", "J", "LJ", "NJ", "Ć", "H"];
 export const SAMOGLASNICI = ["A", "E", "I", "O", "U"];

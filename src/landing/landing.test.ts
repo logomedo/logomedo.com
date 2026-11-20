@@ -248,3 +248,11 @@ test("landing: zaglavlje ima aktivnu stranicu i prekidač teme bez inline skript
   assert.match(js, /localStorage\.setItem\("logomedo-tema"/);
   assert.match(js, /tamno\(\) \? "Svijetla tema" : "Tamna tema"/);
 });
+
+test("landing: svako od 30 slova u N-4 ima sliku od 256 px (odluka 805)", () => {
+  for (const g of [...K.SUGLASNICI, ...K.SAMOGLASNICI]) {
+    const ime = K.SLIKE_GLASOVA[g];
+    assert.ok(ime, g);
+    assert.ok(existsSync(new URL(`public/landing/${ime}-256.webp`, korijen)), `${g}: ${ime}`);
+  }
+});

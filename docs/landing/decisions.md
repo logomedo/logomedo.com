@@ -408,3 +408,8 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      radnih materijala i igara” i kraći uvod („Sve što trebate…”); nova sekcija „Za sve koji rade s djecom”
      (`naslovna/ZaKoga.astro`) odmah ispod hera s proširenom verzijom. Ciljna skupina više nisu samo logopedi. Tekst je
      korisnikov; `sadrzaj.md` 3.1 za N-1 je od sada povijest.
+805. **Slova u N-4 su gumbi sa slikom** (korisnik, 20. 11. 2026.): svih 30 pločica pokaže ili sakrije malu ilustraciju na
+     klik (`SLIKE_GLASOVA`, `public/landing/glasovi.js`, `aria-pressed`). R, S, Ž, L otvorene od početka. Slike: C cvijet,
+     Z zebra, Č čokolada, Š šešir, K kornjača, Đ đumbirko, DŽ džip, G gitara, M mačka, B balon, P pas, V vlak, F foka,
+     T traktor, D delfin, N naranča, J jabuka, LJ ljuljačka, NJ njuška, Ć ćuk, H helikopter, A ananas, E eskim, I iglu,
+     O ovca, U uho. `landing-ilustracije.sh` prima i JPEG (balon je u katalogu JPEG pod .png).

@@ -36,6 +36,33 @@ SLIKE=(
   "lisica|ilustracija/lissica/b584fae3d9e145b5.png|512 256"
   "leptir|ilustracija/leptir/c634786655d4a0e9.png|512 256"
   "lubenica|ilustracija/lubenica/17e669b6f46e5cd9.png|512 256"
+  # N-4: po jedna slika za ostala slova, prikaže se na klik (odluka 805).
+  "cvijet|ilustracija/cvijet/bf45ea5ff7816899.png|256"
+  "zebra|ilustracija/zebra/91ac5837fdb511ea.png|256"
+  "cokolada|ilustracija/chokolada/64d7805c62abcd23.png|256"
+  "sesir|ilustracija/sheshir/10c1b4aeeab0e75d.png|256"
+  "kornjaca|ilustracija/kornjacha/87a09d69bbeea79b.png|256"
+  "dumbirko|ilustracija/djumbirko/c94ada22b904f9d4.png|256"
+  "dzip|ilustracija/dzhip/28829a52f598fbcf.png|256"
+  "gitara|ilustracija/gitara/67db991eca81859f.png|256"
+  "macka|ilustracija/machka/48752b83904c65bc.png|256"
+  "balon|ilustracija/balon/a58b251c48ec82bb.jpg|256"
+  "pas|ilustracija/pas/2929be84de0ae7a0.png|256"
+  "vlak|ilustracija/vlak/d5622c954b61b6ed.png|256"
+  "foka|ilustracija/foka/e227f14ad72ba1a8.png|256"
+  "traktor|ilustracija/traktor/5edb7ff709209edf.png|256"
+  "delfin|ilustracija/delfin/f10d406534c9e154.png|256"
+  "naranca|ilustracija/narancha/a2054ec03254d294.png|256"
+  "jabuka|ilustracija/jabuka/951cda6bed2961db.png|256"
+  "ljuljacka|ilustracija/ljuljachka/c6545071125cf243.png|256"
+  "njuska|ilustracija/njushka/8e82df5021f4a988.png|256"
+  "cuk|ilustracija/cjuk/d1a00dbcac5b25f7.png|256"
+  "helikopter|ilustracija/helikopter/8bef5598b9e82603.png|256"
+  "ananas|ilustracija/ananas/d8b9571dd1d60d59.png|256"
+  "eskim|ilustracija/eskim/8784ab4e44de3fc1.png|256"
+  "iglu|ilustracija/iglu/74722c70fab76fca.png|256"
+  "ovca|ilustracija/ovca/f9c2324870857867.png|256"
+  "uho|ilustracija/uho/a22f5c5566defb3f.png|256"
 )
 
 for red in "${SLIKE[@]}"; do
@@ -43,8 +70,8 @@ for red in "${SLIKE[@]}"; do
   [[ "$SAMO" == "  " || "$SAMO" == *" $ime "* ]] || continue
   ulaz="$IZVOR/$ime.png"
   curl -fsS --max-time 60 --proto '=https' -o "$ulaz" "$CDN/$kljuc"
-  # Mora biti PNG; sve ostalo se odbija prije konverzije.
-  [[ "$(magick identify -format '%m' "$ulaz[0]")" == "PNG" ]] || { echo "$ime: nije PNG" >&2; exit 1; }
+  # Mora biti PNG ili JPEG (katalog ima i JPEG pod .png, npr. balon); sve ostalo se odbija prije konverzije.
+  [[ "$(magick identify -format '%m' "$ulaz[0]")" =~ ^(PNG|JPEG)$ ]] || { echo "$ime: nije PNG ni JPEG" >&2; exit 1; }
   for v in $velicine; do
     magick "$ulaz[0]" -strip -resize "${v}x${v}" -quality 82 -define webp:method=6 "$IZLAZ/$ime-$v.webp"
     echo "$IZLAZ/$ime-$v.webp $(magick identify -format '%wx%h' "$IZLAZ/$ime-$v.webp") $(wc -c <"$IZLAZ/$ime-$v.webp" | tr -d ' ') B"

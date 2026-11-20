@@ -1,47 +1,57 @@
 ---
-// N-4 Glasovi: pločice su tekst (ne linkovi: katalog je iza prijave). Uz R, S, Ž, L male ilustracije V-1 (256 px,
-// dekorativno, alt="").
-import { BROJKE, ILUSTRACIJE_V1, SAMOGLASNICI, SUGLASNICI } from "../konstante";
+// N-4 Glasovi: pločice nisu linkovi (katalog je iza prijave), nego gumbi (odluka 805): klik na slovo pokaže ili sakrije
+// malu ilustraciju za to slovo (SLIKE_GLASOVA, 256 px, dekorativno, alt=""), kroz public/landing/glasovi.js.
+// R, S, Ž, L (V-1) su otvorene od početka; bez JS-a vidi se samo njih četiri, kao prije.
+import { BROJKE, ILUSTRACIJE_V1, SAMOGLASNICI, SLIKE_GLASOVA, SUGLASNICI } from "../konstante";
 
-const slika = new Map<string, string>(ILUSTRACIJE_V1.map((s) => [s.glas, s.ime]));
+const otvorena = new Set<string>(ILUSTRACIJE_V1.map((s) => s.glas));
 ---
 <section class="sekcija" aria-labelledby="glasovi">
   <div class="omot">
     <h2 class="landing-h2" id="glasovi">{BROJKE.glasova} glasova, svaki na početku, u sredini i na kraju</h2>
     <p class="uvodni">Katalog ima {SUGLASNICI.length} suglasnika i {SAMOGLASNICI.length} samoglasnika. LJ, NJ i DŽ su jedan glas, kao u govoru.
       Za R postoje i skupine (KR-, BR-) i slogotvorno R.</p>
+    <p class="savjet">Kliknite slovo i pokazat će se slika.</p>
     <div class="plocice">
-      <ul aria-label="Suglasnici">
-        {SUGLASNICI.map((g) => {
-          const ime = slika.get(g);
-          return (
-            <li class:list={[{ sa: ime }]}>
-              {ime && <img src={`/landing/${ime}-256.webp`} width="256" height="256" alt="" loading="lazy" decoding="async" />}
-              <span>{g}</span>
+      {[["Suglasnici", SUGLASNICI], ["Samoglasnici", SAMOGLASNICI]].map(([ime, glasovi]) => (
+        <ul aria-label={ime as string}>
+          {(glasovi as string[]).map((g) => (
+            <li>
+              <button type="button" class="plocica" aria-pressed={otvorena.has(g) ? "true" : "false"} data-glas-plocica>
+                <img src={`/landing/${SLIKE_GLASOVA[g]}-256.webp`} width="256" height="256" alt="" loading="lazy" decoding="async" />
+                <span>{g}</span>
+              </button>
             </li>
-          );
-        })}
-      </ul>
-      <ul aria-label="Samoglasnici">
-        {SAMOGLASNICI.map((g) => <li><span>{g}</span></li>)}
-      </ul>
+          ))}
+        </ul>
+      ))}
     </div>
     <p class="sitno">Riječi možete složiti i po mjestu tvorbe, načinu tvorbe ili zvučnosti.</p>
   </div>
 </section>
+<script src="/landing/glasovi.js" defer></script>
 <style>
-  .plocice { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 28px 0 22px; }
+  .savjet { margin: 18px 0 0; font-size: .95rem; color: var(--med-tamno); font-weight: 600; }
+  .plocice { display: flex; flex-wrap: wrap; gap: 10px 28px; margin: 14px 0 22px; }
   ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
   ul:first-child { max-width: 760px; }
-  li { min-width: 54px; height: 54px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 14px;
-    background: var(--povrsina); border: 1px solid var(--rub); box-shadow: var(--sjena-1); font-family: var(--font-slova); font-size: 1.45rem;
-    font-weight: 600; }
-  li.sa { padding: 0 12px 0 4px; border-color: var(--med); background: var(--med-blago); }
-  li img { width: 44px; height: 44px; border-radius: 10px; background: var(--papir-slike); }
-  ul[aria-label="Samoglasnici"] li { color: var(--med-tamno); }
+  .plocica { min-width: 54px; height: 54px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    border-radius: 14px; background: var(--povrsina); border: 1px solid var(--rub); box-shadow: var(--sjena-1); color: var(--tinta);
+    font-family: var(--font-slova); font-size: 1.45rem; font-weight: 600; cursor: pointer; transition: transform .15s ease, border-color .2s, background .2s; }
+  .plocica:hover { transform: translateY(-2px); border-color: var(--rub-jak); }
+  .plocica:active { transform: scale(.96); }
+  .plocica:focus-visible { outline: 3px solid var(--med); outline-offset: 2px; }
+  .plocica img { display: none; width: 44px; height: 44px; border-radius: 10px; background: var(--papir-slike); }
+  .plocica[aria-pressed="true"] { padding: 0 12px 0 4px; border-color: var(--med); background: var(--med-blago); }
+  .plocica[aria-pressed="true"] img { display: block; animation: iskoci .35s cubic-bezier(.34, 1.56, .64, 1); }
+  ul[aria-label="Samoglasnici"] .plocica { color: var(--med-tamno); }
   .sitno { font-size: 1rem; }
+  @keyframes iskoci { from { transform: scale(.4) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) {
+    .plocica, .plocica img { transition: none; animation: none; }
+  }
   @media (max-width: 719px) {
-    li { min-width: 48px; height: 48px; font-size: 1.25rem; }
-    li img { width: 38px; height: 38px; }
+    .plocica { min-width: 48px; height: 48px; font-size: 1.25rem; }
+    .plocica img { width: 38px; height: 38px; }
   }
 </style>
