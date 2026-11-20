@@ -4,17 +4,21 @@
 // Tema: ?tema=proljece (zadano božić). Rješavanje se ne sprema.
 import IgraDjeteta from "../../../../components/IgraDjeteta.astro";
 import { zadatak as nadji } from "../../../../lib/zadaci/baza";
-import { normaliziraj, VRSTE } from "../../../../lib/zadaci/vrste";
+import { jeVrsta, normaliziraj, VRSTE } from "../../../../lib/zadaci/vrste";
 import { rijeciIPozadine } from "../../../../lib/biljeznice";
 import { jeTema } from "../../../../lib/teme";
 import { autorFiltar } from "../../../../lib/admin/vlasnistvo";
 
 // Tuđi zadatak (za logopeda) je 404, i za GET i za POST nacrta (odluka 8).
-const z = await nadji(Number(Astro.params.id), autorFiltar(Astro.locals.admin!));
+// /admin/zadaci/novi/dijete: nespremljeni nacrt (samo POST iz urednika, vrsta i stil iz forme).
+const f = Astro.request.method === "POST" ? await Astro.request.formData() : null;
+const vrstaNacrta = String(f?.get("vrsta") ?? "");
+const z = Astro.params.id === "novi"
+  ? (f && jeVrsta(vrstaNacrta) ? { vrsta: vrstaNacrta, stil: String(f.get("stil") ?? "ilustracija"), naslov: "", uputa: null as string | null, sadrzaj: normaliziraj(vrstaNacrta, {}) } : null)
+  : await nadji(Number(Astro.params.id), autorFiltar(Astro.locals.admin!));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
 let { naslov, uputa, sadrzaj } = z;
-if (Astro.request.method === "POST") {
-  const f = await Astro.request.formData();
+if (f) {
   try { sadrzaj = normaliziraj(z.vrsta, JSON.parse(String(f.get("sadrzaj") ?? "null"))); } catch { /* ostaje spremljeno */ }
   naslov = String(f.get("naslov") ?? naslov);
   uputa = String(f.get("uputa") ?? uputa ?? "");

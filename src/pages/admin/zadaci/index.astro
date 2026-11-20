@@ -28,6 +28,13 @@ const skupine = [...new Set(zadaci.map((z) => z.podrucje_id))].map((id) => ({ id
     <a class="gumb glavni mali" href="/admin/predlosci">Novi zadatak</a>
   </div>
 
+  <!-- Nespremljeni nacrti s predložaka: samo u ovom pregledniku (lib/zadaci/nacrti.ts), puni ih skripta. -->
+  <section class="ploha nacrti" id="nacrti" hidden>
+    <h2>Nespremljeni nacrti <span class="blijedo">u ovom pregledniku</span></h2>
+    <p class="sitno blijedo">Nisu u Gotovim zadacima dok ih ne otvoriš i klikneš „Spremi zadatak”. Brišu se sami nakon 14 dana.</p>
+    <ul id="nacrti-popis"></ul>
+  </section>
+
   {skupine.length ? skupine.map((s) => (
     <section>
       <h2 class="odjeljak">{s.naziv} <span>{s.zadaci.length}</span></h2>
@@ -86,6 +93,29 @@ const skupine = [...new Set(zadaci.map((z) => z.podrucje_id))].map((id) => ({ id
 </AdminOkvir>
 
 <script>
+  import { adresaNacrta, obrisiNacrt, sviNacrti } from "../../../lib/zadaci/nacrti";
+  import { VRSTE } from "../../../lib/zadaci/vrste";
+  const popisNacrta = document.getElementById("nacrti-popis")!;
+  function prikaziNacrte() {
+    const n = sviNacrti();
+    document.getElementById("nacrti")!.hidden = !n.length;
+    popisNacrta.replaceChildren(...n.map((x) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = adresaNacrta(x.kljuc, x.vrsta, x.po);
+      a.textContent = x.naslov || VRSTE[x.vrsta]?.naziv || x.vrsta;
+      const kada = document.createElement("span");
+      kada.className = "blijedo sitno";
+      kada.textContent = `${VRSTE[x.vrsta]?.naziv ?? ""} · ${new Date(x.vrijeme).toLocaleString("hr", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}`;
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "gumb mali tihi"; b.textContent = "Odbaci";
+      b.onclick = () => { obrisiNacrt(x.kljuc); prikaziNacrte(); };
+      li.appendChild(a); li.appendChild(kada); li.appendChild(b);
+      return li;
+    }));
+  }
+  prikaziNacrte();
+
   // „Odaberi sve” po skupini i broj odabranih na gumbu.
   const broj = document.getElementById("broj-odabranih");
   const osvjezi = () => {
@@ -105,6 +135,14 @@ const skupine = [...new Set(zadaci.map((z) => z.podrucje_id))].map((id) => ({ id
 </script>
 
 <style>
+  .nacrti { padding: 14px 18px; margin-bottom: 8px; border-style: dashed; }
+  .nacrti h2 { margin: 0; font-size: 1rem; }
+  .nacrti h2 span { font-weight: 500; font-size: .85rem; }
+  .nacrti p { margin: 4px 0 8px; }
+  .nacrti ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  .nacrti li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .nacrti li a { font-weight: 650; }
+  .nacrti li button { margin-left: auto; }
   .odjeljak { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--blijedo); font-weight: 650; margin: 30px 0 12px; }
   .odjeljak span { color: var(--vrlo-blijedo); margin-left: 4px; }
   .kv { width: 28px; }

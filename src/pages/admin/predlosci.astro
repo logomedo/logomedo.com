@@ -68,7 +68,7 @@ const shema: Record<Vrsta, string> = {
 
       <div class="vrste">
         {poRedu.map(([kod, v]) => (
-          <form class="ploha vrsta" method="post" action="/admin/api/zadatak">
+          <form class="ploha vrsta" method="post" action="/admin/zadaci/novi">
             <input type="hidden" name="vrsta" value={kod} />
             <input type="hidden" name="podrucje" value={podrucjeVrste(kod)?.id ?? ""} />
             <svg class="shema" viewBox="0 0 88 58" aria-hidden="true" set:html={shema[kod]} />
@@ -95,7 +95,7 @@ const shema: Record<Vrsta, string> = {
       </div>
 
   {mod && <dialog id="glas-dijalog" class="dijalog">
-    <form class="listic" method="post" action="/admin/api/zadatak">
+    <form class="listic" method="post" action="/admin/zadaci/novi">
       <input type="hidden" name="vrsta" value="listic" />
       <input type="hidden" name="podrucje" value="" />
       <input type="hidden" name="po_glasovima" value="1" />

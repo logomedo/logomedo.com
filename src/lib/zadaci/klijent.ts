@@ -4,6 +4,7 @@
 //   Ispis  – A4 stranica za papir: „Preuzmi PDF" (pdf-lib u pregledniku) ili window.print
 // Sve se crta iz `stanje`; svaka promjena zove `osvjezi()`.
 
+import { obrisiNacrt, zapisiNacrt } from "./nacrti";
 import { brojSlogova, izvediRimu } from "./rima.ts";
 import { ciljeviGlasova, naslovListica, odgovara, redovaZaGlasove, type RijecGlasova, type VrstaOdnosa } from "./listic-glas.ts";
 import { jeZadanaUputa, ODNOSI, odnosiZa, oznakaKljuca, uOdnosu, type Odnos } from "./odnosi.ts";
@@ -36,6 +37,8 @@ export interface Podaci {
   pozadine?: PozadinaPrikaz[];
   /** Samo za slušne vrste: glas → URL primarne snimke (/admin/zvukovi/snimke). */
   snimkeGlasova?: Record<string, string>;
+  /** Nacrt (zadatak.id = 0): ključ u localStorageu (nacrti.ts); zadatak nije u bazi dok se ne spremi. */
+  nacrt?: { kljuc: string };
 }
 
 type Dijete = Node | string | null | undefined | false;
@@ -84,7 +87,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   // Dijete rješava je zasebna stranica (/admin/zadaci/<id>/dijete), otvara se u novoj kartici.
   let pogled: "uredi" | "okvir" | "ispis" = (location.hash.slice(1) as any) || "uredi";
   if (!["uredi", "okvir", "ispis"].includes(pogled)) pogled = "uredi";
-  let promijenjeno = false;
+  // Nacrt nije u bazi: od početka je „nespremljen”, a svaka izmjena ide u localStorage.
+  const nacrt = p.nacrt;
+  let promijenjeno = !!nacrt;
   let sRijecima = false;
   const glasovaZadatka = VRSTE[vrsta].odnos ? (sadrzaj as Odabir).po_glasovima?.glasovi.length ?? 0 : 0;
   // „Složi automatski” zadrži broj redova (parova, slika…) koji zadatak već ima.
@@ -109,7 +114,13 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     stanjeEl.hidden = !promijenjeno;
     document.title = promijenjeno ? `• ${naslovStranice}` : naslovStranice;
   }
-  const oznaci = () => { promijenjeno = true; spremiGumb.disabled = false; spremiGumb.textContent = "Spremi"; stanjeSpremanja(); };
+  let lokalnoTimer = 0;
+  const lokalno = () => nacrt && zapisiNacrt(nacrt.kljuc, { vrsta, naslov, uputa, podrucje_id: podrucje, stil, sadrzaj, okvir, po: !!poGlasovima() || !!(sadrzaj as { po_glasovima?: unknown }).po_glasovima });
+  const oznaci = () => {
+    promijenjeno = true; spremiGumb.disabled = false; spremiGumb.textContent = nacrt ? "Spremi zadatak" : "Spremi"; stanjeSpremanja();
+    if (nacrt) { clearTimeout(lokalnoTimer); lokalnoTimer = setTimeout(lokalno, 300) as unknown as number; }
+  };
+  if (nacrt && stil !== "ilustracija") postaviStil(stil);
 
   // ---------- Slike ----------
 
@@ -1025,9 +1036,22 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   // ---------- Okvir: kartice pogleda, bočna ploča, spremanje ----------
 
-  const spremiGumb = h("button", { type: "button", class: "gumb glavni mali", disabled: true, onclick: spremi, title: "Spremi (⌘S / Ctrl+S)" }, "Spremljeno");
+  const spremiGumb = h("button", { type: "button", class: "gumb glavni mali", disabled: !nacrt, onclick: spremi, title: "Spremi (⌘S / Ctrl+S)" }, nacrt ? "Spremi zadatak" : "Spremljeno");
   const stanjeEl = h("span", { class: "z-stanje", hidden: true, role: "status" }, "● Promjene nisu spremljene");
+  /** Nacrt: tek sad nastaje zadatak u bazi; nacrt iz preglednika se briše i urednik prelazi na pravi zadatak. */
+  async function spremiNacrt(k: string) {
+    spremiGumb.disabled = true; spremiGumb.textContent = "Spremam…";
+    const o = await fetch("/admin/api/zadatak", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ vrsta, naslov, uputa, podrucje_id: podrucje, stil, sadrzaj, okvir }),
+    });
+    const j: any = await o.json().catch(() => ({}));
+    if (!o.ok || !j.id) { spremiGumb.disabled = false; spremiGumb.textContent = "Spremi (greška)"; alert(j.error ?? `Greška ${o.status}`); return; }
+    obrisiNacrt(k); promijenjeno = false;
+    location.replace(`/admin/zadaci/${j.id}?spremljeno=1${location.hash}`);
+  }
   async function spremi() {
+    if (nacrt) return spremiNacrt(nacrt.kljuc);
     spremiGumb.disabled = true; spremiGumb.textContent = "Spremam…";
     const o = await fetch(`/admin/api/zadatak/${z.id}`, {
       method: "POST", headers: { "content-type": "application/json" },
@@ -1040,7 +1064,16 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     stanjeSpremanja();
   }
   // returnValue uz preventDefault: stariji Safari i neki Chromiumi bez njega ne pitaju.
-  addEventListener("beforeunload", (e) => { if (promijenjeno) { e.preventDefault(); e.returnValue = ""; } });
+  addEventListener("beforeunload", (e) => { if (promijenjeno) { if (nacrt) lokalno(); e.preventDefault(); e.returnValue = ""; } });
+  // Traka nacrta (stranica): „Spremi zadatak” i „Odbaci nacrt”.
+  if (nacrt) {
+    lokalno();
+    document.getElementById("nacrt-spremi")?.addEventListener("click", () => void spremi());
+    document.getElementById("nacrt-odbaci")?.addEventListener("click", () => {
+      if (!confirm("Odbaciti nacrt? Neće biti spremljen.")) return;
+      obrisiNacrt(nacrt.kljuc); promijenjeno = false; location.href = "/admin/predlosci";
+    });
+  }
   addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (promijenjeno) spremi(); } });
 
   function upozorenjaSvih() {
@@ -1194,8 +1227,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   /** Pregled za dijete u novoj kartici: POST trenutnog nacrta (nespremljene izmjene se vide, ništa se ne sprema). */
   function dijeteRjesava() {
-    const f = h("form", { method: "post", action: `/admin/zadaci/${z.id}/dijete`, target: "_blank", hidden: true },
-      ...([["sadrzaj", JSON.stringify(sadrzaj)], ["naslov", naslov], ["uputa", uputa]] as const).map(([name, value]) => h("input", { type: "hidden", name, value })));
+    const f = h("form", { method: "post", action: `/admin/zadaci/${nacrt ? "novi" : z.id}/dijete`, target: "_blank", hidden: true },
+      ...([["sadrzaj", JSON.stringify(sadrzaj)], ["naslov", naslov], ["uputa", uputa], ["vrsta", vrsta], ["stil", stil]] as const).map(([name, value]) => h("input", { type: "hidden", name, value })));
     dodaj(globalThis.document.body, f); f.submit(); f.remove();
   }
 

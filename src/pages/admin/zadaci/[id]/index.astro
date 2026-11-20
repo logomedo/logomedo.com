@@ -2,7 +2,9 @@
 import AdminOkvir from "../../../../components/AdminOkvir.astro";
 import Ikona from "../../../../components/Ikona.astro";
 import { glasoviRijeci, nazivPodrucja, podrucja as svaPodrucja, stilovi as sviStilovi, sveRijeci, zadatak as nadji } from "../../../../lib/zadaci/baza";
-import { VRSTE } from "../../../../lib/zadaci/vrste";
+import { jeVrsta, normaliziraj, VRSTE, type Vrsta } from "../../../../lib/zadaci/vrste";
+import { slozNacrt, type Nacrt } from "../../../../lib/zadaci/nacrt";
+import { normalizirajOkvir } from "../../../../lib/okviri";
 import { popis as svePozadine } from "../../../../lib/pozadine";
 import { rijeciIPozadine } from "../../../../lib/biljeznice";
 import { dodajZvukove, odobreniZvukovi, stanjeZvukova, tekstoviIgre } from "../../../../lib/zvukovi";
@@ -14,8 +16,29 @@ import "../../../../lib/kolo-slova.css";
 import "@fontsource-variable/nunito";
 import "@fontsource/andika/700.css";
 
+// /admin/zadaci/novi = nacrt s predloška (docs/zadaci.md „Nacrt”): složen, ali NIJE u bazi. POST s predloška
+// ga složi; urednik ga drži u localStorageu i sprema tek na „Spremi”. GET (osvježavanje) samo daje okvir,
+// nacrt dolazi iz preglednika (`?vrsta=` za podatke vrste, `po=1` kad je složen po glasovima).
+const novi = Astro.params.id === "novi";
+let nacrtVrsta: Vrsta | null = null;
+let nacrt: Nacrt | undefined;
+if (novi) {
+  if (Astro.request.method === "POST") {
+    const n = await slozNacrt(await Astro.request.formData(), Astro.locals.admin!.email);
+    if (n === null) return new Response("Nepoznata vrsta", { status: 400 });
+    if (n === "prazno") return Astro.redirect("/admin/predlosci?prazno=1", 303);
+    nacrt = n;
+  }
+  const v = nacrt?.vrsta ?? Astro.url.searchParams.get("vrsta") ?? "";
+  if (!jeVrsta(v)) return Astro.redirect("/admin/predlosci", 303);
+  nacrtVrsta = v;
+}
 // Tuđi zadatak (za logopeda) je 404, i za GET i za POST zvukova (odluka 8).
-const z = await nadji(Number(Astro.params.id), autorFiltar(Astro.locals.admin!));
+const z = novi
+  ? { id: 0, vrsta: nacrtVrsta!, naslov: nacrt?.naslov ?? "", uputa: nacrt?.uputa ?? null, podrucje_id: nacrt?.podrucje_id ?? null,
+      aktivna_verzija: 0, rjesavanja: 0, stil: "ilustracija", okvir: normalizirajOkvir(null),
+      sadrzaj: nacrt?.sadrzaj ?? normaliziraj(nacrtVrsta!, {}) }
+  : await nadji(Number(Astro.params.id), autorFiltar(Astro.locals.admin!));
 if (!z) return new Response("Nema tog zadatka", { status: 404 });
 
 // Izgovor (ElevenLabs) za spremljenu verziju zadatka: isti tekstovi koje igra izgovara, uz kraj
@@ -24,11 +47,11 @@ const tekstoviZadatka = async () => {
   const zadaci = [{ vrsta: z.vrsta, uputa: z.uputa, sadrzaj: z.sadrzaj }];
   return tekstoviIgre(zadaci, (await rijeciIPozadine(zadaci, z.stil)).rijeci, TEME.bozic.kraj);
 };
-if (Astro.request.method === "POST" && (await Astro.request.formData()).get("akcija") === "zvukovi") {
+if (!novi && Astro.request.method === "POST" && (await Astro.request.formData()).get("akcija") === "zvukovi") {
   const n = await dodajZvukove(await tekstoviZadatka(), Astro.locals.admin!.email);
   return Astro.redirect(`/admin/zadaci/${z.id}?zvukova=${n}`, 303);
 }
-const zvuci = await stanjeZvukova(await tekstoviZadatka());
+const zvuci = novi ? [] : await stanjeZvukova(await tekstoviZadatka());
 const zvukaOdobreno = zvuci.filter((x) => x.odobren).length;
 const zvukaZaPregled = zvuci.filter((x) => !x.odobren && x.kandidata).length;
 const zvukaURedu = zvuci.filter((x) => !x.odobren && !x.kandidata && x.u_redu).length;
@@ -36,7 +59,7 @@ const zvukaBez = zvuci.filter((x) => !x.odobren && !x.kandidata && !x.u_redu && 
 const zvukova = Astro.url.searchParams.get("zvukova");
 const [rijeci, podrucja, stilovi, pozadine] = await Promise.all([sveRijeci(z.stil), svaPodrucja(), sviStilovi(), z.vrsta === "scena" ? svePozadine() : Promise.resolve([])]);
 // Zadatak složen po glasovima: birač slika treba pojave glasova svake riječi.
-const poGlasovima = (z.sadrzaj as { po_glasovima?: unknown }).po_glasovima;
+const poGlasovima = (z.sadrzaj as { po_glasovima?: unknown }).po_glasovima || (novi && Astro.url.searchParams.get("po") === "1");
 // Slušne vrste: primarna snimka svakog glasa (/admin/zvukovi/snimke) za gumb ▶ u uredniku.
 const snimkeGlasova = z.vrsta === "koje_slovo" || z.vrsta === "pozicija_glasa"
   ? await odobreniZvukovi(GLASOVI.map(kljucGlasa)).then((u) => Object.fromEntries(GLASOVI.flatMap((g) => u[kljucGlasa(g)] ? [[g, u[kljucGlasa(g)]]] : [])))
@@ -44,6 +67,8 @@ const snimkeGlasova = z.vrsta === "koje_slovo" || z.vrsta === "pozicija_glasa"
 const podaci = {
   zadatak: z,
   snimkeGlasova,
+  // Nacrt: true = upravo složen s predloška (POST), false = osvježavanje, nacrt je u pregledniku.
+  slozenNacrt: novi ? !!nacrt : undefined,
   rijeci,
   glasoviRijeci: poGlasovima ? await glasoviRijeci() : undefined,
   stilovi,
@@ -58,9 +83,9 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
     <div>
       <a class="mrvice" href="/admin/zadaci"><Ikona ime="natrag" velicina={16} /> Gotovi zadaci</a>
       <h1>{z.naslov || VRSTE[z.vrsta].naziv}</h1>
-      <p class="podnaslov"><span class="oznaka med">{VRSTE[z.vrsta].naziv}</span> {nazivPodrucja(podrucja, z.podrucje_id)} · verzija {z.aktivna_verzija}</p>
+      <p class="podnaslov"><span class="oznaka med">{VRSTE[z.vrsta].naziv}</span> {nazivPodrucja(podrucja, z.podrucje_id)}{novi ? " · nacrt" : ` · verzija ${z.aktivna_verzija}`}</p>
     </div>
-    <div class="z-zaglavlje-desno">
+    {!novi && <div class="z-zaglavlje-desno">
       <form class="z-izgovor" method="post">
         <input type="hidden" name="akcija" value="zvukovi" />
         <span class="sitno blijedo" title="Snimke za spremljenu verziju: riječi, uputa i rečenica na kraju">
@@ -71,8 +96,22 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
       <form method="post" action={`/admin/api/zadatak/${z.id}`}>
         <button class="gumb mali tihi opasno" name="akcija" value="obrisi" type="submit">Obriši zadatak</button>
       </form>
-    </div>
+    </div>}
   </div>
+  {novi && (
+    <div class="ploha z-nacrt" id="nacrt-traka" role="note">
+      <div>
+        <b>Ovo je nacrt: zadatak još nije spremljen.</b>
+        <p>Pregledaj ga i promijeni što treba. Dok ne klikneš <b>Spremi zadatak</b>, čuva se samo u ovom pregledniku i ne vidi se
+          u Gotovim zadacima ni u bilježnicama.</p>
+      </div>
+      <div class="z-nacrt-gumbi">
+        <button type="button" class="gumb glavni" id="nacrt-spremi">Spremi zadatak</button>
+        <button type="button" class="gumb tihi" id="nacrt-odbaci">Odbaci nacrt</button>
+      </div>
+    </div>
+  )}
+  {Astro.url.searchParams.has("spremljeno") && <p class="ploha z-poruka">Zadatak je spremljen i sad je u Gotovim zadacima.</p>}
   {zvukova !== null && <p class="ploha z-poruka">{Number(zvukova) ? `U red izgovora dodano ${zvukova} tekstova. Snimke stižu u Zvukovi za minutu-dvije; tamo ih odobri.` : "Svi tekstovi već imaju snimku ili posao u redu."}</p>}
   <div id="zadatak"></div>
   <script type="application/json" id="podaci" set:html={json}></script>
@@ -80,11 +119,37 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
 
 <script>
   import { pokreni } from "../../../../lib/zadaci/klijent";
+  import { adresaNacrta, noviKljuc, procitajNacrt } from "../../../../lib/zadaci/nacrti";
   const p = JSON.parse(document.getElementById("podaci")!.textContent!);
-  pokreni(document.getElementById("zadatak")!, p);
+  const korijen = document.getElementById("zadatak")!;
+  if (p.zadatak.id !== 0) pokreni(korijen, p);
+  else {
+    // Nacrt (docs/zadaci.md „Nacrt”): novi dobije ključ i adresu za osvježavanje; osvježen se čita iz preglednika.
+    const u = new URL(location.href);
+    let kljuc = u.searchParams.get("nacrt");
+    const lokalno = !p.slozenNacrt && kljuc ? procitajNacrt(kljuc) : null;
+    if (p.slozenNacrt || !kljuc) {
+      kljuc = noviKljuc();
+      history.replaceState(null, "", adresaNacrta(kljuc, p.zadatak.vrsta, !!p.zadatak.sadrzaj?.po_glasovima) + location.hash);
+    }
+    if (!p.slozenNacrt && !lokalno) {
+      document.getElementById("nacrt-traka")?.remove();
+      korijen.innerHTML = `<div class="ploha prazno"><h2>Nacrt nije pronađen</h2><p>Nespremljeni nacrt je odbačen ili je bio u drugom pregledniku.</p><p><a class="gumb" href="/admin/predlosci">Novi zadatak</a></p></div>`;
+    } else {
+      if (lokalno) Object.assign(p.zadatak, { naslov: lokalno.naslov, uputa: lokalno.uputa, podrucje_id: lokalno.podrucje_id, stil: lokalno.stil, sadrzaj: lokalno.sadrzaj, okvir: lokalno.okvir });
+      pokreni(korijen, { ...p, nacrt: { kljuc } });
+    }
+  }
 </script>
 
 <style is:global>
+  /* Nacrt (nespremljen zadatak s predloška): velika traka na vrhu. */
+  .z-nacrt { display: flex; gap: 16px 24px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 0 0 18px;
+    padding: 16px 20px; background: var(--med-blago); border: 2px solid var(--med); color: var(--med-tamno); }
+  .z-nacrt b { font-size: 1.05rem; }
+  .z-nacrt p { margin: 4px 0 0; max-width: 70ch; }
+  .z-nacrt-gumbi { display: flex; gap: 8px; flex-wrap: wrap; }
+  @media (max-width: 860px) { .z-nacrt { padding: 12px 14px; } .z-nacrt p { font-size: .88rem; } }
   .z-zaglavlje { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 18px; }
   .z-zaglavlje-desno { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .z-izgovor { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }

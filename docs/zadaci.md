@@ -718,3 +718,14 @@ Papir (PDF, HTML ispis, A4 pregled): `razbacanaSlova` u `slusanje.ts`, `raspored
   Sadržaj pamti `po_glasovima`, pa „Nova slova” i „Složi automatski” u editoru zadrže iste ometače.
 - `pozicija_glasa`: odabir u dijalogu je jedan glas (novi zamijeni stari), broj slika s kartice; ispod piše koliko
   riječi sa slikom ima glas na početku, u sredini i na kraju (`poPozicijama`, isto pravilo kao `slozPozicije`).
+
+## Nacrt: novi zadatak s predloška nije u bazi dok se ne spremi (20. 11. 2026.)
+
+Predložak (`/admin/predlosci`) šalje formu na `/admin/zadaci/novi`, koji složi prijedlog (`src/lib/zadaci/nacrt.ts`,
+`slozNacrt`) i otvori urednik **bez upisa u bazu**. Urednik nacrt drži u localStorageu (`src/lib/zadaci/nacrti.ts`,
+`logomedo-nacrt:<ključ>`, adresa `/admin/zadaci/novi?vrsta=…&nacrt=<ključ>`, preživi osvježavanje), svaku izmjenu
+odmah zapiše tamo i pita pri izlasku (beforeunload). Na vrhu je traka „Ovo je nacrt…” sa „Spremi zadatak” i
+„Odbaci nacrt”. Tek „Spremi zadatak” (`POST /admin/api/zadatak`, JSON) stvori zadatak (verzija 1) i prebaci na
+`/admin/zadaci/<id>?spremljeno=1`. Gotovi zadaci prikazuju samo spremljene; nespremljeni nacrti ovog preglednika
+su u zasebnom bloku iznad popisa (odbacivi, brišu se sami nakon 14 dana). „Dijete rješava” za nacrt ide na
+`/admin/zadaci/novi/dijete` (POST s vrstom i stilom). Izgovor (ElevenLabs) se generira tek za spremljen zadatak.
