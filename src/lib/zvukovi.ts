@@ -46,7 +46,8 @@ export function tekstoviIgre(zadaci: ZadatakZaIgru[], rijeci: { id: number; rije
 export async function odobreniZvukovi(kljucevi: string[]): Promise<Record<string, string>> {
   if (!kljucevi.length) return {};
   const { results } = await env.DB.prepare(
-    `SELECT kljuc, r2_kljuc FROM zvukovi WHERE status = 'odobren' AND kljuc IN (SELECT value FROM json_each(?)) ORDER BY id`,
+    // Primarna zadnja, pa pobijedi u fromEntries (varijante glasova, 0041).
+    `SELECT kljuc, r2_kljuc FROM zvukovi WHERE status = 'odobren' AND kljuc IN (SELECT value FROM json_each(?)) ORDER BY primarna, id`,
   ).bind(JSON.stringify(kljucevi)).all<{ kljuc: string; r2_kljuc: string }>();
   return Object.fromEntries(results.map((r) => [r.kljuc, javniUrl(r.r2_kljuc)]));
 }
@@ -420,14 +421,17 @@ async function makniJavni(r2: string) {
 
 // ── Snimke glasova (logopedica snima mikrofonom, /admin/zvukovi/snimke) ─────────────────────────
 
-export interface SnimkaGlasa { glas: string; id: number; url: string; snimio: string | null; kada: string }
+export interface SnimkaGlasa { glas: string; id: number; url: string; snimio: string | null; kada: string; primarna: boolean; oznaka: string | null }
 
-/** Odobrena snimka za svaki snimljeni glas (ključ `/s/`). */
+/** Sve odobrene snimke glasova (ključ `/s/`), po glasu primarna prva pa redom snimanja. */
 export async function snimkeGlasova(): Promise<SnimkaGlasa[]> {
   const { results } = await env.DB.prepare(
-    `SELECT id, kljuc, r2_kljuc, pregledao, created_at FROM zvukovi WHERE status = 'odobren' AND model = 'snimka' ORDER BY id`,
-  ).all<{ id: number; kljuc: string; r2_kljuc: string; pregledao: string | null; created_at: string }>();
-  return results.flatMap((r) => { const glas = glasIzKljuca(r.kljuc); return glas ? [{ glas, id: r.id, url: javniUrl(r.r2_kljuc), snimio: r.pregledao, kada: r.created_at }] : []; });
+    `SELECT id, kljuc, r2_kljuc, pregledao, created_at, primarna, oznaka FROM zvukovi WHERE status = 'odobren' AND model = 'snimka' ORDER BY primarna DESC, id`,
+  ).all<{ id: number; kljuc: string; r2_kljuc: string; pregledao: string | null; created_at: string; primarna: number; oznaka: string | null }>();
+  return results.flatMap((r) => {
+    const glas = glasIzKljuca(r.kljuc);
+    return glas ? [{ glas, id: r.id, url: javniUrl(r.r2_kljuc), snimio: r.pregledao, kada: r.created_at, primarna: !!r.primarna, oznaka: r.oznaka }] : [];
+  });
 }
 
 /** WAV iz preglednika: RIFF/WAVE zaglavlje, do 2 MB (glas traje sekundu-dvije, 24 kHz mono ≈ 50 kB/s). */
@@ -437,30 +441,62 @@ export const jeWav = (b: ArrayBuffer) => {
   return t.startsWith("RIFF") && t.slice(8, 12) === "WAVE";
 };
 
-/** Spremi snimku glasa: odmah odobrena i javna; prijašnja za isti glas postaje „zamijenjena”. */
-export async function spremiSnimkuGlasa(glas: string, wav: ArrayBuffer, email: string): Promise<number> {
+/** Oznaka varijante: kratki slobodni tekst ili null. */
+export const oznakaVarijante = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, 40) || null;
+
+/**
+ * Spremi snimku glasa kao novu varijantu: odmah odobrena i javna. Postaje primarna ako glas još nema
+ * primarnu (ili ako `primarna`), inače ostaje varijanta. Stare snimke ostaju.
+ */
+export async function spremiSnimkuGlasa(glas: string, wav: ArrayBuffer, email: string, oznaka: string | null = null, primarna = false): Promise<number> {
   const db = env.DB, kljuc = kljucGlasa(glas);
   const r2 = `zvuk/${await hash16(wav)}.wav`;
   await env.SLIKE.put(r2, wav, { httpMetadata: { contentType: "audio/wav" } });
-  const { results: stari } = await db.prepare("SELECT r2_kljuc FROM zvukovi WHERE kljuc = ? AND status = 'odobren'").bind(kljuc).all<{ r2_kljuc: string }>();
   const [, novi] = await db.batch([
-    db.prepare("UPDATE zvukovi SET status = 'odbijen', razlog = 'zamijenjen novijom', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'odobren'").bind(email, kljuc),
+    db.prepare("UPDATE zvukovi SET primarna = 0 WHERE kljuc = ? AND ?").bind(kljuc, primarna ? 1 : 0),
     db.prepare(
-      `INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, mime, bajtova, glas_id, model, nacin, provjera, status, pregledao, pregledano_at)
-       VALUES (?, ?, ?, 'audio/wav', ?, 'mikrofon', 'snimka', 'snimka', 'bez', 'odobren', ?, datetime('now')) RETURNING id`,
-    ).bind(kljuc, `glas ${glas}`, r2, wav.byteLength, email),
+      `INSERT INTO zvukovi (kljuc, izgovor, r2_kljuc, mime, bajtova, glas_id, model, nacin, provjera, status, pregledao, pregledano_at, oznaka, primarna)
+       VALUES (?, ?, ?, 'audio/wav', ?, 'mikrofon', 'snimka', 'snimka', 'bez', 'odobren', ?, datetime('now'), ?,
+               NOT EXISTS (SELECT 1 FROM zvukovi WHERE kljuc = ? AND primarna = 1)) RETURNING id`,
+    ).bind(kljuc, `glas ${glas}`, r2, wav.byteLength, email, oznaka, kljuc),
   ]);
   const id = (novi.results[0] as { id: number }).id;
   await uskladiJavniZvuk(id);
-  for (const s of stari) if (s.r2_kljuc !== r2) await makniJavni(s.r2_kljuc);
   return id;
 }
 
-/** Makni snimku glasa (igra tada za taj glas šuti). */
-export async function obrisiSnimkuGlasa(glas: string, email: string): Promise<void> {
-  const kljuc = kljucGlasa(glas);
-  const { results } = await env.DB.prepare(
-    "UPDATE zvukovi SET status = 'odbijen', razlog = 'obrisana snimka', pregledao = ?, pregledano_at = datetime('now') WHERE kljuc = ? AND status = 'odobren' RETURNING r2_kljuc",
-  ).bind(email, kljuc).all<{ r2_kljuc: string }>();
-  for (const s of results) await makniJavni(s.r2_kljuc);
+/** Snimka glasa po id-u (samo odobrena snimka mikrofonom). */
+async function snimkaGlasa(id: number) {
+  return env.DB.prepare("SELECT id, kljuc, r2_kljuc, primarna FROM zvukovi WHERE id = ? AND model = 'snimka' AND status = 'odobren'")
+    .bind(id).first<{ id: number; kljuc: string; r2_kljuc: string; primarna: number }>();
+}
+
+/** Ta varijanta postaje primarna (igra pušta nju). */
+export async function postaviPrimarnuSnimku(id: number): Promise<boolean> {
+  const s = await snimkaGlasa(id);
+  if (!s) return false;
+  await env.DB.batch([
+    env.DB.prepare("UPDATE zvukovi SET primarna = 0 WHERE kljuc = ? AND primarna = 1").bind(s.kljuc),
+    env.DB.prepare("UPDATE zvukovi SET primarna = 1 WHERE id = ?").bind(id),
+  ]);
+  return true;
+}
+
+export async function oznaciSnimku(id: number, oznaka: string | null): Promise<boolean> {
+  const r = await env.DB.prepare("UPDATE zvukovi SET oznaka = ? WHERE id = ? AND model = 'snimka' AND status = 'odobren'").bind(oznaka, id).run();
+  return r.meta.changes > 0;
+}
+
+/** Makni jednu varijantu. Ako je bila primarna, primarna postaje najnovija preostala (ili glas šuti). */
+export async function obrisiSnimkuGlasa(id: number, email: string): Promise<boolean> {
+  const s = await snimkaGlasa(id);
+  if (!s) return false;
+  await env.DB.batch([
+    env.DB.prepare("UPDATE zvukovi SET status = 'odbijen', primarna = 0, razlog = 'obrisana snimka', pregledao = ?, pregledano_at = datetime('now') WHERE id = ?").bind(email, id),
+    env.DB.prepare(
+      `UPDATE zvukovi SET primarna = 1 WHERE ? AND id = (SELECT MAX(id) FROM zvukovi WHERE kljuc = ? AND model = 'snimka' AND status = 'odobren')`,
+    ).bind(s.primarna, s.kljuc),
+  ]);
+  await makniJavni(s.r2_kljuc);
+  return true;
 }

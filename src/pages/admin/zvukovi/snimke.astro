@@ -7,7 +7,7 @@ import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import { kad } from "../../../lib/katalog";
 import { GLASOVI } from "../../../lib/zadaci/slusanje";
-import { jeWav, obrisiSnimkuGlasa, snimkeGlasova, spremiSnimkuGlasa } from "../../../lib/zvukovi";
+import { jeWav, obrisiSnimkuGlasa, oznaciSnimku, oznakaVarijante, postaviPrimarnuSnimku, snimkeGlasova, spremiSnimkuGlasa, type SnimkaGlasa } from "../../../lib/zvukovi";
 import { smije } from "../../../lib/admin/ovlasti";
 
 const email = Astro.locals.admin!.email;
@@ -17,21 +17,25 @@ if (Astro.request.method === "POST") {
   // Uređivanje kataloga je superadminovo (katalog.uredivanje); logoped ovu stranicu samo čita.
   if (!urednik) return new Response("Zabranjeno", { status: 403 });
   const f = await Astro.request.formData();
+  const akcija = String(f.get("akcija") ?? "spremi"), id = Number(f.get("id"));
+  if (akcija !== "spremi") {
+    const ok = akcija === "obrisi" ? await obrisiSnimkuGlasa(id, email)
+      : akcija === "primarna" ? await postaviPrimarnuSnimku(id)
+      : akcija === "oznaka" ? await oznaciSnimku(id, oznakaVarijante(f.get("oznaka")))
+      : false;
+    return Response.json(ok ? { ok: true } : { greska: "Snimka nije pronađena." }, { status: ok ? 200 : 404 });
+  }
   const glas = String(f.get("glas") ?? "");
   if (!GLASOVI.includes(glas)) return Response.json({ greska: "Nepoznat glas." }, { status: 400 });
-  if (f.get("akcija") === "obrisi") {
-    await obrisiSnimkuGlasa(glas, email);
-    return Response.json({ ok: true });
-  }
   const dat = f.get("wav");
   const wav = dat instanceof File ? await dat.arrayBuffer() : null;
   if (!wav || !jeWav(wav)) return Response.json({ greska: "Snimka nije ispravan WAV (ili je dulja od 2 MB)." }, { status: 400 });
-  const id = await spremiSnimkuGlasa(glas, wav, email);
-  const s = (await snimkeGlasova()).find((x) => x.id === id);
-  return Response.json({ ok: true, url: s?.url ?? null });
+  await spremiSnimkuGlasa(glas, wav, email, oznakaVarijante(f.get("oznaka")), f.get("primarna") === "1");
+  return Response.json({ ok: true });
 }
 
-const snimke = new Map((await snimkeGlasova()).map((s) => [s.glas, s]));
+const poGlasu = new Map<string, SnimkaGlasa[]>();
+for (const s of await snimkeGlasova()) poGlasu.set(s.glas, [...(poGlasu.get(s.glas) ?? []), s]);
 const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
 ---
 <AdminOkvir naslov="Snimke glasova" aktivno="zvukovi">
@@ -41,33 +45,49 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
       <h1>Snimke glasova</h1>
       <p class="podnaslov">
         Snimi svaki glas onako kako ga dijete treba čuti: <b>„sss”</b>, ne „es”; <b>„mmm”</b>, ne „em”. Zaporni glasovi (B, P, D, T, K, G)
-        kratko i bez „ə” na kraju. Snimka se sama obreže i izjednači, a spremljena odmah ide u igre „Koje slovo čuješ?” i „Gdje je glas?”.
+        kratko i bez „ə” na kraju. Snimka se sama obreže i izjednači. Glas može imati više varijanti (npr. kratko i produljeno);
+        igre „Koje slovo čuješ?” i „Gdje je glas?” puštaju onu sa <b>★</b> (primarnu).
       </p>
     </div>
-    <p class="brojac"><b>{snimke.size}</b> / {GLASOVI.length} snimljeno</p>
+    <p class="brojac"><b>{poGlasu.size}</b> / {GLASOVI.length} snimljeno</p>
   </div>
 
   <p class="ploha obavijest skriveno" id="poruka" role="status"></p>
 
   <div class="glasovi">
     {GLASOVI.map((g) => {
-      const s = snimke.get(g);
+      const var_ = poGlasu.get(g) ?? [];
       return (
-        <div class={`ploha glas${s ? " ima" : ""}${samoglasnici.has(g) ? " samoglasnik" : ""}`} data-glas={g} data-url={s?.url ?? ""}>
+        <div class={`ploha glas${var_.length ? " ima" : ""}${samoglasnici.has(g) ? " samoglasnik" : ""}`} data-glas={g}>
           <div class="slovo">{g}</div>
-          <p class="stanje">{s ? <>Snimljeno {kad(s.kada)}</> : "Nije snimljeno"}</p>
-          <div class="gumbi">
-            <button type="button" class="gumb mali snimi" hidden={!urednik} aria-label={`Snimi glas ${g}`}><span class="tocka"></span><span class="tekst">Snimi</span></button>
-            <button type="button" class="gumb mali slusaj" aria-label={`Poslušaj glas ${g}`} disabled={!s}><Ikona ime="zvuk" velicina={16} /></button>
+          <p class="stanje">{var_.length ? `${var_.length} ${var_.length === 1 ? "snimka" : var_.length < 5 ? "snimke" : "snimki"}` : "Nije snimljeno"}</p>
+          {var_.length > 0 && (
+            <ul class="varijante">
+              {var_.map((v) => (
+                <li class={v.primarna ? "primarna" : ""} data-id={v.id} data-url={v.url}>
+                  <button type="button" class="ikona slusaj" aria-label={`Poslušaj ${g}${v.oznaka ? `, ${v.oznaka}` : ""}`}><Ikona ime="zvuk" velicina={16} /></button>
+                  {urednik
+                    ? <input class="oznaka" value={v.oznaka ?? ""} placeholder={kad(v.kada)} maxlength="40" aria-label="Oznaka varijante" />
+                    : <span class="oznaka">{v.oznaka ?? kad(v.kada)}</span>}
+                  <button type="button" class="ikona zvjezdica" disabled={!urednik} aria-pressed={v.primarna ? "true" : "false"}
+                    title={v.primarna ? "Primarna: igra pušta ovu" : "Postavi kao primarnu"}>{v.primarna ? "★" : "☆"}</button>
+                  {urednik && <button type="button" class="ikona obrisi" title="Obriši ovu varijantu" aria-label="Obriši varijantu"><Ikona ime="x" velicina={14} /></button>}
+                </li>
+              ))}
+            </ul>
+          )}
+          <div class="gumbi" hidden={!urednik}>
+            <button type="button" class="gumb mali snimi" aria-label={`Snimi glas ${g}`}><span class="tocka"></span><span class="tekst">{var_.length ? "Nova varijanta" : "Snimi"}</span></button>
           </div>
           <div class="nova skriveno">
             <canvas class="val" width="240" height="40"></canvas>
+            <input class="nova-oznaka" placeholder="Oznaka (npr. produljeno)" maxlength="40" />
+            {var_.length > 0 && <label class="kao-primarna"><input type="checkbox" class="primarna-nova" /> neka bude primarna</label>}
             <div class="gumbi">
               <button type="button" class="gumb mali slusaj-novu"><Ikona ime="zvuk" velicina={16} /> Poslušaj</button>
               <button type="button" class="gumb mali glavni spremi"><Ikona ime="kvacica" velicina={16} /> Spremi</button>
             </div>
           </div>
-          {s && urednik && <button type="button" class="obrisi poveznica">Obriši snimku</button>}
         </div>
       );
     })}
@@ -195,56 +215,63 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
     }
   }
 
+  async function posalji(polja: Record<string, string | Blob>, uspjeh?: string) {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(polja)) typeof v === "string" ? fd.set(k, v) : fd.set(k, v, `${polja.glas ?? "glas"}.wav`);
+    const r = await fetch(location.pathname, { method: "POST", body: fd });
+    const j = await r.json().catch(() => ({})) as { ok?: boolean; greska?: string };
+    if (!r.ok || !j.ok) throw new Error(j.greska ?? "Spremanje nije uspjelo.");
+    if (uspjeh) sessionStorage.setItem("snimke-poruka", uspjeh);
+  }
+  try { const p = sessionStorage.getItem("snimke-poruka"); if (p) { javi(p); sessionStorage.removeItem("snimke-poruka"); } } catch {}
+
   async function spremi(kartica: HTMLElement) {
     const b = nove.get(kartica);
     if (!b) return;
     const glas = kartica.dataset.glas!;
-    const fd = new FormData();
-    fd.set("glas", glas); fd.set("wav", wav(b), `${glas}.wav`);
     const gumb = kartica.querySelector<HTMLButtonElement>(".spremi")!;
     gumb.disabled = true;
     try {
-      const r = await fetch(location.pathname, { method: "POST", body: fd });
-      const j = await r.json() as { ok?: boolean; url?: string; greska?: string };
-      if (!r.ok || !j.ok) throw new Error(j.greska ?? "Spremanje nije uspjelo.");
-      kartica.dataset.url = j.url ?? "";
-      kartica.classList.add("ima");
-      kartica.querySelector(".stanje")!.textContent = "Snimljeno upravo";
-      kartica.querySelector<HTMLButtonElement>(".slusaj")!.disabled = !j.url;
-      kartica.querySelector(".nova")!.classList.add("skriveno");
-      kartica.querySelector(".snimi .tekst")!.textContent = "Snimi";
-      nove.delete(kartica);
-      const n = document.querySelectorAll(".glas.ima").length;
-      document.querySelector(".brojac b")!.textContent = String(n);
-      javi(`Glas ${glas} je spremljen.`);
+      await posalji({
+        glas, wav: wav(b),
+        oznaka: kartica.querySelector<HTMLInputElement>(".nova-oznaka")!.value,
+        primarna: kartica.querySelector<HTMLInputElement>(".primarna-nova")?.checked ? "1" : "0",
+      }, `Glas ${glas} je spremljen.`);
+      location.reload();
     } catch (e) {
       javi(e instanceof Error ? e.message : "Spremanje nije uspjelo.", true);
-    } finally {
       gumb.disabled = false;
     }
   }
 
-  async function obrisi(kartica: HTMLElement) {
-    const glas = kartica.dataset.glas!;
-    const fd = new FormData();
-    fd.set("glas", glas); fd.set("akcija", "obrisi");
-    const r = await fetch(location.pathname, { method: "POST", body: fd });
-    if (!r.ok) return javi("Brisanje nije uspjelo.", true);
-    location.reload();
+  async function akcija(li: HTMLElement, a: string, extra: Record<string, string> = {}, reload = true) {
+    try {
+      await posalji({ akcija: a, id: li.dataset.id!, ...extra });
+      if (reload) location.reload();
+    } catch (e) { javi(e instanceof Error ? e.message : "Nije uspjelo.", true); }
   }
 
+  document.querySelector(".glasovi")!.addEventListener("change", (e) => {
+    const t = e.target as HTMLInputElement, li = t.closest<HTMLElement>("li");
+    if (li && t.classList.contains("oznaka")) void akcija(li, "oznaka", { oznaka: t.value }, false).then(() => javi("Oznaka spremljena."));
+  });
+
   document.querySelector(".glasovi")!.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement, kartica = t.closest<HTMLElement>(".glas");
+    const t = e.target as HTMLElement, kartica = t.closest<HTMLElement>(".glas"), li = t.closest<HTMLElement>("li");
     if (!kartica) return;
     if (t.closest(".snimi")) {
       if (aktivna?.kartica === kartica) stani();
       else { stani(); void pocni(kartica); }
-    } else if (t.closest(".slusaj")) {
-      if (kartica.dataset.url) { svirac.src = kartica.dataset.url; void svirac.play(); }
+    } else if (li && t.closest(".slusaj")) {
+      svirac.src = li.dataset.url!; void svirac.play();
+    } else if (li && t.closest(".zvjezdica")) {
+      if (!li.classList.contains("primarna")) void akcija(li, "primarna");
+    } else if (li && t.closest(".obrisi")) {
+      if (li.classList.contains("primarna") && kartica.querySelectorAll("li").length > 1) javi("Primarna postaje najnovija preostala varijanta.");
+      void akcija(li, "obrisi");
     } else if (t.closest(".slusaj-novu")) {
       const b = nove.get(kartica); if (b) pusti(b);
     } else if (t.closest(".spremi")) void spremi(kartica);
-    else if (t.closest(".obrisi")) void obrisi(kartica);
   });
 </script>
 
@@ -253,7 +280,7 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
   .brojac { margin: 0; color: var(--blijedo); white-space: nowrap; }
   .brojac b { color: var(--tinta); font-size: 1.3rem; }
   .skriveno { display: none !important; }
-  .glasovi { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .glasovi { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
   .glas { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 10px; text-align: center; }
   .glas.ima { border-color: var(--med); }
   .glas.snima { outline: 3px solid #d62828; outline-offset: -1px; }
@@ -267,5 +294,16 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
   @keyframes titraj { 50% { opacity: .3; } }
   .nova { display: flex; flex-direction: column; gap: 6px; width: 100%; }
   .val { width: 100%; height: 40px; color: var(--med); background: var(--povrsina-2); border-radius: 6px; }
-  .obrisi { background: none; border: 0; color: var(--blijedo); font-size: .78rem; text-decoration: underline; cursor: pointer; }
+  .varijante { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+  .varijante li { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
+  .varijante li.primarna { background: var(--povrsina-2); }
+  .ikona { background: none; border: 0; padding: 4px; min-width: 32px; min-height: 32px; color: var(--tinta); cursor: pointer; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+  .ikona:disabled { cursor: default; }
+  .zvjezdica { font-size: 1.1rem; color: var(--blijedo); }
+  .primarna .zvjezdica { color: var(--med); }
+  .obrisi { color: var(--blijedo); }
+  .oznaka { flex: 1; min-width: 0; font-size: .8rem; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 4px; padding: 3px 4px; color: var(--tinta); }
+  input.oznaka:hover, input.oznaka:focus { border-color: var(--rub, #ccc); background: var(--povrsina, #fff); }
+  .nova-oznaka { width: 100%; font-size: .85rem; padding: 6px; }
+  .kao-primarna { font-size: .8rem; color: var(--blijedo); display: flex; gap: 4px; align-items: center; justify-content: center; }
 </style>

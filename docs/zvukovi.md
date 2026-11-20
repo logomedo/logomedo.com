@@ -76,8 +76,13 @@ ga snima logopedica: 30 kartica (abeceda, LJ/NJ/DŽ su jedan glas), „Snimi” 
   −1 dBFS s mekim rubovima i pretvori u 24 kHz mono WAV (oko 50 kB/s). Preslušavanje prije spremanja ide kroz
   WebAudio, jer CSP ne dopušta `blob:` u `<audio>`.
 - Server provjeri RIFF/WAVE i veličinu (do 2 MB), spremi u R2 (`zvuk/<hash>.wav`) i upiše red u `zvukovi`:
-  `kljuc = '/s/'`, `model = 'snimka'`, `status = 'odobren'` (odmah javno). Prijašnja snimka istog glasa postaje
-  „zamijenjen novijom”. Bez migracije: tablica `zvukovi` već ima `mime`.
+  `kljuc = '/s/'`, `model = 'snimka'`, `status = 'odobren'` (odmah javno).
+- **Varijante (20. 11. 2026., migracija 0041):** glas može imati više odobrenih snimki (kratko/produljeno, sa i bez
+  šva…). Stupac `primarna` (djelomični UNIQUE po `kljuc`: najviše jedna) kaže koju igra pušta; `oznaka` je kratki
+  opis varijante. Prva snimka glasa postaje primarna, sljedeće su varijante (ili primarne, uz kvačicu „neka bude
+  primarna”). ★ na kartici mijenja primarnu, ✕ briše jednu varijantu; ako je bila primarna, primarna postaje
+  najnovija preostala. `odobreniZvukovi` slaže `ORDER BY primarna, id`, pa primarna pobijedi. Do 0041 nova snimka
+  je zamijenila staru („zamijenjen novijom”); te ostaju odbijene.
 - Igra ih dobiva istim putem kao izgovor (`odobreniZvukovi`), ključevi iz `glasoviIgre()` u `biljeznice-ekrani.ts`.
 - Snimke ne ulaze u ElevenLabs: `dodajZvukove` i `ponoviZvuk` preskaču ključeve `/x/`, a tabovi Izgovora ne
   prikazuju `model = 'snimka'`.
