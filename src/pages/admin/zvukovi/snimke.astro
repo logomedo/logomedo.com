@@ -63,12 +63,12 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
           <p class="stanje">{var_.length ? `${var_.length} ${var_.length === 1 ? "snimka" : var_.length < 5 ? "snimke" : "snimki"}` : "Nije snimljeno"}</p>
           {var_.length > 0 && (
             <ul class="varijante">
-              {var_.map((v) => (
+              {var_.map((v, i) => (
                 <li class={v.primarna ? "primarna" : ""} data-id={v.id} data-url={v.url}>
                   <button type="button" class="ikona slusaj" aria-label={`Poslušaj ${g}${v.oznaka ? `, ${v.oznaka}` : ""}`}><Ikona ime="zvuk" velicina={16} /></button>
                   {urednik
-                    ? <input class="oznaka" value={v.oznaka ?? ""} placeholder={kad(v.kada)} maxlength="40" aria-label="Oznaka varijante" />
-                    : <span class="oznaka">{v.oznaka ?? kad(v.kada)}</span>}
+                    ? <input class="oznaka" value={v.oznaka ?? ""} placeholder={`#${i + 1}`} title={`Snimljeno ${kad(v.kada)}`} maxlength="40" aria-label="Oznaka varijante" />
+                    : <span class="oznaka" title={`Snimljeno ${kad(v.kada)}`}>{v.oznaka ?? `#${i + 1}`}</span>}
                   <button type="button" class="ikona zvjezdica" disabled={!urednik} aria-pressed={v.primarna ? "true" : "false"}
                     title={v.primarna ? "Primarna: igra pušta ovu" : "Postavi kao primarnu"}>{v.primarna ? "★" : "☆"}</button>
                   {urednik && <button type="button" class="ikona obrisi" title="Obriši ovu varijantu" aria-label="Obriši varijantu"><Ikona ime="x" velicina={14} /></button>}
@@ -280,7 +280,7 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
   .brojac { margin: 0; color: var(--blijedo); white-space: nowrap; }
   .brojac b { color: var(--tinta); font-size: 1.3rem; }
   .skriveno { display: none !important; }
-  .glasovi { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .glasovi { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(190px, calc(50% - 6px)), 1fr)); gap: 12px; }
   .glas { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 10px; text-align: center; }
   .glas.ima { border-color: var(--med); }
   .glas.snima { outline: 3px solid #d62828; outline-offset: -1px; }
@@ -295,14 +295,14 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
   .nova { display: flex; flex-direction: column; gap: 6px; width: 100%; }
   .val { width: 100%; height: 40px; color: var(--med); background: var(--povrsina-2); border-radius: 6px; }
   .varijante { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 4px; }
-  .varijante li { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
+  .varijante li { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 6px; }
   .varijante li.primarna { background: var(--povrsina-2); }
-  .ikona { background: none; border: 0; padding: 4px; min-width: 32px; min-height: 32px; color: var(--tinta); cursor: pointer; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
+  .ikona { background: none; border: 0; padding: 2px; min-width: 28px; min-height: 32px; flex: none; color: var(--tinta); cursor: pointer; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; }
   .ikona:disabled { cursor: default; }
   .zvjezdica { font-size: 1.1rem; color: var(--blijedo); }
   .primarna .zvjezdica { color: var(--med); }
   .obrisi { color: var(--blijedo); }
-  .oznaka { flex: 1; min-width: 0; font-size: .8rem; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 4px; padding: 3px 4px; color: var(--tinta); }
+  .oznaka { flex: 1; min-width: 0; font: inherit; font-size: .78rem; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 4px; padding: 3px 4px; color: var(--tinta); }
   input.oznaka:hover, input.oznaka:focus { border-color: var(--rub, #ccc); background: var(--povrsina, #fff); }
   .nova-oznaka { width: 100%; font-size: .85rem; padding: 6px; }
   .kao-primarna { font-size: .8rem; color: var(--blijedo); display: flex; gap: 4px; align-items: center; justify-content: center; }
