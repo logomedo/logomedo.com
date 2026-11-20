@@ -396,3 +396,10 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      CIRKUS (`ilustracija/cirkus/c2f5720c99964f3c.png`) umjesto RIBE. Kopija se više ne zrcali (natpis „TICKET” bio bi
      naopak), nego dobije zasićenje +2 %, da sha nije isti kao odobrenoj. `scripts/landing-snimke.ts --pregled` stari
      kandidat u staging D1 označi „odbijena” i učita novi.
+802. **Hero izmjenjuje slike istog slova** (korisnik, 20. 11. 2026.): svaka od četiri kartice V-1 ima četiri
+     ilustracije istog slova jednu na drugoj, s oznakom slova u kutu: R rukavice/riba/raketa/robot, S sunce/sova/
+     sladoled/snjegović, Ž žirafa/žaba/žarulja/žir, L lav/lisica/leptir/lubenica (`ILUSTRACIJE_V1.ostale`, webp kroz
+     `scripts/landing-ilustracije.sh`). Prelazak mišem (dodir na mobitelu) pokaže sljedeću; inače se kartice redom same
+     mijenjaju svakih 2,2 s, osim uz prefers-reduced-motion. Kod je `public/landing/hero.js`, ne Astro `<script>`, jer
+     Astro mali skript ugradi inline, a CSP landinga nema nonce (odluka 13). Bez JS-a vidi se prva slika, kao prije;
+     N-4 i OG ostaju na prvoj.

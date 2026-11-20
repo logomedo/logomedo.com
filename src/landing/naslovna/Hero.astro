@@ -1,5 +1,7 @@
 ---
-// N-1 Hero (sadrzaj.md 3.1). Vizual V-1: četiri ilustracije, 512 px, bez lazy (iznad pregiba).
+// N-1 Hero (sadrzaj.md 3.1). Vizual V-1: četiri ilustracije, 512 px, prva bez lazy (iznad pregiba).
+// Odluka 802: u svakoj kartici su slike istog slova jedna na drugoj; /landing/hero.js ih izmjenjuje na prelazak mišem,
+// na dodir i polako sama (ne uz prefers-reduced-motion). Bez JS-a vidi se samo prva.
 import Cta from "../Cta.astro";
 import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
 ---
@@ -14,13 +16,20 @@ import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
       <p class="sitno">Za prijavu vam treba pozivnica. Nemate je? <a href={PRISTUP}>Zatražite pristup.</a></p>
     </div>
     <div class="slike" role="img" aria-label={ALT_V1}>
-      {ILUSTRACIJE_V1.map((s) => (
-        <img class="kartica-slike" src={`/landing/${s.ime}-512.webp`} srcset={`/landing/${s.ime}-256.webp 256w, /landing/${s.ime}-512.webp 512w`}
-          sizes="(max-width: 719px) 42vw, 240px" width="512" height="512" alt="" fetchpriority={s.ime === ILUSTRACIJE_V1[0].ime ? "high" : undefined} />
+      {ILUSTRACIJE_V1.map((s, k) => (
+        <div class="kartica kartica-slike" data-hero-kartica>
+          {[s.ime, ...s.ostale].map((ime, i) => (
+            <img class:list={{ aktivna: i === 0 }} src={`/landing/${ime}-512.webp`} srcset={`/landing/${ime}-256.webp 256w, /landing/${ime}-512.webp 512w`}
+              sizes="(max-width: 719px) 42vw, 240px" width="512" height="512" alt="" decoding="async"
+              loading={i === 0 ? undefined : "lazy"} fetchpriority={i === 0 && k === 0 ? "high" : undefined} />
+          ))}
+          <span class="slovo" aria-hidden="true">{s.glas}</span>
+        </div>
       ))}
     </div>
   </div>
 </section>
+<script src="/landing/hero.js" defer></script>
 <style>
   .hero { padding: 72px 0 80px; }
   .mreza { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 48px; align-items: center; }
@@ -28,8 +37,17 @@ import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
   .oznaka { margin: 0; display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--med-blago); color: var(--med-tamno);
     font-size: .85rem; font-weight: 600; }
   .slike { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .slike img:nth-child(2) { transform: translateY(18px); }
-  .slike img:nth-child(4) { transform: translateY(18px); }
+  .slike .kartica:nth-child(2), .slike .kartica:nth-child(4) { transform: translateY(18px); }
+  /* Slike su jedna na drugoj (ista ćelija mreže); vidi se samo .aktivna. */
+  .kartica { position: relative; display: grid; overflow: hidden; cursor: pointer; }
+  .kartica img { grid-area: 1 / 1; display: block; width: 100%; height: auto; opacity: 0; transform: scale(.9) rotate(-4deg);
+    transition: opacity .45s ease, transform .55s cubic-bezier(.34, 1.56, .64, 1); }
+  .kartica img.aktivna { opacity: 1; transform: none; }
+  .slovo { position: absolute; top: 10px; left: 10px; min-width: 34px; height: 34px; padding: 0 8px; display: grid; place-items: center;
+    border-radius: 999px; background: var(--med-blago); color: var(--med-tamno); font-weight: 700; font-size: 1rem; line-height: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .kartica img { transition: opacity .2s linear; transform: none; }
+  }
   @media (max-width: 879px) {
     .mreza { grid-template-columns: 1fr; gap: 40px; }
     .slike { max-width: 440px; }

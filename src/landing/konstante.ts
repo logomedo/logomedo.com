@@ -136,12 +136,16 @@ export const OG = {
   alt: "LogoMedo: slike za svaki glas, listić za tren.",
 } as const;
 
-/** V-1 (sadrzaj.md odjeljak 4): četiri ilustracije iz kataloga, public/landing/<ime>-{256,512}.webp. */
+/**
+ * V-1 (sadrzaj.md odjeljak 4): četiri ilustracije iz kataloga, public/landing/<ime>-{256,512}.webp.
+ * `ostale`: u heru se na prelazak mišem (dodir na mobitelu) i polako sama od sebe izmjenjuju slike istog
+ * slova (odluka 802); `ime` je prva, ona se vidi bez JS-a i u N-4 i OG slici.
+ */
 export const ILUSTRACIJE_V1 = [
-  { ime: "rukavice", glas: "R" },
-  { ime: "sunce", glas: "S" },
-  { ime: "zirafa", glas: "Ž" },
-  { ime: "lav", glas: "L" },
+  { ime: "rukavice", glas: "R", ostale: ["riba", "raketa", "robot"] },
+  { ime: "sunce", glas: "S", ostale: ["sova", "sladoled", "snjegovic"] },
+  { ime: "zirafa", glas: "Ž", ostale: ["zaba", "zarulja", "zir"] },
+  { ime: "lav", glas: "L", ostale: ["lisica", "leptir", "lubenica"] },
 ] as const;
 export const ALT_V1 = "Ilustracije iz kataloga: rukavice, sunce, žirafa i lav.";
 
