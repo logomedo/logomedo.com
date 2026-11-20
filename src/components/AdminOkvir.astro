@@ -87,10 +87,22 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
   </head>
   <body class:list={{ "s-trakom": !!admin }}>
     {admin && (
-      <aside class="traka">
+      <header class="mob-vrh">
+        <button type="button" class="ikona-gumb hamburger" aria-label="Otvori izbornik" aria-controls="traka" aria-expanded="false">
+          <Ikona ime="izbornik" />
+          {skupine.some((g) => g.stavke.some((s) => s.broj > 0)) && <span class="hamburger-tocka"></span>}
+        </button>
+        <Marka href="/admin" dodatak="admin" />
+        <button type="button" class="ikona-gumb mob-trazi" aria-label="Traži riječ"><Ikona ime="trazi" /></button>
+      </header>
+      <div class="zastor" aria-hidden="true"></div>
+    )}
+    {admin && (
+      <aside class="traka" id="traka">
         <div class="vrh">
           <Marka href="/admin" dodatak="admin" />
           <button type="button" class="ikona-gumb sklopi" aria-label="Sklopi / proširi izbornik" title="Sklopi / proširi izbornik  [" aria-expanded="true"><Ikona ime="traka" /></button>
+          <button type="button" class="ikona-gumb zatvori" aria-label="Zatvori izbornik"><Ikona ime="x" /></button>
         </div>
         <button type="button" class="ikona-gumb trazi-gumb" aria-label="Traži riječ" title="Traži riječ  /"><Ikona ime="trazi" /></button>
         <div class="trazilica" role="search">
@@ -227,6 +239,22 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
         sklopiGumb.addEventListener("click", () => postaviTraku(!uska()));
       }
 
+      // Mobitel: bočna traka je ladica slijeva (hamburger u gornjoj traci), zastor i Esc je zatvaraju.
+      const hamburger = document.querySelector<HTMLButtonElement>(".hamburger");
+      function ladica(otvori: boolean) {
+        const h = document.documentElement;
+        if (otvori) h.dataset.izbornik = "otvoren"; else delete h.dataset.izbornik;
+        hamburger?.setAttribute("aria-expanded", String(otvori));
+        if (otvori) document.querySelector<HTMLElement>(".traka .stavka.aktivno")?.scrollIntoView({ block: "center" });
+      }
+      hamburger?.addEventListener("click", () => ladica(true));
+      document.querySelector(".zastor")?.addEventListener("click", () => ladica(false));
+      document.querySelector(".zatvori")?.addEventListener("click", () => ladica(false));
+      document.querySelector(".mob-trazi")?.addEventListener("click", () => { ladica(true); document.querySelector<HTMLInputElement>("#trazi")?.focus(); });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.documentElement.dataset.izbornik) ladica(false); });
+      matchMedia("(min-width: 861px)").addEventListener("change", (e) => { if (e.matches) ladica(false); });
+      addEventListener("pageshow", () => ladica(false));
+
       for (const b of document.querySelectorAll<HTMLButtonElement>(".prekidac-teme")) {
         b.onclick = () => {
           const h = document.documentElement;
@@ -319,20 +347,28 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
         html[data-traka=uska] .alati { flex-direction: column; }
       }
 
+      /* Mobitel: gornja traka s hamburgerom, bočna traka kao ladica slijeva (izgled kao na desktopu, nav se scrolla). */
+      .mob-vrh, .zastor, .traka .zatvori { display: none; }
       @media (max-width: 860px) {
+        body.s-trakom { display: block; }
+        .mob-vrh { display: flex; position: sticky; top: 0; z-index: 20; align-items: center; gap: 8px; padding: 8px 10px;
+          padding-top: max(8px, env(safe-area-inset-top)); background: var(--povrsina); border-bottom: 1px solid var(--rub); }
+        .mob-vrh .marka { flex: 1; min-width: 0; gap: 8px; }
+        .mob-vrh .ikona-gumb { width: 40px; height: 40px; position: relative; color: var(--tinta); }
+        .hamburger-tocka { position: absolute; top: 8px; right: 7px; width: 8px; height: 8px; border-radius: 999px; background: var(--med); }
         .sklopi, .trazi-gumb { display: none !important; }
-        .traka nav { overflow: visible; margin: 0; padding: 0; }
-        body.s-trakom { grid-template-columns: 1fr; }
-        .traka { position: sticky; z-index: 10; height: auto; flex-direction: row; align-items: center; gap: 10px; padding: 10px 14px;
-          border-right: 0; border-bottom: 1px solid var(--rub); overflow-x: auto; }
-        .traka .vrh { padding: 0; } .traka .vrh .ime, .traka .vrh .dodatak { display: none; }
-        .traka nav { flex-direction: row; flex: none; gap: 4px; }
-        .skupina, .skupina.sustav { flex-direction: row; padding: 2px; margin: 0; } .skupina-naslov { display: none; }
-        .trazilica { flex: 1 0 150px; padding: 0; } #trazi-rezultati { min-width: 240px; }
-        .stavka span:not(.broj) { display: none; }
-        .traka .dno { margin: 0 0 0 auto; border: 0; padding: 0; } .tko { display: none; }
+        .traka .zatvori { display: inline-grid; flex: none; }
+        .traka { position: fixed; z-index: 40; top: 0; left: 0; bottom: 0; height: 100dvh; width: min(300px, 86vw); gap: 18px;
+          padding: max(16px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+          transform: translateX(-102%); transition: transform .22s ease, visibility 0s .22s; box-shadow: var(--sjena-2); visibility: hidden; }
+        html[data-izbornik=otvoren] .traka { transform: none; visibility: visible; transition-delay: 0s; }
+        .zastor { display: block; position: fixed; inset: 0; z-index: 35; background: rgb(0 0 0 / .4); opacity: 0; pointer-events: none; transition: opacity .2s; }
+        html[data-izbornik=otvoren] .zastor { opacity: 1; pointer-events: auto; }
+        html[data-izbornik=otvoren] body { overflow: hidden; }
+        .traka nav .stavka { padding: 11px 10px; }
         .sadrzaj { padding: 24px 16px 64px; }
       }
+      @media (max-width: 860px) and (prefers-reduced-motion: reduce) { .traka, .zastor { transition: none; } }
 
       /* Zajednički elementi admina */
       .naslov { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
@@ -375,11 +411,6 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
       .blijedo { color: var(--blijedo); }
       .rijec-tekst { text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
 
-      @media (max-width: 860px) {
-        .kvota-stanje { flex: none; flex-direction: row; gap: 10px; padding: 0; }
-        .kvota-naslov, .kvota-tekst { display: none; }
-        .kvota-red { gap: 4px; }
-      }
     </style>
   </body>
 </html>
