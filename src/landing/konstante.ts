@@ -144,7 +144,7 @@ export const OG = {
 export const ILUSTRACIJE_V1 = [
   { ime: "rukavice", glas: "R", ostale: ["riba", "raketa", "robot"] },
   { ime: "sunce", glas: "S", ostale: ["sova", "sladoled", "snjegovic"] },
-  { ime: "zirafa", glas: "Ž", ostale: ["zaba", "zarulja", "zir"] },
+  { ime: "zirafa", glas: "Ž", ostale: ["zarulja", "zir"] },
   { ime: "lav", glas: "L", ostale: ["lisica", "leptir", "lubenica"] },
 ] as const;
 export const ALT_V1 = "Ilustracije iz kataloga: rukavice, sunce, žirafa i lav.";

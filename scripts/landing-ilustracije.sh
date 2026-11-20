@@ -25,13 +25,12 @@ SLIKE=(
   "sova|ilustracija/sova/25415d78d2f71e60.png|512 256"
   "rukavice-bojanka|bojanka/rukavice/f314aad932d163cb.png|512"
   "sunce-bojanka|bojanka/sunce/98eabebff5090197.png|512"
-  # Hero izmjenjuje slike istog slova (odluka 802): R, S, Ž, L po tri dodatne.
+  # Hero izmjenjuje slike istog slova (odluka 802): R, S, L po tri dodatne, Ž dvije (bez žabe, odluka 803).
   "riba|ilustracija/riba/f87b53e68b725444.png|512 256"
   "raketa|ilustracija/raketa/5095a37112d55eb8.png|512 256"
   "robot|ilustracija/robot/604cf51177d86b58.png|512 256"
   "sladoled|ilustracija/sladoled/79a12f5d9061a6a8.png|512 256"
   "snjegovic|ilustracija/snjegovicj/6c00fecfd7e3211b.png|512 256"
-  "zaba|ilustracija/zhaba/5bd3da7ad6c5afb4.png|512 256"
   "zarulja|ilustracija/zharulja/44b14db46f91aef8.png|512 256"
   "zir|ilustracija/zhir/07f3e5b75ab53795.png|512 256"
   "lisica|ilustracija/lissica/b584fae3d9e145b5.png|512 256"

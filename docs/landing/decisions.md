@@ -403,3 +403,4 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      mijenjaju svakih 2,2 s, osim uz prefers-reduced-motion. Kod je `public/landing/hero.js`, ne Astro `<script>`, jer
      Astro mali skript ugradi inline, a CSP landinga nema nonce (odluka 13). Bez JS-a vidi se prva slika, kao prije;
      N-4 i OG ostaju na prvoj.
+803. **Bez žabe u heru** (korisnik, 20. 11. 2026.): Ž ima žirafu, žarulju i žir; žaba i žele ne idu na landing.
