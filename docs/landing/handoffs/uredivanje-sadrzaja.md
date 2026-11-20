@@ -48,3 +48,23 @@ samo povijest, odluka 800).
 - Potvrda DPA-ova s Cloudflareom, Googleom i ElevenLabsom (korisnik, odluka 621).
 - Probni zahtjev kroz `/pristup` i „Odbij” u `/admin/zahtjevi` na produkciji (korisnik, prijava).
 - Access AUD za staging (odluka 208); nalaz 405 (admin na mobitelu); obavijest e-poštom o zahtjevu (odluka 710).
+
+## Iteracije 20. 11. 2026. (odluke 802–808, samo staging)
+
+Na stagingu, **ne na produkciji** (produkcija ide tek na korisnikov „go”): hero izmjenjuje slike istog slova (802, 803),
+novi podnaslov i uvod + sekcija „Za sve koji rade s djecom” (`naslovna/ZaKoga.astro`, 804), 30 slova u N-4 su gumbi
+sa slikom (805), h1 se nasumično mijenja na osvježavanje između četiri varijante (`H1_VARIJANTE`, `/?naslov=N`, 808).
+Tijek po izmjeni: test + check → `npm run deploy:staging` → commit poimence → push.
+
+Zamke:
+
+- **Skripte na landingu:** CSP prerenderiranih stranica je `script-src 'self'` bez noncea. Astro `<script>` u komponenti
+  mali kod ugradi inline (s nonceom iz middlewarea u vrijeme prerendera, beskoristan) i preglednik ga blokira. Zato je kod u
+  `public/landing/*.js`, a tag mora imati još neki atribut (`defer`, `type="text/javascript"`), inače Astro build pukne
+  („references an asset in the public/ directory”). Test zabranjuje `is:inline`.
+- **Staging nakon deploya** zna 10–30 s vraćati staru naslovnu (`cf-cache-status: HIT` usprkos `no-cache`). Provjeri s
+  `curl … | grep` dok se ne promijeni, a vizualno najbrže nad `dist-staging/client` (`python3 -m http.server <port> -d …`;
+  na 4399 zna već slušati neki stari server).
+- **Slike iz kataloga:** `scripts/landing-ilustracije.sh <novi-radni-dir> <ime…>`; ključeve daje D1 upit nad `slike`
+  (status `odobrena`, stil `ilustracija`). Neki su JPEG pod `.png` (balon); skripta prima oba.
+- `npm test` padne na `d1.test.ts` kad paralelna sesija ima necommitanu migraciju; to nije landing.
