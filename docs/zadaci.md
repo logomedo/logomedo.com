@@ -12,7 +12,7 @@ migracija; pozicija u fonemima je ista kao u `pojave` (prvi, zadnji, ostalo). Uz
 u `POST /admin/api/zadatak`; zadatku se ne pamti (listić nema `po_glasovima`), vidi se samo u naslovu „…, uz samoglasnike”.
 Slogovni R (SRCE, PRST) se ne računa kao samoglasnik.
 Logopedski mod (`/admin/postavke`, `korisnici.logopedski_mod`, migracija 0029, zadano uključen): samo s njim predlošci imaju
-„Po glasovima…”, i to Radni listić, Prebrajanje, Uparivanje, Povezivanje, Izbaci uljeza, Prvi glas, Koje slovo čuješ i Gdje je glas (jedan dijalog, polja po vrsti).
+„Po glasovima…”, i to Radni listić, Prebrajanje, Uparivanje, Povezivanje, Izbaci uljeza, Prvi glas, Koji glas čuješ i Gdje je glas (jedan dijalog, polja po vrsti).
 Prebrajanje uzima samo riječi s glasom; rima traži skupinu rime s riječi s glasom i stavlja je kao zadanu (lijevu) sliku, ostale
 su slobodne (`Postavke.cilj` u `slozi`); „bez” vrijedi za sve slike. Prvi glas: odabrani glasovi su krugovi (do 6), bez pozicije.
 Scena i Vizualna percepcija gumb nemaju (scenu slaže logoped, percepcija se ne izgovara). Dijalog broji građu funkcijom `moguce`.
@@ -693,7 +693,7 @@ Obje traže da dijete **čuje glas**, pa ih prati snimka glasa koju snima logope
 Model i pomoćne funkcije: `vrste.ts` (`KojeSlovo`, `PozicijaGlasa`) i `slusanje.ts` (+ testovi), migracija
 `0035_slusne_vrste.sql` (CHECK + područja „Glas i slovo” i „Mjesto glasa u riječi” pod predvještinama).
 
-**Koje slovo čuješ?** (`koje_slovo`): igra pusti glas, ispod je 4–16 razbacanih slova (`ponudeno`, glas jednom), dijete
+**Koji glas čuješ?** (`koje_slovo`): igra pusti glas, ispod je 4–16 razbacanih slova (`ponudeno`, glas jednom), dijete
 dodirne ono koje je čulo; krivo se trese i glas se ponovi. Stavka = ekran = okvir na papiru.
 - Ometači (`slozPonudeno`): do 3 iz skupine sličnih (`SLICNA`: S Š Z Ž C, Č Ć DŽ Đ, L LJ J, N NJ M, zvučni/bezvučni
   parovi, samoglasnici), ostalo nasumično.

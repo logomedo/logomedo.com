@@ -499,7 +499,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   }
 
   /**
-   * Koje slovo čuješ: pitanje, veliki gumb „čuj glas” i polje s razbacanim slovima (isti raspored kao na
+   * Koji glas čuješ: pitanje, veliki gumb „čuj glas” i polje s razbacanim slovima (isti raspored kao na
    * papiru za isti ključ). Pravo slovo zasvijetli, krivo se trese i glas se ponovi.
    */
   function ekranKojeSlovo(e: Extract<Ekran, { vrsta: "koje_slovo" }>) {

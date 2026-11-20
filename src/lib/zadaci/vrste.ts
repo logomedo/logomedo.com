@@ -181,7 +181,7 @@ export function uputeRazvrstavanja(r: Pick<Razvrstavanje, "pravilo" | "tema">): 
   return { ekran: `Razvrstaj slike ${t.u} ${p}.`, ispis: `Razvrstaj slike ${t.u} ${p}. Poveži svaku sliku crtom ${t.s}.` };
 }
 /**
- * Koje slovo čuješ: igra pusti snimku glasa (logopedica, `/s/`), ispod je 4–16 razbacanih slova
+ * Koji glas čuješ: igra pusti snimku glasa (logopedica, `/s/`), ispod je 4–16 razbacanih slova
  * (`ponudeno`, glas jednom), dijete dodirne slovo koje je čulo. Na papiru logoped izgovori glas,
  * dijete zaokruži slovo; ključ za logopeda je sitno na dnu stranice. Stavka = ekran = okvir na papiru.
  * `grafema` je koliko slova generator i editor slažu po stavci.
@@ -191,7 +191,7 @@ export interface StavkaSlova { glas: string | null; ponudeno: string[] }
 export interface KojeSlovo { slova: VelicinaSlova; grafema: number; stavke: StavkaSlova[]; po_glasovima?: GlasoviZadatka }
 export const KOJE_SLOVO_MAX = 12;
 export const UPUTE_KOJEG_SLOVA = {
-  ekran: "Koje slovo čuješ?",
+  ekran: "Koji glas čuješ?",
   ispis: "Poslušaj glas i zaokruži slovo koje čuješ.",
 };
 /**
@@ -310,7 +310,7 @@ export const VRSTE: Record<Vrsta, { naziv: string; opis: string; uputa: string; 
     uputa: "Razvrstaj slike u vreće prema prvom glasu. Poveži svaku sliku crtom s vrećom.", ispis: "Poveži crtom s vrećom", odnos: false,
   },
   koje_slovo: {
-    naziv: "Koje slovo čuješ?", opis: "Dijete čuje glas, a među razbacanim slovima dodirne ono koje je čulo. Na papiru glas izgovori logoped.",
+    naziv: "Koji glas čuješ?", opis: "Dijete pritisne zvučnik, čuje snimljeni glas i među razbacanim slovima dodirne slovo tog glasa. Na papiru glas izgovori logoped.",
     uputa: UPUTE_KOJEG_SLOVA.ispis, ispis: "Zaokruži slovo", odnos: false,
   },
   pozicija_glasa: {
@@ -1008,7 +1008,7 @@ export function slozRazvrstavanje(pravilo: PraviloRazvrstavanja, rijeci: RijecZa
 export const uputaPozicije = (glas: string | null) => UPUTE_POZICIJE.ispis.replace("glas {glas}", glas ? `glas ${glas}` : "glas");
 
 /**
- * Koje slovo čuješ iz abecede: n različitih glasova (po glasovima: odabrana slova redom, pa ponavljanje
+ * Koji glas čuješ iz abecede: n različitih glasova (po glasovima: odabrana slova redom, pa ponavljanje
  * ako ih je manje od n), svaki s `GRAFEMA_ZADANO` slova (`slozPonudeno`: slična slova prva).
  */
 export function slozKojeSlovo(n: number, slova: string[] | undefined, rnd: () => number = Math.random, grafema = GRAFEMA_ZADANO): KojeSlovo {

@@ -69,7 +69,7 @@ Scribe kratku riječ zna prepisati ćirilicom („дим”, „Бал”, „К
 
 ## Snimke glasova (/admin/zvukovi/snimke, 18. 11. 2026.)
 
-Zadaci „Koje slovo čuješ?” i „Gdje je glas?” trebaju **izolirani glas** („sss”, ne „es”), što ElevenLabs ne zna. Zato
+Zadaci „Koji glas čuješ?” i „Gdje je glas?” trebaju **izolirani glas** („sss”, ne „es”), što ElevenLabs ne zna. Zato
 ga snima logopedica: 30 kartica (abeceda, LJ/NJ/DŽ su jedan glas), „Snimi” → „Stani”, preslušaj, „Spremi”.
 
 - Preglednik snimku (MediaRecorder) dekodira, obreže tišinu (prag 8 % vršne glasnoće, 40 ms rezerve), izjednači na

@@ -45,7 +45,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       sadrzaj = slozi(vrsta, zaGenerator(await sveRijeci()).filter((r) => r.slika), { ...zadano, slova });
       naslov = naslovListica(slova, "", []);
     } else if (vrsta === "koje_slovo" || vrsta === "pozicija_glasa") {
-      // Koje slovo: svaki glas jedna stavka, ostali odabrani su joj ometači. Gdje je glas: jedan glas (prvi odabrani).
+      // Koji glas: svaki glas jedna stavka, ostali odabrani su joj ometači. Gdje je glas: jedan glas (prvi odabrani).
       const slova = oznake.filter((o) => ABECEDA.includes(o)).slice(0, vrsta === "pozicija_glasa" ? 1 : undefined);
       if (!slova.length) return prazno();
       const n = vrsta === "koje_slovo" ? slova.length : zadano.stavki;

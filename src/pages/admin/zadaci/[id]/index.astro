@@ -5,7 +5,8 @@ import { glasoviRijeci, nazivPodrucja, podrucja as svaPodrucja, stilovi as sviSt
 import { VRSTE } from "../../../../lib/zadaci/vrste";
 import { popis as svePozadine } from "../../../../lib/pozadine";
 import { rijeciIPozadine } from "../../../../lib/biljeznice";
-import { dodajZvukove, stanjeZvukova, tekstoviIgre } from "../../../../lib/zvukovi";
+import { dodajZvukove, odobreniZvukovi, stanjeZvukova, tekstoviIgre } from "../../../../lib/zvukovi";
+import { GLASOVI, kljucGlasa } from "../../../../lib/zadaci/slusanje";
 import { TEME } from "../../../../lib/teme";
 import { autorFiltar } from "../../../../lib/admin/vlasnistvo";
 import "../../../../lib/scena.css";
@@ -36,8 +37,13 @@ const zvukova = Astro.url.searchParams.get("zvukova");
 const [rijeci, podrucja, stilovi, pozadine] = await Promise.all([sveRijeci(z.stil), svaPodrucja(), sviStilovi(), z.vrsta === "scena" ? svePozadine() : Promise.resolve([])]);
 // Zadatak složen po glasovima: birač slika treba pojave glasova svake riječi.
 const poGlasovima = (z.sadrzaj as { po_glasovima?: unknown }).po_glasovima;
+// Slušne vrste: primarna snimka svakog glasa (/admin/zvukovi/snimke) za gumb ▶ u uredniku.
+const snimkeGlasova = z.vrsta === "koje_slovo" || z.vrsta === "pozicija_glasa"
+  ? await odobreniZvukovi(GLASOVI.map(kljucGlasa)).then((u) => Object.fromEntries(GLASOVI.flatMap((g) => u[kljucGlasa(g)] ? [[g, u[kljucGlasa(g)]]] : [])))
+  : undefined;
 const podaci = {
   zadatak: z,
+  snimkeGlasova,
   rijeci,
   glasoviRijeci: poGlasovima ? await glasoviRijeci() : undefined,
   stilovi,
@@ -157,7 +163,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .z-slog-slot { width: 120px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .z-slog-slot .z-slot { width: 100%; }
   .z-slog-slot .z-red-gumbi { margin: 0; }
-  /* Koje slovo čuješ: polje s razbacanim slovima (isti razbaci() kao igra i papir), čipovi slova. */
+  /* Koji glas čuješ: polje s razbacanim slovima (isti razbaci() kao igra i papir), čipovi slova. */
   .z-koje-slovo { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
   .z-ks-glava { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .z-slova-polje { position: relative; width: min(100%, 420px); aspect-ratio: 1.6; container-type: inline-size; background: var(--povrsina-2); border-radius: 10px; }
@@ -355,7 +361,7 @@ const json = JSON.stringify(podaci).replace(/</g, "\\u003c");
   .a4-spremnik { position: relative; width: var(--S); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .a4-spremnik .a4-tocka { position: absolute; width: 3.2mm; height: 3.2mm; top: -4.6mm; left: calc(50% - 1.6mm); }
   .a4-spremnik-crtez svg, .z-spremnik svg { display: block; width: 100%; height: auto; }
-  /* Koje slovo čuješ i Gdje je glas: isto kao PDF (model.ts rasporedKojegSlova, rasporedPozicije). */
+  /* Koji glas čuješ i Gdje je glas: isto kao PDF (model.ts rasporedKojegSlova, rasporedPozicije). */
   .a4-koje-slovo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6mm; }
   .a4-slova-okvir { position: relative; flex: none; box-sizing: border-box; border: 1.1pt solid #000; border-radius: 5mm; }
   .a4-slova-broj { position: absolute; left: 3mm; top: 1.6mm; font-size: 9pt; color: #9a907f; }

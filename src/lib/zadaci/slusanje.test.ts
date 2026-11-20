@@ -96,7 +96,7 @@ test("koje slovo: generator po glasovima, provjera, ocjena, ekrani", () => {
   assert.deepEqual(ocijeni("koje_slovo", s, [{ stavka: 0, odabrano: t }, { stavka: 1, odabrano: s.stavke[1].ponudeno.indexOf("Š") === 0 ? 1 : 0 }]), { tocnih: 1, ukupno: 3 });
   const e = ekrani([{ vrsta: "koje_slovo", uputa: null, sadrzaj: n }, { vrsta: "koje_slovo", uputa: null, sadrzaj: s }]);
   assert.equal(e.length, 3);
-  assert.equal(e[0].uputa, "Koje slovo čuješ?");
+  assert.equal(e[0].uputa, "Koji glas čuješ?");
 });
 
 test("ponuđena slova: zadani ometači (Po glasovima…) su uvijek među slovima", () => {

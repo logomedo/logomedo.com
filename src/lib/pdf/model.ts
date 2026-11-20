@@ -282,7 +282,7 @@ export function najmanjaSlika(t: TijeloPdf, W: number, H: number): number {
     return Math.min(32, (W - (po - 1) * 5) / po);
   }
   if (t.vrsta === "razvrstavanje") return rasporedRazvrstavanja(t.slike.length, t.kategorije.length, W, H).s;
-  // Koje slovo: „slika” je visina okvira sa slovima (slova rastu s njom).
+  // Koji glas: „slika” je visina okvira sa slovima (slova rastu s njom).
   if (t.vrsta === "koje_slovo") return rasporedKojegSlova(t.okviri.length, W, H).h;
   if (t.vrsta === "pozicija_glasa") return rasporedPozicije(t.slike.length, t.stupaca, W, H).s;
   if (t.vrsta === "slogovi") {
@@ -311,7 +311,7 @@ export function rasporedRazvrstavanja(n: number, kategorija: number, W: number, 
 export const KOJE_SLOVO_VISINA = 46;
 
 /**
- * Koje slovo na papiru (mm), isto za PDF, pregled Ispisa i ispis bilježnice: okviri cijele širine `W`
+ * Koji glas na papiru (mm), isto za PDF, pregled Ispisa i ispis bilježnice: okviri cijele širine `W`
  * jedan ispod drugoga (razmak `g`), visina `h` do 62; na dnu pojas `kljuc` za „Za logopeda: 1. S · 2. Š”.
  */
 export function rasporedKojegSlova(n: number, W: number, H: number) {

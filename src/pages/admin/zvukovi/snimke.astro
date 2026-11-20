@@ -2,7 +2,7 @@
 // Snimke glasova (docs/zvukovi.md „Snimke glasova”): logopedica snimi svaki glas mikrofonom (S kao
 // „sss”, ne „es”). Preglednik snimku obreže (tišina), izjednači glasnoću i pretvori u WAV, pa je
 // pošalje ovdje; snimka je odmah odobrena i javna (ključ `/s/` u tablici zvukovi), a igra je pušta u
-// zadacima „Koje slovo čuješ?” i „Gdje je glas?”. ElevenLabs glasove ne generira.
+// zadacima „Koji glas čuješ?” i „Gdje je glas?”. ElevenLabs glasove ne generira.
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import { kad } from "../../../lib/katalog";
@@ -46,7 +46,7 @@ const samoglasnici = new Set(["A", "E", "I", "O", "U"]);
       <p class="podnaslov">
         Snimi svaki glas onako kako ga dijete treba čuti: <b>„sss”</b>, ne „es”; <b>„mmm”</b>, ne „em”. Zaporni glasovi (B, P, D, T, K, G)
         kratko i bez „ə” na kraju. Snimka se sama obreže i izjednači. Glas može imati više varijanti (npr. kratko i produljeno);
-        igre „Koje slovo čuješ?” i „Gdje je glas?” puštaju onu sa <b>★</b> (primarnu).
+        igre „Koji glas čuješ?” i „Gdje je glas?” puštaju onu sa <b>★</b> (primarnu).
       </p>
     </div>
     <p class="brojac"><b>{poGlasu.size}</b> / {GLASOVI.length} snimljeno</p>

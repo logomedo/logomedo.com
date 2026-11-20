@@ -34,6 +34,8 @@ export interface Podaci {
   stilovi: { kod: string; naziv: string }[];
   /** Samo za vrstu `scena`: sve pozadine za izbor. */
   pozadine?: PozadinaPrikaz[];
+  /** Samo za slušne vrste: glas → URL primarne snimke (/admin/zvukovi/snimke). */
+  snimkeGlasova?: Record<string, string>;
 }
 
 type Dijete = Node | string | null | undefined | false;
@@ -58,6 +60,17 @@ function zamijeni(e: unknown, ...d: Dijete[]) { (e as any).replaceChildren(...ci
 const VELIKO = (s: string) => s.toLocaleUpperCase("hr");
 
 export function pokreni(korijen: HTMLElement, p: Podaci) {
+  // ▶ uz glas u slušnim vrstama: pusti istu snimku koju pušta igra (primarnu).
+  const svirac = new Audio();
+  const cujGlas = (g: string | null) => {
+    const url = g ? p.snimkeGlasova?.[g] : undefined;
+    return h("button", {
+      type: "button", class: "gumb mali z-cuj-glas", disabled: !url,
+      title: !g ? "Odaberi glas" : url ? `Poslušaj glas ${g}` : `Glas ${g} nije snimljen (Izgovor → Snimke glasova)`,
+      "aria-label": g ? `Poslušaj glas ${g}` : "Poslušaj glas",
+      onclick: () => { if (url) { svirac.src = url; void svirac.play(); } },
+    }, "▶ Poslušaj");
+  };
   const z = p.zadatak;
   const vrsta = z.vrsta;
   // Uz svaku riječ i njezina napisana inačica (-id), napisano.ts.
@@ -597,12 +610,13 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
           h("button", { type: "button", class: "gumb mali tihi", disabled: s.grafema <= GRAFEMA_MIN, onclick: () => { s.grafema--; s.stavke.forEach(novaSlova); oznaci(); osvjezi(); } }, "−"),
           h("span", {}, `${s.grafema} slova`),
           h("button", { type: "button", class: "gumb mali tihi", disabled: s.grafema >= GRAFEMA_MAX, onclick: () => { s.grafema++; s.stavke.forEach(novaSlova); oznaci(); osvjezi(); } }, "+")),
-        h("p", { class: "sitno blijedo" }, "Igra pusti snimku glasa (Izgovor → Snimke glasova). Glas bez snimke igra ne može pustiti. Na papiru glas izgovori logoped; ključ je sitno na dnu stranice.")),
+        h("p", { class: "sitno blijedo" }, "Dijete u igri pritisne zvučnik i čuje snimku glasa (Izgovor → Snimke glasova, ★ primarna); ▶ ovdje pušta istu. Na papiru glas izgovori logoped; ključ je sitno na dnu stranice.")),
       ...s.stavke.map((st, i) => h("div", { class: "ploha z-koje-slovo" },
         h("div", { class: "z-ks-glava" }, h("span", { class: "z-red-broj" }, String(i + 1)),
           h("label", { class: "z-krug-slovo" }, "Glas ",
             h("select", { class: st.glas ? "" : "neispravno", onchange: (e: Event) => { glasStavke(st, (e.target as HTMLSelectElement).value || null); oznaci(); osvjezi(); } },
               h("option", { value: "" }, "—"), ...ABECEDA.map((sl) => h("option", { value: sl, selected: sl === st.glas }, sl)))),
+          cujGlas(st.glas),
           h("button", { type: "button", class: "gumb mali tihi", disabled: !st.glas, title: "Druga slova oko glasa", onclick: () => { novaSlova(st); oznaci(); osvjezi(); } }, "Nova slova"),
           redGumbi(s.stavke, i)),
         poljeSlova(st, i, s.slova),
@@ -636,7 +650,8 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
         h("div", { class: "z-dio-glava" }, h("b", {}, "Glas")),
         h("label", { class: "z-krug-slovo" }, "Gdje je glas ",
           h("select", { class: s.glas ? "" : "neispravno", onchange: (e: Event) => promijeniGlas((e.target as HTMLSelectElement).value || null) },
-            h("option", { value: "" }, "—"), ...ABECEDA.map((sl) => h("option", { value: sl, selected: sl === s.glas }, `${sl} (${brojRijeci(sl)})`)))),
+            h("option", { value: "" }, "—"), ...ABECEDA.map((sl) => h("option", { value: sl, selected: sl === s.glas }, `${sl} (${brojRijeci(sl)})`))),
+          " ", cujGlas(s.glas)),
         h("p", { class: "sitno blijedo" }, "U zagradi je broj riječi sa slikom koje imaju glas točno jednom. Riječ s glasom dvaput (LULA za L) nije jednoznačna. Igra pusti uputu, snimku glasa i riječ.")),
       h("div", { class: "ploha z-slogovi-slike" }, ...s.slike.map((x, i) => h("div", { class: "z-slog-slot" },
         slot(x.rijec_id, (n) => { x.rijec_id = n; const q = poRijeci(n); if (q !== null) x.pozicija = q; }),
