@@ -71,3 +71,8 @@ Zamke:
 - `npm test` padne na `d1.test.ts` kad paralelna sesija ima necommitanu migraciju; to nije landing.
 - **Produkcija i staging usklađeni:** deploy oba iz `git worktree add --detach <scratchpad>/wt origin/main` (symlink
   `node_modules`), jer `npm run deploy:staging` iz radne kopije pokupi i necommitani rad paralelne sesije.
+- **Publika je opća (odluka 812, Anita):** nigdje „za logopede”; korisnik je „korisnik s računom” ili „vi”. Title naslovne
+  je doslovno „LogoMedo — pametan alat za izradu dječjih radnih materijala i igara” (67 znakova; test dopušta title do 70).
+- **Pregled linka na Facebooku:** https://developers.facebook.com/tools/debug/?q=https%3A%2F%2Flogomedo.com%2F → „Scrape Again”
+  (radi tek nakon deploya na produkciju; staging Facebook ne vidi).
+- Stanje 20. 11. kasno: odluke 802–812 na produkciji `1606eff5` i stagingu `5240e405` (commit `08bec92`), provjera 207/0.
