@@ -2,6 +2,7 @@
 // Naslovna landinga (docs/landing/sadrzaj.md 3.1, N-1…N-6). Prerenderirano (landing odluka 1).
 import Okvir from "../landing/Okvir.astro";
 import Hero from "../landing/naslovna/Hero.astro";
+import ZaKoga from "../landing/naslovna/ZaKoga.astro";
 import Stupovi from "../landing/naslovna/Stupovi.astro";
 import KakoRadi from "../landing/naslovna/KakoRadi.astro";
 import Glasovi from "../landing/naslovna/Glasovi.astro";
@@ -12,6 +13,7 @@ export const prerender = true;
 ---
 <Okvir putanja="/">
   <Hero />
+  <ZaKoga />
   <Stupovi />
   <KakoRadi />
   <Glasovi />

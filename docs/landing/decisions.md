@@ -404,3 +404,7 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      Astro mali skript ugradi inline, a CSP landinga nema nonce (odluka 13). Bez JS-a vidi se prva slika, kao prije;
      N-4 i OG ostaju na prvoj.
 803. **Bez žabe u heru** (korisnik, 20. 11. 2026.): Ž ima žirafu, žarulju i žir; žaba i žele ne idu na landing.
+804. **Novi uvod naslovne** (korisnik, 20. 11. 2026.): ispod h1 hera podnaslov „LogoMedo — pametan alat za izradu dječjih
+     radnih materijala i igara” i kraći uvod („Sve što trebate…”); nova sekcija „Za sve koji rade s djecom”
+     (`naslovna/ZaKoga.astro`) odmah ispod hera s proširenom verzijom. Ciljna skupina više nisu samo logopedi. Tekst je
+     korisnikov; `sadrzaj.md` 3.1 za N-1 je od sada povijest.

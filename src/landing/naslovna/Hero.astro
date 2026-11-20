@@ -10,8 +10,9 @@ import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
     <div class="tekst">
       <p class="oznaka">Probno razdoblje · samo uz pozivnicu</p>
       <h1 class="landing-h1" id="naslov">Slike za svaki glas. <em>Listić za tren.</em></h1>
-      <p class="uvodni">LogoMedo je radni alat za logopede: katalog slika po glasovima i pozicijama, radni listići koje ispišete u
-        jednom kliku i igre koje dijete rješava na tabletu.</p>
+      <p class="podnaslov">LogoMedo — pametan alat za izradu dječjih radnih materijala i igara</p>
+      <p class="uvodni">Sve što trebate za rad i učenje s djecom, na jednom mjestu. Odaberite slike, stvorite radni listić za ispis
+        ili pokrenite igru na tabletu — u samo nekoliko klikova.</p>
       <Cta gumbi={["prijava", "pristup"]} />
       <p class="sitno">Za prijavu vam treba pozivnica. Nemate je? <a href={PRISTUP}>Zatražite pristup.</a></p>
     </div>
@@ -36,6 +37,7 @@ import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
   .tekst { display: flex; flex-direction: column; gap: 22px; align-items: flex-start; }
   .oznaka { margin: 0; display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--med-blago); color: var(--med-tamno);
     font-size: .85rem; font-weight: 600; }
+  .podnaslov { margin: 0 0 -10px; font-size: 1.2rem; font-weight: 600; color: var(--tinta); line-height: 1.4; }
   .slike { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .slike .kartica:nth-child(2), .slike .kartica:nth-child(4) { transform: translateY(18px); }
   /* Slike su jedna na drugoj (ista ćelija mreže); vidi se samo .aktivna. */
