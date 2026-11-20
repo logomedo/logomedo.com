@@ -422,3 +422,9 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      varijante u `H1_VARIJANTE` (807 i tri prijedloga), `public/landing/naslov.js` odmah iza h1 (sinkrono, bez bljeska)
      nasumično bira jednu, različitu od prošle (localStorage `logomedo-naslov`). `/?naslov=N` pokaže N-tu. HTML, OG i
      tražilice ostaju na prvoj. Kad korisnik odabere, ostaje jedna i skripta se briše.
+809. **„Kako nastaje radni listić” u četiri koraka, odmah ispod hera** (korisnik, 20. 11. 2026.): da logoped odmah vidi
+     da je LogoMedo alat za izradu, a ne baza PDF-ova. Kartice: vrsta zadatka → slike i raspored → okvir i PDF → isti zadaci
+     kao igra (bilježnica, link, bez prijave); svaka vodi na podstranicu. Zamjenjuje stari N-3 (tri koraka u popisu, niže
+     na stranici). Tekst je s korisnikove skice, prilagođen na „vi” i na inventuru: „božićni ukrasi” su „zimski”, igra
+     ide kroz bilježnicu i link (ne „jednim klikom”), filtar po broju slogova se ne spominje. Veliki prikaz sučelja ispod
+     koraka (skica) čeka novu snimku.
