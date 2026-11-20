@@ -413,3 +413,6 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      Z zebra, Č čokolada, Š šešir, K kornjača, Đ đumbirko, DŽ džip, G gitara, M mačka, B balon, P pas, V vlak, F foka,
      T traktor, D delfin, N naranča, J jabuka, LJ ljuljačka, NJ njuška, Ć ćuk, H helikopter, A ananas, E eskim, I iglu,
      O ovca, U uho. `landing-ilustracije.sh` prima i JPEG (balon je u katalogu JPEG pod .png).
+806. **Smireniji h1 naslovne** (korisnik, 20. 11. 2026.: „Slike za svaki glas. Listić za tren.” je preteatralno; treba biti
+     jasno djeci, roditeljima i logopedima što je aplikacija): h1 je „Slike, listići i igre za vježbu s djecom”, bez
+     kurziva. Isto u OG slici (`scripts/landing-og.sh`, ponovno snimljena) i `OG.alt`. Kurziv Fraunces se više ne učitava.

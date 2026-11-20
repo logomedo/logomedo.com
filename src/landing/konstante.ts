@@ -133,7 +133,7 @@ export const OG = {
   slika: `${SITE}/landing/og.png`,
   sirina: 1200,
   visina: 630,
-  alt: "LogoMedo: slike za svaki glas, listić za tren.",
+  alt: "LogoMedo: slike, listići i igre za vježbu s djecom.",
 } as const;
 
 /**
