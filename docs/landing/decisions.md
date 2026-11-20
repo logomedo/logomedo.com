@@ -418,3 +418,7 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      kurziva. Isto u OG slici (`scripts/landing-og.sh`, ponovno snimljena) i `OG.alt`. Kurziv Fraunces se više ne učitava.
 807. **H1 odraslim jezikom, s kurzivom u boji** (korisnik: 806 zvuči djetinjasto i preobično): „Radni listići i igre za
      djecu, *pripremljeni za nekoliko minuta*”; drugi dio kurzivom u `--med-tamno` kao izvorni h1. Isto u OG slici i `OG.alt`.
+808. **H1 se izmjenjuje na osvježavanje** (korisnik, 20. 11. 2026.: da kroz vrijeme vidi koja je najljepša): četiri
+     varijante u `H1_VARIJANTE` (807 i tri prijedloga), `public/landing/naslov.js` odmah iza h1 (sinkrono, bez bljeska)
+     nasumično bira jednu, različitu od prošle (localStorage `logomedo-naslov`). `/?naslov=N` pokaže N-tu. HTML, OG i
+     tražilice ostaju na prvoj. Kad korisnik odabere, ostaje jedna i skripta se briše.

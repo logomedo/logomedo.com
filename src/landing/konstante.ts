@@ -183,6 +183,18 @@ export const SLIKE_GLASOVA: Record<string, string> = {
   "U": "uho",
 };
 
+/**
+ * H1 naslovne (odluka 808): varijante koje se izmjenjuju na svako osvježavanje (public/landing/naslov.js), dok korisnik
+ * ne odabere jednu. `drugi` je kurzivom u boji. Prva je u HTML-u (bez JS-a, tražilice), u OG slici i `OG.alt`.
+ * Za usporedbu: `/?naslov=N` (1…) pokaže točno N-tu.
+ */
+export const H1_VARIJANTE = [
+  { prvi: "Radni listići i igre za djecu,", drugi: "pripremljeni za nekoliko minuta" },
+  { prvi: "Radni materijali za djecu,", drugi: "od slike do listića u nekoliko klikova" },
+  { prvi: "Katalog slika, radni listići i igre,", drugi: "na jednom mjestu" },
+  { prvi: "Radni listići i igre za razvoj govora", drugi: "i rano učenje" },
+] as const;
+
 /** Redoslijed glasova iz kataloga (N-4): 25 suglasnika, pa 5 samoglasnika. */
 export const SUGLASNICI = ["C", "S", "Z", "Č", "Š", "Ž", "L", "R", "K", "Đ", "DŽ", "G", "M", "B", "P", "V", "F", "T", "D", "N", "J", "LJ", "NJ", "Ć", "H"];
 export const SAMOGLASNICI = ["A", "E", "I", "O", "U"];

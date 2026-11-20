@@ -3,13 +3,14 @@
 // Odluka 802: u svakoj kartici su slike istog slova jedna na drugoj; /landing/hero.js ih izmjenjuje na prelazak mišem,
 // na dodir i polako sama (ne uz prefers-reduced-motion). Bez JS-a vidi se samo prva.
 import Cta from "../Cta.astro";
-import { ALT_V1, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
+import { ALT_V1, H1_VARIJANTE, ILUSTRACIJE_V1, PRISTUP } from "../konstante";
 ---
 <section class="sekcija hero" aria-labelledby="naslov">
   <div class="omot mreza">
     <div class="tekst">
       <p class="oznaka">Probno razdoblje · samo uz pozivnicu</p>
-      <h1 class="landing-h1" id="naslov">Radni listići i igre za djecu, <em>pripremljeni za nekoliko minuta</em></h1>
+      <h1 class="landing-h1" id="naslov" data-varijante={JSON.stringify(H1_VARIJANTE)}>{H1_VARIJANTE[0].prvi} <em>{H1_VARIJANTE[0].drugi}</em></h1>
+      <script src="/landing/naslov.js" type="text/javascript"></script>
       <p class="podnaslov">LogoMedo — pametan alat za izradu dječjih radnih materijala i igara</p>
       <p class="uvodni">Sve što trebate za rad i učenje s djecom, na jednom mjestu. Odaberite slike, stvorite radni listić za ispis
         ili pokrenite igru na tabletu — u samo nekoliko klikova.</p>
