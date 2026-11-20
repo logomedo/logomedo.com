@@ -51,7 +51,8 @@ samo povijest, odluka 800).
 
 ## Iteracije 20. 11. 2026. (odluke 802–808, samo staging)
 
-Na stagingu, **ne na produkciji** (produkcija ide tek na korisnikov „go”): hero izmjenjuje slike istog slova (802, 803),
+Na produkciji od 20. 11. navečer (produkcija `5b6522aa`, staging `8a3e3df9`, oba iz čistog worktreea na `0f71992`,
+`landing-provjera.sh` 207/0 na oba; odluka 809 „Kako nastaje radni listić” u četiri kartice ispod hera je također tu): hero izmjenjuje slike istog slova (802, 803),
 novi podnaslov i uvod + sekcija „Za sve koji rade s djecom” (`naslovna/ZaKoga.astro`, 804), 30 slova u N-4 su gumbi
 sa slikom (805), h1 se nasumično mijenja na osvježavanje između četiri varijante (`H1_VARIJANTE`, `/?naslov=N`, 808).
 Tijek po izmjeni: test + check → `npm run deploy:staging` → commit poimence → push.
@@ -68,3 +69,5 @@ Zamke:
 - **Slike iz kataloga:** `scripts/landing-ilustracije.sh <novi-radni-dir> <ime…>`; ključeve daje D1 upit nad `slike`
   (status `odobrena`, stil `ilustracija`). Neki su JPEG pod `.png` (balon); skripta prima oba.
 - `npm test` padne na `d1.test.ts` kad paralelna sesija ima necommitanu migraciju; to nije landing.
+- **Produkcija i staging usklađeni:** deploy oba iz `git worktree add --detach <scratchpad>/wt origin/main` (symlink
+  `node_modules`), jer `npm run deploy:staging` iz radne kopije pokupi i necommitani rad paralelne sesije.
