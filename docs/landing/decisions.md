@@ -428,3 +428,6 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      na stranici). Tekst je s korisnikove skice, prilagođen na „vi” i na inventuru: „božićni ukrasi” su „zimski”, igra
      ide kroz bilježnicu i link (ne „jednim klikom”), filtar po broju slogova se ne spominje. Veliki prikaz sučelja ispod
      koraka (skica) čeka novu snimku.
+810. **SEO naslovne za širu publiku** (Anitin feedback, 20. 11. 2026., kao 804): title (i og:title) „LogoMedo · pametan
+     alat za dječje radne materijale i igre”, description (i og:description) „Sve što trebate za rad i učenje s djecom, na
+     jednom mjestu: …”. Prije: „…za logopede”. Podstranice ostaju; `/pristup` i dalje kaže „privatna beta za logopede”.

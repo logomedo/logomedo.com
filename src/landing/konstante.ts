@@ -67,8 +67,8 @@ export interface Stranica {
 export const STRANICE: Stranica[] = [
   {
     putanja: "/",
-    naslov: "LogoMedo · slike i radni listići za logopede",
-    opis: "Katalog slika po glasovima i pozicijama, radni listići za ispis i igre za dijete na tabletu. LogoMedo je alat za logopede.",
+    naslov: "LogoMedo · pametan alat za dječje radne materijale i igre",
+    opis: "Sve što trebate za rad i učenje s djecom, na jednom mjestu: slike po glasovima, radni listići za ispis i igre na tabletu, u nekoliko klikova.",
   },
   {
     putanja: "/katalog",
