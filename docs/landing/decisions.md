@@ -434,3 +434,8 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
 811. **Title naslovne doslovno** (korisnik): „LogoMedo — pametan alat za izradu dječjih radnih materijala i igara”
      (67 znakova), kao podnaslov hera; skraćena inačica iz 810 odbijena. Test dopušta title do 70 (Google prikaže ~60, kraj
      može biti odrezan; Facebook/WhatsApp ga prikažu cijelog).
+812. **Nigdje „za logopede”** (Anitin glavni feedback, 20. 11. 2026.: „Zakaj opet piše za logopede? Ja sam to mijenjala da
+     piše da je za sve”): korisnik je općenito „korisnik (s računom)” ili „vi” u podnožju, opisima, /pristup, /privatnost,
+     /uvjeti, /igre, /katalog i 404. Ostaju činjenice: alat je osmišljen s logopedima, logoped pregledava slike i potvrđuje
+     glasove, popis zanimanja u „Za sve koji rade s djecom”, povijest starog appa. Novi tekst nikad ne smije suziti publiku
+     na logopede.

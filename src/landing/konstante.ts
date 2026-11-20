@@ -97,14 +97,14 @@ export const STRANICE: Stranica[] = [
   {
     putanja: "/pristup",
     naslov: "Zatraži pristup · LogoMedo",
-    opis: "LogoMedo je u privatnoj beti za logopede. Pošaljite zahtjev s imenom, e-mailom i ustanovom, a pozivnicu za prijavu šaljemo osobno.",
+    opis: "LogoMedo je zasad u privatnoj beti. Pošaljite zahtjev s imenom, e-mailom i ustanovom, a pozivnicu za prijavu šaljemo osobno.",
     izbornik: "Zatraži pristup",
     ssr: true,
   },
   {
     putanja: "/privatnost",
     naslov: "Privatnost · LogoMedo",
-    opis: "Stranice LogoMeda ne koriste kolačiće ni praćenje. Što se sprema za logopede i zašto se o djetetu ne sprema ništa.",
+    opis: "Stranice LogoMeda ne koriste kolačiće ni praćenje. Što se sprema za korisnike s računom i zašto se o djetetu ne sprema ništa.",
     izbornik: "Privatnost",
   },
   {

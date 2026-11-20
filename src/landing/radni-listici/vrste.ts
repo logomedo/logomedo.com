@@ -24,7 +24,7 @@ export const VRSTE_ZADATAKA: VrstaZadatka[] = [
     naslov: "Razvrstavanje",
     tekst: "4 do 12 slika u dvije do četiri vreće, košare ili kutije: po prvom ili zadnjem glasu, broju slogova ili broju glasova.",
   },
-  { naslov: "Koje slovo čuješ?", tekst: "Logoped izgovori glas, a dijete na listiću pronađe slovo koje je čulo.", uskoroUIgri: true },
+  { naslov: "Koje slovo čuješ?", tekst: "Vi izgovorite glas, a dijete na listiću pronađe slovo koje je čulo.", uskoroUIgri: true },
   {
     naslov: "Gdje je glas?",
     tekst: "Ispod slike tri kruga: dijete označi je li glas na početku, u sredini ili na kraju.",
