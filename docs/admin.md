@@ -127,3 +127,11 @@ Gumb `.sklopi` uz logo ili tipka `[` sklapa traku na 68 px (samo ikone; naziv u 
 crtanja da ne trepne. U uskoj traci tražilica je gumb (ikona `trazi`) koji proširi traku i fokusira polje; `/` isto.
 Na ≤ 860 px (mobitel, vodoravna traka) sklapanja nema. Oznaka „admin” uz logo je iz trake maknuta jer s gumbom ne stane
 u 236 px; uloga piše dolje uz e-mail.
+
+**Ladica na mobitelu bez `vw` (21. 11. 2026.):** na Xiaomi 17 Ultra (Chrome, Android) ladica je ponekad ostala široka samo
+koliko padding (~28 px), a logo, ✕ i tražilica ispadali su van nje; na screenshotu je bila otvorena tipkovnica (ladica
+otvorena povećalom). Širina je bila `min(300px, 86vw)`, a sve upućuje na to da je `86vw` u tom trenutku izračunat kao ~0
+(tipkovnica / tab vraćen iz pozadine). Bug nije reproduciran, uzrok je zaključen iz slike. Sada: `width: 300px;
+min-width: 260px; max-width: calc(100% - 48px)` (min-width pobjeđuje), fokus tražilice s `preventScroll`, a
+`scrollIntoView` aktivne stavke s `inline: "nearest"`. Ako se vrati, sljedeće je sumnjivo `height: 100dvh` i tranzicija
+`transform` + `visibility`.
