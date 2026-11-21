@@ -245,12 +245,12 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
         const h = document.documentElement;
         if (otvori) h.dataset.izbornik = "otvoren"; else delete h.dataset.izbornik;
         hamburger?.setAttribute("aria-expanded", String(otvori));
-        if (otvori) document.querySelector<HTMLElement>(".traka .stavka.aktivno")?.scrollIntoView({ block: "center" });
+        if (otvori) document.querySelector<HTMLElement>(".traka .stavka.aktivno")?.scrollIntoView({ block: "center", inline: "nearest" });
       }
       hamburger?.addEventListener("click", () => ladica(true));
       document.querySelector(".zastor")?.addEventListener("click", () => ladica(false));
       document.querySelector(".zatvori")?.addEventListener("click", () => ladica(false));
-      document.querySelector(".mob-trazi")?.addEventListener("click", () => { ladica(true); document.querySelector<HTMLInputElement>("#trazi")?.focus(); });
+      document.querySelector(".mob-trazi")?.addEventListener("click", () => { ladica(true); document.querySelector<HTMLInputElement>("#trazi")?.focus({ preventScroll: true }); });
       document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.documentElement.dataset.izbornik) ladica(false); });
       matchMedia("(min-width: 861px)").addEventListener("change", (e) => { if (e.matches) ladica(false); });
       addEventListener("pageshow", () => ladica(false));
@@ -358,7 +358,10 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
         .hamburger-tocka { position: absolute; top: 8px; right: 7px; width: 8px; height: 8px; border-radius: 999px; background: var(--med); }
         .sklopi, .trazi-gumb { display: none !important; }
         .traka .zatvori { display: inline-grid; flex: none; }
-        .traka { position: fixed; z-index: 40; top: 0; left: 0; bottom: 0; height: 100dvh; width: min(300px, 86vw); gap: 18px;
+        .traka { position: fixed; z-index: 40; top: 0; left: 0; bottom: 0; height: 100dvh; gap: 18px;
+          /* Bez vw: Chrome na Androidu zna izračunati 86vw kao ~0 (otvaranje tipkovnice, tab vraćen iz pozadine) pa ostane traka
+             široka samo koliko padding. Fiksna širina s donjom granicom. */
+          width: 300px; min-width: 260px; max-width: calc(100% - 48px); box-sizing: border-box;
           padding: max(16px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
           transform: translateX(-102%); transition: transform .22s ease, visibility 0s .22s; box-shadow: var(--sjena-2); visibility: hidden; }
         html[data-izbornik=otvoren] .traka { transform: none; visibility: visible; transition-delay: 0s; }
