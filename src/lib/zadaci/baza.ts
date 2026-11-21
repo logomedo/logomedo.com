@@ -49,9 +49,9 @@ export async function korisnikId(email: string): Promise<number> {
   return r!.id;
 }
 
-const SQL_RIJECI = `SELECT r.id, r.rijec, r.rima AS rima_rucno, r.vrsta FROM rijeci r`;
+const SQL_RIJECI = `SELECT r.id, r.rijec, r.rima AS rima_rucno, r.vrsta, (SELECT i.grupa FROM istoznacnice i WHERE i.rijec_id = r.id) AS grupa FROM rijeci r`;
 
-type RijecRedak = { id: number; rijec: string; rima_rucno: string | null; vrsta: "rijec" | "znak" };
+type RijecRedak = { id: number; rijec: string; rima_rucno: string | null; vrsta: "rijec" | "znak"; grupa: number | null };
 
 /** Stilovi za izbor u editoru zadatka. */
 export async function stilovi(): Promise<{ kod: string; naziv: string }[]> {
@@ -80,7 +80,7 @@ async function sRijecima(rijeci: RijecRedak[], stil: string): Promise<RijecZadat
     if (r.vrsta === "znak") return { id: r.id, rijec: r.rijec, rima: null, slogova: 0, slika: null, znak: true };
     return {
       id: r.id, rijec: r.rijec, rima: r.rima_rucno ?? izvediRimu(r.rijec), slogova: brojSlogova(r.rijec),
-      slika: slikaUStilu(m, stil), slike: m,
+      slika: slikaUStilu(m, stil), slike: m, ...(r.grupa != null ? { grupa: r.grupa } : {}),
     };
   });
 }
@@ -183,15 +183,15 @@ export async function obrisani(autor: AutorFiltar): Promise<ObrisaniRed[]> {
 export async function zaListic(): Promise<{ glasovi: { id: number; oznaka: string }[]; rijeci: RijecGlasova[] }> {
   const [g, r] = await DB().batch([
     DB().prepare("SELECT id, oznaka FROM glasovi ORDER BY redoslijed"),
-    DB().prepare(`SELECT r.id, r.rijec, r.rima AS rima_rucno, (SELECT json_group_array(json_array(rg.glas_id, rg.pozicija)) FROM rijec_glas rg WHERE rg.rijec_id = r.id) AS g
+    DB().prepare(`SELECT r.id, r.rijec, r.rima AS rima_rucno, (SELECT i.grupa FROM istoznacnice i WHERE i.rijec_id = r.id) AS grupa, (SELECT json_group_array(json_array(rg.glas_id, rg.pozicija)) FROM rijec_glas rg WHERE rg.rijec_id = r.id) AS g
       FROM rijeci r WHERE r.aktivna = 1 AND r.vrsta = 'rijec'
         AND EXISTS (SELECT 1 FROM slike s WHERE s.rijec_id = r.id AND s.status IN ('odobrena', 'kandidat'))
       ORDER BY r.rijec COLLATE NOCASE`),
   ]);
   return {
     glasovi: g.results as { id: number; oznaka: string }[],
-    rijeci: (r.results as { id: number; rijec: string; rima_rucno: string | null; g: string }[])
-      .map((x) => ({ id: x.id, rijec: x.rijec, rima: x.rima_rucno ?? izvediRimu(x.rijec), g: JSON.parse(x.g) })),
+    rijeci: (r.results as { id: number; rijec: string; rima_rucno: string | null; grupa: number | null; g: string }[])
+      .map((x) => ({ id: x.id, rijec: x.rijec, rima: x.rima_rucno ?? izvediRimu(x.rijec), grupa: x.grupa, g: JSON.parse(x.g) })),
   };
 }
 

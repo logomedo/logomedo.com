@@ -4,6 +4,7 @@
 //
 // Čisti TS: koriste ga API (provjera ulaza), editor i prikaz u pregledniku te testovi.
 
+import { jednaPoGrupi } from "../istoznacnice-cisto.ts";
 import { brojGlasova, brojSlogova } from "./rima.ts";
 import { jeOdnos, kljuc, ODNOSI, poCiljevima, uOdnosu, type Odnos } from "./odnosi.ts";
 import { fonemi } from "../fonemi.ts";
@@ -257,7 +258,9 @@ const istoPolje = (a: Polje, b: Polje) => a.rijec_id === b.rijec_id && a.izmjena
 /** Najbolja slika riječi po kodu stila; `ok` = odobrena (inače kandidat). */
 export type SlikeRijeci = Record<string, { src: string; ok: boolean }>;
 /** `znak`: slovo, brojka ili simbol iz kataloga znakova (src/lib/znakovi.ts); prikazuje se kao upisani znak, bez slike. */
-export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null; slike?: SlikeRijeci; znak?: boolean }
+export interface RijecZadatka { id: number; rijec: string; rima: string | null; slogova: number; slika: string | null; slike?: SlikeRijeci; znak?: boolean;
+  /** Grupa istoznačnica (KREVET, POSTELJA): generator iz grupe uzima najviše jednu riječ. */
+  grupa?: number | null }
 /** Riječi za generatore zadataka: znakovi se biraju samo ručno. */
 export const zaGenerator = <T extends { znak?: boolean }>(r: T[]) => r.filter((x) => !x.znak);
 /**
@@ -823,7 +826,9 @@ function promijesaj<T>(a: T[], rnd: () => number): T[] {
   return b;
 }
 
-export function slozi(v: Vrsta, rijeci: RijecZadatka[], p: Postavke, rnd: () => number = Math.random): Sadrzaj {
+export function slozi(v: Vrsta, sveRijeci: RijecZadatka[], p: Postavke, rnd: () => number = Math.random): Sadrzaj {
+  // Istoznačnice: iz grupe jedna riječ, prednost ona s traženim glasom (KREVET ili POSTELJA, ne obje).
+  const rijeci = jednaPoGrupi(sveRijeci, rnd, (r) => !!p.cilj?.(r) || !!p.ciljevi?.some((c) => c(r)));
   const odnos: Odnos = jeOdnos(p.nacin) ? p.nacin : "rima";
   const K = (r: RijecZadatka) => kljuc(odnos, r);
   // Riječ i slika: riječ mora imati sliku, a skupina je ista riječ dvaput (napisana i slika, napisano.ts).

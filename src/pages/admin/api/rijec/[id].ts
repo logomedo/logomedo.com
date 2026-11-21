@@ -4,6 +4,7 @@ import { safeNext } from "../../../../lib/admin/sesija";
 import { novaGrupa, sZapisom } from "../../../../lib/aktivnost";
 import { obrisiRijec, preimenuj } from "../../../../lib/generiranje";
 import { dodajNepozeljnu } from "../../../../lib/nepozeljne";
+import { odvezi, povezi } from "../../../../lib/istoznacnice";
 
 /** Opis za sliku, primjer rečenice i ručna rima; potvrda izvedene pozicije; novi naziv (i spajanje s postojećom). */
 export const POST: APIRoute = async ({ request, params, locals }) => {
@@ -33,6 +34,19 @@ export const POST: APIRoute = async ({ request, params, locals }) => {
         ? na(stara, { spoji: x.postoji.rijec, spoji_slika: String(x.postoji.slika) })
         : na(stara, { greska_naziva: x.greska ?? "Nije spremljeno." });
     return new Response(null, { status: 303, headers: { location: kamo } });
+  }
+  if (akcija === "istoznacnica") {
+    // Istoznačnica (KREVET ↔ POSTELJA): naziv postojeće riječi; spaja grupe ako ih obje imaju.
+    const naziv = String(f.get("naziv") ?? "").trim().toLocaleLowerCase("hr");
+    const druga = await env.DB.prepare("SELECT id FROM rijeci WHERE rijec = ? AND aktivna = 1 AND vrsta = 'rijec'").bind(naziv).first<{ id: number }>();
+    const next = safeNext(String(f.get("next") ?? ""));
+    if (!druga) return new Response(null, { status: 303, headers: { location: `${next}${next.includes("?") ? "&" : "?"}${new URLSearchParams({ greska_istoznacnice: naziv })}` } });
+    await povezi(id, druga.id, locals.admin!.email);
+    return new Response(null, { status: 303, headers: { location: next } });
+  }
+  if (akcija === "odvezi") {
+    await odvezi(Number(f.get("rijec")) || id);
+    return new Response(null, { status: 303, headers: { location: safeNext(String(f.get("next") ?? "")) } });
   }
   if (akcija === "potvrdi") {
     await env.DB.batch(sZapisom(zapis("rijec.glas_potvrden"), id, [env.DB.prepare(

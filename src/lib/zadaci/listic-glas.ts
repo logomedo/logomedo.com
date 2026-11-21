@@ -7,7 +7,7 @@ import { kljuc, poCiljevima, type Odnos } from "./odnosi.ts";
 import { MAX_PAROVA, MAX_REDOVA } from "./vrste.ts";
 
 /** Riječ sa slikom i pojavama glasova iz kataloga (`rijec_glas`: id glasa, pozicija). */
-export interface RijecGlasova { id: number; rijec: string; rima?: string | null; g: [number, string][] }
+export interface RijecGlasova { id: number; rijec: string; rima?: string | null; grupa?: number | null; g: [number, string][] }
 /**
  * `glasovi`: riječ ima barem jedan od njih na `pozicija` (prazno = bilo gdje); prazan popis = svaka riječ.
  * `bez`: nijedan od tih glasova nije nigdje u riječi (po fonemima: „bez L” ne izbacuje LJULJAČKU).

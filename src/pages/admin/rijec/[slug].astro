@@ -3,12 +3,13 @@ import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
 import Aktivnost from "../../../components/Aktivnost.astro";
 import PremjestiStil from "../../../components/PremjestiStil.astro";
-import { kad, KOLACIC_STILA, rijec as nadji, NAZIV_POZICIJE, stiloviAktivni, zapamtiStil } from "../../../lib/katalog";
+import { kad, KOLACIC_STILA, rijec as nadji, NAZIV_POZICIJE, stiloviAktivni, sveRijeciNazivi, zapamtiStil } from "../../../lib/katalog";
 import { safeNext } from "../../../lib/admin/sesija";
 import { javniUrl } from "../../../lib/generiranje";
 import { izvediRimu } from "../../../lib/zadaci/rima";
 import { imenaKorisnika } from "../../../lib/zatrazio";
 import { smije } from "../../../lib/admin/ovlasti";
+import { istoznacniceRijeci } from "../../../lib/istoznacnice";
 
 const r = await nadji(Astro.params.slug!);
 if (!r) return new Response("Nema te riječi", { status: 404 });
@@ -47,6 +48,9 @@ const poslao = (s: { zatrazio?: string | null }) => (s.zatrazio ? imena.get(s.za
 const zauzet = (kod: string) => r.slike.some((s) => s.stil === kod && s.status !== "odbijena") || uRedu.some((q) => q.stil === kod);
 const zadaniStil = stilovi.find((x) => !zauzet(x.kod))?.kod ?? stilovi[0]?.kod;
 const odobrene = r.slike.filter((s) => s.status === "odobrena");
+const istoznacnice = await istoznacniceRijeci(r.id);
+const naziviRijeci = urednik ? await sveRijeciNazivi() : [];
+const greskaIstoznacnice = q("greska_istoznacnice");
 ---
 <AdminOkvir naslov={r.rijec.toLocaleUpperCase("hr")} aktivno="katalog">
   <a class="mrvice" href={od}><Ikona ime="natrag" velicina={16} /> Natrag</a>
@@ -137,6 +141,33 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
         ))}
       </div>
       {urednik && r.pozicije.some((p) => !p.potvrdeno) && <p class="sitno blijedo">Plave pozicije su izvedene iz pravopisa. Potvrdi ih ili makni.</p>}
+
+      <h2>Istoznačnice</h2>
+      <p class="sitno blijedo">Riječi istog značenja. Zadatak s predloška uzima najviše jednu od njih.</p>
+      {greskaIstoznacnice && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> Riječi {greskaIstoznacnice.toLocaleUpperCase("hr")} nema u katalogu.</div>}
+      {istoznacnice.length ? (
+        <div class="pozicije">
+          {istoznacnice.map((x) => (
+            <div class="pozicija">
+              <a class="pg" href={`/admin/rijec/${x.slug}?od=${encodeURIComponent(od)}`}><b>{x.rijec.toLocaleUpperCase("hr")}</b></a>
+              {urednik && (
+                <form method="post" action={`/admin/api/rijec/${r.id}`}>
+                  <input type="hidden" name="akcija" value="odvezi" /><input type="hidden" name="rijec" value={x.id} /><input type="hidden" name="next" value={ovdje} />
+                  <button class="gumb mali tihi" title={`Makni ${x.rijec.toLocaleUpperCase("hr")} iz grupe`}><Ikona ime="x" velicina={14} /></button>
+                </form>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : <p class="sitno blijedo">Nema ih.</p>}
+      {urednik && (
+        <form class="istoznacnica" method="post" action={`/admin/api/rijec/${r.id}`}>
+          <input type="hidden" name="akcija" value="istoznacnica" /><input type="hidden" name="next" value={ovdje} />
+          <input type="text" name="naziv" list="nazivi-rijeci" maxlength="40" required aria-label="Riječ istog značenja" placeholder="npr. postelja" />
+          <datalist id="nazivi-rijeci">{naziviRijeci.filter((n) => n !== r.rijec).map((n) => <option value={n} />)}</datalist>
+          <button class="gumb mali" type="submit">Poveži</button>
+        </form>
+      )}
 
       {urednik ? (
         <form class="ploha uredi" method="post" action={`/admin/api/rijec/${r.id}`}>
@@ -351,6 +382,8 @@ const odobrene = r.slike.filter((s) => s.status === "odobrena");
   .preimenuj { margin: -4px 0 12px; }
   .preimenuj summary { cursor: pointer; color: var(--blijedo, inherit); }
   .preimenuj form { display: flex; gap: 8px; margin-top: 8px; }
+  .istoznacnica { display: flex; gap: 8px; margin: 8px 0 16px; }
+  .istoznacnica input { flex: 1; min-width: 0; }
   .preimenuj input { flex: 1; min-width: 0; }
   .obrisi form { align-items: center; flex-wrap: wrap; }
   .obrisi span { flex: 1 1 220px; }

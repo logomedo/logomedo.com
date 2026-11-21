@@ -468,3 +468,16 @@ i bojanka), oko $6 i 2 h na Vertexu. Kratki engleski opis za sliku dobile su rij
 (FEN, DUH, GRB, ŠEF, NJIHALJKA…), a mogu se mijenjati na stranici riječi. Odbijeno je 14 riječi, među njima sve umanjenice
 (zečić, ptić, konjić…). One su na popisu nepoželjnih bez razloga, jer ga logopedica nije upisala.
 Riječi su upisane izravno u D1, ne kroz `/admin/nova-rijec`, pa nisu u Aktivnosti i ne troše kvotu.
+
+## Istoznačnice (21. 11. 2026.)
+
+Riječi istog značenja (KREVET, POSTELJA; AUTO, AUTOMOBIL) povezane su u grupu, tablica `istoznacnice`
+(migracija 0042): `rijec_id` (PK, riječ je u najviše jednoj grupi) → `grupa` (broj, najmanji id riječi pri
+nastanku). Grupa s jednom riječi se briše.
+
+- Uređuje superadmin na /admin/rijec/… (odjeljak „Istoznačnice”: „Poveži” s nazivom postojeće riječi, ✕ miče
+  riječ iz grupe). Povezivanje dviju riječi koje su već u različitim grupama spaja grupe.
+- Generator (`slozi` u `zadaci/vrste.ts`, listić u `zadaci/nacrt.ts`) iz grupe uzima **najviše jednu** riječ
+  (`jednaPoGrupi`, `istoznacnice-cisto.ts`): prednost ima ona s traženim glasom, pa ona sa slikom, inače slučajno.
+  Ručni izbor slika u editoru nije ograničen.
+- Prvo punjenje: prijedlozi grupa u artifactu, upis u D1 tek na korisnikov nalog.

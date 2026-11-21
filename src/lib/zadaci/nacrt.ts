@@ -2,6 +2,7 @@
 import { logopedskiMod, sveRijeci, zaListic } from "./baza";
 import { brojSlika, ciljeviGlasova, izaberi, jePoGlasovima, moguce, naslovListica, odgovara, POZICIJE_LISTICA, rasporedOdnosa, redovaZaGlasove, RIMA_MAX_SLOGOVA } from "./listic-glas";
 import { jeOdnos } from "./odnosi";
+import { jednaPoGrupi } from "../istoznacnice-cisto";
 import { ABECEDA, brojStavki, jeVrsta, MAX_KARTICA_LISTICA, slozi, zadanaUputa, zaGenerator, type KojeSlovo, type Odabir, type PozicijaGlasa, type Sadrzaj, type Vrsta } from "./vrste";
 
 const kartica = (r: { id: number; rijec: string }) => ({ rijec_id: r.id, tekst: r.rijec.toLocaleUpperCase("hr") });
@@ -37,7 +38,7 @@ export async function slozNacrt(f: FormData, email: string): Promise<Nacrt | "pr
     const uz = f.get("uz_samoglasnike") === "1" && (vrsta === "listic" || vrsta === "slogovi") && glasovi.length > 0 && pozicija !== "skupina";
     const filtar = { glasovi, pozicija: glasovi.length ? pozicija : "", bez, ...(uz ? { uz: oznake } : {}) };
     if (vrsta === "listic") {
-      const izbor = k.rijeci.filter((r) => odgovara(r, filtar));
+      const izbor = jednaPoGrupi(k.rijeci.filter((r) => odgovara(r, filtar)));
       if (!izbor.length) return prazno();
       naslov = naslovListica(oznake, filtar.pozicija, bez, uz);
       // Odabrani broj slika (zadano 12): kad riječi ima više, nasumično; „sve” daje sve abecedno.

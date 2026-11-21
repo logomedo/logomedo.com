@@ -153,6 +153,11 @@ export function kad(iso: string | null): string {
 }
 
 /** Aktivni stilovi (za izbor pri uploadu). */
+/** Nazivi svih aktivnih riječi (bez znakova), za datalist istoznačnica. */
+export async function sveRijeciNazivi(): Promise<string[]> {
+  return (await DB().prepare("SELECT rijec FROM rijeci WHERE aktivna = 1 AND vrsta = 'rijec' ORDER BY rijec COLLATE NOCASE").all<{ rijec: string }>()).results.map((x) => x.rijec);
+}
+
 export async function stiloviAktivni() {
   return (await DB().prepare("SELECT kod, naziv FROM stilovi WHERE aktivan = 1 ORDER BY id").all<{ kod: string; naziv: string }>()).results;
 }
