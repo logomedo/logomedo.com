@@ -47,7 +47,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
             </select>
           </form>
         )}
-        <div class="napredak"><span id="brojac"></span><div class="traka-napretka"><i id="traka"></i></div></div>
+        <div class="napredak"><span id="brojac"></span><div class="traka-napretka"><i id="napredak-traka"></i></div></div>
         <h1 id="rijec" class="rijec"></h1>
         {superadmin && <p id="poslao" class="poslao"></p>}
         {!superadmin && <p class="sitno blijedo">„Odobri” je prijedlog: slika postaje odobrena za sve kad je potvrdi superadmin.</p>}
@@ -176,7 +176,7 @@ const zaFiltar = posiljatelji.filter((p) => p.slike > 0);
   function brojac() {
     const ukupno = prosli.size + red.length;
     $("brojac").textContent = `${prosli.size + 1} / ${ukupno}`;
-    $("traka").style.width = `${ukupno ? (prosli.size / ukupno) * 100 : 0}%`;
+    $("napredak-traka").style.width = `${ukupno ? (prosli.size / ukupno) * 100 : 0}%`;
   }
   const dalje = () => { const k = red.shift(); if (k) prosli.add(k.id); prikazi(); };
 
