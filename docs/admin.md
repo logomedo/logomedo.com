@@ -73,6 +73,18 @@ odobrene slike i izgovori). Logoped svoje preostalo vidi u bočnoj traci. Svaki 
 `ai_potrosnja` (tko, vrsta, količina, vrijeme); svaka radnja nad korisnicima i pozivnicama je u
 Aktivnosti (`poziv.*`, `korisnik.*`).
 
+**Passkey na Windowsu traži USB ključ (23. 11. 2026.):** pozvana logopedinja (Chrome, Windows 10)
+dobila je odmah Windowsov prozor „Umetnite sigurnosni ključ u USB priključak”. Uzrok nije
+hardver: Chrome nudi Google Password Manager samo kad je korisnik prijavljen u Chrome sa
+sinkronizacijom lozinki. Inače posao preda Windowsu, a Windows bez postavljenog Hello PIN-a
+nema što drugo ponuditi nego USB ključ. Stranica ne može prisiliti GPM. Od `19847cc`
+`registrationOptions` šalje `hints: ["client-device", "hybrid"]` (preferiraj ovo računalo, pa
+mobitel s QR-om). `preferredAuthenticatorType: "localDevice"` iz simplewebauthn je odbačen jer
+postavlja i `authenticatorAttachment: "platform"`, što isključuje mobitel. Upute korisniku: prijava
+u Chrome + sinkronizacija pa odabir „Google Password Manager”, ili Windows PIN (Postavke → Računi →
+Mogućnosti prijave). „Odustani” ne troši pozivnicu (`iskoristena_at` se piše tek nakon uspješnog
+verify), pa isti link radi ponovno.
+
 ## Bilo otvoreno prije produkcije (stavke 1–4 i 6 su gotove)
 
 1. `wrangler d1 create logomedo` → upisati `database_id` u `wrangler.jsonc`; `npm run db:migrate`;
