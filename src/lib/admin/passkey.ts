@@ -37,6 +37,10 @@ export async function registrationOptions(url: URL, email: string, purpose: "reg
     excludeCredentials: existing.results.map((k) => ({ id: k.id, transports: transports(k.transports) })),
     authenticatorSelection: { residentKey: "required", userVerification: "required" },
   });
+  // Preferiraj ovo računalo (Google Password Manager / Windows Hello / iCloud) pa mobitel (QR) prije USB
+  // ključa. Samo hint, ne authenticatorAttachment: „platform” bi isključio mobitel. Bez toga Chrome na
+  // Windowsu bez Hello PIN-a i bez prijave u Chrome odmah traži USB ključ (Tea, 23. 11. 2026.).
+  options.hints = ["client-device", "hybrid"];
   await storeChallenge(options.challenge, purpose, email);
   return options;
 }
