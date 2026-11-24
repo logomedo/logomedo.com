@@ -1,7 +1,8 @@
 # Pogodnosti nakon bete
 
 Od 24. 11. 2026. (landing odluka 815). Cjenik je na `/cijene` (odluke 813, 814): 10 € mjesečno, 100 € godišnje,
-250 € doživotno, s PDV-om. Plaćanje još ne postoji; dok traje beta, svi s računom koriste LogoMedo besplatno.
+250 € doživotno, s PDV-om. Od odluke 816 cjenik vrijedi odmah (vidi „Narudžbe” niže); besplatni beta pristup se i dalje
+traži zahtjevom i odobrava ručno.
 
 **Pogodnost** je ono što superadmin nekome privatno obeća za vrijeme nakon bete: *N mjeseci besplatno* (1–36) ili
 *trajno besplatno*. To nije kupon platnog servisa nego pravo na pristup bez plaćanja, zapisano kod nas.
@@ -18,6 +19,16 @@ Od 24. 11. 2026. (landing odluka 815). Cjenik je na `/cijene` (odluke 813, 814):
 
 Pogodnost je po e-mailu, pa se može dati i osobi koja još nema račun. Promjena e-maila u profilu je prenosi
 (`profil.ts` `STUPCI_EMAILA`).
+
+## Narudžbe i licence za ustanove (odluka 816)
+
+- Licenca je za **jednu osobu** (piše na `/cijene` i u `/uvjeti`); više ljudi = više licenci.
+- Narudžba ide kroz isti obrazac `/pristup?paket=mjesecno|godisnje|dozivotno|ustanova|beta` (0046: `paket`,
+  `broj_licenci` 1–1000 u `zahtjevi_pristupa`). `/admin/zahtjevi` pokazuje paket, broj licenci i cijenu.
+- Ustanove (godišnje licence, `LICENCE_USTANOVE` u `src/landing/konstante.ts`): 1–4 puna cijena, 5–9 −10 %,
+  10–24 −15 %, 25–49 −20 %, 50+ po dogovoru. Ponudu i račun (osnovica + PDV) izdaje ITalk, plaćanje virmanom.
+- Tijek dok nema kartice: obrazac → ručno pošalji račun/ponudu → kad uplata stigne, „Odobri” (izdaje pozivnicu).
+  „Kupnja = pristup bez odobravanja” tek s checkoutom; landing to iskreno kaže („kartica uskoro”).
 
 ## Što još nije (checkout)
 
