@@ -1,0 +1,17 @@
+{
+  "id": "main",
+  "lead": 0.4,
+  "tail": 0.6,
+  "music": { "src": "assets/bgm/6453a0ab.mp3", "volume": 0.16, "fadeIn": 0.4, "fadeOut": 2.5 },
+  "scenes": [
+    { "id": "s1-uvod", "lead": 0.8 },
+    { "id": "s2-logomedo" },
+    { "id": "s3-katalog" },
+    { "id": "s4-glas" },
+    { "id": "s5-predlozak" },
+    { "id": "s6-ispis" },
+    { "id": "s7-vrste" },
+    { "id": "s8-igra" },
+    { "id": "s9-kraj", "tail": 2.6 }
+  ]
+}

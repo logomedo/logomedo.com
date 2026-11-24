@@ -1,0 +1,36 @@
+<template>
+  <style>
+    #s9-kraj-r { position: absolute; inset: 0; }
+    #s9-poz { position: absolute; left: 0; top: -60px; width: 1920px; height: 1200px; object-fit: cover; }
+    #s9-veo { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(246,243,238,.45) 0%, rgba(246,243,238,.5) 62%, #f6f3ee 92%); }
+    #s9-karta { position: absolute; left: 460px; top: 250px; width: 1000px; padding: 64px 70px 60px; border-radius: 36px; background: var(--karta);
+      box-shadow: 0 40px 100px rgba(60,40,10,.28); display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; }
+    #s9-marka { display: flex; align-items: center; gap: 22px; }
+    #s9-marka .znak { width: 84px; height: 84px; }
+    #s9-ime { font-family: var(--font-naslov); font-weight: 700; font-size: 72px; line-height: 1; }
+    #s9-ime em, #s9-url em { font-style: normal; color: var(--med); }
+    #s9-ok { display: inline-flex; align-items: center; gap: 12px; background: #e9f5e7; color: #2f6b2a; border-radius: 999px; padding: 10px 26px; font-weight: 900; font-size: 30px; }
+    #s9-url { font-family: var(--font-naslov); font-weight: 600; font-size: 64px; }
+    #s9-pod { font-size: 34px; font-weight: 700; color: var(--siva); }
+  </style>
+  <div id="s9-kraj-r" data-composition-id="s9-kraj" data-width="1920" data-height="1080">
+    <img id="s9-poz" src="assets/screens/v22-desktop.webp" alt="Završni ekran igre: Bravo" />
+    <div id="s9-veo"></div>
+    <div id="s9-karta">
+      <div id="s9-marka"><svg class="znak" viewBox="0 0 32 32"><path d="M16 1.8 28.3 8.9v14.2L16 30.2 3.7 23.1V8.9Z" fill="#d48a06"/><path d="M12 9.5v12.5h8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><div id="s9-ime">Logo<em>Medo</em></div></div>
+      <div id="s9-ok">✓ Pristup odobren</div>
+      <div id="s9-url">Prijavite se na <em>logomedo.com</em></div>
+      <div id="s9-pod">i složite svoj prvi listić</div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const VO = 0.4;
+    tl.fromTo("#s9-poz", { scale: 1.08 }, { scale: 1, duration: 9, ease: "none" }, 0);
+    tl.fromTo("#s9-karta", { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.2);
+    tl.fromTo("#s9-ok", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }, VO + 0.9);
+    tl.fromTo("#s9-url", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 1.8);
+    tl.fromTo("#s9-pod", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 4.3);
+    window.__timelines["s9-kraj"] = tl;
+  </script>
+</template>

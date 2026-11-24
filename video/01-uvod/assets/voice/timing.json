@@ -1,0 +1,766 @@
+{
+  "s1-uvod": {
+    "text": "Za sat vremena dolazi dijete koje vježba glas R. Treba vam radni listić, i to odmah.",
+    "duration": 6.32,
+    "words": [
+      {
+        "text": "Za",
+        "start": 0,
+        "end": 0.2
+      },
+      {
+        "text": "sat",
+        "start": 0.24,
+        "end": 0.48
+      },
+      {
+        "text": "vremena",
+        "start": 0.56,
+        "end": 1.04
+      },
+      {
+        "text": "dolazi",
+        "start": 1.2,
+        "end": 1.52
+      },
+      {
+        "text": "dijete",
+        "start": 1.6,
+        "end": 1.92
+      },
+      {
+        "text": "koje",
+        "start": 2,
+        "end": 2.16
+      },
+      {
+        "text": "vježba",
+        "start": 2.2,
+        "end": 2.48
+      },
+      {
+        "text": "glas",
+        "start": 2.56,
+        "end": 2.88
+      },
+      {
+        "text": "R.",
+        "start": 3.04,
+        "end": 3.36
+      },
+      {
+        "text": "Treba",
+        "start": 3.84,
+        "end": 4.08
+      },
+      {
+        "text": "vam",
+        "start": 4.16,
+        "end": 4.24
+      },
+      {
+        "text": "radni",
+        "start": 4.32,
+        "end": 4.56
+      },
+      {
+        "text": "listić,",
+        "start": 4.64,
+        "end": 5.28
+      },
+      {
+        "text": "i",
+        "start": 5.32,
+        "end": 5.36
+      },
+      {
+        "text": "to",
+        "start": 5.44,
+        "end": 5.52
+      },
+      {
+        "text": "odmah.",
+        "start": 5.68,
+        "end": 6.4
+      }
+    ]
+  },
+  "s2-logomedo": {
+    "text": "Upoznajte LogoMedo, pametan alat za izradu dječjih radnih materijala i igara.",
+    "duration": 5.84,
+    "words": [
+      {
+        "text": "Upoznajte",
+        "start": 0,
+        "end": 0.64
+      },
+      {
+        "text": "LogoMedo,",
+        "start": 0.72,
+        "end": 1.76
+      },
+      {
+        "text": "pametan",
+        "start": 1.8,
+        "end": 2.24
+      },
+      {
+        "text": "alat",
+        "start": 2.32,
+        "end": 2.72
+      },
+      {
+        "text": "za",
+        "start": 2.8,
+        "end": 2.88
+      },
+      {
+        "text": "izradu",
+        "start": 2.96,
+        "end": 3.36
+      },
+      {
+        "text": "dječjih",
+        "start": 3.4,
+        "end": 3.84
+      },
+      {
+        "text": "radnih",
+        "start": 3.92,
+        "end": 4.16
+      },
+      {
+        "text": "materijala",
+        "start": 4.24,
+        "end": 4.88
+      },
+      {
+        "text": "i",
+        "start": 4.96,
+        "end": 5.04
+      },
+      {
+        "text": "igara.",
+        "start": 5.16,
+        "end": 5.92
+      }
+    ]
+  },
+  "s3-katalog": {
+    "text": "Sve počinje u katalogu: trideset glasova, više od šesto pedeset riječi i tisuću tristo slika.",
+    "duration": 7.28,
+    "words": [
+      {
+        "text": "Sve",
+        "start": 0,
+        "end": 0.32
+      },
+      {
+        "text": "počinje",
+        "start": 0.4,
+        "end": 0.8
+      },
+      {
+        "text": "u",
+        "start": 0.84,
+        "end": 0.88
+      },
+      {
+        "text": "katalogu:",
+        "start": 0.96,
+        "end": 1.92
+      },
+      {
+        "text": "trideset",
+        "start": 2,
+        "end": 2.4
+      },
+      {
+        "text": "glasova,",
+        "start": 2.48,
+        "end": 3.28
+      },
+      {
+        "text": "više",
+        "start": 3.36,
+        "end": 3.6
+      },
+      {
+        "text": "od",
+        "start": 3.72,
+        "end": 3.84
+      },
+      {
+        "text": "šesto",
+        "start": 3.88,
+        "end": 4.16
+      },
+      {
+        "text": "pedeset",
+        "start": 4.24,
+        "end": 4.64
+      },
+      {
+        "text": "riječi",
+        "start": 4.72,
+        "end": 5.12
+      },
+      {
+        "text": "i",
+        "start": 5.28,
+        "end": 5.36
+      },
+      {
+        "text": "tisuću",
+        "start": 5.6,
+        "end": 6
+      },
+      {
+        "text": "tristo",
+        "start": 6.16,
+        "end": 6.48
+      },
+      {
+        "text": "slika.",
+        "start": 6.64,
+        "end": 7.36
+      }
+    ]
+  },
+  "s4-glas": {
+    "text": "Otvorite glas R. Riječi su složene po tome je li glas na početku, u sredini ili na kraju riječi.",
+    "duration": 7.84,
+    "words": [
+      {
+        "text": "Otvorite",
+        "start": 0,
+        "end": 0.56
+      },
+      {
+        "text": "glas",
+        "start": 0.64,
+        "end": 1.04
+      },
+      {
+        "text": "R.",
+        "start": 1.2,
+        "end": 1.52
+      },
+      {
+        "text": "Riječi",
+        "start": 2.16,
+        "end": 2.48
+      },
+      {
+        "text": "su",
+        "start": 2.56,
+        "end": 2.64
+      },
+      {
+        "text": "složene",
+        "start": 2.72,
+        "end": 3.28
+      },
+      {
+        "text": "po",
+        "start": 3.6,
+        "end": 3.68
+      },
+      {
+        "text": "tome",
+        "start": 3.76,
+        "end": 4
+      },
+      {
+        "text": "je",
+        "start": 4.08,
+        "end": 4.16
+      },
+      {
+        "text": "li",
+        "start": 4.2,
+        "end": 4.24
+      },
+      {
+        "text": "glas",
+        "start": 4.32,
+        "end": 4.56
+      },
+      {
+        "text": "na",
+        "start": 4.64,
+        "end": 4.72
+      },
+      {
+        "text": "početku,",
+        "start": 4.8,
+        "end": 5.48
+      },
+      {
+        "text": "u",
+        "start": 5.6,
+        "end": 5.64
+      },
+      {
+        "text": "sredini",
+        "start": 5.68,
+        "end": 6.24
+      },
+      {
+        "text": "ili",
+        "start": 6.48,
+        "end": 6.64
+      },
+      {
+        "text": "na",
+        "start": 6.72,
+        "end": 6.8
+      },
+      {
+        "text": "kraju",
+        "start": 6.88,
+        "end": 7.2
+      },
+      {
+        "text": "riječi.",
+        "start": 7.24,
+        "end": 7.84
+      }
+    ]
+  },
+  "s5-predlozak": {
+    "text": "U predlošcima odaberite glas i poziciju, a listić se složi sam, sa slikama iz kataloga.",
+    "duration": 6.16,
+    "words": [
+      {
+        "text": "U",
+        "start": 0,
+        "end": 0.08
+      },
+      {
+        "text": "predlošcima",
+        "start": 0.16,
+        "end": 0.8
+      },
+      {
+        "text": "odaberite",
+        "start": 0.88,
+        "end": 1.44
+      },
+      {
+        "text": "glas",
+        "start": 1.52,
+        "end": 1.84
+      },
+      {
+        "text": "i",
+        "start": 1.92,
+        "end": 1.96
+      },
+      {
+        "text": "poziciju,",
+        "start": 2,
+        "end": 2.96
+      },
+      {
+        "text": "a",
+        "start": 3,
+        "end": 3.04
+      },
+      {
+        "text": "listić",
+        "start": 3.12,
+        "end": 3.52
+      },
+      {
+        "text": "se",
+        "start": 3.56,
+        "end": 3.6
+      },
+      {
+        "text": "složi",
+        "start": 3.68,
+        "end": 4.08
+      },
+      {
+        "text": "sam,",
+        "start": 4.24,
+        "end": 4.64
+      },
+      {
+        "text": "sa",
+        "start": 4.68,
+        "end": 4.72
+      },
+      {
+        "text": "slikama",
+        "start": 4.8,
+        "end": 5.2
+      },
+      {
+        "text": "iz",
+        "start": 5.24,
+        "end": 5.28
+      },
+      {
+        "text": "kataloga.",
+        "start": 5.36,
+        "end": 6.24
+      }
+    ]
+  },
+  "s6-ispis": {
+    "text": "Dodajte ukrasni okvir, preuzmite gotov pe-de-ef i ispišite ga na papir A4.",
+    "duration": 6.24,
+    "words": [
+      {
+        "text": "Dodajte",
+        "start": 0,
+        "end": 0.48
+      },
+      {
+        "text": "ukrasni",
+        "start": 0.56,
+        "end": 1.04
+      },
+      {
+        "text": "okvir,",
+        "start": 1.12,
+        "end": 1.84
+      },
+      {
+        "text": "preuzmite",
+        "start": 1.92,
+        "end": 2.4
+      },
+      {
+        "text": "gotov",
+        "start": 2.48,
+        "end": 2.8
+      },
+      {
+        "text": "pe-de-ef",
+        "start": 2.96,
+        "end": 3.52
+      },
+      {
+        "text": "i",
+        "start": 3.68,
+        "end": 3.76
+      },
+      {
+        "text": "ispišite",
+        "start": 3.92,
+        "end": 4.48
+      },
+      {
+        "text": "ga",
+        "start": 4.56,
+        "end": 4.64
+      },
+      {
+        "text": "na",
+        "start": 4.68,
+        "end": 4.72
+      },
+      {
+        "text": "papir",
+        "start": 4.8,
+        "end": 5.12
+      },
+      {
+        "text": "A4.",
+        "start": 5.36,
+        "end": 6.32
+      }
+    ]
+  },
+  "s7-vrste": {
+    "text": "Uz listić vas čeka još deset vrsta zadataka: rime, uljezi, prebrajanje slogova i kolo slova.",
+    "duration": 7.28,
+    "words": [
+      {
+        "text": "Uz",
+        "start": 0,
+        "end": 0.16
+      },
+      {
+        "text": "listić",
+        "start": 0.24,
+        "end": 0.72
+      },
+      {
+        "text": "vas",
+        "start": 0.84,
+        "end": 0.96
+      },
+      {
+        "text": "čeka",
+        "start": 1,
+        "end": 1.2
+      },
+      {
+        "text": "još",
+        "start": 1.28,
+        "end": 1.52
+      },
+      {
+        "text": "deset",
+        "start": 1.64,
+        "end": 1.92
+      },
+      {
+        "text": "vrsta",
+        "start": 2,
+        "end": 2.24
+      },
+      {
+        "text": "zadataka:",
+        "start": 2.32,
+        "end": 3.36
+      },
+      {
+        "text": "rime,",
+        "start": 3.44,
+        "end": 4.08
+      },
+      {
+        "text": "uljezi,",
+        "start": 4.16,
+        "end": 4.8
+      },
+      {
+        "text": "prebrajanje",
+        "start": 4.88,
+        "end": 5.44
+      },
+      {
+        "text": "slogova",
+        "start": 5.48,
+        "end": 6
+      },
+      {
+        "text": "i",
+        "start": 6.24,
+        "end": 6.32
+      },
+      {
+        "text": "kolo",
+        "start": 6.4,
+        "end": 6.64
+      },
+      {
+        "text": "slova.",
+        "start": 6.72,
+        "end": 7.36
+      }
+    ]
+  },
+  "s8-igra": {
+    "text": "Zadatke složite u bilježnicu i djetetu pošaljite link. Rješava ih na tabletu ili mobitelu, bez prijave, a svaki riješen zadatak upali lampicu na boru.",
+    "duration": 10.8,
+    "words": [
+      {
+        "text": "Zadatke",
+        "start": 0,
+        "end": 0.48
+      },
+      {
+        "text": "složite",
+        "start": 0.56,
+        "end": 0.96
+      },
+      {
+        "text": "u",
+        "start": 1.04,
+        "end": 1.08
+      },
+      {
+        "text": "bilježnicu",
+        "start": 1.12,
+        "end": 1.76
+      },
+      {
+        "text": "i",
+        "start": 1.92,
+        "end": 2
+      },
+      {
+        "text": "djetetu",
+        "start": 2.08,
+        "end": 2.56
+      },
+      {
+        "text": "pošaljite",
+        "start": 2.64,
+        "end": 3.12
+      },
+      {
+        "text": "link.",
+        "start": 3.32,
+        "end": 3.76
+      },
+      {
+        "text": "Rješava",
+        "start": 4,
+        "end": 4.4
+      },
+      {
+        "text": "ih",
+        "start": 4.48,
+        "end": 4.56
+      },
+      {
+        "text": "na",
+        "start": 4.64,
+        "end": 4.72
+      },
+      {
+        "text": "tabletu",
+        "start": 4.88,
+        "end": 5.2
+      },
+      {
+        "text": "ili",
+        "start": 5.28,
+        "end": 5.44
+      },
+      {
+        "text": "mobitelu,",
+        "start": 5.52,
+        "end": 6.24
+      },
+      {
+        "text": "bez",
+        "start": 6.32,
+        "end": 6.48
+      },
+      {
+        "text": "prijave,",
+        "start": 6.56,
+        "end": 7.36
+      },
+      {
+        "text": "a",
+        "start": 7.44,
+        "end": 7.52
+      },
+      {
+        "text": "svaki",
+        "start": 7.6,
+        "end": 8
+      },
+      {
+        "text": "riješen",
+        "start": 8.04,
+        "end": 8.32
+      },
+      {
+        "text": "zadatak",
+        "start": 8.4,
+        "end": 8.96
+      },
+      {
+        "text": "upali",
+        "start": 9.12,
+        "end": 9.6
+      },
+      {
+        "text": "lampicu",
+        "start": 9.72,
+        "end": 10.08
+      },
+      {
+        "text": "na",
+        "start": 10.12,
+        "end": 10.16
+      },
+      {
+        "text": "boru.",
+        "start": 10.24,
+        "end": 10.88
+      }
+    ]
+  },
+  "s9-kraj": {
+    "text": "Vaš pristup je odobren. Prijavite se na logomedo točka com i složite svoj prvi listić.",
+    "duration": 6.16,
+    "words": [
+      {
+        "text": "Vaš",
+        "start": 0,
+        "end": 0.32
+      },
+      {
+        "text": "pristup",
+        "start": 0.4,
+        "end": 0.8
+      },
+      {
+        "text": "je",
+        "start": 0.88,
+        "end": 0.96
+      },
+      {
+        "text": "odobren.",
+        "start": 1.04,
+        "end": 1.84
+      },
+      {
+        "text": "Prijavite",
+        "start": 1.893,
+        "end": 2.32
+      },
+      {
+        "text": "se",
+        "start": 2.4,
+        "end": 2.48
+      },
+      {
+        "text": "na",
+        "start": 2.56,
+        "end": 2.72
+      },
+      {
+        "text": "logomedo",
+        "start": 2.84,
+        "end": 3.36
+      },
+      {
+        "text": "točka",
+        "start": 3.44,
+        "end": 3.6
+      },
+      {
+        "text": "com",
+        "start": 3.76,
+        "end": 4
+      },
+      {
+        "text": "i",
+        "start": 4.24,
+        "end": 4.32
+      },
+      {
+        "text": "složite",
+        "start": 4.4,
+        "end": 4.8
+      },
+      {
+        "text": "svoj",
+        "start": 4.88,
+        "end": 5.12
+      },
+      {
+        "text": "prvi",
+        "start": 5.2,
+        "end": 5.44
+      },
+      {
+        "text": "listić.",
+        "start": 5.6,
+        "end": 6.24
+      }
+    ]
+  }
+}

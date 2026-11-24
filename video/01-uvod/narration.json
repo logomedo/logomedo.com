@@ -1,0 +1,16 @@
+{
+  "voice_id": "iahPPG34ls0Mm3W0DBhh",
+  "model_id": "eleven_v4",
+  "language_code": "hr",
+  "lines": [
+    { "id": "s1-uvod", "text": "Za sat vremena dolazi dijete koje vježba glas R. Treba vam radni listić, i to odmah." },
+    { "id": "s2-logomedo", "text": "Upoznajte LogoMedo, pametan alat za izradu dječjih radnih materijala i igara." },
+    { "id": "s3-katalog", "text": "Sve počinje u katalogu: trideset glasova, više od šesto pedeset riječi i tisuću tristo slika." },
+    { "id": "s4-glas", "text": "Otvorite glas R. Riječi su složene po tome je li glas na početku, u sredini ili na kraju riječi." },
+    { "id": "s5-predlozak", "text": "U predlošcima odaberite glas i poziciju, a listić se složi sam, sa slikama iz kataloga." },
+    { "id": "s6-ispis", "text": "Dodajte ukrasni okvir, preuzmite gotov pe-de-ef i ispišite ga na papir A4." },
+    { "id": "s7-vrste", "text": "Uz listić vas čeka još deset vrsta zadataka: rime, uljezi, prebrajanje slogova i kolo slova." },
+    { "id": "s8-igra", "text": "Zadatke složite u bilježnicu i djetetu pošaljite link. Rješava ih na tabletu ili mobitelu, bez prijave, a svaki riješen zadatak upali lampicu na boru." },
+    { "id": "s9-kraj", "text": "Vaš pristup je odobren. Prijavite se na logomedo točka com i složite svoj prvi listić." }
+  ]
+}

@@ -1,0 +1,37 @@
+<template>
+  <style>
+    #s2-logomedo-r { position: absolute; inset: 0; }
+    #s2-sredina { position: absolute; left: 0; right: 0; top: 300px; display: flex; flex-direction: column; align-items: center; }
+    #s2-marka { display: flex; align-items: center; gap: 40px; }
+    #s2-marka .znak { width: 170px; height: 170px; }
+    #s2-ime { font-family: var(--font-naslov); font-weight: 700; font-size: 150px; letter-spacing: -0.02em; line-height: 1; }
+    #s2-ime em { font-style: normal; color: var(--med); }
+    #s2-opis { margin-top: 46px; font-family: var(--font-naslov); font-weight: 500; font-size: 50px; color: var(--siva); text-align: center; max-width: 1300px; line-height: 1.2; }
+    #s2-a { left: 110px; top: 90px; width: 190px; height: 190px; }
+    #s2-b { left: 1610px; top: 110px; width: 190px; height: 190px; }
+    #s2-c { left: 170px; top: 790px; width: 190px; height: 190px; }
+    #s2-d { left: 1560px; top: 800px; width: 190px; height: 190px; }
+  </style>
+  <div id="s2-logomedo-r" data-composition-id="s2-logomedo" data-width="1920" data-height="1080">
+    <div class="ilu" id="s2-a"><img src="assets/screens/lav-512.webp" alt="lav" /></div>
+    <div class="ilu" id="s2-b"><img src="assets/screens/sunce-512.webp" alt="sunce" /></div>
+    <div class="ilu" id="s2-c"><img src="assets/screens/sova-512.webp" alt="sova" /></div>
+    <div class="ilu" id="s2-d"><img src="assets/screens/rukavice-bojanka-512.webp" alt="rukavice, bojanka" /></div>
+    <div id="s2-sredina">
+      <div id="s2-marka"><div id="s2-hex"><svg class="znak" viewBox="0 0 32 32"><path d="M16 1.8 28.3 8.9v14.2L16 30.2 3.7 23.1V8.9Z" fill="#d48a06"/><path d="M12 9.5v12.5h8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div id="s2-ime">Logo<em>Medo</em></div></div>
+      <div id="s2-opis">Pametan alat za izradu dječjih radnih materijala i igara</div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const VO = 0.4;
+    tl.fromTo("#s2-hex", { opacity: 0, scale: 0.4, rotation: -90 }, { opacity: 1, scale: 1, rotation: 0, duration: 0.8, ease: "back.out(1.7)" }, VO + 0.5);
+    tl.fromTo("#s2-ime", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.7, ease: "power3.out" }, VO + 0.7);
+    tl.fromTo("#s2-opis", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, VO + 1.8);
+    [["#s2-a", -8, 0.1], ["#s2-b", 7, 0.25], ["#s2-c", 6, 0.4], ["#s2-d", -6, 0.55]].forEach(([s, r, t]) => {
+      tl.fromTo(s, { opacity: 0, scale: 0.6, rotation: 0 }, { opacity: 1, scale: 1, rotation: r, duration: 0.7, ease: "back.out(1.6)" }, t);
+      tl.to(s, { y: 12, duration: 3, ease: "sine.inOut" }, t + 0.7);
+    });
+    window.__timelines["s2-logomedo"] = tl;
+  </script>
+</template>

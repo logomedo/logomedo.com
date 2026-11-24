@@ -1,0 +1,9 @@
+# render, snapshoti i cache HyperFramesa
+**/renders/
+**/snapshots/
+**/.hyperframes/
+**/.media/
+**/node_modules/
+# glazba iz HeyGen kataloga: licenca za korištenje u videu, ne za javni repo; ponovno skidanje u README.md
+**/assets/bgm/
+.DS_Store

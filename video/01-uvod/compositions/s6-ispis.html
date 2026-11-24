@@ -1,0 +1,27 @@
+<template>
+  <style>
+    #s6-ispis-r { position: absolute; inset: 0; }
+    #s6-win { left: 700px; top: 178px; }
+    #s6-pdf { position: absolute; left: 1600px; top: 800px; }
+  </style>
+  <div id="s6-ispis-r" data-composition-id="s6-ispis" data-width="1920" data-height="1080">
+    <div class="win" id="s6-win"><div class="win-bar"><i></i><i></i><i></i><span data-layout-ignore>logomedo.com</span></div><div class="win-view"><img id="s6-img" src="assets/screens/v3-desktop.webp" alt="Radni listić" /><img id="s6-img2" src="assets/screens/v14-desktop.webp" alt="Radni listić s ukrasnim okvirom" /></div></div>
+    <div class="stupac">
+      <div class="oznaka" id="s6-oz">Ispis</div>
+      <div class="naslov" id="s6-nas">Ukrasni okvir i gotov <em>PDF</em></div>
+      <div class="pod" id="s6-pod">Preuzmete, ispišete na A4 i listić je spreman.</div>
+    </div>
+    <div class="cip" id="s6-pdf"><b>PDF</b> A4</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const VO = 0.4;
+    tl.fromTo("#s6-win", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.1);
+    tl.fromTo("#s6-oz", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, VO);
+    tl.fromTo("#s6-nas", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 0.5);
+    tl.fromTo("#s6-img2", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, VO + 1.1);
+    tl.fromTo("#s6-pdf", { opacity: 0, scale: 0.5, rotation: -8 }, { opacity: 1, scale: 1, rotation: -4, duration: 0.55, ease: "back.out(2)" }, VO + 2.9);
+    tl.fromTo("#s6-pod", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 3.8);
+    window.__timelines["s6-ispis"] = tl;
+  </script>
+</template>

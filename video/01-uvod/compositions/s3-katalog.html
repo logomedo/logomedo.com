@@ -1,0 +1,33 @@
+<template>
+  <style>
+    #s3-katalog-r { position: absolute; inset: 0; }
+    #s3-win { left: 700px; top: 178px; }
+    #s3-cipovi { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; margin-top: 12px; }
+  </style>
+  <div id="s3-katalog-r" data-composition-id="s3-katalog" data-width="1920" data-height="1080">
+    <div class="win" id="s3-win"><div class="win-bar"><i></i><i></i><i></i><span data-layout-ignore>logomedo.com</span></div><div class="win-view"><img id="s3-img" src="assets/screens/v2-desktop.webp" alt="Katalog slika s mapama glasova" /></div></div>
+    <div class="stupac">
+      <div class="oznaka" id="s3-oz">Katalog slika</div>
+      <div class="naslov" id="s3-nas">Sve počinje u <em>katalogu</em></div>
+      <div id="s3-cipovi">
+        <div class="cip" id="s3-c1"><b id="s3-n1">30</b> glasova</div>
+        <div class="cip" id="s3-c2"><b id="s3-n2">650+</b> riječi</div>
+        <div class="cip" id="s3-c3"><b id="s3-n3">1300+</b> slika</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const VO = 0.4;
+    tl.fromTo("#s3-win", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.1);
+    tl.fromTo("#s3-img", { scale: 1 }, { scale: 1.07, duration: 8, ease: "none" }, 0);
+    tl.fromTo("#s3-oz", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, VO);
+    tl.fromTo("#s3-nas", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 0.4);
+    [["#s3-c1", "#s3-n1", 30, "", 1.9], ["#s3-c2", "#s3-n2", 650, "+", 3.8], ["#s3-c3", "#s3-n3", 1300, "+", 5.5]].forEach(([c, n, v, suf, t]) => {
+      tl.fromTo(c, { opacity: 0, x: -30, scale: 0.9 }, { opacity: 1, x: 0, scale: 1, duration: 0.5, ease: "back.out(1.8)" }, VO + t);
+      const o = { v: 0 };
+      tl.fromTo(o, { v: 0 }, { v: v, duration: 0.9, ease: "power2.out", onUpdate: () => { document.querySelector(n).textContent = Math.round(o.v) + suf; } }, VO + t);
+    });
+    window.__timelines["s3-katalog"] = tl;
+  </script>
+</template>

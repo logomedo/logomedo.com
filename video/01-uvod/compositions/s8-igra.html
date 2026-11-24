@@ -1,0 +1,42 @@
+<template>
+  <style>
+    #s8-igra-r { position: absolute; inset: 0; }
+    #s8-win { left: 700px; top: 178px; }
+    /* tablet: 1040 × 650 zaslon u tamnom okviru */
+    #s8-tablet { position: absolute; left: 690px; top: 200px; width: 1080px; height: 690px; border-radius: 44px; background: #23201b; padding: 20px;
+      box-shadow: 0 40px 90px rgba(60,40,10,.30); }
+    #s8-tablet img { width: 1040px; height: 650px; border-radius: 26px; object-fit: cover; display: block; }
+    /* mobitel: 390 × 844 snimka smanjena na 300 × 649 */
+    #s8-mob { position: absolute; left: 1540px; top: 300px; width: 328px; height: 677px; border-radius: 46px; background: #23201b; padding: 14px;
+      box-shadow: 0 30px 70px rgba(60,40,10,.35); }
+    #s8-mob img { width: 300px; height: 649px; border-radius: 34px; object-fit: cover; display: block; }
+    #s8-lampica { position: absolute; left: 120px; top: 720px; }
+    #s8-lampica i { display: inline-block; width: 26px; height: 26px; border-radius: 50%; background: #ffd54a; box-shadow: 0 0 0 6px rgba(255,213,74,.25), 0 0 26px 8px rgba(255,190,40,.55); }
+  </style>
+  <div id="s8-igra-r" data-composition-id="s8-igra" data-width="1920" data-height="1080">
+    <div class="win" id="s8-win"><div class="win-bar"><i></i><i></i><i></i><span data-layout-ignore>logomedo.com</span></div><div class="win-view"><img id="s8-img" src="assets/screens/v24-desktop.webp" alt="Bilježnica sa zadacima" /></div></div>
+    <div id="s8-tablet"><img src="assets/screens/v20-desktop.webp" alt="Igra na tabletu, tema Božić" /></div>
+    <div id="s8-mob"><img src="assets/screens/v21-mobitel.webp" alt="Igra na mobitelu, tema Proljeće" /></div>
+    <div class="stupac">
+      <div class="oznaka" id="s8-oz">Bilježnica i igra</div>
+      <div class="naslov" id="s8-nas">Djetetu pošaljite <em>link</em></div>
+      <div class="pod" id="s8-pod">Na tabletu ili mobitelu, bez prijave.</div>
+    </div>
+    <div class="cip" id="s8-lampica"><i></i> riješeno, lampica upaljena</div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const VO = 0.4;
+    tl.fromTo("#s8-win", { opacity: 0, y: 60 }, { opacity: 1, y: 0, duration: 0.8, ease: "power3.out" }, 0.1);
+    tl.fromTo("#s8-oz", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, VO);
+    tl.fromTo("#s8-img", { scale: 1 }, { scale: 1.05, duration: 4.5, ease: "none" }, 0);
+    tl.fromTo("#s8-nas", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 2.6);
+    tl.to("#s8-win", { opacity: 0, y: -30, duration: 0.45, ease: "power2.in" }, VO + 3.8);
+    tl.fromTo("#s8-tablet", { opacity: 0, y: 80, rotation: 2 }, { opacity: 1, y: 0, rotation: 0, duration: 0.8, ease: "power3.out" }, VO + 3.9);
+    tl.fromTo("#s8-pod", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 4.8);
+    tl.fromTo("#s8-mob", { opacity: 0, y: 120, rotation: 6 }, { opacity: 1, y: 0, rotation: 3, duration: 0.8, ease: "back.out(1.3)" }, VO + 5.4);
+    tl.fromTo("#s8-lampica", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }, VO + 9.1);
+    tl.fromTo("#s8-lampica i", { scale: 0.4 }, { scale: 1, duration: 0.6, ease: "elastic.out(1, 0.4)" }, VO + 9.3);
+    window.__timelines["s8-igra"] = tl;
+  </script>
+</template>
