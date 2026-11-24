@@ -1,0 +1,88 @@
+---
+// Klonovi glasa (docs/klon-glasa.md): popis i novi klon. Samo superadmin (lib/admin/rute.ts).
+import AdminOkvir from "../../../../components/AdminOkvir.astro";
+import Ikona from "../../../../components/Ikona.astro";
+import { pretplata } from "../../../../lib/elevenlabs";
+import { klonovi, noviKlon, SUGLASNOST } from "../../../../lib/klonovi";
+import { kad } from "../../../../lib/katalog";
+
+let greska = "";
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const ime = String(f.get("ime") ?? "").trim().slice(0, 60), govornik = String(f.get("govornik") ?? "").trim().slice(0, 80);
+  if (!ime || !govornik) greska = "Upiši ime klona i govornika.";
+  else if (f.get("suglasnost") !== "1") greska = "Bez suglasnosti govornika klon se ne radi.";
+  else return Astro.redirect(`/admin/zvukovi/klonovi/${await noviKlon(ime, govornik, Astro.locals.admin!.email)}`, 303);
+}
+
+const [popis, plan] = await Promise.all([klonovi(), pretplata()]);
+---
+<AdminOkvir naslov="Klonovi glasa" aktivno="zvukovi">
+  <div class="naslov">
+    <div>
+      <a class="natrag" href="/admin/zvukovi"><Ikona ime="natrag" velicina={16} /> Izgovor</a>
+      <h1>Klonovi glasa</h1>
+      <p class="podnaslov">
+        Govornik pročita sedam kratkih odlomaka (oko 2 minute), a ElevenLabs od snimki napravi glas koji zatim
+        izgovara riječi, upute i naraciju videa. Gotov klon se pojavi među glasovima na
+        <a href="/admin/zvukovi/glasovi">Glas koji čita</a>, gdje ga možeš usporediti s ostalima i odabrati.
+      </p>
+    </div>
+  </div>
+
+  {plan && (
+    <p class="ploha plan">
+      ElevenLabs plan <b>{plan.tier}</b> · glasova na računu <b>{plan.voice_slots_used} / {plan.voice_limit}</b> ·
+      znakova ovaj mjesec <b>{plan.character_count.toLocaleString("hr")} / {plan.character_limit.toLocaleString("hr")}</b> ·
+      Instant klon {plan.can_use_instant_voice_cloning ? "✓" : "✗"} · Professional klon {plan.can_use_professional_voice_cloning ? "✓" : "✗ (treba plan Creator)"}
+    </p>
+  )}
+
+  {popis.length > 0 && (
+    <div class="popis">
+      {popis.map((k) => (
+        <a class="ploha klon" href={`/admin/zvukovi/klonovi/${k.id}`}>
+          <b>{k.ime}</b>
+          <span>{k.govornik}</span>
+          <span class={`stanje ${k.stanje}`}>{k.stanje === "napravljen" ? "napravljen" : "nacrt: snimanje"}</span>
+          <span class="sitno">{k.klonirano_at ? `kloniran ${kad(k.klonirano_at)}` : `započet ${kad(k.napravljeno_at)}`}</span>
+        </a>
+      ))}
+    </div>
+  )}
+
+  <form method="post" class="ploha novi">
+    <h2>Novi klon</h2>
+    {greska && <p class="upozorenje">{greska}</p>}
+    <label>Ime klona <input name="ime" required maxlength="60" placeholder="npr. Matija – naracija" /></label>
+    <label>Govornik (čiji je glas) <input name="govornik" id="govornik" required maxlength="80" placeholder="Ime i prezime" /></label>
+    <label class="suglasnost">
+      <input type="checkbox" name="suglasnost" value="1" required />
+      <span id="izjava">{SUGLASNOST("______")}</span>
+    </label>
+    <p class="sitno">Izjava se sprema doslovno uz klon. Ako snima netko drugi, a ne ti, neka sam potvrdi ovu kvačicu.</p>
+    <button class="gumb glavni">Započni snimanje</button>
+  </form>
+</AdminOkvir>
+
+<script>
+  const g = document.getElementById("govornik") as HTMLInputElement, izj = document.getElementById("izjava")!;
+  const predlozak = izj.textContent!;
+  g.addEventListener("input", () => { izj.textContent = predlozak.replace("______", g.value.trim() || "______"); });
+</script>
+
+<style>
+  .natrag { display: inline-flex; align-items: center; gap: 4px; font-size: .86rem; color: var(--blijedo); text-decoration: none; }
+  .plan { font-size: .9rem; }
+  .popis { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .klon { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: var(--tinta); }
+  .stanje { font-size: .85rem; color: var(--blijedo); }
+  .stanje.napravljen { color: var(--med); font-weight: 600; }
+  .novi { display: flex; flex-direction: column; gap: 10px; max-width: 640px; }
+  .novi h2 { margin: 0; }
+  .novi label { display: flex; flex-direction: column; gap: 4px; }
+  .novi .suglasnost { flex-direction: row; align-items: flex-start; gap: 8px; line-height: 1.4; }
+  .suglasnost input { margin-top: 4px; }
+  .sitno { font-size: .82rem; color: var(--blijedo); margin: 0; }
+  .upozorenje { color: #b00020; margin: 0; }
+</style>

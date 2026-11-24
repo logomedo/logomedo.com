@@ -167,7 +167,8 @@ na `/admin/zvukovi` → Hrvatski glasovi. Probe se spremaju u R2 (`proba/<hash>.
 ### Zamke
 
 - Ključ je ograničen po dozvolama: bez `voices_read` i `/v1/voices` i `/v1/shared-voices` vraćaju
-  401 `missing_permissions`. `user_read` (kvota) i `voices_write` (kloniranje preko API-ja) nema.
+  401 `missing_permissions`. Od 24. 11. 2026. ključ ima sve dozvole, i `user_read` (kvota) i `voices_write`
+  (kloniranje: `docs/klon-glasa.md`, /admin/zvukovi/klonovi).
 - CSP admina nema `blob:`, pa proba ne smije svirati `URL.createObjectURL`: audio svira isti GET
   URL (iz R2 cachea), a prijepis dolazi u zaglavlju `x-prijepis`.
 - Port 8787 lokalno drži drugi projekt; `wrangler dev --port 8791`. `ADMIN_EMAILS` u `.dev.vars`

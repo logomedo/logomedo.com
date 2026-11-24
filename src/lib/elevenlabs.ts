@@ -56,12 +56,12 @@ export async function snimi(tekst: string, glasId: string, nacin: string): Promi
   return izgovori(tekst, glasId, model);
 }
 
-export async function prepisi(mp3: ArrayBuffer): Promise<string> {
+export async function prepisi(mp3: ArrayBuffer, mime = "audio/mpeg"): Promise<string> {
   const f = new FormData();
   f.set("model_id", "scribe_v1");
   f.set("language_code", "hrv");
   f.set("tag_audio_events", "false");
-  f.set("file", new Blob([mp3], { type: "audio/mpeg" }), "zvuk.mp3");
+  f.set("file", new Blob([mp3], { type: mime }), mime === "audio/wav" ? "zvuk.wav" : "zvuk.mp3");
   const r = await fetch(`${API}/speech-to-text`, { method: "POST", headers: { "xi-api-key": env.ELEVENLABS_API_KEY }, body: f });
   return String(((await (await provjeri(r, "STT")).json()) as { text?: string }).text ?? "").trim();
 }
@@ -90,4 +90,35 @@ export async function hrvatskiGlasovi(): Promise<GlasKnjiznice[]> {
     const v = ((await r.json()) as { voices?: (GlasKnjiznice & { language?: string })[] }).voices ?? [];
     return v.filter((g) => g.language === "hr");
   } catch { return []; }
+}
+
+/**
+ * Instant Voice Clone (docs/klon-glasa.md): POST /v1/voices/add s uzorcima. Treba dozvolu `voices_write`
+ * i plan sa `can_use_instant_voice_cloning`. Vraća voice_id.
+ */
+export async function napraviKlon(ime: string, opis: string, uzorci: { ime: string; mime: string; podaci: ArrayBuffer }[], ukloniSum: boolean): Promise<{ voice_id: string; requires_verification?: boolean }> {
+  const f = new FormData();
+  f.set("name", ime);
+  f.set("description", opis);
+  f.set("remove_background_noise", ukloniSum ? "true" : "false");
+  f.set("labels", JSON.stringify({ language: "hr" }));
+  for (const u of uzorci) f.append("files", new Blob([u.podaci], { type: u.mime }), u.ime);
+  const r = await fetch(`${API}/voices/add`, { method: "POST", headers: { "xi-api-key": env.ELEVENLABS_API_KEY }, body: f });
+  return (await (await provjeri(r, "Klon")).json()) as { voice_id: string; requires_verification?: boolean };
+}
+
+/** Briše glas s računa (oslobađa mjesto). 404 znači da ga već nema. */
+export async function obrisiGlas(voiceId: string): Promise<void> {
+  const r = await fetch(`${API}/voices/${encodeURIComponent(voiceId)}`, { method: "DELETE", headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+  if (r.status !== 404) await provjeri(r, "Brisanje glasa");
+}
+
+export interface Pretplata { tier: string; character_count: number; character_limit: number; voice_slots_used: number; voice_limit: number; can_use_instant_voice_cloning: boolean; can_use_professional_voice_cloning: boolean }
+
+/** Plan računa (dozvola `user_read`); null ako ključ to ne smije. */
+export async function pretplata(): Promise<Pretplata | null> {
+  try {
+    const r = await fetch(`${API}/user/subscription`, { headers: { "xi-api-key": env.ELEVENLABS_API_KEY } });
+    return r.ok ? ((await r.json()) as Pretplata) : null;
+  } catch { return null; }
 }

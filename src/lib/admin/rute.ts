@@ -14,6 +14,9 @@ export const SAMO_SUPERADMIN = [
   "/admin/poruke",
   "/admin/zvukovi/glasovi",
   "/admin/api/zvuk-proba",
+  // Klonovi glasa (docs/klon-glasa.md): ElevenLabs račun i suglasnost govornika.
+  "/admin/zvukovi/klonovi",
+  "/admin/api/klon",
   "/admin/app/prijava",
   "/admin/api/app-kod",
   // Uređivanje postojećeg kataloga (ovlast katalog.uredivanje): riječ (naziv, opis, pozicije, brisanje) i glasovi.

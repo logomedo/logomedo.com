@@ -10,6 +10,7 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
 - Slike generira `scripts/runner.sh` (Vertex AI, `gemini-nano-banana-2.1`). Ne pokretati ga u petlji iz Claude
   sesije s notifikacijama po slici: katalog ima 428 riječi, a Vertex se plaća.
 - Izgovor (ElevenLabs) radi sam Worker kroz Cloudflare Queue, bez runnera: `docs/zvukovi.md`.
+- Klon glasa (ElevenLabs Instant, /admin/zvukovi/klonovi, samo superadmin): `docs/klon-glasa.md`.
 - Prije commita: `npm test && npm run check && npm run build`.
 - Staging (`staging.logomedo.com`, kopija produkcijske D1 iza lozinke): `docs/staging.md`. Staging
   naredbe uvijek kroz `npm run …:staging` ili s `--config wrangler.jsonc --env staging`.

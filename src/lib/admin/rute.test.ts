@@ -13,8 +13,8 @@ test("svaka ruta, s podputanjom i kosom crtom na kraju", () => {
 
 test("popis ruta je točno ovaj", () => {
   assert.deepEqual([...SAMO_SUPERADMIN].sort(), [
-    "/admin/api/app-kod", "/admin/api/novi-glas", "/admin/api/rijec", "/admin/api/zvuk-proba", "/admin/app/prijava", "/admin/korisnici",
-    "/admin/novi-glas", "/admin/poruke", "/admin/prompt", "/admin/red", "/admin/zahtjevi", "/admin/zvukovi/glasovi",
+    "/admin/api/app-kod", "/admin/api/klon", "/admin/api/novi-glas", "/admin/api/rijec", "/admin/api/zvuk-proba", "/admin/app/prijava", "/admin/korisnici",
+    "/admin/novi-glas", "/admin/poruke", "/admin/prompt", "/admin/red", "/admin/zahtjevi", "/admin/zvukovi/glasovi", "/admin/zvukovi/klonovi",
   ]);
 });
 
