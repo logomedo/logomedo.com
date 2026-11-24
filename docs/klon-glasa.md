@@ -59,6 +59,20 @@ ili WAV. API ne bilježi suglasnost, zato je u `klonovi.suglasnost` (doslovni te
 3. `node video/scripts/tts-elevenlabs.mjs video/01-uvod --force all` (≈ 800 znakova), pa `build-root.mjs`
    i render kao `renders/logomedo-uvod-v2.mp4` (`video/README.md`). Scene se same prilagode novim vremenima.
 
+## Prvi klon: Matija, 24. 11. 2026.
+
+`stepanic-matija-naracija` (klon 1), voice_id `4TP4cWjWRL4EJlaqxMyv`, s „ukloni pozadinski šum”. Uključeno 1:54 (7
+odlomaka, jedna snimka po odlomku; 4 starije isključene), RMS −20,7…−25,3 dB, bez izobličenja, pauze 0,7–1,1 s,
+Scribe 99–100 %. Šum u tišini −50…−56 dB (soba, mikrofon laptopa): prošao prag, ali blizu, i vjerojatni je izvor
+blage „robotizacije”. Prva izrada bila je bez uklanjanja šuma (`jKcRPHv3sLku8w82Uetf`, obrisan ponovnom izradom);
+Matija je usporedio i zadržao verziju s uklanjanjem.
+
+Po sluhu: `eleven_v4` je najvjerniji od tri modela; `eleven_multilingual_v2` i `eleven_v3` slabiji. Sljedeće
+poboljšanje, ako zatreba: tiša soba i USB mikrofon (šum ≤ −60 dB), pa tek onda Professional klon (plan Creator).
+
+Demo video v2 s ovim glasom predan je sesiji videa 24. 11. (narration.json → voice_id, render, WhatsApp grupa
+„LogoMedo Code”), vidi `video/README.md`.
+
 ## Kasnije: glas po logopedu
 
 Nije napravljeno. Ideja: `korisnici.glas_id` (klon logopeda), a izgovor bilježnice/zadatka kojeg je logoped
