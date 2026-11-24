@@ -2,11 +2,13 @@
 // Korisnici i pozivnice (docs/rbac/, S2). Samo superadmin (ovlast `korisnici`), i GET i POST.
 // Stranica sama obrađuje POST (`akcija`), kao /admin/postavke. Link pozivnice prikaže se jednom,
 // u odgovoru na POST (#poziv-link), i nigdje se ne sprema.
+import { env } from "cloudflare:workers";
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import Ikona from "../../components/Ikona.astro";
 import { kad } from "../../lib/katalog";
 import { smije } from "../../lib/admin/ovlasti";
 import { LIMIT_MAX, popisKorisnika, postaviAktivan, postaviLimite, procitajLimit } from "../../lib/admin/korisnici";
+import { LIMIT_UREDAJA_MAX, ZADANI_LIMIT_UREDAJA, procitajLimitUredaja, provedba, sazeciUredaja } from "../../lib/admin/uredaji";
 import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice } from "../../lib/admin/pozivi";
 
 const s = Astro.locals.admin;
@@ -16,6 +18,7 @@ const PORUKE_OK: Record<string, string> = {
   deaktiviran: "Korisnik deaktiviran; njegove sesije i otvorene pozivnice su ugašene.",
   aktiviran: "Korisnik aktiviran.",
   limiti: "Limiti spremljeni.",
+  uredaji: "Limit uređaja spremljen.",
   opozvana: "Pozivnica opozvana.",
 };
 let poruka: string | null = PORUKE_OK[Astro.url.searchParams.get("ok") ?? ""] ?? null;
@@ -44,6 +47,13 @@ if (Astro.request.method === "POST") {
       const r = await postaviLimite(id, procitajLimit(f.get("limit_slike_7d")), procitajLimit(f.get("limit_zvukovi_7d")), s.email);
       if (r.ok) return natrag("limiti");
       greska = r.greska;
+    } else if (akcija === "limit_uredaja") {
+      const n = procitajLimitUredaja(f.get("limit_uredaja"));
+      if (n === undefined || !Number.isInteger(id)) greska = `Limit uređaja je broj od 1 do ${LIMIT_UREDAJA_MAX} (prazno = zadano).`;
+      else {
+        await env.DB.prepare("UPDATE korisnici SET limit_uredaja = ? WHERE id = ? AND uloga = 'logoped'").bind(n, id).run();
+        return natrag("uredaji");
+      }
     } else {
       greska = "Nepoznata radnja.";
     }
@@ -55,7 +65,8 @@ if (Astro.request.method === "POST") {
   if (greska) Astro.response.status = 400;
 }
 
-const [korisnici, pozivnice] = await Promise.all([popisKorisnika(), otvorenePozivnice()]);
+const [korisnici, pozivnice, uredaji] = await Promise.all([popisKorisnika(), otvorenePozivnice(), sazeciUredaja()]);
+const nacin = provedba();
 const ulogaTekst = (k: (typeof korisnici)[number]) =>
   k.uloga ?? (k.ulogaRetka === "logoped" ? "logoped, deaktiviran" : "bez pristupa");
 ---
@@ -64,7 +75,8 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     <div>
       <h1>Korisnici</h1>
       <p class="podnaslov">Superadmini su iz <code>ADMIN_EMAILS</code> i ovdje se ne mijenjaju. Logoped ulazi samo pozivnicom
-        (link vrijedi 72 h, jednom). Deaktivacija odmah gasi njegove sesije; ključevi ostaju za ponovnu aktivaciju.</p>
+        (link vrijedi 72 h, jednom). Deaktivacija odmah gasi njegove sesije; ključevi ostaju za ponovnu aktivaciju.
+        Uređaji: {nacin === "biljezi" ? "samo se bilježe (limit se ne provodi)" : `limit istovremenih uređaja se provodi${nacin === "svi" ? " i za superadmina" : " za logopede"}`}.</p>
     </div>
   </div>
 
@@ -85,7 +97,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   <div class="raspored">
     <div class="ploha">
       <table id="korisnici">
-        <thead><tr><th>Korisnik</th><th>Uloga</th><th>Ključevi</th><th>Zadnja prijava</th><th>AI limit (7 dana)</th><th>Potrošeno (7 dana)</th><th>Doprinos</th><th></th></tr></thead>
+        <thead><tr><th>Korisnik</th><th>Uloga</th><th>Ključevi</th><th>Zadnja prijava</th><th title="Uređaj = preglednik. Aktivan = korišten u zadnjih 15 min.">Uređaji</th><th>AI limit (7 dana)</th><th>Potrošeno (7 dana)</th><th>Doprinos</th><th></th></tr></thead>
         <tbody>
           {korisnici.map((k) => {
             const logoped = k.uloga !== "superadmin" && k.ulogaRetka === "logoped" && k.id !== null;
@@ -98,6 +110,25 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
                 </td>
                 <td>{k.kljuceva}</td>
                 <td class="blijedo">{kad(k.zadnja_prijava)}</td>
+                <td class="brojke" title="aktivnih sada · uređaja / mreža / gradova u 30 dana · preuzimanja i odbijanja u 7 dana">
+                  {(() => {
+                    const u = uredaji.get(k.email.toLowerCase());
+                    return u ? (
+                      <span class:list={{ sumnja: u.preuzimanja7 >= 5 || u.uredaja30 >= 6 }}>
+                        sada {u.aktivnih} · 30 dana {u.uredaja30}<br />mreža {u.mreza30} · gradova {u.gradova30}<br />
+                        preuzimanja {u.preuzimanja7} · odbijeno {u.previse7}
+                      </span>
+                    ) : <span class="blijedo">—</span>;
+                  })()}
+                  {logoped && (
+                    <form method="post" class="limiti">
+                      <input type="hidden" name="akcija" value="limit_uredaja" /><input type="hidden" name="id" value={k.id} />
+                      <label>odjednom <input type="number" name="limit_uredaja" min="1" max={LIMIT_UREDAJA_MAX} step="1"
+                        placeholder={String(ZADANI_LIMIT_UREDAJA)} value={k.limit_uredaja ?? ""} /></label>
+                      <button class="gumb mali tihi" type="submit">Spremi</button>
+                    </form>
+                  )}
+                </td>
                 <td>
                   {logoped ? (
                     <form method="post" class="limiti">
@@ -215,6 +246,8 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   .limiti input { width: 76px; font: inherit; font-size: .84rem; padding: 5px 8px; border: 1px solid var(--rub-jak); border-radius: 8px;
     background: var(--povrsina); color: var(--tinta); font-variant-numeric: tabular-nums; }
   .limiti input:focus { outline: none; border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+  .sumnja { color: var(--greska); font-weight: 600; }
+  .brojke .limiti { margin-top: 6px; }
   .brojke { font-size: .84rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .podnaslov-tablice { margin: 24px 16px 8px; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
   .prazne { padding: 0 16px 16px; }

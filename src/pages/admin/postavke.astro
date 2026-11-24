@@ -3,16 +3,21 @@
 import AdminOkvir from "../../components/AdminOkvir.astro";
 import { logopedskiMod, postaviLogopedskiMod } from "../../lib/zadaci/baza";
 import { IME_MAX, profil, spremiProfil } from "../../lib/admin/profil";
+import { kad } from "../../lib/katalog";
+import { limitZa, mojiUredaji, odjaviUredaj, provedba } from "../../lib/admin/uredaji";
 
 const s = Astro.locals.admin!;
 const email = s.email;
 const superadmin = s.uloga === "superadmin";
-let spremljeno: "mod" | "profil" | null = Astro.url.searchParams.get("ok") === "profil" ? "profil" : null;
+let spremljeno: "mod" | "profil" | "uredaj" | null = Astro.url.searchParams.get("ok") === "profil" ? "profil" : null;
 let greska: string | null = null;
 let unos: { ime: string; email: string } | null = null;
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
-  if (f.get("akcija") === "profil") {
+  if (f.get("akcija") === "odjavi_uredaj") {
+    await odjaviUredaj(email, Number(f.get("id")), null, Astro.request);
+    spremljeno = "uredaj";
+  } else if (f.get("akcija") === "profil") {
     const r = await spremiProfil(s, { ime: f.get("ime"), email: superadmin ? null : f.get("email") });
     // Nova stranica nakon spremanja: zaglavlje i sesija već čitaju novi e-mail.
     if (r.ok) return Astro.redirect("/admin/postavke?ok=profil", 303);
@@ -28,6 +33,9 @@ if (Astro.request.method === "POST") {
 }
 const mod = await logopedskiMod(email);
 const p = unos ?? await profil(email);
+const uredaji = await mojiUredaji(email, Astro.request);
+const limitUredaja = limitZa(s.uloga, null, provedba());
+const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.mreza].filter(Boolean).join(" · ") || "nepoznato mjesto";
 ---
 <AdminOkvir naslov="Postavke" aktivno="postavke">
   <div class="naslov">
@@ -77,9 +85,40 @@ const p = unos ?? await profil(email);
       <button class="gumb glavni mali" type="submit">Spremi</button>
     </div>
   </form>
+
+  <section class="ploha postavke" id="uredaji">
+    <h2>Uređaji</h2>
+    <p class="opis">Preglednici u kojima je LogoMedo otvoren zadnjih 90 dana. Tabovi i prozori istog preglednika su jedan uređaj.
+      {limitUredaja !== null && <> Istovremeno smiješ raditi na {limitUredaja === 1 ? "jednom uređaju" : `${limitUredaja} uređaja`}; na sljedećem ćeš moći jedan od njih odjaviti i nastaviti.</>}
+      {" "}Uređaj koji ne prepoznaješ odjavi i javi nam na <a href="mailto:bok@logomedo.com">bok@logomedo.com</a>.</p>
+    <ul class="uredaji">
+      {uredaji.map((u) => (
+        <li data-uredaj={u.id}>
+          <div>
+            <b>{u.naziv}</b>
+            {u.ovaj && <span class="oznaka uspjeh">ovaj uređaj</span>}
+            {!u.ovaj && u.aktivan && <span class="oznaka med">sada u upotrebi</span>}
+            <span class="opis">{mjesto(u)} · zadnje {kad(u.zadnji_put)}{u.odjavljen_at && ` · odjavljen ${kad(u.odjavljen_at)}`}</span>
+          </div>
+          {!u.ovaj && !u.odjavljen_at && (
+            <form method="post">
+              <input type="hidden" name="akcija" value="odjavi_uredaj" /><input type="hidden" name="id" value={u.id} />
+              <button class="gumb mali tihi" type="submit">Odjavi</button>
+            </form>
+          )}
+        </li>
+      ))}
+    </ul>
+    {spremljeno === "uredaj" && <div class="dno"><span class="spremljeno" role="status">Uređaj odjavljen.</span></div>}
+  </section>
 </AdminOkvir>
 
 <style>
+  .uredaji { list-style: none; margin: 0; padding: 0; }
+  .uredaji li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 0; }
+  .uredaji li + li { border-top: 1px solid var(--rub); }
+  .uredaji .oznaka { margin-left: 8px; }
+  .uredaji form { margin: 0; }
   .postavke h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.15rem; }
   .polja { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px) { .polja { grid-template-columns: 1fr; } }

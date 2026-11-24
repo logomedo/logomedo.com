@@ -15,6 +15,8 @@ declare namespace Cloudflare {
     RESEND_API_KEY?: string;
     /** Svix tajni ključ (`whsec_…`) Resend webhooka /api/resend/webhook (docs/inbox/). Bez njega webhook vraća 503. */
     RESEND_WEBHOOK_SECRET?: string;
+    /** Limit istovremenih uređaja (docs/uredaji.md): prazno = samo bilježi, "logoped" = provodi za logopede, "svi" = i superadmin. */
+    UREDAJI_PROVEDBA?: string;
   }
 }
 
@@ -24,5 +26,7 @@ declare namespace App {
     admin?: import("./lib/admin/sesija").Session;
     /** Prijavljena mobilna aplikacija, samo pod /api/v1 (bearer token). */
     app?: import("./lib/app/sesija").AppSesija;
+    /** Račun je već otvoren na previše uređaja (middleware → rewrite na /admin/uredaji/previse). */
+    previseUredaja?: Extract<import("./lib/admin/uredaji").Provjera, { ok: false }> & { nakon: string };
   }
 }

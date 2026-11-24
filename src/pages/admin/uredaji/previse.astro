@@ -1,0 +1,62 @@
+---
+// „Nastavi ovdje” (docs/uredaji.md). Middleware ovamo radi rewrite kad je račun već otvoren na
+// toliko drugih uređaja koliko smije (lib/admin/uredaji.ts) i postavlja status 409.
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import { kad } from "../../../lib/katalog";
+
+const p = Astro.locals.previseUredaja;
+if (!p) return Astro.redirect("/admin", 302);
+const prije = (iso: string) => {
+  const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60_000));
+  return min < 1 ? "upravo sada" : `prije ${min} min`;
+};
+const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.mreza].filter(Boolean).join(" · ") || "nepoznato mjesto";
+const n = p.aktivni.length;
+---
+<AdminOkvir naslov="Otvoreno na drugom uređaju">
+  <div class="naslov">
+    <div>
+      <h1>{p.preuzeo ? "Nastavljeno na drugom uređaju" : "LogoMedo je otvoren na drugom uređaju"}</h1>
+      <p class="podnaslov">
+        {p.preuzeo
+          ? <>Na uređaju <b>{p.preuzeo.naziv}</b> ({mjesto(p.preuzeo)}) nastavljen je rad {kad(p.ovaj!.odjavljen_at)}, pa je ovaj preglednik odjavljen.</>
+          : <>Tvoj račun može istovremeno biti otvoren na {n === 1 ? "jednom uređaju" : `${n} uređaja`}, a sada se koristi ovdje:</>}
+      </p>
+    </div>
+  </div>
+
+  <ul class="ploha uredaji" id="aktivni-uredaji">
+    {p.aktivni.map((u) => (
+      <li data-uredaj={u.id}>
+        <div>
+          <b>{u.naziv}</b>
+          <div class="blijedo sitno">{mjesto(u)} · {prije(u.zadnji_put)}</div>
+        </div>
+        <form method="post" action="/admin/uredaji/preuzmi">
+          <input type="hidden" name="id" value={u.id} />
+          <input type="hidden" name="nakon" value={p.nakon} />
+          <button class="gumb glavni mali" type="submit">Odjavi taj i nastavi ovdje</button>
+        </form>
+      </li>
+    ))}
+  </ul>
+
+  <div class="objasnjenje">
+    <p>Tabova i prozora u istom pregledniku možeš imati koliko želiš: to je jedan uređaj. Uređaj koji odjaviš vratit će se
+      sam čim ga ponovno otvoriš, ako je tada mjesto slobodno, bez nove prijave.</p>
+    <p>Ako nijedan od ovih uređaja nisi ti, netko drugi koristi tvoj račun. Javi nam na
+      <a href="mailto:bok@logomedo.com">bok@logomedo.com</a>.</p>
+    <form method="post" action="/admin/logout"><button class="gumb tihi mali" type="submit">Odjava</button></form>
+  </div>
+</AdminOkvir>
+
+<style>
+  .uredaji { list-style: none; margin: 20px 0 0; padding: 0; max-width: 640px; }
+  .uredaji li { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; }
+  .uredaji li + li { border-top: 1px solid var(--rub); }
+  .uredaji form, .objasnjenje form { margin: 0; }
+  .sitno { font-size: .84rem; margin-top: 2px; }
+  .objasnjenje { max-width: 640px; margin-top: 20px; color: var(--blijedo); font-size: .92rem; line-height: 1.5; }
+  .objasnjenje p { margin: 0 0 10px; }
+  @media (max-width: 560px) { .uredaji li { flex-direction: column; align-items: stretch; } }
+</style>

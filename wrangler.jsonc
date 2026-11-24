@@ -97,7 +97,9 @@
         "ACCESS_AUD": "",
         "CDN_URL": "https://cdn.logomedo.com",
         "ZONE_ID": "c12293517eb61e46975c4145f8e66a61",
-        "OKRUZENJE": "staging"
+        "OKRUZENJE": "staging",
+        // Limit istovremenih uređaja i za superadmina, za testiranje (docs/uredaji.md). Produkcija: bez vara = samo bilježi.
+        "UREDAJI_PROVEDBA": "svi"
       },
       "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } }
     }

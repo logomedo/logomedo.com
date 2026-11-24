@@ -21,6 +21,8 @@ export interface KorisnikPrikaz {
   deaktiviran_at: string | null;
   limit_slike_7d: number | null;
   limit_zvukovi_7d: number | null;
+  /** Istovremeni uređaji (lib/admin/uredaji.ts); null = zadano. */
+  limit_uredaja: number | null;
   kljuceva: number;
   /** Najnovije od: početak sesije, zadnja upotreba passkeya (sesije se brišu nakon isteka). */
   zadnja_prijava: string | null;
@@ -73,7 +75,7 @@ const RANG: Record<string, number> = { superadmin: 0, logoped: 1 };
 
 export async function popisKorisnika(): Promise<KorisnikPrikaz[]> {
   const [{ results }, dop] = await Promise.all([env.DB.prepare(
-    `SELECT k.id, k.email, k.ime, k.uloga, k.aktivan, k.deaktiviran_at, k.limit_slike_7d, k.limit_zvukovi_7d,
+    `SELECT k.id, k.email, k.ime, k.uloga, k.aktivan, k.deaktiviran_at, k.limit_slike_7d, k.limit_zvukovi_7d, k.limit_uredaja,
        (SELECT COUNT(*) FROM admin_passkeys p WHERE lower(p.email) = k.email) AS kljuceva,
        NULLIF(MAX(
          COALESCE((SELECT MAX(s.created_at) FROM admin_sessions s WHERE lower(s.email) = k.email), ''),
@@ -97,7 +99,7 @@ export async function popisKorisnika(): Promise<KorisnikPrikaz[]> {
     ).bind(email).first<{ kljuceva: number; zadnja_prijava: string | null }>();
     out.push({
       id: null, email, ime: null, uloga: "superadmin", ulogaRetka: null, aktivan: 1, deaktiviran_at: null,
-      limit_slike_7d: null, limit_zvukovi_7d: null, kljuceva: z?.kljuceva ?? 0, zadnja_prijava: z?.zadnja_prijava ?? null,
+      limit_slike_7d: null, limit_zvukovi_7d: null, limit_uredaja: null, kljuceva: z?.kljuceva ?? 0, zadnja_prijava: z?.zadnja_prijava ?? null,
       doprinos: doprinos(email),
     });
   }

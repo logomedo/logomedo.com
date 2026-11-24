@@ -1,7 +1,7 @@
 ---
 // P-4 Logopedi s računom. Svaka stavka prema shemi i kodu (landing odluka 505): korisnici (email, ime, uloga),
 // admin_passkeys (javni ključ, naziv), admin_sessions (12 h, 2 h neaktivnosti, user_agent), aktivnost (povijest),
-// app_sesije (uredaj, 30 / 7 dana; landing odluka 603), kvota (7 dana), PDF u pregledniku (src/lib/pdf/preglednik.ts). Bez brojeva limita (odluka 204).
+// app_sesije (uredaj, 30 / 7 dana; landing odluka 603), uredaji (docs/uredaji.md, 90 / 180 dana), kvota (7 dana), PDF u pregledniku (src/lib/pdf/preglednik.ts). Bez brojeva limita (odluka 204).
 import Sekcija from "../Sekcija.astro";
 ---
 <Sekcija id="logopedi" naslov="Što spremamo za korisnike s računom">
@@ -11,6 +11,9 @@ import Sekcija from "../Sekcija.astro";
       mu date.</li>
     <li><strong>Sesija:</strong> prijava traje najviše 12 sati, a nakon 2 sata neaktivnosti se zatvara. Uz nju pamtimo i preglednik s kojeg
       ste se prijavili.</li>
+    <li><strong>Uređaji:</strong> račun je osobni, pa pamtimo preglednike u kojima ga koristite: vrstu preglednika i sustava (npr.
+      „Chrome · Windows”), grad i mrežu (pružatelja interneta) iz kojih je stigao zadnji zahtjev te kad je korišten. Pune IP adrese
+      ne spremamo. Tako pazimo da jedan račun ne dijeli više ljudi; popis svojih uređaja vidite u Postavkama.</li>
     <li><strong>Aplikacija za mobitel i tablet:</strong> ako se prijavite u aplikaciju LogoMedo, pamtimo i naziv uređaja. Ta prijava
       vrijedi 30 dana, a zatvara se nakon 7 dana nekorištenja.</li>
     <li><strong>Vaš rad:</strong> zadaci, bilježnice i slike koje učitate ili zatražite, s poviješću izmjena.</li>

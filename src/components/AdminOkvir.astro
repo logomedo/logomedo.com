@@ -168,6 +168,22 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
       <slot />
     </main>
     <script>
+      // Uređaji (docs/uredaji.md): kad drugi uređaj preuzme račun, fetch ovdje dobiva 409 `x-uredaj: previse`.
+      // Osvježavanje stranice pokaže „Nastavi ovdje” umjesto tihe greške u pozadinskom osvježavanju.
+      {
+        const izvorni = window.fetch.bind(window);
+        let javljeno = false;
+        window.fetch = async (...a: Parameters<typeof fetch>) => {
+          const r = await izvorni(...a);
+          if (r.status === 409 && r.headers.get("x-uredaj") === "previse" && !javljeno) {
+            javljeno = true;
+            location.reload();
+          }
+          return r;
+        };
+      }
+    </script>
+    <script>
       // Tražilica riječi: indeks se dohvati jednom (na prvi fokus), filtrira se lokalno.
       // Bez dijakritika (c = č/ć, dj = đ), prvo riječi koje počinju upitom.
       const ulaz = document.querySelector<HTMLInputElement>("#trazi");

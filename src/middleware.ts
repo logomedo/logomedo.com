@@ -4,6 +4,8 @@
 // superadmin (logoped: 403), a vlasništvo zadataka, bilježnica i aktivnosti provjerava lib/admin/vlasnistvo.ts.
 // Druga razlika: `KvotaPrekoracena` (AI kvota, lib/kvota.ts) iz stranice ili rute hvata se ovdje (`sKvotom`):
 // JSON 429 za API i fetch, inače 303 natrag s `?kvota=<vrsta>` (poruku sastavlja AdminOkvir).
+// Treća: uređaji (lib/admin/uredaji.ts, docs/uredaji.md). Račun otvoren na previše uređaja odjednom
+// dobiva stranicu „Nastavi ovdje” (409) umjesto tražene, a fetch JSON 409 `previse_uredaja`.
 import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSession } from "./lib/admin/sesija";
@@ -11,6 +13,10 @@ import { rutaSamoSuperadmin } from "./lib/admin/rute";
 import { runnerOk } from "./lib/runner-auth";
 import { appSesija } from "./lib/app/sesija";
 import { KvotaPrekoracena, odgovorNaKvotu } from "./lib/kvota";
+import { provjeriUredaj } from "./lib/admin/uredaji";
+
+/** Bez provjere uređaja: odjava i samo preuzimanje moraju raditi i s „previše” uređaja. */
+const BEZ_UREDAJA = new Set(["/admin/uredaji/preuzmi", "/admin/uredaji/previse", "/admin/logout"]);
 
 const JAVNO = new Set([
   "/admin/login",
@@ -70,6 +76,21 @@ export const onRequest = defineMiddleware(async ({ request, url, locals }, next)
       if (!["GET", "HEAD"].includes(request.method) || url.pathname.startsWith("/admin/api/")) return json({ error: "forbidden" }, 403);
       return zastiti(await nemasPristup(next), true);
     }
+    // 5. Uređaji: tabovi istog preglednika su jedan uređaj; treći preglednik odjednom bira „Nastavi ovdje”.
+    if (!BEZ_UREDAJA.has(url.pathname)) {
+      const u = await provjeriUredaj(request, s);
+      if (!u.ok) {
+        if (request.method !== "GET" || url.pathname.startsWith("/admin/api/") || request.headers.get("accept")?.includes("application/json")) {
+          const r = json({ error: "previse_uredaja" }, 409);
+          r.headers.set("x-uredaj", "previse");
+          if (u.setCookie) r.headers.append("set-cookie", u.setCookie);
+          return r;
+        }
+        locals.previseUredaja = { ...u, nakon: url.pathname + url.search };
+        return zastiti(await previseUredaja(next, u.setCookie), true);
+      }
+      if (u.setCookie) return zastiti(sKolacicem(await sKvotom(request, url, next), u.setCookie), true);
+    }
   }
 
   return zastiti(await sKvotom(request, url, next), true);
@@ -101,6 +122,22 @@ async function nemasPristup(next: (put?: string) => Promise<Response>): Promise<
     '<!doctype html><html lang="hr"><meta charset="utf-8"><title>Nemaš pristup</title><h1>Nemaš pristup</h1><p><a href="/admin">Natrag u admin</a></p></html>',
     { status: 403, headers: { "content-type": "text/html; charset=utf-8" } },
   );
+}
+
+/** Stranica „Nastavi ovdje” (src/pages/admin/uredaji/previse.astro) kroz rewrite, status 409. */
+async function previseUredaja(next: (put?: string) => Promise<Response>, setCookie: string | null): Promise<Response> {
+  const r = await next("/admin/uredaji/previse");
+  const h = new Headers(r.headers);
+  h.delete("x-previse-uredaja");
+  if (setCookie) h.append("set-cookie", setCookie);
+  return new Response(r.body, { status: 409, headers: h });
+}
+
+/** Odgovor s dodanim kolačićem (redirect iz `Response.redirect` ima nepromjenjiva zaglavlja). */
+function sKolacicem(r: Response, setCookie: string): Response {
+  const h = new Headers(r.headers);
+  h.append("set-cookie", setCookie);
+  return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
 }
 
 /**

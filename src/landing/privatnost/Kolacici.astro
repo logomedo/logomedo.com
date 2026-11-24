@@ -1,6 +1,6 @@
 ---
 // P-8 Kolačići i lokalna pohrana (landing odluka 605). Prema kodu: kolačić sesije (src/lib/admin/sesija.ts, httpOnly,
-// Lax), kolačići stila i podjele kataloga (src/lib/katalog.ts, src/pages/admin/index.astro, 365 dana, path /admin),
+// Lax), kolačić uređaja (src/lib/admin/uredaji.ts, 400 dana), kolačići stila i podjele kataloga (src/lib/katalog.ts, src/pages/admin/index.astro, 365 dana, path /admin),
 // localStorage logomedo-tema (Tema.astro), logomedo-traka i predlosci-podjela (admin). Samo nužni i postavke: bez privole.
 import Sekcija from "../Sekcija.astro";
 ---
@@ -8,7 +8,8 @@ import Sekcija from "../Sekcija.astro";
   <ul>
     <li><strong>Ove stranice i igra:</strong> bez kolačića. Ako promijenite svijetlu ili tamnu temu, izbor se pamti u pregledniku i
       ne šalje se nikamo.</li>
-    <li><strong>Nakon prijave:</strong> jedan kolačić sesije, bez kojeg prijava ne radi. Briše se odjavom ili kad sesija istekne.</li>
+    <li><strong>Nakon prijave:</strong> jedan kolačić sesije, bez kojeg prijava ne radi. Briše se odjavom ili kad sesija istekne. Uz
+      njega kolačić uređaja (nasumična oznaka preglednika, do 400 dana), po kojem znamo na koliko je uređaja račun otvoren.</li>
     <li><strong>Postavke u aplikaciji:</strong> dva kolačića pamte stil slika i podjelu kataloga koje ste odabrali, godinu dana. U
       pregledniku se pamte i tema, širina bočne trake i podjela predložaka.</li>
   </ul>
