@@ -1,0 +1,23 @@
+---
+// /cijene (odluka 813): tri paketa po korisniku, PDV uključen; dok traje beta, pristup je besplatan uz odobren zahtjev.
+import Okvir from "../landing/Okvir.astro";
+import Uvod from "../landing/Uvod.astro";
+import Paketi from "../landing/cijene/Paketi.astro";
+import ZaTvrtke from "../landing/cijene/ZaTvrtke.astro";
+import Poziv from "../landing/Poziv.astro";
+
+export const prerender = true;
+---
+<Okvir putanja="/cijene">
+  <Uvod gumbi={["pristup", "prijava"]}>
+    <Fragment slot="naslov">Cijene</Fragment>
+    Dok je LogoMedo u beti, korištenje je besplatno. Pristup dobivaju rani korisnici: pošaljite zahtjev, a kad ga odobrimo, stiže vam
+    osobna pozivnica.
+  </Uvod>
+  <Paketi />
+  <ZaTvrtke />
+  <Poziv id="poziv" gumbi={["pristup"]}>
+    <Fragment slot="naslov">Budite među prvima</Fragment>
+    Rani korisnici koriste LogoMedo besplatno dok traje beta, a nakon nje mogu odabrati doživotni pristup.
+  </Poziv>
+</Okvir>

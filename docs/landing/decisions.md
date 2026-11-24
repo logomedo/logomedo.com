@@ -439,3 +439,10 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      /uvjeti, /igre, /katalog i 404. Ostaju činjenice: alat je osmišljen s logopedima, logoped pregledava slike i potvrđuje
      glasove, popis zanimanja u „Za sve koji rade s djecom”, povijest starog appa. Novi tekst nikad ne smije suziti publiku
      na logopede.
+813. **Cijene na `/cijene`** (korisnik, 24. 11. 2026.; mijenja „cijena se izostavlja” iz 204): po korisniku 10 € mjesečno,
+     100 € godišnje ili 250 € jednokratno za doživotni pristup, samo za rane korisnike (early adopters). Iznosi su krajnje
+     cijene s uključenim PDV-om od 25 %; račun izdaje ITalk d.o.o. Za tvrtke (B2B) ista ukupna cijena, na računu osnovica +
+     PDV: 8 + 2, 80 + 20, 200 + 50 €. Dok traje beta, korištenje je besplatno uz odobren zahtjev kroz `/pristup`; plaćanje
+     još ne postoji i uvodi se kasnije, uz najavu i pristanak (kao `/uvjeti`). Konstante `CIJENE`, `PDV`, `osnovica`, `eura`
+     u `konstante.ts`; „Cijene” je u zaglavlju između Igre i O nama; `/pristup` i `/uvjeti` linkaju na `/cijene`.
+     Na `/privatnost` i `/uvjeti` i dalje nema riječi „besplatno” (test).

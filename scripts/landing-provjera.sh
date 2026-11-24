@@ -35,7 +35,7 @@ cp "$RADNI/t" "$RADNI/sitemap.xml"
 provjeri "/sitemap.xml ispravan XML" xmllint --noout "$RADNI/sitemap.xml"
 LOC=$(grep -o '<loc>[^<]*</loc>' "$RADNI/sitemap.xml" | sed 's#</*loc>##g')
 n=$(printf '%s\n' "$LOC" | grep -c '^https://logomedo.com/' || true)
-provjeri "/sitemap.xml ima 8 <loc> na https://logomedo.com ($n)" test "$n" = 8
+provjeri "/sitemap.xml ima 9 <loc> na https://logomedo.com ($n)" test "$n" = 9
 PUTANJE=$(printf '%s\n' "$LOC" | sed 's#^https://logomedo.com##' | grep '^/' || true)
 
 : >"$RADNI/linkovi"

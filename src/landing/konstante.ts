@@ -46,6 +46,22 @@ export const VODITELJ_OBRADE = TVRTKA.naziv;
 /** `[DATUM OBJAVE — S6]` (P-1 na /privatnost, /uvjeti): datum od kojeg tekst vrijedi; prazno = bez retka „Stanje na dan”. */
 export const DATUM_OBJAVE: string = "19. 11. 2026.";
 
+/**
+ * Cijene po korisniku (odluka 813): iznosi su krajnje cijene s uključenim PDV-om, račun izdaje ITalk d.o.o.
+ * Za tvrtke (B2B) ista je ukupna cijena: osnovica + PDV. Naplata još ne postoji; dok traje beta, pristup je besplatan.
+ */
+export const PDV = 0.25;
+export const CIJENE = [
+  { id: "mjesecno", naziv: "Mjesečno", iznos: 10, razdoblje: "mjesečno", opis: "Pretplata iz mjeseca u mjesec." },
+  { id: "godisnje", naziv: "Godišnje", iznos: 100, razdoblje: "godišnje", opis: "Dva mjeseca manje nego mjesečno, za cijelu godinu rada." },
+  { id: "dozivotno", naziv: "Doživotno", iznos: 250, razdoblje: "jednokratno", opis: "Jedna uplata za trajni pristup. Samo za rane korisnike iz beta razdoblja." },
+] as const;
+/** Osnovica bez PDV-a, za račun tvrtki: iznos / (1 + PDV), zaokruženo na cent. */
+export const osnovica = (iznos: number) => Math.round((iznos / (1 + PDV)) * 100) / 100;
+/** Iznos u eurima po hrvatskom pravopisu: „10 €”, „8,00 €” uz decimale. */
+export const eura = (n: number, decimale = false) =>
+  `${n.toLocaleString("hr-HR", { minimumFractionDigits: decimale ? 2 : 0, maximumFractionDigits: 2 })} €`;
+
 export const PRIJAVA = "/admin/login";
 /** Obrazac „Zatraži pristup” za privatnu betu (S7): svi gumbi i linkovi „Zatraži pristup” vode ovamo. */
 export const PRISTUP = "/pristup";
@@ -89,6 +105,12 @@ export const STRANICE: Stranica[] = [
     izbornik: "Igre",
   },
   {
+    putanja: "/cijene",
+    naslov: "Cijene · LogoMedo",
+    opis: "Dok traje beta, LogoMedo je besplatan uz odobren zahtjev. Poslije: 10 € mjesečno, 100 € godišnje ili 250 € doživotno za rane korisnike.",
+    izbornik: "Cijene",
+  },
+  {
     putanja: "/o-nama",
     naslov: "O nama · LogoMedo",
     opis: "Novi LogoMedo nastaje zajedno s logopedima. Tko ga radi, odakle dolazi i kako se uključiti u probno razdoblje.",
@@ -126,8 +148,8 @@ export const stranica = (putanja: string): Stranica => {
 /** Kanonski URL bez kose crte na kraju (osim naslovne); build.format "file". */
 export const kanonski = (putanja: string) => `${SITE}${putanja}`;
 
-/** Zaglavlje (odluka 201): četiri linka; Privatnost samo u podnožju. */
-export const IZBORNIK = ["/katalog", "/radni-listici", "/igre", "/o-nama"].map((p) => ({ href: p, tekst: stranica(p).izbornik! }));
+/** Zaglavlje (odluka 201, 813): pet linkova; Privatnost samo u podnožju. */
+export const IZBORNIK = ["/katalog", "/radni-listici", "/igre", "/cijene", "/o-nama"].map((p) => ({ href: p, tekst: stranica(p).izbornik! }));
 
 export const OG = {
   slika: `${SITE}/landing/og.png`,

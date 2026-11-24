@@ -1,7 +1,7 @@
 ---
 // U-3…U-9 Uvjeti korištenja (landing odluka 607). Tvrdnje prema onome što aplikacija radi: pristup samo uz pozivnicu
 // (src/lib/admin/pozivi.ts), zajednički katalog (rbac odluke), deaktivacija računa (korisnici.aktivan), limit (src/lib/kvota.ts).
-// Bez cijene (odluka 204).
+// Cijene su na /cijene (odluka 813, mijenja „bez cijene” iz 204); naplata samo uz pristanak.
 import Sekcija from "../Sekcija.astro";
 import { TVRTKA } from "../konstante";
 ---
@@ -14,7 +14,7 @@ import { TVRTKA } from "../konstante";
 </Sekcija>
 <Sekcija id="probno" naslov="Probno razdoblje">
   <p>LogoMedo je u probnom razdoblju i nastaje zajedno s logopedima. Funkcije se mogu mijenjati, a neke i nestati.</p>
-  <p>Ako uvedemo naplatu, uvjete ćemo objaviti unaprijed i javiti ih korisnicima s računom. Bez vašeg pristanka ništa nećemo naplatiti.</p>
+  <p>Ako uvedemo naplatu, uvjete ćemo objaviti unaprijed i javiti ih korisnicima s računom. Bez vašeg pristanka ništa nećemo naplatiti. Planirane cijene nakon bete su na stranici <a href="/cijene">Cijene</a>.</p>
 </Sekcija>
 <Sekcija id="sadrzaj" naslov="Čije su slike i zadaci">
   <ul>

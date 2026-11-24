@@ -1,0 +1,16 @@
+---
+// Za tvrtke i ustanove (odluka 813): ista ukupna cijena, na računu rastavljena na osnovicu i PDV. Račun izdaje ITalk d.o.o.
+import Sekcija from "../Sekcija.astro";
+import { CIJENE, PDV, TVRTKA, eura, osnovica } from "../konstante";
+const posto = Math.round(PDV * 100);
+---
+<Sekcija id="za-tvrtke" naslov="Za tvrtke i ustanove">
+  <p>Račun izdaje tvrtka {TVRTKA.kratko} Vrtići, škole, udruge i privatne prakse plaćaju istu cijenu po korisniku; na računu je iznos
+    rastavljen na osnovicu i PDV od {posto}&nbsp;%.</p>
+  <ul>
+    {CIJENE.map((c) => {
+      const o = osnovica(c.iznos);
+      return <li><strong>{c.naziv}:</strong> {eura(o, true)} + {eura(c.iznos - o, true)} PDV = {eura(c.iznos, true)}</li>;
+    })}
+  </ul>
+</Sekcija>

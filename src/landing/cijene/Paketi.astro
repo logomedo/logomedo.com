@@ -1,0 +1,39 @@
+---
+// Tri paketa (odluka 813). Iznosi su krajnje cijene s PDV-om; „Doživotno” je samo za rane korisnike.
+import { CIJENE, eura } from "../konstante";
+---
+<section class="sekcija" aria-labelledby="paketi">
+  <div class="omot">
+    <h2 class="landing-h2" id="paketi">Nakon bete</h2>
+    <p class="uvod-paketa">Cijena je za jednog korisnika i uključuje sve: katalog, radne listiće, PDF za ispis i igre. PDV je uračunat.</p>
+    <ul class="paketi">
+      {CIJENE.map((c) => (
+        <li class:list={["paket", { istaknut: c.id === "dozivotno" }]}>
+          {c.id === "dozivotno" && <span class="oznaka">Rani korisnici</span>}
+          <h3>{c.naziv}</h3>
+          <p class="iznos"><span class="broj">{eura(c.iznos)}</span> <span class="razdoblje">{c.razdoblje}</span></p>
+          <p class="opis">{c.opis}</p>
+        </li>
+      ))}
+    </ul>
+    <p class="beta"><strong>Zasad se ništa ne plaća.</strong> Plaćanje još nije otvoreno; prije nego ga uvedemo, javit ćemo se svim
+      korisnicima s računom, a bez vašeg pristanka ništa nećemo naplatiti.</p>
+  </div>
+</section>
+<style>
+  .uvod-paketa { margin: 0 0 28px; max-width: 680px; color: var(--blijedo); font-size: 1.08rem; }
+  .paketi { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .paket { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 28px 24px; border-radius: 20px;
+    background: var(--povrsina); border: 1px solid var(--rub); box-shadow: var(--sjena-1); }
+  .istaknut { background: var(--med-blago); border-color: var(--med); }
+  .oznaka { align-self: flex-start; padding: 4px 12px; border-radius: 999px; background: var(--med); color: var(--med-tekst);
+    font-size: .85rem; font-weight: 600; }
+  h3 { margin: 0; font-size: 1.2rem; color: var(--tinta); }
+  .iznos { margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .broj { font-size: 2.6rem; font-weight: 700; color: var(--tinta); line-height: 1.1; }
+  .razdoblje { color: var(--blijedo); font-size: 1rem; }
+  .opis { margin: 0; color: var(--blijedo); }
+  .beta { margin: 28px 0 0; max-width: 760px; color: var(--blijedo); font-size: 1.05rem; }
+  .beta strong { color: var(--tinta); font-weight: 600; }
+  @media (max-width: 879px) { .paketi { grid-template-columns: minmax(0, 1fr); } }
+</style>

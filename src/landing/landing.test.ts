@@ -40,14 +40,22 @@ function pravila(tekst: string): Map<string, Map<string, string>> {
 }
 
 test("landing: title ≤ 70 (odluka 811) i description ≤ 155 znakova, sve putanje različite", () => {
-  assert.equal(K.STRANICE.length, 8);
+  assert.equal(K.STRANICE.length, 9);
   for (const s of K.STRANICE) {
     assert.ok(s.naslov.length <= 70, `${s.putanja}: title ${s.naslov.length}`);
     assert.ok(s.opis.length > 50 && s.opis.length <= 155, `${s.putanja}: description ${s.opis.length}`);
     assert.match(s.naslov, /LogoMedo/);
   }
   assert.ok(K.STRANICA_404.naslov.length <= 60);
-  assert.equal(new Set(K.STRANICE.map((s) => s.putanja)).size, 8);
+  assert.equal(new Set(K.STRANICE.map((s) => s.putanja)).size, 9);
+});
+
+test("landing: cijene s PDV-om i osnovica za tvrtke (odluka 813)", () => {
+  assert.deepEqual(K.CIJENE.map((c) => c.iznos), [10, 100, 250]);
+  assert.deepEqual(K.CIJENE.map((c) => K.osnovica(c.iznos)), [8, 80, 200]);
+  assert.equal(K.eura(10), "10 €");
+  assert.equal(K.eura(8, true), "8,00 €");
+  assert.ok(K.IZBORNIK.some((l) => l.href === "/cijene"));
 });
 
 test("landing: svaka stranica iz STRANICE postoji i prerenderira se (osim ssr: /pristup), 404 isto", () => {
@@ -61,7 +69,7 @@ test("landing: svaka stranica iz STRANICE postoji i prerenderira se (osim ssr: /
   assert.ok(!K.STRANICE.some((s) => /^\/(admin|api|b|cdn)(\/|$)/.test(s.putanja)));
 });
 
-test("landing: sitemap ima osam kanonskih URL-ova bez kose crte na kraju i bez 404", () => {
+test("landing: sitemap ima devet kanonskih URL-ova bez kose crte na kraju i bez 404", () => {
   const xml = K.sitemapXml();
   const loc = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   assert.deepEqual(loc, [
@@ -69,6 +77,7 @@ test("landing: sitemap ima osam kanonskih URL-ova bez kose crte na kraju i bez 4
     "https://logomedo.com/katalog",
     "https://logomedo.com/radni-listici",
     "https://logomedo.com/igre",
+    "https://logomedo.com/cijene",
     "https://logomedo.com/o-nama",
     "https://logomedo.com/pristup",
     "https://logomedo.com/privatnost",
