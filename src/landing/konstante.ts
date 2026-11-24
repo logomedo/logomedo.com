@@ -52,9 +52,9 @@ export const DATUM_OBJAVE: string = "19. 11. 2026.";
  */
 export const PDV = 0.25;
 export const CIJENE = [
-  { id: "mjesecno", naziv: "Mjesečno", iznos: 10, razdoblje: "mjesečno", opis: "Pretplata iz mjeseca u mjesec." },
-  { id: "godisnje", naziv: "Godišnje", iznos: 100, razdoblje: "godišnje", opis: "Dva mjeseca manje nego mjesečno, za cijelu godinu rada." },
-  { id: "dozivotno", naziv: "Doživotno", iznos: 250, razdoblje: "jednokratno", opis: "Jedna uplata za trajni pristup. Samo za rane korisnike iz beta razdoblja." },
+  { id: "mjesecno", naziv: "Mjesečno", iznos: 10, razdoblje: "mjesečno", opis: "Pretplata iz mjeseca u mjesec.", oznaka: "" },
+  { id: "godisnje", naziv: "Godišnje", iznos: 100, razdoblje: "godišnje", opis: "Dva mjeseca besplatno: 12 mjeseci po cijeni 10.", oznaka: "2 mjeseca gratis" },
+  { id: "dozivotno", naziv: "Doživotno", iznos: 250, razdoblje: "jednokratno", opis: "Jedna uplata za trajni pristup, bez obnove.", oznaka: "" },
 ] as const;
 /** Osnovica bez PDV-a, za račun tvrtki: iznos / (1 + PDV), zaokruženo na cent. */
 export const osnovica = (iznos: number) => Math.round((iznos / (1 + PDV)) * 100) / 100;
@@ -107,7 +107,7 @@ export const STRANICE: Stranica[] = [
   {
     putanja: "/cijene",
     naslov: "Cijene · LogoMedo",
-    opis: "Dok traje beta, LogoMedo je besplatan uz odobren zahtjev. Poslije: 10 € mjesečno, 100 € godišnje ili 250 € doživotno za rane korisnike.",
+    opis: "Dok traje beta, LogoMedo je besplatan uz odobren zahtjev. Poslije: 10 € mjesečno, 100 € godišnje ili 250 € jednokratno za doživotni pristup.",
     izbornik: "Cijene",
   },
   {

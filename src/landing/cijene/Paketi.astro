@@ -1,5 +1,5 @@
 ---
-// Tri paketa (odluka 813). Iznosi su krajnje cijene s PDV-om; „Doživotno” je samo za rane korisnike.
+// Tri paketa (odluka 813). Iznosi su krajnje cijene s PDV-om; „Doživotno” je istaknut (odluka 814: nije ograničen na betu).
 import { CIJENE, eura } from "../konstante";
 ---
 <section class="sekcija" aria-labelledby="paketi">
@@ -9,7 +9,7 @@ import { CIJENE, eura } from "../konstante";
     <ul class="paketi">
       {CIJENE.map((c) => (
         <li class:list={["paket", { istaknut: c.id === "dozivotno" }]}>
-          {c.id === "dozivotno" && <span class="oznaka">Rani korisnici</span>}
+          {c.oznaka && <span class="oznaka">{c.oznaka}</span>}
           <h3>{c.naziv}</h3>
           <p class="iznos"><span class="broj">{eura(c.iznos)}</span> <span class="razdoblje">{c.razdoblje}</span></p>
           <p class="opis">{c.opis}</p>

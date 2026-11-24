@@ -446,3 +446,6 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
      još ne postoji i uvodi se kasnije, uz najavu i pristanak (kao `/uvjeti`). Konstante `CIJENE`, `PDV`, `osnovica`, `eura`
      u `konstante.ts`; „Cijene” je u zaglavlju između Igre i O nama; `/pristup` i `/uvjeti` linkaju na `/cijene`.
      Na `/privatnost` i `/uvjeti` i dalje nema riječi „besplatno” (test).
+814. **Tekstovi paketa** (korisnik, 24. 11. 2026.): godišnji nosi oznaku „2 mjeseca gratis”; doživotni nije ograničen na
+     betu (ostaje opcija i poslije), bez oznake „Rani korisnici” (kartica ostaje istaknuta). Kuponi i pogodnosti za beta korisnike ne idu
+     na landing prije checkouta (polje za kod bez plaćanja ne radi ništa).
