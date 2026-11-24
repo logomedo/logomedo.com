@@ -43,3 +43,11 @@ compositions/<scena>.html  (izgled i animacija scene; tekst se pojavljuje na rij
 
 Snimke ekrana su iste kao na landingu (`public/landing/v*-desktop.webp`, bez e-mailova i imena).
 Tekst ne kaže „za logopede” (vidi `docs/landing/decisions.md` 810–812).
+
+## Otvoreno (24. 11. 2026.)
+
+- v1 (Elena) i v2 (Matijin klon) poslani su na WhatsApp, a povratna informacija još nije stigla. Glasnoća je
+  izmjerena (−15,5 LUFS), ali omjer glasa i glazbe (`music.volume` 0.16 u `scenes.json`) nitko nije preslušao.
+- Završna kartica s9 kaže „Pristup odobren”: za landing treba inačica bez toga.
+- Nema zvučnih efekata, samo naracija i glazba.
+- `check` javlja `dead_stretch` oko 11,6 s (s2: nakon slogana nema pokreta do kraja scene).
