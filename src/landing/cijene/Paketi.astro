@@ -1,11 +1,11 @@
 ---
-// Tri paketa (odluka 813). Iznosi su krajnje cijene s PDV-om; „Doživotno” je istaknut (odluka 814: nije ograničen na betu).
-import { CIJENE, eura } from "../konstante";
+// Tri paketa za jednu osobu (odluke 813, 814, 816). Iznosi su krajnje cijene s PDV-om. Gumb vodi na narudžbu (/pristup).
+import { CIJENE, PRISTUP, eura } from "../konstante";
 ---
 <section class="sekcija" aria-labelledby="paketi">
   <div class="omot">
-    <h2 class="landing-h2" id="paketi">Nakon bete</h2>
-    <p class="uvod-paketa">Cijena je za jednog korisnika i uključuje sve: katalog, radne listiće, PDF za ispis i igre. PDV je uračunat.</p>
+    <h2 class="landing-h2" id="paketi">Licenca za jednu osobu</h2>
+    <p class="uvod-paketa">Cijene su s uključenim PDV-om. Račun izdaje ITalk d.o.o.</p>
     <ul class="paketi">
       {CIJENE.map((c) => (
         <li class:list={["paket", { istaknut: c.id === "dozivotno" }]}>
@@ -13,11 +13,12 @@ import { CIJENE, eura } from "../konstante";
           <h3>{c.naziv}</h3>
           <p class="iznos"><span class="broj">{eura(c.iznos)}</span> <span class="razdoblje">{c.razdoblje}</span></p>
           <p class="opis">{c.opis}</p>
+          <a class="gumb" href={`${PRISTUP}?paket=${c.id}`}>Naruči</a>
         </li>
       ))}
     </ul>
-    <p class="beta"><strong>Zasad se ništa ne plaća.</strong> Plaćanje još nije otvoreno; prije nego ga uvedemo, javit ćemo se svim
-      korisnicima s računom, a bez vašeg pristanka ništa nećemo naplatiti.</p>
+    <p class="napomena">Kupnja zasad ide narudžbom: pošaljete obrazac, mi pošaljemo račun, a pristup otvaramo čim je uplata vidljiva,
+      bez odobravanja. Plaćanje karticom uvodimo uskoro.</p>
   </div>
 </section>
 <style>
@@ -32,8 +33,10 @@ import { CIJENE, eura } from "../konstante";
   .iznos { margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .broj { font-size: 2.6rem; font-weight: 700; color: var(--tinta); line-height: 1.1; }
   .razdoblje { color: var(--blijedo); font-size: 1rem; }
-  .opis { margin: 0; color: var(--blijedo); }
-  .beta { margin: 28px 0 0; max-width: 760px; color: var(--blijedo); font-size: 1.05rem; }
-  .beta strong { color: var(--tinta); font-weight: 600; }
+  .opis { margin: 0; color: var(--blijedo); flex: 1; }
+  .gumb { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 22px; border-radius: 999px;
+    background: var(--med); color: var(--med-tekst); font-weight: 600; text-decoration: none; box-shadow: var(--sjena-1); }
+  .gumb:hover { filter: brightness(1.05); }
+  .napomena { margin: 24px 0 0; max-width: 760px; color: var(--blijedo); font-size: 1rem; }
   @media (max-width: 879px) { .paketi { grid-template-columns: minmax(0, 1fr); } }
 </style>

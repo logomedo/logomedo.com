@@ -4,7 +4,7 @@
 // vizual ispod teksta. Bez njega izgled je kao prije.
 import Cta from "./Cta.astro";
 
-interface Props { gumbi: ("prijava" | "pristup" | "demo")[]; sitno?: string }
+interface Props { gumbi: ("prijava" | "pristup" | "demo" | { href: string; tekst: string })[]; sitno?: string }
 const { gumbi, sitno } = Astro.props;
 const vizual = Astro.slots.has("vizual");
 ---

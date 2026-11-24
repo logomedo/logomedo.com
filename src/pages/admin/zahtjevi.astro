@@ -10,6 +10,7 @@ import { PORUKE_ODBIJANJA } from "../../lib/admin/pozivi";
 import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../lib/admin/zahtjevi";
 import { ROK_MJESECI, pocisti } from "../../lib/pristup";
 import { posaljiPozivnicu, type IshodSlanja } from "../../lib/email";
+import { PAKETI_ZAHTJEVA, cijenaLicence, eura } from "../../landing/konstante";
 import { IZBORI, NAPOMENA_MAX, opisPogodnosti, procitajIzbor, type Pogodnost } from "../../lib/admin/pogodnosti";
 
 const s = Astro.locals.admin;
@@ -47,6 +48,8 @@ if (Astro.request.method === "POST") {
 
 await pocisti();
 const [novi, obradjeni] = await Promise.all([noviZahtjevi(), obradjeniZahtjevi()]);
+const paketTekst = (kod: string) => PAKETI_ZAHTJEVA.find((p) => p.kod === kod)?.tekst ?? kod;
+const licence = (n: number) => { const c = cijenaLicence(n); return c === null ? "cijena po dogovoru" : `${eura(c)} po licenci, ukupno ${eura(c * n)} godišnje`; };
 const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren", odbijen: "odbijen" };
 ---
 <AdminOkvir naslov="Zahtjevi za pristup" aktivno="zahtjevi">
@@ -88,6 +91,9 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
             <span class="blijedo sitno">{kad(z.created_at)}</span>
           </header>
           <p class="email">{z.email}</p>
+          <p><span class:list={["paket", { placeno: z.paket !== "beta" }]}>{paketTekst(z.paket)}</span>
+            {z.paket === "ustanova" && z.broj_licenci && <span class="sitno"> · {z.broj_licenci} licenci: {licence(z.broj_licenci)}</span>}</p>
+          {z.paket !== "beta" && <p class="sitno blijedo">Narudžba: pošalji račun ili ponudu („Napiši”), a „Odobri” kad uplata stigne.</p>}
           <p class="blijedo">{[z.ustanova, z.grad].filter(Boolean).join(" · ") || "—"}</p>
           {z.poruka && <p class="poruka-zahtjeva">{z.poruka}</p>}
           <div class="akcije">
@@ -106,7 +112,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
               <input type="hidden" name="id" value={z.id} />
               <button class="gumb mali opasno" type="submit"><Ikona ime="x" /> Odbij</button>
             </form>
-            <a class="gumb mali" href={`/admin/poruke/novi?${new URLSearchParams({ email: z.email, ime: z.ime, predmet: "Vaš zahtjev za pristup LogoMedu" })}`}><Ikona ime="pismo" /> Napiši</a>
+            <a class="gumb mali" href={`/admin/poruke/novi?${new URLSearchParams({ email: z.email, ime: z.ime, predmet: z.paket === "beta" ? "Vaš zahtjev za pristup LogoMedu" : "Vaša narudžba LogoMeda" })}`}><Ikona ime="pismo" /> Napiši</a>
           </div>
         </article>
       ))}
@@ -122,7 +128,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
           <tbody>
             {obradjeni.map((z) => (
               <tr>
-                <td><b>{z.ime}</b><br /><span class="blijedo sitno">{z.email}</span></td>
+                <td><b>{z.ime}</b><br /><span class="blijedo sitno">{z.email} · {paketTekst(z.paket)}{z.broj_licenci ? ` × ${z.broj_licenci}` : ""}</span></td>
                 <td><span class:list={["status", z.status]}>{STATUS[z.status]}</span></td>
                 <td class="sitno">{z.obradio ?? "—"}</td>
                 <td class="sitno">{kad(z.obradjen_at)}</td>
@@ -164,6 +170,8 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
   .zahtjev h3 { margin: 0; font-size: 1.02rem; }
   .zahtjev p { margin: 0; overflow-wrap: anywhere; }
   .email { font-weight: 600; }
+  .paket { font-size: .8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--povrsina-2); }
+  .paket.placeno { background: var(--med-blago); color: var(--med-tamno); }
   .poruka-zahtjeva { white-space: pre-line; padding: 10px 12px; border-radius: 10px; background: var(--povrsina-2); font-size: .9rem; }
   .akcije { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; align-items: flex-end; }
   .odobri { display: flex; flex-direction: column; gap: 6px; flex-basis: 100%; padding: 10px 12px; border-radius: 10px; background: var(--povrsina-2); }

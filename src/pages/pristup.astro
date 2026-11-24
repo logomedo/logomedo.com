@@ -4,9 +4,9 @@
 // middlewarea vrijedi samo za /admin, pa Origin provjerava ova stranica. Bez JavaScripta i bez inline skripte.
 // Logika i zaštita od spama: src/lib/pristup.ts. Uspjeh: PRG, 303 na /pristup?poslano=1.
 import Okvir from "../landing/Okvir.astro";
-import { PRIJAVA } from "../landing/konstante";
+import { PAKETI_ZAHTJEVA, PRIJAVA, cijenaLicence, eura } from "../landing/konstante";
 import {
-  HONEYPOT, MAX, ZIG, istiOrigin, posalji, prazanUnos, vremenskiZig, type Greske, type Polje, type Unos,
+  HONEYPOT, LICENCI_MAX, MAX, ZIG, istiOrigin, posalji, prazanUnos, vremenskiZig, type Greske, type Polje, type Unos,
 } from "../lib/pristup";
 
 export const prerender = false;
@@ -14,7 +14,7 @@ export const prerender = false;
 Astro.response.headers.set("cache-control", "no-store");
 
 let stanje: "obrazac" | "hvala" | "previse" = Astro.url.searchParams.get("poslano") === "1" ? "hvala" : "obrazac";
-let unos: Unos = prazanUnos();
+let unos: Unos = prazanUnos(Astro.url.searchParams.get("paket") ?? "beta");
 let greske: Greske = {};
 let zig: string | null = null;
 
@@ -51,14 +51,30 @@ const aria = (p: Polje, opis?: string) => {
         {stanje === "hvala" ? (
           <>
             <h1 class="landing-h1" id="naslov">Hvala, javit ćemo se.</h1>
-            <p class="uvodni">Zahtjev je stigao. Kad pripremimo pristup, poslat ćemo vam osobnu pozivnicu na e-mail koji ste upisali.</p>
+            <p class="uvodni">Zahtjev je stigao. Javit ćemo vam se na e-mail koji ste upisali: s računom ili ponudom ako ste naručili paket, a s osobnim linkom za prijavu kad je pristup otvoren.</p>
             <p class="sitno"><a href="/">Natrag na naslovnu</a></p>
           </>
         ) : (
           <>
-            <h1 class="landing-h1" id="naslov">Privatna beta</h1>
-            <p class="uvodni">LogoMedo je zasad u privatnoj beti. Pristup otvaramo pozivnicom: pošaljite nam zahtjev, a mi
-              ćemo vam se javiti s osobnim linkom za prijavu. Dok traje beta, korištenje je besplatno (<a href="/cijene">cijene nakon bete</a>).</p>
+            {unos.paket === "beta" ? (
+              <>
+                <h1 class="landing-h1" id="naslov">Besplatno za vrijeme bete</h1>
+                <p class="uvodni">Dok je LogoMedo u beti, možete zatražiti besplatan pristup. O svakom zahtjevu odlučujemo pojedinačno i
+                  javljamo vam se s osobnim linkom za prijavu. Ako ne želite čekati, odaberite paket iz <a href="/cijene">cjenika</a>.</p>
+              </>
+            ) : unos.paket === "ustanova" ? (
+              <>
+                <h1 class="landing-h1" id="naslov">Licence za ustanovu</h1>
+                <p class="uvodni">Upišite koliko licenci trebate. Poslat ćemo ponudu s popustom za taj broj licenci; kad je uplata vidljiva,
+                  svaka osoba dobiva svoj link za prijavu. <a href="/cijene#za-ustanove">Popusti po broju licenci</a></p>
+              </>
+            ) : (
+              <>
+                <h1 class="landing-h1" id="naslov">Narudžba</h1>
+                <p class="uvodni">Pošaljite narudžbu i poslat ćemo vam račun za uplatu. Pristup otvaramo čim je uplata vidljiva, bez
+                  odobravanja. Plaćanje karticom uvodimo uskoro.</p>
+              </>
+            )}
             <p class="sitno">Već imate pozivnicu? <a href={PRIJAVA}>Prijava</a></p>
           </>
         )}
@@ -82,6 +98,23 @@ const aria = (p: Polje, opis?: string) => {
           <input type="hidden" name={ZIG} value={zig ?? ""} />
 
           <div class="polje">
+            <label for="paket">Što vas zanima</label>
+            <select id="paket" name="paket" {...aria("paket")}>
+              {PAKETI_ZAHTJEVA.map((p) => <option value={p.kod} selected={p.kod === unos.paket}>{p.tekst}</option>)}
+            </select>
+            {greske.paket && <p class="greska" id="greska-paket">{greske.paket}</p>}
+          </div>
+
+          <div class="polje">
+            <label for="licenci">Broj licenci <span class="neobavezno">(samo za ustanovu)</span></label>
+            <input id="licenci" name="licenci" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" value={unos.licenci}
+              {...aria("licenci", "opis-licenci")} />
+            <p class="opis" id="opis-licenci">Jedna licenca je za jednu osobu. Npr. 5 licenci: {eura(cijenaLicence(5)!)} godišnje po osobi
+              (do {LICENCI_MAX}).</p>
+            {greske.licenci && <p class="greska" id="greska-licenci">{greske.licenci}</p>}
+          </div>
+
+          <div class="polje">
             <label for="ime">Ime i prezime</label>
             <input id="ime" name="ime" type="text" autocomplete="name" required maxlength={MAX.ime} value={unos.ime} {...aria("ime")} />
             {greske.ime && <p class="greska" id="greska-ime">{greske.ime}</p>}
@@ -91,7 +124,7 @@ const aria = (p: Polje, opis?: string) => {
             <label for="email">E-mail</label>
             <input id="email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="254" value={unos.email}
               {...aria("email", "opis-email")} />
-            <p class="opis" id="opis-email">Na njega stiže pozivnica.</p>
+            <p class="opis" id="opis-email">Na njega stižu račun ili ponuda i link za prijavu.</p>
             {greske.email && <p class="greska" id="greska-email">{greske.email}</p>}
           </div>
 
@@ -130,7 +163,7 @@ const aria = (p: Polje, opis?: string) => {
             {greske.privola && <p class="greska" id="greska-privola">{greske.privola}</p>}
           </div>
 
-          <button class="gumb" type="submit">Zatraži pristup</button>
+          <button class="gumb" type="submit">{unos.paket === "beta" ? "Zatraži pristup" : unos.paket === "ustanova" ? "Zatraži ponudu" : "Pošalji narudžbu"}</button>
         </form>
       )}
     </div>
@@ -149,10 +182,10 @@ const aria = (p: Polje, opis?: string) => {
   .dva { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
   label { font-weight: 600; font-size: .95rem; color: var(--tinta); }
   .neobavezno { font-weight: 400; color: var(--blijedo); }
-  input[type="text"], input[type="email"], textarea { width: 100%; box-sizing: border-box; min-height: 48px; padding: 11px 14px;
+  input[type="text"], input[type="email"], select, textarea { width: 100%; box-sizing: border-box; min-height: 48px; padding: 11px 14px;
     font: inherit; font-size: 1rem; color: var(--tinta); background: var(--papir); border: 1px solid var(--rub-jak); border-radius: 12px; }
   textarea { min-height: 110px; resize: vertical; }
-  input[type="text"]:focus, input[type="email"]:focus, textarea:focus { border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
+  input[type="text"]:focus, input[type="email"]:focus, select:focus, textarea:focus { border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
   [aria-invalid="true"] { border-color: var(--greska) !important; }
   .opis { font-size: .85rem; color: var(--blijedo); }
   .greska { font-size: .88rem; font-weight: 600; color: var(--greska); }

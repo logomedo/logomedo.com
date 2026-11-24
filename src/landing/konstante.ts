@@ -56,6 +56,34 @@ export const CIJENE = [
   { id: "godisnje", naziv: "Godišnje", iznos: 100, razdoblje: "godišnje", opis: "Dva mjeseca besplatno: 12 mjeseci po cijeni 10.", oznaka: "2 mjeseca gratis" },
   { id: "dozivotno", naziv: "Doživotno", iznos: 250, razdoblje: "jednokratno", opis: "Jedna uplata za trajni pristup, bez obnove.", oznaka: "" },
 ] as const;
+/**
+ * Godišnje licence za ustanove (odluka 816): popust po licenci prema broju licenci u jednoj narudžbi. Cijena po licenci
+ * je godišnja cijena umanjena za popust; od `do: null` naviše cijena je po dogovoru.
+ */
+export const LICENCE_USTANOVE = [
+  { od: 1, do: 4, popust: 0 },
+  { od: 5, do: 9, popust: 10 },
+  { od: 10, do: 24, popust: 15 },
+  { od: 25, do: 49, popust: 20 },
+  { od: 50, do: null, popust: null },
+] as const;
+/** Godišnja cijena jedne licence za `n` licenci (s PDV-om); null = po dogovoru. */
+export function cijenaLicence(n: number): number | null {
+  const r = LICENCE_USTANOVE.find((x) => n >= x.od && (x.do === null || n <= x.do));
+  return r && r.popust !== null ? Math.round(100 * (1 - r.popust / 100) * 100) / 100 : null;
+}
+
+/** Što obrazac /pristup može tražiti (odluka 816); `?paket=` na /pristup predodabere. */
+export const PAKETI_ZAHTJEVA = [
+  { kod: "beta", tekst: "Besplatan pristup za vrijeme bete" },
+  { kod: "mjesecno", tekst: "Mjesečno, 10 €" },
+  { kod: "godisnje", tekst: "Godišnje, 100 €" },
+  { kod: "dozivotno", tekst: "Doživotno, 250 €" },
+  { kod: "ustanova", tekst: "Licence za ustanovu (više osoba)" },
+] as const;
+export type PaketZahtjeva = (typeof PAKETI_ZAHTJEVA)[number]["kod"];
+export const jePaket = (v: unknown): v is PaketZahtjeva => PAKETI_ZAHTJEVA.some((p) => p.kod === v);
+
 /** Osnovica bez PDV-a, za račun tvrtki: iznos / (1 + PDV), zaokruženo na cent. */
 export const osnovica = (iznos: number) => Math.round((iznos / (1 + PDV)) * 100) / 100;
 /** Iznos u eurima po hrvatskom pravopisu: „10 €”, „8,00 €” uz decimale. */
@@ -107,7 +135,7 @@ export const STRANICE: Stranica[] = [
   {
     putanja: "/cijene",
     naslov: "Cijene · LogoMedo",
-    opis: "Dok traje beta, LogoMedo je besplatan uz odobren zahtjev. Poslije: 10 € mjesečno, 100 € godišnje ili 250 € jednokratno za doživotni pristup.",
+    opis: "Licenca za jednu osobu: 10 € mjesečno, 100 € godišnje ili 250 € doživotno, PDV uključen. Ustanove dobivaju popust na više licenci.",
     izbornik: "Cijene",
   },
   {
@@ -119,7 +147,7 @@ export const STRANICE: Stranica[] = [
   {
     putanja: "/pristup",
     naslov: "Zatraži pristup · LogoMedo",
-    opis: "LogoMedo je zasad u privatnoj beti. Pošaljite zahtjev s imenom, e-mailom i ustanovom, a pozivnicu za prijavu šaljemo osobno.",
+    opis: "Zatražite besplatan pristup za vrijeme bete ili naručite licencu za sebe ili za ustanovu. Link za prijavu šaljemo osobno na vaš e-mail.",
     izbornik: "Zatraži pristup",
     ssr: true,
   },

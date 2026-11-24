@@ -1,0 +1,53 @@
+---
+// Licence za ustanove (odluka 816): godišnje licence u većem broju s popustom po licenci. Kupac je ustanova ili osnivač
+// (grad, općina), korisnici su stručni suradnici. Ponuda i račun (osnovica + PDV) od ITalka.
+import { LICENCE_USTANOVE, PDV, PRISTUP, TVRTKA, cijenaLicence, eura, osnovica } from "../konstante";
+const posto = Math.round(PDV * 100);
+const redovi = LICENCE_USTANOVE.map((r) => {
+  const c = cijenaLicence(r.od);
+  return { raspon: r.do === null ? `${r.od} i više` : `${r.od}–${r.do}`, popust: r.popust, c };
+});
+---
+<section class="sekcija" aria-labelledby="za-ustanove">
+  <div class="omot">
+    <h2 class="landing-h2" id="za-ustanove">Za ustanove, gradove i općine</h2>
+    <p class="uvod">Vrtić, škola, udruga ili njihov osnivač može kupiti godišnje licence za više stručnih suradnika odjednom: npr. grad ili
+      općina za logopede i stručne suradnike u svojim vrtićima. Svaka licenca i dalje glasi na jednu osobu. Što više licenci, to je
+      licenca jeftinija.</p>
+    <div class="tablica">
+      <table>
+        <caption class="skriveno">Godišnja cijena jedne licence prema broju licenci</caption>
+        <thead><tr><th scope="col">Broj licenci</th><th scope="col">Popust</th><th scope="col">Po licenci godišnje</th><th scope="col">Bez PDV-a</th></tr></thead>
+        <tbody>
+          {redovi.map((r) => (
+            <tr>
+              <th scope="row">{r.raspon}</th>
+              <td>{r.popust === null ? "—" : r.popust === 0 ? "puna cijena" : `${r.popust} %`}</td>
+              <td>{r.c === null ? "po dogovoru" : <b>{eura(r.c)}</b>}</td>
+              <td>{r.c === null ? "—" : eura(osnovica(r.c), true)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="napomena">Primjer: 10 licenci godišnje {eura(cijenaLicence(10)! * 10)} (s PDV-om). Ponudu i račun izdaje {TVRTKA.kratko}, s
+      osnovicom i PDV-om od {posto}&nbsp;% posebno; plaća se uplatom na račun. Kad uplata stigne, svaka osoba dobiva svoj link za prijavu.</p>
+    <a class="gumb" href={`${PRISTUP}?paket=ustanova`}>Zatraži ponudu</a>
+  </div>
+</section>
+<style>
+  .uvod { margin: 0 0 24px; max-width: 760px; color: var(--blijedo); font-size: 1.08rem; }
+  .tablica { overflow-x: auto; max-width: 760px; border: 1px solid var(--rub); border-radius: 18px; background: var(--povrsina); }
+  table { width: 100%; border-collapse: collapse; font-size: 1rem; }
+  th, td { text-align: left; padding: 12px 18px; border-bottom: 1px solid var(--rub); white-space: nowrap; }
+  thead th { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--blijedo); font-weight: 600; }
+  tbody th { font-weight: 600; color: var(--tinta); }
+  td { color: var(--blijedo); }
+  td b { color: var(--tinta); }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+  .skriveno { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .napomena { margin: 20px 0 22px; max-width: 760px; color: var(--blijedo); }
+  .gumb { display: inline-flex; align-items: center; min-height: 48px; padding: 0 24px; border-radius: 999px; background: var(--med);
+    color: var(--med-tekst); font-weight: 600; text-decoration: none; box-shadow: var(--sjena-1); }
+  .gumb:hover { filter: brightness(1.05); }
+</style>

@@ -1,0 +1,9 @@
+---
+// Besplatno za vrijeme bete (odluka 816): zahtjev kroz /pristup?paket=beta, odlučuje administrator.
+import Poziv from "../Poziv.astro";
+---
+<Poziv id="beta" gumbi={[{ href: "/pristup?paket=beta", tekst: "Zatraži besplatan pristup" }]}>
+  <Fragment slot="naslov">Besplatno za vrijeme bete</Fragment>
+  Dok je LogoMedo u beti, možete zatražiti besplatan pristup. O svakom zahtjevu odlučujemo pojedinačno; ako ga odobrimo, LogoMedo
+  koristite besplatno do kraja bete.
+</Poziv>

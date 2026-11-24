@@ -265,3 +265,12 @@ test("landing: svako od 30 slova u N-4 ima sliku od 256 px (odluka 805)", () => 
     assert.ok(existsSync(new URL(`public/landing/${ime}-256.webp`, korijen)), `${g}: ${ime}`);
   }
 });
+
+test("landing: licence za ustanove, popust po broju licenci (odluka 816)", () => {
+  assert.deepEqual([1, 4, 5, 9, 10, 24, 25, 49].map(K.cijenaLicence), [100, 100, 90, 90, 85, 85, 80, 80]);
+  assert.equal(K.cijenaLicence(50), null);
+  assert.equal(K.cijenaLicence(0), null);
+  assert.deepEqual(K.PAKETI_ZAHTJEVA.map((p) => p.kod), ["beta", ...K.CIJENE.map((c) => c.id), "ustanova"]);
+  assert.match(procitaj("src/landing/cijene/Osobna.astro"), /jednu osobu/);
+  assert.match(procitaj("src/landing/uvjeti/Odredbe.astro"), /Jedna licenca je za jednu osobu/);
+});

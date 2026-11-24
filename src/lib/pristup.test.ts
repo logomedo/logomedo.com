@@ -239,3 +239,17 @@ test("posalji: upisan zahtjev šalje obavijest superadminu, odbačen (otvoreni v
     delete env.RESEND_API_KEY;
   }
 });
+
+test("paket (odluka 816): bez polja beta; ustanova traži broj licenci; upis sprema paket i broj licenci", async () => {
+  assert.equal(procitajUnos(obrazac()).paket, "beta");
+  assert.deepEqual(provjeriUnos(procitajUnos(obrazac({ paket: "godisnje" }))), {});
+  assert.ok(provjeriUnos(procitajUnos(obrazac({ paket: "besplatno-zauvijek" }))).paket);
+  assert.ok(provjeriUnos(procitajUnos(obrazac({ paket: "ustanova" }))).licenci);
+  for (const n of ["0", "1001", "2.5", "-3", "pet"]) assert.ok(provjeriUnos(procitajUnos(obrazac({ paket: "ustanova", licenci: n }))).licenci, n);
+  assert.deepEqual(provjeriUnos(procitajUnos(obrazac({ paket: "ustanova", licenci: "12" }))), {});
+
+  assert.deepEqual(await posalji(obrazac({ paket: "ustanova", licenci: "12" }), "198.51.100.7", SADA), { vrsta: "hvala" });
+  assert.deepEqual(await posalji(obrazac({ email: "b@vrtic.example.test", paket: "mjesecno", licenci: "7" }), "198.51.100.8", SADA), { vrsta: "hvala" });
+  const r = await redovi();
+  assert.deepEqual(r.map((x) => [x.paket, x.broj_licenci]), [["ustanova", 12], ["mjesecno", null]]);
+});

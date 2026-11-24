@@ -8,6 +8,7 @@ import { ispravanEmail, normalizirajEmail } from "./admin/pozivi";
 import { sha256Hex } from "./admin/sesija";
 import { IP_SATI, ROK_MJESECI } from "./pristup-rokovi";
 import { obavijesti } from "./obavijesti";
+import { jePaket } from "../landing/konstante";
 
 export { IP_SATI, ROK_MJESECI };
 /** Najviše spremljenih zahtjeva s iste IP adrese u zadnjih sat vremena. */
@@ -21,11 +22,16 @@ export const MAX = { ime: 80, ustanova: 120, grad: 120, poruka: 1000 } as const;
 export const HONEYPOT = "web_stranica";
 export const ZIG = "otvoreno";
 
-export type Polje = "ime" | "email" | "ustanova" | "grad" | "poruka" | "privola";
-export interface Unos { ime: string; email: string; ustanova: string; grad: string; poruka: string; privola: boolean }
+export type Polje = "ime" | "email" | "ustanova" | "grad" | "poruka" | "privola" | "paket" | "licenci";
+export interface Unos {
+  ime: string; email: string; ustanova: string; grad: string; poruka: string; privola: boolean;
+  /** Odluka 816: što se traži (beta ili paket); `licenci` samo za ustanovu (tekst iz polja, broj se provjerava). */
+  paket: string; licenci: string;
+}
+export const LICENCI_MAX = 1000;
 export type Greske = Partial<Record<Polje | "obrazac", string>>;
 
-export const prazanUnos = (): Unos => ({ ime: "", email: "", ustanova: "", grad: "", poruka: "", privola: false });
+export const prazanUnos = (paket: string = "beta"): Unos => ({ ime: "", email: "", ustanova: "", grad: "", poruka: "", privola: false, paket: jePaket(paket) ? paket : "beta", licenci: "" });
 
 // Kontrolni znakovi van (poruka smije imati novi red i tab).
 const cisto = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").trim() : "");
@@ -40,6 +46,8 @@ export function procitajUnos(f: FormData): Unos {
     grad: cisto(f.get("grad")),
     poruka: cistaPoruka(f.get("poruka")),
     privola: f.get("privola") === "da",
+    paket: cisto(f.get("paket")) || "beta",
+    licenci: cisto(f.get("licenci")),
   };
 }
 
@@ -55,6 +63,11 @@ export function provjeriUnos(u: Unos): Greske {
   if (!u.grad) g.grad = "Upišite grad.";
   else if (u.grad.length > MAX.grad) g.grad = `Najviše ${MAX.grad} znakova.`;
   if (u.poruka.length > MAX.poruka) g.poruka = `Najviše ${MAX.poruka} znakova.`;
+  if (!jePaket(u.paket)) g.paket = "Odaberite što vas zanima.";
+  else if (u.paket === "ustanova") {
+    const n = Number(u.licenci);
+    if (!/^\d{1,4}$/.test(u.licenci) || n < 1 || n > LICENCI_MAX) g.licenci = `Upišite broj licenci (1 do ${LICENCI_MAX}).`;
+  }
   if (!u.privola) g.privola = "Bez ove potvrde ne možemo spremiti zahtjev.";
   return g;
 }
@@ -167,10 +180,11 @@ export async function posalji(f: FormData, ip: string | null, sada = new Date(),
   const rez = await env.DB.batch([
     ...naredbeCiscenja(sada),
     env.DB.prepare(
-      `INSERT INTO zahtjevi_pristupa (ime, email, ustanova, grad, poruka, privola_at, created_at, ip_hash)
-       SELECT ?, ?, ?, ?, ?, ?, ?, ?
+      `INSERT INTO zahtjevi_pristupa (ime, email, ustanova, grad, poruka, privola_at, created_at, ip_hash, paket, broj_licenci)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
        WHERE NOT EXISTS (SELECT 1 FROM zahtjevi_pristupa WHERE email = ? AND status = 'novi')`,
-    ).bind(unos.ime, email, unos.ustanova, unos.grad, unos.poruka || null, at, at, hash, email),
+    ).bind(unos.ime, email, unos.ustanova, unos.grad, unos.poruka || null, at, at, hash, unos.paket,
+      unos.paket === "ustanova" ? Number(unos.licenci) : null, email),
   ]);
   // Obavijest superadminu (S4 inboxa) samo za stvarno upisan zahtjev; ne baca, najviše jedna na sat.
   if (rez.at(-1)?.meta.changes) await obavijesti({ vrsta: "zahtjev" }, dohvat, sada);

@@ -12,9 +12,11 @@ export type StatusZahtjeva = "novi" | "odobren" | "odbijen";
 export interface Zahtjev {
   id: number; ime: string; email: string; ustanova: string | null; grad: string | null; poruka: string | null;
   created_at: string; status: StatusZahtjeva; obradio: string | null; obradjen_at: string | null;
+  /** Odluka 816: 'beta' (besplatno, odlučuje superadmin) ili naručeni paket; `broj_licenci` uz 'ustanova'. */
+  paket: string; broj_licenci: number | null;
 }
 
-const STUPCI = "id, ime, email, ustanova, grad, poruka, created_at, status, obradio, obradjen_at";
+const STUPCI = "id, ime, email, ustanova, grad, poruka, created_at, status, obradio, obradjen_at, paket, broj_licenci";
 
 export async function noviZahtjevi(): Promise<Zahtjev[]> {
   return (await env.DB.prepare(`SELECT ${STUPCI} FROM zahtjevi_pristupa WHERE status = 'novi' ORDER BY created_at, id`)

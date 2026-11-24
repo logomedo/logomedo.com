@@ -3,7 +3,7 @@
 // Gumbi s praznom konstantom se ne renderiraju (Cta.astro, odluka 206).
 import Cta from "./Cta.astro";
 
-interface Props { id: string; gumbi: ("prijava" | "pristup" | "demo")[]; link?: { href: string; tekst: string } }
+interface Props { id: string; gumbi: ("prijava" | "pristup" | "demo" | { href: string; tekst: string })[]; link?: { href: string; tekst: string } }
 const { id, gumbi, link } = Astro.props;
 const tekst = Astro.slots.has("default");
 ---

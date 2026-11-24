@@ -1,7 +1,7 @@
 ---
 // U-3…U-9 Uvjeti korištenja (landing odluka 607). Tvrdnje prema onome što aplikacija radi: pristup samo uz pozivnicu
 // (src/lib/admin/pozivi.ts), zajednički katalog (rbac odluke), deaktivacija računa (korisnici.aktivan), limit (src/lib/kvota.ts).
-// Cijene su na /cijene (odluka 813, mijenja „bez cijene” iz 204); naplata samo uz pristanak.
+// Cijene su na /cijene (odluke 813, 816; mijenja „bez cijene” iz 204); licenca za jednu osobu; naplata samo uz narudžbu.
 import Sekcija from "../Sekcija.astro";
 import { TVRTKA } from "../konstante";
 ---
@@ -9,12 +9,14 @@ import { TVRTKA } from "../konstante";
   <ul>
     <li>LogoMedo je alat za izradu dječjih radnih materijala i igara. Račun se otvara samo uz pozivnicu.</li>
     <li>Račun je osoban: prijavu ne dijelite s drugima i čuvajte uređaj na kojem je vaš passkey.</li>
+    <li>Jedna licenca je za jednu osobu. Ako LogoMedo koristi više ljudi, svakome treba vlastita licenca (<a href="/cijene">Cijene</a>).</li>
     <li>Igru iz bilježnice dijete otvara preko linka koji ste mu dali, bez računa. Link dijelite samo s onima kojima je namijenjen.</li>
   </ul>
 </Sekcija>
 <Sekcija id="probno" naslov="Probno razdoblje">
   <p>LogoMedo je u probnom razdoblju i nastaje zajedno s logopedima. Funkcije se mogu mijenjati, a neke i nestati.</p>
-  <p>Ako uvedemo naplatu, uvjete ćemo objaviti unaprijed i javiti ih korisnicima s računom. Bez vašeg pristanka ništa nećemo naplatiti. Planirane cijene nakon bete su na stranici <a href="/cijene">Cijene</a>.</p>
+  <p>Cijene paketa su na stranici <a href="/cijene">Cijene</a> i vrijede od dana narudžbe. Pristup odobren za vrijeme bete ne prelazi sam u
+    plaćeni paket: bez vaše narudžbe ništa ne naplaćujemo.</p>
 </Sekcija>
 <Sekcija id="sadrzaj" naslov="Čije su slike i zadaci">
   <ul>

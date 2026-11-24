@@ -452,3 +452,9 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
 815. **Pogodnosti nakon bete** (korisnik, 24. 11. 2026.): superadmin privatno dodijeli „N mjeseci besplatno” ili „trajno
      besplatno”, uz „Odobri” na /admin/zahtjevi ili na /admin/pogodnosti (migracija 0045). Dok traje beta se ne provodi;
      checkout će je poštovati. Kuponi za popust čekaju checkout i platni servis. Detalji: `docs/pogodnosti.md`.
+816. **Cjenik vrijedi odmah, licenca je osobna, ustanove s popustom** (korisnik, 24. 11. 2026.): `/cijene` više nije „nakon
+     bete”. Jedna licenca = jedna osoba (i na `/uvjeti`). Kupnja zasad narudžbom kroz `/pristup?paket=…` (migracija 0046:
+     `zahtjevi_pristupa.paket`, `broj_licenci`): superadmin pošalje račun ili ponudu i odobri kad uplata stigne, bez
+     procjene; kartično plaćanje „uskoro”. Za vrijeme bete i dalje „besplatan pristup” uz odluku administratora
+     (`paket = 'beta'`). Godišnje licence za ustanove i osnivače (gradovi, općine za stručne suradnike u vrtićima):
+     1–4 puna cijena, 5–9 −10 %, 10–24 −15 %, 25–49 −20 %, 50+ po dogovoru (`LICENCE_USTANOVE`).

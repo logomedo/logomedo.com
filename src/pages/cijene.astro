@@ -1,23 +1,23 @@
 ---
-// /cijene (odluka 813): tri paketa po korisniku, PDV uključen; dok traje beta, pristup je besplatan uz odobren zahtjev.
+// /cijene (odluke 813, 814, 816): cjenik vrijedi odmah; licenca je za jednu osobu. Kupnja zasad narudžbom kroz /pristup
+// (račun, pa pristup bez odobravanja), kartično plaćanje uskoro. Za vrijeme bete može se zatražiti i besplatan pristup.
 import Okvir from "../landing/Okvir.astro";
 import Uvod from "../landing/Uvod.astro";
 import Paketi from "../landing/cijene/Paketi.astro";
-import ZaTvrtke from "../landing/cijene/ZaTvrtke.astro";
-import Poziv from "../landing/Poziv.astro";
+import Osobna from "../landing/cijene/Osobna.astro";
+import ZaUstanove from "../landing/cijene/ZaUstanove.astro";
+import Beta from "../landing/cijene/Beta.astro";
 
 export const prerender = true;
 ---
 <Okvir putanja="/cijene">
-  <Uvod gumbi={["pristup", "prijava"]}>
+  <Uvod gumbi={[{ href: "#paketi", tekst: "Odaberi paket" }, { href: "/pristup?paket=beta", tekst: "Besplatno za vrijeme bete" }]}>
     <Fragment slot="naslov">Cijene</Fragment>
-    Dok je LogoMedo u beti, korištenje je besplatno. Pristup dobivaju rani korisnici: pošaljite zahtjev, a kad ga odobrimo, stiže vam
-    osobna pozivnica.
+    Jedna licenca je za jednu osobu i uključuje sve: katalog, radne listiće, PDF za ispis i igre. Kupnjom dobivate pristup bez
+    čekanja na odobrenje. Dok traje beta, možete zatražiti i besplatan pristup.
   </Uvod>
   <Paketi />
-  <ZaTvrtke />
-  <Poziv id="poziv" gumbi={["pristup"]}>
-    <Fragment slot="naslov">Budite među prvima</Fragment>
-    Rani korisnici koriste LogoMedo besplatno dok traje beta, a prvi saznaju za pogodnosti kad otvorimo plaćanje.
-  </Poziv>
+  <Osobna />
+  <ZaUstanove />
+  <Beta />
 </Okvir>
