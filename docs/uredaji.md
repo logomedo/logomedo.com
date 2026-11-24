@@ -59,6 +59,19 @@ Dnevnik `uredaji_dogadaji`: `novi`, `mreza` (uređaj se javio s druge mreže), `
 Prijedlog uvođenja: tjedan-dva bilježenja na produkciji da se vidi koliko uređaja stvarni logopedi
 koriste odjednom, pa `"UREDAJI_PROVEDBA": "logoped"` u `vars` u `wrangler.jsonc`.
 
+## Stanje (24. 11. 2026.)
+
+- **Produkcija** `d3f4bfd7` (worktree na `f0fc7d9` + cherry-pick `72f5bf3`, `77c859b`, bez landinga `/cijene` druge
+  sesije): migracija 0044 primijenjena, `UREDAJI_PROVEDBA` nije postavljen = **samo bilježi** od 24. 11. 2026.
+- **Staging** `3c7b0144`: `svi`. Probni logoped `proba-uredaji@primjer.hr` (redak u staging D1, sesija kroz
+  `scripts/staging-sesija.sh proba-uredaji@primjer.hr`). Provjereno curlom (3 „uređaja” s istim kolačićem sesije:
+  1 i 2 = 200, 3 = 409 i JSON `previse_uredaja`; preuzimanje 303; izbačeni vidi „Nastavljeno na drugom uređaju”)
+  i u Braveu (stranica izbora, Postavke → Uređaji).
+- **Sljedeće:** oko 8. 12. 2026. pogledati stupac „Uređaji” na `/admin/korisnici` (koliko aktivnih odjednom imaju
+  stvarni logopedi). Ako nitko ne treba više od 2, dodati `"UREDAJI_PROVEDBA": "logoped"` u glavne `vars` u
+  `wrangler.jsonc` i deployati; inače podići `ZADANI_LIMIT_UREDAJA` ili limit pojedincu.
+- Promjena limita uređaja na `/admin/korisnici` ne piše se u Aktivnost (AI limiti se pišu); dodati ako zatreba.
+
 ## Testiranje na stagingu
 
 `staging.logomedo.com` ima `svi` (limit 2 i za superadmina). Otvori admin u Braveu, Chromeu i Safariju
