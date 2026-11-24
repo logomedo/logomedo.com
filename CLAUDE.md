@@ -11,6 +11,7 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
   sesije s notifikacijama po slici: katalog ima 428 riječi, a Vertex se plaća.
 - Izgovor (ElevenLabs) radi sam Worker kroz Cloudflare Queue, bez runnera: `docs/zvukovi.md`.
 - Klon glasa (ElevenLabs Instant, /admin/zvukovi/klonovi, samo superadmin): `docs/klon-glasa.md`.
+- Cijene (`/cijene`) i pogodnosti nakon bete (`/admin/pogodnosti`, uz „Odobri” na zahtjevima): `docs/pogodnosti.md`.
 - Uređaji (limit istovremenih uređaja po računu, protiv dijeljenja; `UREDAJI_PROVEDBA`): `docs/uredaji.md`.
 - Prije commita: `npm test && npm run check && npm run build`.
 - Staging (`staging.logomedo.com`, kopija produkcijske D1 iza lozinke): `docs/staging.md`. Staging

@@ -21,6 +21,7 @@ const STUPCI_EMAILA: [tablica: string, stupac: string][] = [
   ["app_kodovi", "email"],
   ["app_sesije", "email"],
   ["pozivi", "email"],
+  ["pogodnosti", "email"],
   ["pozivi", "stvorio"],
   ["rijeci", "dodao"],
   ["slike", "pregledao"],

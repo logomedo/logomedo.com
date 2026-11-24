@@ -5,6 +5,7 @@
 import { env } from "cloudflare:workers";
 import { PozivOdbijen, izdaj, type RazlogOdbijanja } from "./pozivi";
 import { sha256Hex } from "./sesija";
+import { dodijeli, type Pogodnost } from "./pogodnosti";
 
 export type StatusZahtjeva = "novi" | "odobren" | "odbijen";
 
@@ -38,9 +39,12 @@ export type IshodOdobravanja =
 /**
  * Odobri zahtjev i izdaj pozivnicu. Prvo se zahtjev uvjetno preuzme (`WHERE status = 'novi'`), pa dva
  * istodobna klika ne mogu izdati dvije pozivnice: drugi dobije „obradjen”. Ako izdaj() odbije
- * (npr. aktivan_logoped) ili pukne, zahtjev se vraća u 'novi'.
+ * (npr. aktivan_logoped) ili pukne, zahtjev se vraća u 'novi'. Uz `pogodnost` se nakon izdane pozivnice upiše i
+ * pogodnost nakon bete (pogodnosti.ts).
  */
-export async function odobri(id: number, tko: string, sada = new Date()): Promise<IshodOdobravanja> {
+export async function odobri(
+  id: number, tko: string, sada = new Date(), pogodnost: { p: Pogodnost; napomena?: string } | null = null,
+): Promise<IshodOdobravanja> {
   const at = sada.toISOString();
   const z = await env.DB.prepare(
     `UPDATE zahtjevi_pristupa SET status = 'odobren', obradio = ?, obradjen_at = ?
@@ -59,6 +63,8 @@ export async function odobri(id: number, tko: string, sada = new Date()): Promis
     throw e;
   }
   await env.DB.prepare("UPDATE zahtjevi_pristupa SET poziv_token_hash = ? WHERE id = ?").bind(await sha256Hex(p.token), id).run();
+  // Pogodnost nakon bete (docs/pogodnosti.md): tek kad je pozivnica izdana; bez nje se postojeća ne dira.
+  if (pogodnost) await dodijeli(p.email, pogodnost.p, pogodnost.napomena, tko, sada);
   return { ok: true, token: p.token, email: p.email, ime: z.ime, istjece: p.istjece };
 }
 

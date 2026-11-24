@@ -10,6 +10,8 @@ export const SAMO_SUPERADMIN = [
   "/admin/korisnici",
   // Zahtjevi za pristup s /pristup (S7 landinga): odobravanje izdaje pozivnicu.
   "/admin/zahtjevi",
+  // Pogodnosti nakon bete (docs/pogodnosti.md): privatno obećanje besplatnog pristupa.
+  "/admin/pogodnosti",
   // Inbox (docs/inbox/): dopisivanje s logopedima je osobni podatak, samo superadmin.
   "/admin/poruke",
   "/admin/zvukovi/glasovi",

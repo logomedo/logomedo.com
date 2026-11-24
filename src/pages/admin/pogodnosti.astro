@@ -1,0 +1,149 @@
+---
+// Pogodnosti nakon bete (docs/pogodnosti.md). Samo superadmin (rute.ts). Dodjela po e-mailu (i prije nego račun
+// postoji), promjena opoziva staru, povijest ostaje. Dok traje beta ništa se ne provodi: checkout će ih čitati.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { env } from "cloudflare:workers";
+import { kad } from "../../lib/katalog";
+import { smije } from "../../lib/admin/ovlasti";
+import { IZBORI, NAPOMENA_MAX, dodijeli, opisPogodnosti, opozvane, procitajIzbor, vazece } from "../../lib/admin/pogodnosti";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+const ok = Astro.url.searchParams.get("ok");
+let poruka: string | null = ok === "dodijeljena" ? "Pogodnost spremljena." : ok === "uklonjena" ? "Pogodnost uklonjena." : null;
+let greska: string | null = null;
+let unos = { email: Astro.url.searchParams.get("email") ?? "", pogodnost: "m3", napomena: "" };
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const akcija = String(f.get("akcija") ?? "");
+  unos = { email: String(f.get("email") ?? ""), pogodnost: String(f.get("pogodnost") ?? ""), napomena: String(f.get("napomena") ?? "") };
+  if (akcija === "dodijeli") {
+    const p = procitajIzbor(unos.pogodnost);
+    if (!p) greska = "Odaberi pogodnost.";
+    else {
+      const r = await dodijeli(unos.email, p, unos.napomena, s.email);
+      if (r.ok) return Astro.redirect("/admin/pogodnosti?ok=dodijeljena", 303);
+      greska = r.greska;
+    }
+  } else if (akcija === "ukloni") {
+    const r = await dodijeli(unos.email, null, null, s.email);
+    if (r.ok) return Astro.redirect("/admin/pogodnosti?ok=uklonjena", 303);
+    greska = r.greska;
+  } else greska = "Nepoznata radnja.";
+  poruka = null;
+  Astro.response.status = 400;
+}
+
+const [aktivne, povijest, imena] = await Promise.all([
+  vazece(),
+  opozvane(),
+  env.DB.prepare("SELECT email, ime FROM korisnici").all<{ email: string; ime: string | null }>()
+    .then((r) => new Map(r.results.map((k) => [k.email.toLowerCase(), k.ime]))),
+]);
+const izbori = IZBORI.filter((i) => i.kod);
+---
+<AdminOkvir naslov="Pogodnosti" aktivno="pogodnosti">
+  <div class="naslov">
+    <div>
+      <h1>Pogodnosti nakon bete</h1>
+      <p class="podnaslov">Što si nekome privatno obećao za vrijeme nakon bete: nekoliko mjeseci ili trajno besplatno. Mjeseci se broje
+        od početka naplate, ne od danas. Dok traje beta svi koriste LogoMedo besplatno, pa se ovo još ne provodi; kad uvedemo plaćanje,
+        checkout će ga poštovati. Pogodnost možeš dodijeliti i uz „Odobri” na <a href="/admin/zahtjevi">Zahtjevima</a>.</p>
+    </div>
+  </div>
+
+  {poruka && <p class="poruka ok" role="status">{poruka}</p>}
+  {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
+
+  <form method="post" class="ploha obrazac" id="dodijeli">
+    <input type="hidden" name="akcija" value="dodijeli" />
+    <h2>Dodijeli ili promijeni</h2>
+    <div class="polja">
+      <div>
+        <label for="p-email">E-mail</label>
+        <input id="p-email" type="email" name="email" required maxlength="254" value={unos.email} placeholder="ime@primjer.hr" />
+      </div>
+      <div>
+        <label for="p-izbor">Pogodnost</label>
+        <select id="p-izbor" name="pogodnost">
+          {izbori.map((i) => <option value={i.kod} selected={i.kod === unos.pogodnost}>{i.tekst}</option>)}
+        </select>
+      </div>
+      <div class="sire">
+        <label for="p-napomena">Napomena (vidiš samo ti)</label>
+        <input id="p-napomena" type="text" name="napomena" maxlength={NAPOMENA_MAX} value={unos.napomena} placeholder="npr. recenzentica slika" />
+      </div>
+    </div>
+    <p class="blijedo sitno">Ako e-mail već ima pogodnost, nova je zamjenjuje (stara ostaje u povijesti).</p>
+    <div><button class="gumb glavni mali" type="submit"><Ikona ime="kvacica" /> Spremi</button></div>
+  </form>
+
+  <h2 class="podnaslov-popisa">Važeće ({aktivne.length})</h2>
+  {aktivne.length === 0 ? <p class="blijedo" id="nema-pogodnosti">Nitko još nema pogodnost.</p> : (
+    <div class="ploha tablica">
+      <table id="pogodnosti">
+        <thead><tr><th>Korisnik</th><th>Pogodnost</th><th>Napomena</th><th>Dodijelio</th><th></th></tr></thead>
+        <tbody>
+          {aktivne.map((p) => (
+            <tr data-email={p.email}>
+              <td><b>{imena.get(p.email) ?? "—"}</b><br /><span class="blijedo sitno">{p.email}{!imena.has(p.email) && " · još nema račun"}</span></td>
+              <td><span class="oznaka med">{opisPogodnosti(p)}</span></td>
+              <td class="sitno">{p.napomena ?? "—"}</td>
+              <td class="sitno">{p.dodijelio}<br /><span class="blijedo">{kad(p.created_at)}</span></td>
+              <td>
+                <form method="post">
+                  <input type="hidden" name="akcija" value="ukloni" />
+                  <input type="hidden" name="email" value={p.email} />
+                  <button class="gumb mali opasno" type="submit"><Ikona ime="x" /> Ukloni</button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  {povijest.length > 0 && (
+    <>
+      <h2 class="podnaslov-popisa">Povijest</h2>
+      <div class="ploha tablica">
+        <table id="povijest">
+          <thead><tr><th>E-mail</th><th>Pogodnost</th><th>Dodijeljena</th><th>Prestala</th></tr></thead>
+          <tbody>
+            {povijest.map((p) => (
+              <tr>
+                <td class="sitno">{p.email}</td>
+                <td class="sitno">{opisPogodnosti(p)}</td>
+                <td class="sitno">{kad(p.created_at)}</td>
+                <td class="sitno">{kad(p.opozvana_at)} · {p.opozvao}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )}
+</AdminOkvir>
+<style>
+  .podnaslov a { color: var(--med-tamno); }
+  .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }
+  .poruka.ok { color: var(--uspjeh); }
+  .poruka.greska { color: var(--greska); }
+  .sitno { font-size: .82rem; margin: 0; }
+  .obrazac { margin-top: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .obrazac h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
+  .polja { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+  .polja label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 4px; }
+  .polja input, .polja select { width: 100%; }
+  .podnaslov-popisa { margin: 28px 0 12px; font-family: var(--font-slova); font-weight: 600; font-size: 1.15rem; }
+  .tablica { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rub); vertical-align: top; }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--blijedo); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  form { margin: 0; }
+</style>

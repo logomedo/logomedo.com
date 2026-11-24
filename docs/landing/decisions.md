@@ -449,3 +449,6 @@ Lighthouse: `research/2026-11-19-lighthouse.md`. Staging `05029b71`, provjera 14
 814. **Tekstovi paketa** (korisnik, 24. 11. 2026.): godišnji nosi oznaku „2 mjeseca gratis”; doživotni nije ograničen na
      betu (ostaje opcija i poslije), bez oznake „Rani korisnici” (kartica ostaje istaknuta). Kuponi i pogodnosti za beta korisnike ne idu
      na landing prije checkouta (polje za kod bez plaćanja ne radi ništa).
+815. **Pogodnosti nakon bete** (korisnik, 24. 11. 2026.): superadmin privatno dodijeli „N mjeseci besplatno” ili „trajno
+     besplatno”, uz „Odobri” na /admin/zahtjevi ili na /admin/pogodnosti (migracija 0045). Dok traje beta se ne provodi;
+     checkout će je poštovati. Kuponi za popust čekaju checkout i platni servis. Detalji: `docs/pogodnosti.md`.

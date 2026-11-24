@@ -5,6 +5,7 @@ import { logopedskiMod, postaviLogopedskiMod } from "../../lib/zadaci/baza";
 import { IME_MAX, profil, spremiProfil } from "../../lib/admin/profil";
 import { kad } from "../../lib/katalog";
 import { limitZa, mojiUredaji, odjaviUredaj, provedba } from "../../lib/admin/uredaji";
+import { opisPogodnosti, vazeca } from "../../lib/admin/pogodnosti";
 
 const s = Astro.locals.admin!;
 const email = s.email;
@@ -34,6 +35,8 @@ if (Astro.request.method === "POST") {
 const mod = await logopedskiMod(email);
 const p = unos ?? await profil(email);
 const uredaji = await mojiUredaji(email, Astro.request);
+// Pogodnost nakon bete (docs/pogodnosti.md): korisnik vidi samo opis, ne napomenu superadmina.
+const pogodnost = superadmin ? null : await vazeca(email);
 const limitUredaja = limitZa(s.uloga, null, provedba());
 const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.mreza].filter(Boolean).join(" · ") || "nepoznato mjesto";
 ---
@@ -68,6 +71,15 @@ const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.
       <button class="gumb glavni mali" type="submit">Spremi</button>
     </div>
   </form>
+
+  {pogodnost && (
+    <section class="ploha postavke" id="pogodnost">
+      <h2>Nakon bete</h2>
+      <p class="opis">Dok traje beta, LogoMedo koristiš besplatno. Za vrijeme nakon bete imaš pogodnost:
+        <b>{opisPogodnosti(pogodnost).toLowerCase()}</b>{pogodnost.vrsta === "mjeseci" && ", računajući od početka naplate"}.
+        Cijene su na <a href="/cijene">logomedo.com/cijene</a>.</p>
+    </section>
+  )}
 
   <form method="post" class="ploha postavke">
     <input type="hidden" name="akcija" value="mod" />

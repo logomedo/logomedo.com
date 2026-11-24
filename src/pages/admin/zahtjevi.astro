@@ -10,6 +10,7 @@ import { PORUKE_ODBIJANJA } from "../../lib/admin/pozivi";
 import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../lib/admin/zahtjevi";
 import { ROK_MJESECI, pocisti } from "../../lib/pristup";
 import { posaljiPozivnicu, type IshodSlanja } from "../../lib/email";
+import { IZBORI, NAPOMENA_MAX, opisPogodnosti, procitajIzbor, type Pogodnost } from "../../lib/admin/pogodnosti";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -18,27 +19,30 @@ let poruka: string | null = Astro.url.searchParams.get("ok") === "odbijen" ? "Za
 let greska: string | null = null;
 let link: { url: string; email: string; istjece: string } | null = null;
 let slanje: IshodSlanja | null = null;
+let dodijeljena: Pogodnost | null = null;
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
   const akcija = String(f.get("akcija") ?? "");
   const id = Number(f.get("id"));
+  const izbor = procitajIzbor(f.get("pogodnost"));
   if (!Number.isInteger(id) || id <= 0) greska = "Nepoznat zahtjev.";
+  else if (akcija === "odobri" && izbor === undefined) greska = "Nepoznata pogodnost.";
   else if (akcija === "odobri") {
-    const r = await odobri(id, s.email);
+    dodijeljena = izbor ?? null;
+    const r = await odobri(id, s.email, new Date(), dodijeljena ? { p: dodijeljena, napomena: String(f.get("napomena") ?? "") } : null);
     if (r.ok) {
       link = { url: `${Astro.url.origin}/admin/poziv#${r.token}`, email: r.email, istjece: r.istjece };
       slanje = await posaljiPozivnicu({ ...link, ime: r.ime });
       if (!slanje.ok) console.error("pozivnica e-poštom nije poslana", slanje);
-    }
-    else if (r.razlog === "obradjen") greska = "Zahtjev je već obrađen (možda u drugoj kartici). Nova pozivnica nije izdana.";
+    } else if (r.razlog === "obradjen") greska = "Zahtjev je već obrađen (možda u drugoj kartici). Nova pozivnica nije izdana.";
     else greska = `${PORUKE_ODBIJANJA[r.razlog]} Zahtjev je i dalje otvoren: ako pozivnica ne treba, zatvori ga gumbom „Odbij”.`;
   } else if (akcija === "odbij") {
     if (await odbij(id, s.email)) return Astro.redirect("/admin/zahtjevi?ok=odbijen", 303);
     greska = "Zahtjev je već obrađen.";
   } else greska = "Nepoznata radnja.";
   poruka = null;
-  if (greska) Astro.response.status = 400;
+  if (greska) { Astro.response.status = 400; dodijeljena = null; }
 }
 
 await pocisti();
@@ -50,7 +54,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
     <div>
       <h1>Zahtjevi za pristup</h1>
       <p class="podnaslov">S obrasca na <a href="/pristup">/pristup</a>. „Odobri” izdaje pozivnicu (link vrijedi 72 h, jednom) i šalje je
-        e-poštom s pozivnica@logomedo.com. Zahtjevi se brišu nakon {ROK_MJESECI} mjeseci; odobreni čim je pozivnica iskorištena.</p>
+        e-poštom s pozivnica@logomedo.com; uz nju možeš dodijeliti pogodnost nakon bete. Zahtjevi se brišu nakon {ROK_MJESECI} mjeseci; odobreni čim je pozivnica iskorištena.</p>
     </div>
   </div>
 
@@ -64,6 +68,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
         : <p class="poruka greska" role="alert" id="poziv-nije-poslan">{slanje?.ok === false && slanje.razlog === "nema_kljuca"
             ? "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY)."
             : "E-pošta nije poslana."} Pošalji link osobno.</p>}
+      {dodijeljena && <p class="sitno" id="poziv-pogodnost">Pogodnost nakon bete: <b>{opisPogodnosti(dodijeljena)}</b> (vidi <a href="/admin/pogodnosti">Pogodnosti</a>).</p>}
       <p class="blijedo sitno">Link se vidi samo sada; vrijedi do {kad(link.istjece)}. Ne šalji ga u javni kanal.
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
       <div class="red-linka">
@@ -86,9 +91,14 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
           <p class="blijedo">{[z.ustanova, z.grad].filter(Boolean).join(" · ") || "—"}</p>
           {z.poruka && <p class="poruka-zahtjeva">{z.poruka}</p>}
           <div class="akcije">
-            <form method="post">
+            <form method="post" class="odobri">
               <input type="hidden" name="akcija" value="odobri" />
               <input type="hidden" name="id" value={z.id} />
+              <label class="sitno blijedo" for={`pogodnost-${z.id}`}>Pogodnost nakon bete</label>
+              <select id={`pogodnost-${z.id}`} name="pogodnost">
+                {IZBORI.map((i) => <option value={i.kod}>{i.tekst}</option>)}
+              </select>
+              <input type="text" name="napomena" maxlength={NAPOMENA_MAX} placeholder="Napomena (vidiš samo ti)" aria-label="Napomena uz pogodnost" />
               <button class="gumb glavni mali" type="submit"><Ikona ime="kvacica" /> Odobri</button>
             </form>
             <form method="post">
@@ -155,7 +165,9 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
   .zahtjev p { margin: 0; overflow-wrap: anywhere; }
   .email { font-weight: 600; }
   .poruka-zahtjeva { white-space: pre-line; padding: 10px 12px; border-radius: 10px; background: var(--povrsina-2); font-size: .9rem; }
-  .akcije { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .akcije { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; align-items: flex-end; }
+  .odobri { display: flex; flex-direction: column; gap: 6px; flex-basis: 100%; padding: 10px 12px; border-radius: 10px; background: var(--povrsina-2); }
+  .odobri button { align-self: flex-start; }
   form { margin: 0; }
   .tablica { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }

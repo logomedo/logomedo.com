@@ -11,7 +11,7 @@ test("sve migracije se primijene, redom kao wrangler", async () => {
   const imena = migracije();
   assert.ok(imena.length >= 33);
   assert.ok(imena.indexOf("0030_okvir_zadatka.sql") < imena.indexOf("0030_zvuk_nacini_probe.sql"));
-  assert.equal(imena.at(-1), "0044_uredaji.sql");
+  assert.equal(imena.at(-1), "0045_pogodnosti.sql");
   const db = napraviD1();
   const t = await db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table'").first<number>("n");
   assert.ok(t! > 10);
