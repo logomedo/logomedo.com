@@ -25,10 +25,10 @@
     tl.fromTo("#s7-img", { scale: 1 }, { scale: 1.05, duration: 7, ease: "none" }, 0);
     tl.fromTo("#s7-oz", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, VO);
     tl.fromTo("#s7-nas", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 1.5);
-    [["#s7-c1", 3.44], ["#s7-c2", 4.16], ["#s7-c3", 5.3], ["#s7-c4", 6.4]].forEach(([c, t]) => {
+    [["#s7-c1", 3.44], ["#s7-c2", 4.16], ["#s7-c3", 5.3], ["#s7-c4", 6.72]].forEach(([c, t]) => {
       tl.fromTo(c, { opacity: 0, y: 20, scale: 0.9 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.8)" }, VO + t);
     });
-    tl.fromTo("#s7-img2", { opacity: 0, scale: 1.06 }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, VO + 6.3);
+    tl.fromTo("#s7-img2", { opacity: 0, scale: 1.06 }, { opacity: 1, scale: 1, duration: 0.6, ease: "power2.out" }, VO + 6.6);
     window.__timelines["s7-vrste"] = tl;
   </script>
 </template>

@@ -8,7 +8,8 @@
     #s9-marka { display: flex; align-items: center; gap: 22px; }
     #s9-marka .znak { width: 84px; height: 84px; }
     #s9-ime { font-family: var(--font-naslov); font-weight: 700; font-size: 72px; line-height: 1; }
-    #s9-ime em, #s9-url em { font-style: normal; color: var(--med); }
+    #s9-ime em { font-style: normal; color: var(--med); }
+    #s9-url em { font-style: normal; color: var(--med-tekst); }
     #s9-ok { display: inline-flex; align-items: center; gap: 12px; background: #e9f5e7; color: #2f6b2a; border-radius: 999px; padding: 10px 26px; font-weight: 900; font-size: 30px; }
     #s9-url { font-family: var(--font-naslov); font-weight: 600; font-size: 64px; }
     #s9-pod { font-size: 34px; font-weight: 700; color: var(--siva); }
@@ -30,7 +31,7 @@
     tl.fromTo("#s9-karta", { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.8, ease: "power3.out" }, 0.2);
     tl.fromTo("#s9-ok", { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(2)" }, VO + 0.9);
     tl.fromTo("#s9-url", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 1.8);
-    tl.fromTo("#s9-pod", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 4.3);
+    tl.fromTo("#s9-pod", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, VO + 4.6);
     window.__timelines["s9-kraj"] = tl;
   </script>
 </template>
