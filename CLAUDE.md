@@ -38,3 +38,9 @@ Plan od 19. 11. 2026. u `docs/inbox/` (`TODO.md`, `plan.md`, `decisions.md`, `ha
 Slanje već radi: Resend (`src/lib/email.ts`, predlošci `emails/*.tsx` → `npm run emails`), `RESEND_API_KEY` u produkciji i (od 25. 11. 2026.) na stagingu, gdje `smijePrimiti` pušta samo ADMIN_EMAILS (+aliase) i @logomedo.com.
 Gotovo 19. 11. 2026. (S1–S5, lanac zatvoren): kako radi, DNS, secreti i testiranje u `docs/inbox.md`. Google DKIM
 apexa u S5 (odluka 500); DMARC `quarantine` je korisnikov korak nakon 2–4 tjedna izvještaja.
+
+## Lanac: angažman (podsjetnici e-poštom, niz, ljestvica)
+
+Plan od 25. 11. 2026. u `docs/angazman/` (`TODO.md`, `plan.md`, `decisions.md`, `handoffs/`), grana `angazman` u
+`../logomedo.com-landing`. „Nastavi angažman” znači prvi red koji nije „gotovo” u „Stanje lanca” u
+`docs/angazman/handoffs/README.md`; prompt je `SN.md`. Sve na stagingu; produkcija (S7) iza vrata.
