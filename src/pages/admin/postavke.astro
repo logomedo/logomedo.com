@@ -9,6 +9,7 @@ import { IME_MAX, profil, spremiProfil } from "../../lib/admin/profil";
 import { kad } from "../../lib/katalog";
 import { limitZa, mojiUredaji, odjaviUredaj, provedba } from "../../lib/admin/uredaji";
 import { opisPogodnosti, vazeca } from "../../lib/admin/pogodnosti";
+import { cjenikVidljiv } from "../../lib/cjenik";
 
 const s = Astro.locals.admin!;
 const email = s.email;
@@ -92,7 +93,7 @@ const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.
       <h2>Nakon bete</h2>
       <p class="opis">Dok traje beta, LogoMedo koristiš besplatno. Za vrijeme nakon bete imaš pogodnost:
         <b>{opisPogodnosti(pogodnost).toLowerCase()}</b>{pogodnost.vrsta === "mjeseci" && ", računajući od početka naplate"}.
-        Cijene su na <a href="/cijene">logomedo.com/cijene</a>.</p>
+        {cjenikVidljiv() && <>Cijene su na <a href="/cijene">logomedo.com/cijene</a>.</>}</p>
     </section>
   )}
 

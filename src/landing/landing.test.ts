@@ -58,8 +58,8 @@ test("landing: cijene s PDV-om i osnovica za tvrtke (odluka 813)", () => {
   assert.ok(K.IZBORNIK.some((l) => l.href === "/cijene"));
 });
 
-test("landing: svaka stranica iz STRANICE postoji i prerenderira se (osim ssr: /pristup), 404 isto", () => {
-  assert.deepEqual(K.STRANICE.filter((s) => s.ssr).map((s) => s.putanja), [K.PRISTUP]);
+test("landing: svaka stranica iz STRANICE postoji i prerenderira se (osim ssr: /cijene, /pristup), 404 isto", () => {
+  assert.deepEqual(K.STRANICE.filter((s) => s.ssr).map((s) => s.putanja), ["/cijene", K.PRISTUP]);
   for (const s of K.STRANICE) {
     const datoteka = `src/pages/${s.putanja === "/" ? "index" : s.putanja.slice(1)}.astro`;
     assert.match(procitaj(datoteka), s.ssr ? /export const prerender = false;/ : /export const prerender = true;/, datoteka);
@@ -99,7 +99,7 @@ test("landing: _headers ima CSP kao zastiti() bez noncea i cache-control samo na
   assert.equal(sve.get("x-frame-options"), "DENY");
   assert.ok(!sve.has("cache-control"), "cache-control na /* bi se spojio s /_astro/* immutable");
   const html = [...p.keys()].filter((k) => k !== "/*");
-  // /pristup je SSR: zaglavlja (CSP s nonceom, cache-control no-store) daju middleware i stranica.
+  // /pristup i /cijene su SSR: zaglavlja (CSP s nonceom, cache-control no-store) daju middleware i stranica.
   assert.deepEqual(html.sort(), K.STRANICE.filter((s) => !s.ssr).map((s) => s.putanja).sort());
   for (const k of html) assert.deepEqual([...p.get(k)!], [["cache-control", "no-cache"]], k);
 });

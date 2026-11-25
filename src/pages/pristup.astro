@@ -8,6 +8,7 @@ import { PAKETI_ZAHTJEVA, PRIJAVA, cijenaLicence, eura } from "../landing/konsta
 import {
   HONEYPOT, KUPON_MAX, LICENCI_MAX, MAX, ZIG, istiOrigin, posalji, prazanUnos, vremenskiZig, type Greske, type Polje, type Unos,
 } from "../lib/pristup";
+import { cjenikVidljiv } from "../lib/cjenik";
 
 export const prerender = false;
 
@@ -18,6 +19,9 @@ let stanje: "obrazac" | "hvala" | "odobreno" | "previse" = poslano === "1" ? "hv
 // Kupon iz linka (/pristup?kupon=KOD, docs/kuponi.md) je već upisan u polje.
 let unos: Unos = prazanUnos(Astro.url.searchParams.get("paket") ?? "beta", Astro.url.searchParams.get("kupon") ?? "");
 let greske: Greske = {};
+// Bez cjenika (CJENIK_VIDLJIV) obrazac ne nudi plaćene pakete s cijenom, osim ako je paket već odabran linkom.
+const cjenik = cjenikVidljiv();
+const ponudeni = cjenik ? PAKETI_ZAHTJEVA : PAKETI_ZAHTJEVA.filter((p) => p.kod === "beta" || p.kod === "ustanova" || p.kod === unos.paket);
 let zig: string | null = null;
 
 if (Astro.request.method === "POST") {
@@ -76,13 +80,13 @@ const aria = (p: Polje, opis?: string) => {
               <>
                 <h1 class="landing-h1" id="naslov">Besplatno za vrijeme bete</h1>
                 <p class="uvodni">Dok je LogoMedo u beti, možete zatražiti besplatan pristup. O svakom zahtjevu odlučujemo pojedinačno i
-                  javljamo vam se s osobnim linkom za prijavu. Ako ne želite čekati, odaberite paket iz <a href="/cijene">cjenika</a>.</p>
+                  javljamo vam se s osobnim linkom za prijavu.{cjenik && <> Ako ne želite čekati, odaberite paket iz <a href="/cijene">cjenika</a>.</>}</p>
               </>
             ) : unos.paket === "ustanova" ? (
               <>
                 <h1 class="landing-h1" id="naslov">Licence za ustanovu</h1>
                 <p class="uvodni">Upišite koliko licenci trebate. Poslat ćemo ponudu s popustom za taj broj licenci; kad je uplata vidljiva,
-                  svaka osoba dobiva svoj link za prijavu. <a href="/cijene#za-ustanove">Popusti po broju licenci</a></p>
+                  svaka osoba dobiva svoj link za prijavu.{cjenik && <> <a href="/cijene#za-ustanove">Popusti po broju licenci</a></>}</p>
               </>
             ) : (
               <>
@@ -116,7 +120,7 @@ const aria = (p: Polje, opis?: string) => {
           <div class="polje">
             <label for="paket">Što vas zanima</label>
             <select id="paket" name="paket" {...aria("paket")}>
-              {PAKETI_ZAHTJEVA.map((p) => <option value={p.kod} selected={p.kod === unos.paket}>{p.tekst}</option>)}
+              {ponudeni.map((p) => <option value={p.kod} selected={p.kod === unos.paket}>{p.tekst}</option>)}
             </select>
             {greske.paket && <p class="greska" id="greska-paket">{greske.paket}</p>}
           </div>
@@ -125,8 +129,8 @@ const aria = (p: Polje, opis?: string) => {
             <label for="licenci">Broj licenci <span class="neobavezno">(samo za ustanovu)</span></label>
             <input id="licenci" name="licenci" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="4" value={unos.licenci}
               {...aria("licenci", "opis-licenci")} />
-            <p class="opis" id="opis-licenci">Jedna licenca je za jednu osobu. Npr. 5 licenci: {eura(cijenaLicence(5)!)} godišnje po osobi
-              (do {LICENCI_MAX}).</p>
+            <p class="opis" id="opis-licenci">Jedna licenca je za jednu osobu. {cjenik ? <>Npr. 5 licenci: {eura(cijenaLicence(5)!)} godišnje po osobi
+              (do {LICENCI_MAX}).</> : <>Najviše {LICENCI_MAX} licenci.</>}</p>
             {greske.licenci && <p class="greska" id="greska-licenci">{greske.licenci}</p>}
           </div>
 

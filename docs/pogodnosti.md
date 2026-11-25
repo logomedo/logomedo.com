@@ -45,3 +45,10 @@ Pogodnost je po e-mailu, pa se može dati i osobi koja još nema račun. Promjen
 ## Vezani dokumenti
 
 - `docs/kuponi.md`: kuponi na `/pristup` (auto-odobravanje, uz kupon može ići pogodnost).
+
+## Vidljivost cjenika (`CJENIK_VIDLJIV`, 25. 11. 2026.)
+
+Var u `wrangler.jsonc`: produkcija `"false"`, staging `"true"` (`src/lib/cjenik.ts`). Bez `"true"` je `/cijene` 404,
+a link „Cijene” nestaje iz izbornika i podnožja, iz sitemapa, iz `/uvjeti`, `/pristup` i `/admin/postavke`. Na `/pristup` se
+ne nude plaćeni paketi s cijenom, osim ako je paket već odabran linkom (`?paket=…`). Landing je prerenderiran i var čita
+pri buildu, pa promjena traži `npm run deploy` (izmjena vara samo u dashboardu ne mijenja izbornik).

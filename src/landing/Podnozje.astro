@@ -3,6 +3,7 @@
 // se ne renderiraju dok su njihove konstante prazne (odluka 206).
 import Marka from "../components/Marka.astro";
 import { GODINA, IME_TVRTKE, IZBORNIK, KONTAKT, PRIJAVA, PRISTUP, kontaktTekst, stranica } from "./konstante";
+import { bezSkrivenih } from "../lib/cjenik";
 
 interface Props { putanja?: string }
 const { putanja } = Astro.props;
@@ -16,7 +17,7 @@ const autorsko = GODINA && IME_TVRTKE ? `© ${GODINA}. ${IME_TVRTKE}` : "";
     </div>
     <nav aria-labelledby="pod-logomedo">
       <h2 id="pod-logomedo">LogoMedo</h2>
-      <ul>{IZBORNIK.map((l) => <li><a href={l.href} aria-current={l.href === putanja ? "page" : undefined}>{l.tekst}</a></li>)}</ul>
+      <ul>{bezSkrivenih(IZBORNIK).map((l) => <li><a href={l.href} aria-current={l.href === putanja ? "page" : undefined}>{l.tekst}</a></li>)}</ul>
     </nav>
     <nav aria-labelledby="pod-pomoc">
       <h2 id="pod-pomoc">Pomoć</h2>

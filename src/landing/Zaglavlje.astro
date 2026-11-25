@@ -6,9 +6,11 @@
 import Marka from "../components/Marka.astro";
 import Ikona from "../components/Ikona.astro";
 import { IZBORNIK, PRIJAVA } from "./konstante";
+import { bezSkrivenih } from "../lib/cjenik";
 
 interface Props { putanja?: string }
 const { putanja } = Astro.props;
+const izbornik = bezSkrivenih(IZBORNIK);
 const trenutna = (href: string) => (href === putanja ? "page" : undefined);
 ---
 <header class="zaglavlje">
@@ -16,7 +18,7 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
     <Marka oznaka="LogoMedo, naslovna" />
     <nav class="siroka" aria-label="Glavni izbornik">
       <ul>
-        {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
+        {izbornik.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
       </ul>
     </nav>
     <button type="button" class="prekidac-teme gore" aria-label="Tamna tema" title="Tamna tema">
@@ -27,7 +29,7 @@ const trenutna = (href: string) => (href === putanja ? "page" : undefined);
       <summary>Izbornik</summary>
       <nav aria-label="Glavni izbornik">
         <ul>
-          {IZBORNIK.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
+          {izbornik.map((l) => <li><a href={l.href} aria-current={trenutna(l.href)}>{l.tekst}</a></li>)}
           <li>
             <button type="button" class="prekidac-teme u-izborniku">
               <span class="samo-dan"><Ikona ime="mjesec" /> Tamna tema</span><span class="samo-noc"><Ikona ime="sunce" /> Svijetla tema</span>

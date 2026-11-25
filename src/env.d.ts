@@ -26,6 +26,10 @@ declare namespace Cloudflare {
     FISKAL_UREDAJ?: string;
     /** "da" (samo staging): gumb „Simuliraj uplatu” na /admin/uprava/zahtjevi. */
     NAPLATA_SIMULACIJA?: string;
+    /** "true" prikazuje cjenik (/cijene, izbornik, cijene na /pristup), sve ostalo ga skriva (src/lib/cjenik.ts). */
+    CJENIK_VIDLJIV?: string;
+    /** Statičke datoteke (binding koji dodaje @astrojs/cloudflare; nije u wrangler.jsonc pa ga `wrangler types` ne vidi). */
+    ASSETS: Fetcher;
   }
 }
 

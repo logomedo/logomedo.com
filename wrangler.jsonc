@@ -50,7 +50,10 @@
     "ACCESS_TEAM_DOMAIN": "domovina.cloudflareaccess.com",
     "ACCESS_AUD": "81d4dce3723d0cada52d1984319149f3a21a1e76d8f4affd04e1b7e0b4fe6e56",
     "CDN_URL": "https://cdn.logomedo.com",
-    "ZONE_ID": "c12293517eb61e46975c4145f8e66a61"
+    "ZONE_ID": "c12293517eb61e46975c4145f8e66a61",
+    // Cjenik (/cijene, link u izborniku, cijene na /pristup): "true" | "false" (src/lib/cjenik.ts). Čita se i pri
+    // prerenderu landinga, pa promjena traži redeploy. Produkcija skriva cjenik, staging ga prikazuje (25. 11. 2026.).
+    "CJENIK_VIDLJIV": "false"
   },
   // Secret RUNNER_TOKEN (wrangler secret put / .dev.vars): lokalni runner, /api/runner/*.
   // Secret CF_PURGE_TOKEN (opcionalan, Zone → Cache Purge za logomedo.com): čišćenje povučenih slika s cdn-a.
@@ -99,6 +102,7 @@
         "CDN_URL": "https://cdn.logomedo.com",
         "ZONE_ID": "c12293517eb61e46975c4145f8e66a61",
         "OKRUZENJE": "staging",
+        "CJENIK_VIDLJIV": "true",
         // Limit istovremenih uređaja i za superadmina, za testiranje (docs/uredaji.md). Produkcija: bez vara = samo bilježi.
         "UREDAJI_PROVEDBA": "svi",
         // Naplata (docs/naplata.md): simulirana uplata izdaje pravi račun na fiskal-testu (ITalk tenant, PP1, uređaj 2).

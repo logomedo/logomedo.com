@@ -7,8 +7,18 @@ import Paketi from "../landing/cijene/Paketi.astro";
 import Osobna from "../landing/cijene/Osobna.astro";
 import ZaUstanove from "../landing/cijene/ZaUstanove.astro";
 import Beta from "../landing/cijene/Beta.astro";
+import { env } from "cloudflare:workers";
+import { cjenikVidljiv } from "../lib/cjenik";
 
-export const prerender = true;
+// SSR, ne prerender: bez cjenika (CJENIK_VIDLJIV, src/lib/cjenik.ts) /cijene je 404.
+export const prerender = false;
+
+// Prerenderirana 404 nije ruta SSR-a (Astro.rewrite("/404") baca grešku), pa se uzima iz ASSETS-a.
+if (!cjenikVidljiv()) {
+  const nema = await env.ASSETS.fetch(new URL("/404.html", Astro.url));
+  return new Response(nema.body, { status: 404, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" } });
+}
+Astro.response.headers.set("cache-control", "no-cache");
 ---
 <Okvir putanja="/cijene">
   <Uvod gumbi={[{ href: "#paketi", tekst: "Odaberi paket" }, { href: "/pristup?paket=beta", tekst: "Besplatno za vrijeme bete" }]}>

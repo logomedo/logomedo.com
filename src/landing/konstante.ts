@@ -103,7 +103,7 @@ export interface Stranica {
   opis: string;
   /** Tekst linka u zaglavlju/podnožju. */
   izbornik?: string;
-  /** SSR umjesto prerendera (obrađuje POST; zaglavlja iz middlewarea, ne iz public/_headers). */
+  /** SSR umjesto prerendera (POST ili ovisi o varu; zaglavlja iz middlewarea, ne iz public/_headers). */
   ssr?: true;
 }
 
@@ -137,6 +137,8 @@ export const STRANICE: Stranica[] = [
     naslov: "Cijene · LogoMedo",
     opis: "Licenca za jednu osobu: 10 € mjesečno, 100 € godišnje ili 250 € doživotno, PDV uključen. Ustanove dobivaju popust na više licenci.",
     izbornik: "Cijene",
+    // SSR: CJENIK_VIDLJIV="false" (produkcija) daje 404 (src/lib/cjenik.ts).
+    ssr: true,
   },
   {
     putanja: "/o-nama",
@@ -250,8 +252,8 @@ export const SUGLASNICI = ["C", "S", "Z", "Č", "Š", "Ž", "L", "R", "K", "Đ",
 export const SAMOGLASNICI = ["A", "E", "I", "O", "U"];
 
 /** sitemap.xml iz STRANICE (404 nije u sitemapu). */
-export function sitemapXml(): string {
-  const url = STRANICE.map((s) => `  <url><loc>${kanonski(s.putanja)}</loc></url>`).join("\n");
+export function sitemapXml(stranice: readonly Stranica[] = STRANICE): string {
+  const url = stranice.map((s) => `  <url><loc>${kanonski(s.putanja)}</loc></url>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${url}\n</urlset>\n`;
 }
 
