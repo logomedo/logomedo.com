@@ -39,3 +39,11 @@ test("ekrani: percepcija je ekran po redu, s uputom za ekran umjesto one za papi
   ]);
   assert.deepEqual(e.map((x) => x.uputa), ["Koja je slika drukčija od ostalih?", "Nađi blizance!"]);
 });
+
+test("lampice: povezivanje po paru, razvrstavanje po slici, ostalo po ekranu", async () => {
+  const { brojLampica } = await import("./biljeznice-ekrani.ts");
+  const pov = { vrsta: "povezivanje" as const, uputa: null, sadrzaj: { parovi: [1, 2, 3].map((i) => ({ lijevo: i, desno: i + 10 })), desno_redoslijed: [2, 0, 1] } as never };
+  const odb = { vrsta: "odabir" as const, uputa: null, sadrzaj: { stavke: [1, 2].map((i) => ({ zadana: i, ponudeno: [5, 6, 7], tocno: 0 })) } as never };
+  assert.equal(brojLampica([pov]), 3);
+  assert.equal(brojLampica([pov, odb]), 5);
+});

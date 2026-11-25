@@ -96,6 +96,18 @@ export const glasoviIgre = (zadaci: ZadatakZaIgru[]) => [...new Set(ekrani(zadac
 
 export const brojEkrana = (zadaci: ZadatakZaIgru[]) => ekrani(zadaci).length;
 
+/**
+ * Lampice jednog ekrana: povezivanje pali po jednu za svaki spojen par, razvrstavanje za svaku sliku
+ * u pravom spremniku (djeci je zabavnije kad svijetli svaki točan potez); ostale vrste jednu po ekranu.
+ */
+export const lampiceEkrana = (e: Ekran) =>
+  e.vrsta === "povezivanje" ? e.s.parovi.length
+  : e.vrsta === "razvrstavanje" ? e.s.slike.filter((x) => x.rijec_id !== null).length
+  : 1;
+
+/** Broj lampica na boru (jabuka) u igri. Ispis i dalje broji ekrane. */
+export const brojLampica = (zadaci: ZadatakZaIgru[]) => ekrani(zadaci).reduce((n, e) => n + lampiceEkrana(e), 0);
+
 /** Uputa s riječju umjesto {zadana} (velikim slovima). */
 export const uputaZa = (uputa: string, zadana: string | null) =>
   uputa.replaceAll("{zadana}", (zadana ?? "").toLocaleUpperCase("hr")).replace(/\s+\?/, "?");

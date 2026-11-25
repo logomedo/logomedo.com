@@ -4,7 +4,7 @@
 import "@fontsource-variable/nunito";
 import "@fontsource/andika/700.css";
 import { TEME, type Tema } from "../lib/teme";
-import { brojEkrana, glasoviIgre, type ZadatakZaIgru } from "../lib/biljeznice-ekrani";
+import { brojLampica, glasoviIgre, type ZadatakZaIgru } from "../lib/biljeznice-ekrani";
 import { odobreniZvukovi, tekstoviIgre } from "../lib/zvukovi";
 import type { RijecBiljeznice } from "../lib/biljeznice";
 import type { Pozadina } from "../lib/pozadine";
@@ -18,7 +18,7 @@ interface Props {
   prazno?: string;
 }
 const { naslov, podnaslov, tema: kod, zadaci, rijeci, pozadine, prazno } = Astro.props;
-const n = brojEkrana(zadaci);
+const n = brojLampica(zadaci);
 const tema = TEME[kod] ?? TEME.bozic;
 const b = { naslov, podnaslov, tema: kod };
 const za = {

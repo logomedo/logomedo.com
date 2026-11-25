@@ -2,7 +2,7 @@
 // boru, na kraju se bor vrti. Govor: samo odobrena snimka izgovora (ElevenLabs, docs/zvukovi.md);
 // bez nje nema zvuka ni zvučnika, tekst se samo čita. Zvonce i efekti iz WebAudija.
 // Ništa se ne sprema i ništa ne odlazi na server.
-import { ekrani, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
+import { ekrani, lampiceEkrana, uputaZa, type Ekran, type ZadatakZaIgru } from "./biljeznice-ekrani.ts";
 import { scena, type Orijentacija, type PozadinaPrikaz } from "./scena-prikaz.ts";
 import { izmjenaCss, UPUTE_POZICIJE, UPUTE_PRVOG_GLASA, BOJE_DULJINE, jeDuga, type Polje } from "./zadaci/vrste.ts";
 import { iskocenoSlovo, koloSlova, znackaSlova } from "./kolo-slova.ts";
@@ -132,6 +132,9 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
   const lampice = Array.from(document.querySelectorAll<SVGGElement>(".lampica"));
   const brojac = document.getElementById("brojac");
   let trenutni = 0;
+  /** Sljedeća lampica: povezivanje i razvrstavanje pale ih i usred ekrana (lampiceEkrana). */
+  let upaljeno = 0;
+  const ukupno = sviEkrani.reduce((n, e) => n + lampiceEkrana(e), 0);
   let zakljucano = false;
 
 
@@ -180,10 +183,10 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
 
   function osvjeziBrojac() {
     const n = lampice.filter((l) => l.classList.contains("upaljena")).length;
-    if (brojac) brojac.textContent = sviEkrani.length ? `${n} / ${sviEkrani.length}` : "";
+    if (brojac) brojac.textContent = ukupno ? `${n} / ${ukupno}` : "";
   }
-  function upali(i: number) {
-    const l = lampice[i];
+  function upali() {
+    const l = lampice[upaljeno++];
     if (!l) return;
     l.classList.add("upaljena", "nova");
     setTimeout(() => l.classList.remove("nova"), 800);
@@ -195,7 +198,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     zakljucano = true;
     korijen.classList.add("zakljucano");
     zvonce();
-    upali(trenutni);
+    upali();
     setTimeout(() => { trenutni++; prikazi(); }, 1600);
   }
 
@@ -389,7 +392,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       lijevi[odabran].classList.add("tocno", "spojena"); el.classList.add("tocno", "spojena");
       odabran = null;
       crtaj();
-      if (spojevi.length === s.parovi.length) rijeseno(); else mekiPogodak();
+      if (spojevi.length === s.parovi.length) rijeseno(); else { upali(); mekiPogodak(); }
     }));
     dodaj(platno, svg, h("div", { class: "stupac" }, ...lijevi), h("div", { class: "stupac" }, ...desni));
 
@@ -445,7 +448,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
       const sp = spremnici[j];
       sp.n++;
       setTimeout(() => { sp.broj.textContent = String(sp.n); sp.b.classList.remove("poskok"); void sp.b.offsetWidth; sp.b.classList.add("poskok"); }, 300);
-      if (--ostalo === 0) setTimeout(rijeseno, 400); else mekiPogodak();
+      if (--ostalo === 0) setTimeout(rijeseno, 400); else { upali(); mekiPogodak(); }
     }
     const kartice = slike.map((x, i) => {
       const k = karticaBezRijeci(x.rijec_id!, undefined, "razvrstaj-kartica");
@@ -600,7 +603,7 @@ export function pokreni(korijen: HTMLElement, p: Podaci) {
     const ponovi = h("button", { type: "button", class: "gumb-ponovi", onclick: () => {
       document.body.classList.remove("kraj");
       lampice.forEach((l) => l.classList.remove("upaljena"));
-      trenutni = 0; osvjeziBrojac(); prikazi();
+      trenutni = 0; upaljeno = 0; osvjeziBrojac(); prikazi();
     } }, "Ponovi");
     zamijeni(korijen, h("div", { class: "bravo" }, h("h2", {}, "Bravo!"), ponovi));
     setTimeout(() => govori(p.kraj ?? "Bravo! Sve lampice svijetle."), 600);
