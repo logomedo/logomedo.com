@@ -21,7 +21,7 @@ Handoff se mijenja samo prema naprijed.
 
 | Sesija | Paket | Stanje | Commit | Testovi | Napomena |
 | --- | --- | --- | --- | --- | --- |
-| S0 | Plan | gotovo | (upisuje S0) | 460 | plan, koda nema; odluke 1–12 |
+| S0 | Plan | gotovo | 3344de1 | 460 | plan, koda nema; odluke 1–12 |
 | S1 | Lijevak, istraživanje, revizija segmenata | | | | |
 | S2 | `aktivni_dani`, bilježenje, backfill | | | | |
 | S3 | Cron, segmenti, slanje, odjava, predlošci | | | | |
