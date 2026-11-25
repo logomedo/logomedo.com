@@ -99,7 +99,13 @@
         "ZONE_ID": "c12293517eb61e46975c4145f8e66a61",
         "OKRUZENJE": "staging",
         // Limit istovremenih uređaja i za superadmina, za testiranje (docs/uredaji.md). Produkcija: bez vara = samo bilježi.
-        "UREDAJI_PROVEDBA": "svi"
+        "UREDAJI_PROVEDBA": "svi",
+        // Naplata (docs/naplata.md): simulirana uplata izdaje pravi račun na fiskal-testu (ITalk tenant, PP1, uređaj 2).
+        // Secreti FISKAL_API_KLJUC i FISKAL_OPERATER_OIB (wrangler secret put … --env staging).
+        "FISKAL_URL": "https://fiskal-test.domovina.ai",
+        "FISKAL_PROSTOR": "PP1",
+        "FISKAL_UREDAJ": "2",
+        "NAPLATA_SIMULACIJA": "da"
       },
       "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } }
     }

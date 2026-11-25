@@ -17,6 +17,15 @@ declare namespace Cloudflare {
     RESEND_WEBHOOK_SECRET?: string;
     /** Limit istovremenih uređaja (docs/uredaji.md): prazno = samo bilježi, "logoped" = provodi za logopede, "svi" = i superadmin. */
     UREDAJI_PROVEDBA?: string;
+    /** domovina-fiskal (docs/naplata.md): URL okoline (var), API ključ ITalk tenanta i OIB operatera (secreti, OIB je osobni podatak). */
+    FISKAL_URL?: string;
+    FISKAL_API_KLJUC?: string;
+    FISKAL_OPERATER_OIB?: string;
+    /** Oznake poslovnog prostora i naplatnog uređaja u domovina-fiskal (var; zadano PP1 / 2). */
+    FISKAL_PROSTOR?: string;
+    FISKAL_UREDAJ?: string;
+    /** "da" (samo staging): gumb „Simuliraj uplatu” na /admin/zahtjevi. */
+    NAPLATA_SIMULACIJA?: string;
   }
 }
 

@@ -12,6 +12,10 @@ import { ROK_MJESECI, pocisti } from "../../lib/pristup";
 import { posaljiPozivnicu, type IshodSlanja } from "../../lib/email";
 import { PAKETI_ZAHTJEVA, cijenaLicence, eura } from "../../landing/konstante";
 import { IZBORI, NAPOMENA_MAX, opisPogodnosti, procitajIzbor, type Pogodnost } from "../../lib/admin/pogodnosti";
+import {
+  fiskalPostavljen, izdajRacun, plati, procitajUnos, simulacijaDopustena, uplata as dohvatiUplatu, zadnjeUplate, type Uplata,
+} from "../../lib/admin/uplate";
+import { KUPCI, NACINI, TIP_TEKST } from "../../lib/naplata";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -21,6 +25,9 @@ let greska: string | null = null;
 let link: { url: string; email: string; istjece: string } | null = null;
 let slanje: IshodSlanja | null = null;
 let dodijeljena: Pogodnost | null = null;
+// Simulirana uplata (docs/naplata.md, samo staging): uplata + odobravanje + račun kroz domovina-fiskal.
+const simulacija = simulacijaDopustena();
+let placeno: Uplata | null = null;
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -38,16 +45,39 @@ if (Astro.request.method === "POST") {
       if (!slanje.ok) console.error("pozivnica e-poštom nije poslana", slanje);
     } else if (r.razlog === "obradjen") greska = "Zahtjev je već obrađen (možda u drugoj kartici). Nova pozivnica nije izdana.";
     else greska = `${PORUKE_ODBIJANJA[r.razlog]} Zahtjev je i dalje otvoren: ako pozivnica ne treba, zatvori ga gumbom „Odbij”.`;
+  } else if (akcija === "uplata") {
+    if (!simulacija) greska = "Simulacija uplate ovdje nije uključena.";
+    else {
+      const r = await plati(id, procitajUnos(f), "simulacija", s.email);
+      if (!r.ok) greska = r.greska;
+      else {
+        placeno = r.uplata;
+        const o = r.odobravanje;
+        if (o.ok) {
+          link = { url: `${Astro.url.origin}/admin/poziv#${o.token}`, email: o.email, istjece: o.istjece };
+          slanje = await posaljiPozivnicu({ ...link, ime: o.ime });
+        } else if (o.razlog !== "obradjen") poruka = `Pozivnica nije izdana: ${PORUKE_ODBIJANJA[o.razlog]}`;
+      }
+    }
+  } else if (akcija === "ponovi") {
+    const u = await dohvatiUplatu(id);
+    if (!u) greska = "Uplata ne postoji.";
+    else placeno = await izdajRacun(id, s.email);
   } else if (akcija === "odbij") {
     if (await odbij(id, s.email)) return Astro.redirect("/admin/zahtjevi?ok=odbijen", 303);
     greska = "Zahtjev je već obrađen.";
   } else greska = "Nepoznata radnja.";
-  poruka = null;
+  if (!poruka?.startsWith("Pozivnica nije")) poruka = null;
   if (greska) { Astro.response.status = 400; dodijeljena = null; }
 }
 
 await pocisti();
-const [novi, obradjeni] = await Promise.all([noviZahtjevi(), obradjeniZahtjevi()]);
+// Tablica uplate (0048) se čita samo gdje je naplata uključena: produkcija je nema dok se fiskal ne postavi.
+const [novi, obradjeni, uplate] = await Promise.all([
+  noviZahtjevi(), obradjeniZahtjevi(), simulacija || fiskalPostavljen() ? zadnjeUplate() : Promise.resolve([] as Uplata[]),
+]);
+const eura2 = (c: number) => eura(c / 100, c % 100 !== 0);
+const STATUS_RACUNA = { ceka: "čeka", izdan: "izdan, nije dostavljen", poslan: "poslan", greska: "greška" } as const;
 const paketTekst = (kod: string) => PAKETI_ZAHTJEVA.find((p) => p.kod === kod)?.tekst ?? kod;
 const licence = (n: number) => { const c = cijenaLicence(n); return c === null ? "cijena po dogovoru" : `${eura(c)} po licenci, ukupno ${eura(c * n)} godišnje`; };
 const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren", odbijen: "odbijen" };
@@ -63,6 +93,15 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
 
   {poruka && <p class="poruka ok" role="status">{poruka}</p>}
   {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
+  {placeno && (
+    <section class="ploha link" id="uplata-rezultat">
+      <h2>Uplata {eura2(placeno.iznos_centi)} ({placeno.nacin === "kartica" ? "kartica" : "SEPA instant"}): {placeno.kupac_naziv}</h2>
+      {placeno.racun_tip && <p class="sitno">Vrsta računa: <b>{TIP_TEKST[placeno.racun_tip]}</b></p>}
+      {placeno.broj_racuna && <p class="sitno">Račun <b>{placeno.broj_racuna}</b>{placeno.jir && <> · JIR <code>{placeno.jir}</code></>} · <a href={`/admin/zahtjevi/racun/${placeno.id}`} target="_blank" rel="noopener">PDF</a></p>}
+      <p class:list={["poruka", placeno.racun_status === "poslan" ? "ok" : "greska"]} id="uplata-status">
+        Račun: {STATUS_RACUNA[placeno.racun_status]}{placeno.dostava ? ` (${placeno.dostava})` : ""}{placeno.greska ? `. ${placeno.greska}` : ""}</p>
+    </section>
+  )}
   {link && (
     <section class="ploha link" id="poziv-rezultat">
       <h2>Pozivnica za {link.email}</h2>
@@ -115,9 +154,65 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
             </form>
             <a class="gumb mali" href={`/admin/poruke/novi?${new URLSearchParams({ email: z.email, ime: z.ime, predmet: z.paket === "beta" ? "Vaš zahtjev za pristup LogoMedu" : "Vaša narudžba LogoMeda" })}`}><Ikona ime="pismo" /> Napiši</a>
           </div>
+          {simulacija && z.paket !== "beta" && (
+            <details class="simulacija" id={`simulacija-${z.id}`}>
+              <summary>Simuliraj uplatu (staging)</summary>
+              <form method="post" class="obrazac-uplate">
+                <input type="hidden" name="akcija" value="uplata" />
+                <input type="hidden" name="id" value={z.id} />
+                <fieldset>
+                  <legend class="sitno blijedo">Plaćeno</legend>
+                  {NACINI.map((n, i) => <label class="sitno"><input type="radio" name="nacin" value={n.kod} checked={i === 0} /> {n.tekst}</label>)}
+                </fieldset>
+                <label class="sitno blijedo">Kupac
+                  <select name="kupac_tip">{KUPCI.map((k) => <option value={k.kod} selected={z.paket === "ustanova" ? k.kod === "pravna" : k.kod === "fizicka"}>{k.tekst}</option>)}</select>
+                </label>
+                <input type="text" name="naziv" maxlength={300} required value={z.paket === "ustanova" && z.ustanova ? z.ustanova : z.ime} placeholder="Ime i prezime ili naziv" aria-label="Naziv kupca" />
+                <input type="text" name="oib" inputmode="numeric" maxlength={11} placeholder="OIB (obavezan za firmu i ustanovu)" aria-label="OIB" />
+                <input type="text" name="ulica" maxlength={200} placeholder="Ulica i broj" aria-label="Ulica i broj" />
+                <div class="dva">
+                  <input type="text" name="postanski_broj" maxlength={16} placeholder="Pošt. broj" aria-label="Poštanski broj" />
+                  <input type="text" name="grad" maxlength={100} value={z.grad ?? ""} placeholder="Grad" aria-label="Grad" />
+                </div>
+                <label class="sitno"><input type="checkbox" name="eracun" value="da" /> Kupac traži eRačun (firma koja plaća karticom)</label>
+                <p class="sitno blijedo">Odobri zahtjev (pozivnica) i izda pravi račun na fiskal-testu. Račun e-poštom ide samo tebi.</p>
+                <button class="gumb glavni mali" type="submit" disabled={!fiskalPostavljen()}><Ikona ime="kvacica" /> Plaćeno: odobri i izdaj račun</button>
+              </form>
+            </details>
+          )}
         </article>
       ))}
     </div>
+  )}
+
+  {uplate.length > 0 && (
+    <>
+      <h2 class="podnaslov-popisa">Uplate i računi</h2>
+      <div class="ploha tablica">
+        <table id="uplate">
+          <thead><tr><th>Kupac</th><th>Uplata</th><th>Račun</th><th></th></tr></thead>
+          <tbody>
+            {uplate.map((u) => (
+              <tr id={`uplata-${u.id}`}>
+                <td><b>{u.kupac_naziv}</b>{u.kupac_oib && <span class="sitno"> · OIB {u.kupac_oib}</span>}<br /><span class="blijedo sitno">{u.email}{u.izvor === "simulacija" ? " · simulacija" : ""}</span></td>
+                <td class="sitno">{eura2(u.iznos_centi)} · {u.nacin === "kartica" ? "kartica" : "SEPA"}<br /><span class="blijedo">{kad(u.placeno_at)}</span></td>
+                <td class="sitno">{u.racun_tip ? TIP_TEKST[u.racun_tip] : "—"}{u.broj_racuna && <> <b>{u.broj_racuna}</b></>}<br />
+                  <span class:list={["status", u.racun_status === "poslan" ? "odobren" : u.racun_status === "greska" ? "odbijen" : ""]}>{STATUS_RACUNA[u.racun_status]}</span>
+                  {u.dostava && <span class="blijedo"> {u.dostava}</span>}
+                  {u.greska && <><br /><span class="blijedo">{u.greska}</span></>}</td>
+                <td class="sitno">
+                  {u.fiskal_id && <a href={`/admin/zahtjevi/racun/${u.id}`} target="_blank" rel="noopener">PDF</a>}
+                  {u.racun_status !== "poslan" && (
+                    <form method="post"><input type="hidden" name="akcija" value="ponovi" /><input type="hidden" name="id" value={u.id} />
+                      <button class="gumb mali" type="submit">Ponovi</button></form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )}
 
   {obradjeni.length > 0 && (
@@ -186,4 +281,12 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
   .status { font-size: .8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
   .status.odobren { background: var(--uspjeh-blago); color: var(--uspjeh); }
   .status.odbijen { background: var(--greska-blago); color: var(--greska); }
+  .simulacija { flex-basis: 100%; padding: 10px 12px; border-radius: 10px; border: 1px dashed var(--rub); }
+  .simulacija summary { cursor: pointer; font-size: .85rem; font-weight: 600; }
+  .obrazac-uplate { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .obrazac-uplate fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+  .obrazac-uplate label { display: flex; gap: 6px; align-items: center; }
+  .obrazac-uplate .dva { display: grid; grid-template-columns: 1fr 2fr; gap: 6px; }
+  .obrazac-uplate .dva input { min-width: 0; }
+  .obrazac-uplate button { align-self: flex-start; }
 </style>
