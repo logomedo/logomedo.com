@@ -1,0 +1,447 @@
+<title>Radionica riječi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Lilita+One&display=swap">
+<style>
+/* Layout: workshop at night. Left column = task card, workbench (3×3 + output), letter drawer. Right column = chest + recipe book. Stacks on phone. Single deliberate theme. */
+:root{
+  color-scheme: dark;
+  --bg:#2b1f15; --bg2:#3d2c1d;
+  --grass:#5f9f35; --grass-dark:#3f7522; --dirt:#866043; --dirt-dark:#5e412b;
+  --ink:#f4ecd9; --muted:#b9a68a;
+  --wood:#b38a55; --wood-hi:#c9a16a; --wood-dark:#6e4f2e;
+  --slot:#4a3522; --slot-hi:#5e4530;
+  --tile:#eadcb4; --tile-edge:#b9a473; --tile-ink:#2a1e12;
+  --vowel:#9bcf5f; --vowel-edge:#5f9f35;
+  --gold:#f5c542; --leaf:#7cc04a; --warn:#e0703a;
+  --r:4px;
+  --f-display:"Lilita One","Arial Rounded MT Bold",system-ui,sans-serif;
+  --f-body:"Andika","Trebuchet MS",system-ui,sans-serif;
+  --cell:clamp(52px,15vw,78px);
+}
+html,body{height:auto}
+body{background:linear-gradient(180deg,var(--grass) 0 14px,var(--grass-dark) 14px 20px,var(--dirt) 20px 120px,var(--bg) 260px) no-repeat,var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 40px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,5vw,40px);margin:0;letter-spacing:.5px;line-height:1}
+.brand small{display:block;color:var(--muted);font-size:14px;margin-top:4px}
+.tabs{display:flex;gap:6px;background:var(--bg2);padding:5px;border-radius:var(--r)}
+.tabs button{border:0;background:transparent;padding:8px 14px;border-radius:var(--r);font-weight:700}
+.tabs button[aria-pressed="true"]{background:var(--grass);color:var(--ink);box-shadow:inset 0 -3px 0 var(--grass-dark)}
+.x{color:var(--tile-ink)}
+
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+@media (max-width:880px){.stage{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+
+/* task card */
+.task{border-top:6px solid var(--grass);display:flex;align-items:center;gap:16px;flex-wrap:wrap;background:var(--bg2);border-radius:calc(var(--r)*2);padding:14px 16px}
+.task .pic{font-size:64px;line-height:1;width:86px;height:86px;display:grid;place-items:center;background:var(--tile);border-radius:calc(var(--r)*2);box-shadow:inset 0 -5px 0 var(--tile-edge)}
+.task .txt{flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px}
+.task .lbl{font-size:13px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)}
+.dots{display:flex;gap:6px}
+.dots i{width:22px;height:22px;border:2px solid var(--dirt-dark);border-radius:var(--r);background:var(--slot);box-shadow:inset 0 2px 0 rgba(0,0,0,.3)}
+.task .acts{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:var(--r);padding:9px 14px;background:var(--slot-hi);font-weight:700;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.btn.gold{background:var(--grass);color:var(--ink);box-shadow:inset 0 -3px 0 var(--grass-dark)}
+.btn:active{transform:translateY(2px);box-shadow:none}
+.levels{display:flex;gap:6px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.levels button{border:0;border-radius:var(--r);padding:5px 10px;background:var(--bg2);font-weight:700}
+.levels button[aria-pressed="true"]{background:var(--leaf);color:var(--tile-ink)}
+.progress{display:flex;gap:6px}
+.progress b{width:14px;height:14px;border-radius:50%;background:var(--slot)}
+.progress b.done{background:var(--gold)}
+.progress b.now{outline:2px solid var(--gold)}
+
+/* workbench */
+.bench{position:relative;border-radius:calc(var(--r)*2);padding:22px clamp(14px,3vw,28px);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 30px, rgba(0,0,0,.16) 30px 32px),repeating-linear-gradient(90deg, transparent 0 120px, rgba(0,0,0,.08) 120px 122px),
+    linear-gradient(180deg,var(--wood-hi),var(--wood));
+  box-shadow:inset 0 -8px 0 var(--wood-dark),0 10px 24px rgba(0,0,0,.35)}
+.bench-row{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,26px);flex-wrap:nowrap}
+.grid{display:grid;grid-template-columns:repeat(3,var(--cell));gap:8px;padding:10px;background:var(--wood-dark);border-radius:calc(var(--r)*2)}
+.cell{width:var(--cell);height:var(--cell);border-radius:var(--r);background:var(--slot);box-shadow:inset 0 4px 0 rgba(0,0,0,.35);position:relative;display:grid;place-items:center;border:0;padding:0;touch-action:none}
+.cell .n{position:absolute;top:4px;left:7px;font-size:11px;color:rgba(255,255,255,.28);font-weight:700}
+.cell.sel{box-shadow:inset 0 0 0 3px var(--gold)}
+.cell.over{background:var(--slot-hi)}
+.cell .ghost{font-size:calc(var(--cell)*.48);font-weight:700;color:rgba(255,255,255,.22)}
+/* stol kao predmet: noge ispod ploče */
+.legs{display:flex;justify-content:space-between;padding:0 8%;margin-top:-16px;height:34px}
+.legs i{width:30px;background:linear-gradient(90deg,var(--wood-dark),var(--wood) 40%,var(--wood-dark));box-shadow:inset 0 -6px 0 rgba(0,0,0,.3)}
+.bench.thud{animation:thud .18s}
+@keyframes thud{40%{transform:translateY(5px)}}
+/* čekić: os okretanja je kraj drške, glava udara u strelicu */
+.arrowbox{position:relative;display:grid;place-items:center;align-self:stretch}
+.bench{padding-top:calc(var(--cell)*.7)}
+.hammer{position:absolute;width:calc(var(--cell)*1.35);height:calc(var(--cell)*2);left:50%;bottom:32%;
+  transform-origin:55% 95%;transform:translateX(-10%) rotate(28deg);z-index:3;pointer-events:none;filter:drop-shadow(0 4px 2px rgba(0,0,0,.35))}
+.hammer.hit{animation:hit .5s ease-in 2}
+@keyframes hit{0%{transform:translateX(-10%) rotate(28deg)}40%{transform:translateX(-10%) rotate(55deg)}70%{transform:translateX(-10%) rotate(-62deg)}80%{transform:translateX(-10%) rotate(-52deg)}100%{transform:translateX(-10%) rotate(28deg)}}
+.dust{position:fixed;z-index:40;pointer-events:none;width:12px;height:12px;background:var(--wood-hi);animation:dust .5s ease-out forwards}
+@keyframes dust{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+.arrow.lit{color:var(--gold);text-shadow:0 0 12px var(--gold)}
+.arrow{font-family:var(--f-display);font-size:clamp(30px,6vw,46px);color:var(--wood-dark);line-height:1}
+.out{width:calc(var(--cell)*1.45);height:calc(var(--cell)*1.45);border-radius:calc(var(--r)*2);border:0;background:var(--slot);box-shadow:inset 0 5px 0 rgba(0,0,0,.35);display:grid;place-items:center;position:relative;padding:0}
+.out .em{font-size:calc(var(--cell)*.85);line-height:1}
+.out .w{position:absolute;bottom:-26px;left:50%;transform:translateX(-50%);font-weight:700;letter-spacing:2px;white-space:nowrap;color:var(--tile-ink);background:var(--gold);border-radius:var(--r);padding:1px 8px;font-size:14px}
+.out.ready{background:var(--slot-hi);box-shadow:0 0 0 4px var(--gold),0 0 30px rgba(255,207,74,.55);animation:pulse 1.2s ease-in-out infinite}
+.out.wrong .em{font-family:var(--f-display);color:var(--warn);font-size:calc(var(--cell)*.7)}
+.out.wrong{animation:shake .4s}
+@keyframes pulse{50%{transform:scale(1.05)}}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.say{display:flex;align-items:center;gap:10px;margin-top:30px;justify-content:center;text-align:center;color:var(--tile-ink);font-weight:700;min-height:28px}
+.medo{flex:none}
+
+/* tiles */
+.tile{width:var(--cell);height:var(--cell);border-radius:var(--r);border:0;padding:0;display:grid;place-items:center;
+  background:var(--tile);color:var(--tile-ink);box-shadow:inset 0 -6px 0 var(--tile-edge),inset 0 3px 0 rgba(255,255,255,.45);
+  font-family:var(--f-body);font-weight:700;font-size:calc(var(--cell)*.46);line-height:1;touch-action:none;user-select:none;-webkit-user-select:none}
+.tile.v{background:var(--vowel);box-shadow:inset 0 -6px 0 var(--vowel-edge),inset 0 3px 0 rgba(255,255,255,.4)}
+.tile.di{font-size:calc(var(--cell)*.38)}
+.cell .tile{width:100%;height:100%}
+.tile.used{visibility:hidden}
+.drawer{background:var(--bg2);border-radius:calc(var(--r)*2);padding:14px 14px 16px;display:flex;flex-direction:column;gap:10px}
+.drawer h2,.side h2{font-family:var(--f-display);font-weight:400;font-size:20px;margin:0;letter-spacing:.4px}
+.drawer .hint{color:var(--muted);font-size:13px}
+.inv{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.free .inv{--cell:clamp(40px,10.5vw,54px)}
+.drag{position:fixed;pointer-events:none;z-index:50;transform:translate(-50%,-50%) scale(1.15) rotate(-4deg);filter:drop-shadow(0 10px 6px rgba(0,0,0,.45))}
+.cell.over{box-shadow:inset 0 0 0 3px var(--gold)}
+
+/* side */
+.side{display:flex;flex-direction:column;gap:16px}
+.box{background:var(--bg2);border-radius:calc(var(--r)*2);padding:14px;display:flex;flex-direction:column;gap:10px}
+.chest{display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px}
+.chest .it{position:relative;background:var(--slot);border-radius:var(--r);height:56px;display:grid;place-items:center;font-size:30px}
+.chest .it b{position:absolute;right:4px;bottom:1px;font-size:13px;color:var(--ink)}
+.empty{color:var(--muted);font-size:14px}
+.book{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;max-height:320px;overflow:auto;padding-right:2px}
+.rc{background:var(--tile);color:var(--tile-ink);border:0;border-radius:var(--r);padding:6px 2px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.rc .e{font-size:28px;line-height:1.1}
+.rc .t{font-size:11px;font-weight:700;letter-spacing:.5px}
+.rc.lock{background:var(--slot)}
+.rc.lock .e{filter:brightness(0);opacity:.55}
+.rc.lock .t{color:var(--muted);letter-spacing:2px}
+.note{color:var(--muted);font-size:13px;margin:0}
+
+/* polja: potpuno četvrtasta i udubljena (tamni gornji-lijevi rub, svijetli donji-desni) */
+.grid{border-radius:0;gap:6px}
+.cell,.out{border-radius:0;box-shadow:inset 4px 4px 0 rgba(0,0,0,.5),inset -3px -3px 0 rgba(255,255,255,.14)}
+.cell .tile{border-radius:0}
+.out{overflow:visible}
+.out .cnt{position:absolute;right:5px;bottom:3px;font-family:var(--f-display);font-size:calc(var(--cell)*.32);line-height:1;color:var(--ink);text-shadow:2px 2px 0 var(--tile-ink)}
+.burst{position:fixed;z-index:60;pointer-events:none;font-size:22px;animation:fly 900ms ease-out forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) scale(.4);opacity:0}}
+@media (prefers-reduced-motion:reduce){.out.ready,.out.wrong{animation:none}.burst{display:none}}
+</style>
+
+<div class="wrap" id="app">
+  <header>
+    <div class="brand">
+      <svg class="medo" width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" fill="#5e412b"/><circle cx="40" cy="12" r="8" fill="#5e412b"/>
+        <circle cx="12" cy="12" r="4" fill="#c9a16a"/><circle cx="40" cy="12" r="4" fill="#c9a16a"/>
+        <circle cx="26" cy="28" r="20" fill="#866043"/>
+        <ellipse cx="26" cy="35" rx="10" ry="8" fill="#eadcb4"/>
+        <circle cx="19" cy="24" r="2.6" fill="#2a1e12"/><circle cx="33" cy="24" r="2.6" fill="#2a1e12"/>
+        <ellipse cx="26" cy="31.5" rx="3.6" ry="2.6" fill="#2a1e12"/>
+        <path d="M22 37 q4 3 8 0" stroke="#2a1e12" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </svg>
+      <div><h1>Radionica riječi</h1><small>Složi slova na stol i iskuj riječ</small></div>
+    </div>
+    <div class="tabs" role="group" aria-label="Način igre">
+      <button id="m-zad" aria-pressed="true">Zadaci</button>
+      <button id="m-slo" aria-pressed="false">Slobodno</button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="col">
+      <div class="task" id="task"></div>
+
+      <div class="bench">
+        <div class="bench-row">
+          <div class="grid" id="grid" aria-label="Radni stol, 9 polja"></div>
+          <div class="arrowbox" aria-hidden="true">
+            <div class="hammer" id="hammer">
+              <svg viewBox="0 0 60 90" width="100%" height="100%">
+                <rect x="26" y="22" width="9" height="66" rx="2" fill="#8a6136"/>
+                <rect x="26" y="22" width="3" height="66" fill="#a87a47"/>
+                <rect x="26" y="74" width="9" height="12" fill="#5e412b"/>
+                <rect x="6" y="6" width="48" height="20" rx="2" fill="#7c7f86"/>
+                <rect x="6" y="6" width="48" height="5" fill="#a3a7ae"/>
+                <rect x="6" y="22" width="48" height="4" fill="#55585e"/>
+                <rect x="2" y="9" width="6" height="14" fill="#55585e"/>
+              </svg>
+            </div>
+            <div class="arrow">➜</div>
+          </div>
+          <button class="out" id="out" aria-label="Gotova riječ"></button>
+        </div>
+        <div class="say" id="say"></div>
+      </div>
+      <div class="legs" aria-hidden="true"><i></i><i></i></div>
+
+      <div class="drawer" id="drawer">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <h2>Ladica sa slovima</h2>
+          <span class="hint">Dodirni slovo ili ga povuci na stol. Samoglasnici su zeleni.</span>
+        </div>
+        <div class="inv" id="inv"></div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="box">
+        <h2>Škrinja</h2>
+        <div class="chest" id="chest"></div>
+      </div>
+      <div class="box">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Knjiga recepata</h2><span class="note" id="bookcount"></span></div>
+        <div class="book" id="book"></div>
+        <p class="note">Stol se čita kao knjiga: slijeva nadesno, red po red. Brojke u poljima pokazuju redoslijed.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+const ABC = ["A","B","C","Č","Ć","D","DŽ","Đ","E","F","G","H","I","J","K","L","LJ","M","N","NJ","O","P","R","S","Š","T","U","V","Z","Ž"];
+const VOW = new Set(["A","E","I","O","U"]);
+const DIG = ["DŽ","LJ","NJ"];
+const tok = w => { const r=[]; for(let i=0;i<w.length;){ const two=w.slice(i,i+2); if(DIG.includes(two)){r.push(two);i+=2}else{r.push(w[i]);i++} } return r; };
+// riječ, slika (u pravoj verziji: slika iz kataloga)
+const RAW = `SOK🧃 NOS👃 MED🍯 SIR🧀 PAS🐶 MIŠ🐭 LAV🦁 ZEC🐰 ŠAL🧣 KIT🐳 BOR🌲 LUK🧅 KONJ🐴 JEŽ🦔 VUK🐺 PUŽ🐌
+RIBA🐟 KUĆA🏠 ŽABA🐸 KOZA🐐 JAJE🥚 KRUH🍞 AUTO🚗 BROD🚢 VLAK🚂 DRVO🌳 KIŠA🌧️ DUGA🌈 LOPTA⚽ SUNCE☀️ MAČKA🐱 OVCA🐑 KRAVA🐄 PATKA🦆 PČELA🐝 KLJUČ🔑 TORTA🎂 ZMAJ🐉 MRKVA🥕
+JABUKA🍎 BANANA🍌 LEPTIR🦋 MJESEC🌙 SNIJEG❄️ CVIJET🌸 ŠKOLJKA🐚 KORNJAČA🐢 ZVIJEZDA⭐ KIŠOBRAN☂️ ČOKOLADA🍫`;
+const WORDS = RAW.split(/\s+/).filter(Boolean).map(s => { const m = s.match(/^([A-ZČĆŽŠĐ]+)(.+)$/u); return {w:m[1], e:m[2], t:tok(m[1])}; });
+const byLevel = l => WORDS.filter(x => l===1 ? x.t.length<=3 : l===2 ? x.t.length>=4 && x.t.length<=5 : x.t.length>=6);
+// slova koja djeca miješaju: ometala biramo prvo odavde
+const CONF = {S:["Š","Z","C"],Š:["S","Ž","Č"],Z:["Ž","S"],Ž:["Z","Š"],C:["Č","Ć","S"],Č:["Ć","C","Š"],Ć:["Č","C"],R:["L","J"],L:["R","LJ"],LJ:["L","NJ","J"],NJ:["N","LJ"],N:["NJ","M"],M:["N"],DŽ:["Đ","Ž"],Đ:["DŽ","D"],D:["T","Đ"],T:["D","K"],K:["G","T"],G:["K"],B:["P"],P:["B"],V:["F"],F:["V"]};
+
+const shuffle = a => { a=[...a]; for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]} return a; };
+const $ = id => document.getElementById(id);
+const store = { get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}} };
+
+let S = {
+  mode:"zad", level:1, round:[], idx:0, done:[],
+  grid:Array(9).fill(null), inv:[], sel:-1, hint:false,
+  chest: store.get("rr-chest",{}), found: store.get("rr-found",[]),
+};
+
+// ---- zvuk i govor ----
+let ac;
+function tone(f,d=.09,type="triangle",v=.12){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); const o=ac.createOscillator(),g=ac.createGain(); o.type=type;o.frequency.value=f; g.gain.setValueAtTime(v,ac.currentTime); g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d); o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+d);}catch{} }
+const clack = () => tone(320+Math.random()*60,.06,"square",.05);
+const ding = () => { [660,880,1175].forEach((f,i)=>setTimeout(()=>tone(f,.18),i*90)); };
+const bonk = () => tone(140,.18,"sawtooth",.06);
+function speak(t){ try{ const u=new SpeechSynthesisUtterance(t.toLowerCase()); u.lang="hr-HR"; u.rate=.8; const v=speechSynthesis.getVoices().find(v=>/^hr/i.test(v.lang)); if(v)u.voice=v; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch{} }
+
+// ---- runda ----
+function newRound(){
+  S.round = shuffle(byLevel(S.level)).slice(0,5); S.idx=0; S.done=[]; loadTask();
+}
+function loadTask(){
+  S.grid=Array(9).fill(null); S.sel=-1; S.hint=false;
+  const t = S.round[S.idx]; if(!t){ render(); return; }
+  const need = t.t;
+  let pool=[]; need.forEach(c=>(CONF[c]||[]).forEach(x=>{ if(!need.includes(x)) pool.push(x)}));
+  pool = shuffle([...new Set(pool)]);
+  const extra = Math.min(need.length<=3?3:4, 9);
+  while(pool.length<extra){ const r=ABC[Math.random()*ABC.length|0]; if(!need.includes(r)&&!pool.includes(r)) pool.push(r); }
+  S.inv = shuffle([...need, ...pool.slice(0,extra)]).map((ch,i)=>({id:i,ch,used:false}));
+  say(S.level===1?"Pogledaj sliku i složi riječ na stol.":"Složi riječ. Ako zapne, otvori recept.");
+  render();
+}
+function setMode(m){
+  S.mode=m; $("m-zad").setAttribute("aria-pressed",m==="zad"); $("m-slo").setAttribute("aria-pressed",m==="slo");
+  $("drawer").classList.toggle("free",m==="slo");
+  S.grid=Array(9).fill(null); S.sel=-1;
+  if(m==="slo"){ S.inv = ABC.map((ch,i)=>({id:"a"+i,ch,used:false,inf:true})); say("Slaži što želiš. Svaka prava riječ ide u knjigu recepata."); render(); }
+  else newRound();
+}
+
+// ---- stol ----
+const seq = () => S.grid.filter(Boolean).map(c=>c.ch);
+function evaluate(){
+  const s=seq(); if(!s.length) return {state:"empty"};
+  const key=s.join("|");
+  const hit = WORDS.find(w=>w.t.join("|")===key);
+  if(hit) return {state:"ok", w:hit};
+  const t=S.mode==="zad"&&S.round[S.idx];
+  if(t && s.length===t.t.length && [...s].sort().join()===[...t.t].sort().join()) return {state:"order"};
+  return {state:"none"};
+}
+function place(invId, cellIdx){
+  const it=S.inv.find(x=>x.id===invId); if(!it||it.used) return;
+  if(cellIdx==null){ cellIdx = S.sel>=0&&!S.grid[S.sel] ? S.sel : S.grid.findIndex(c=>!c); }
+  if(cellIdx<0) { say("Stol je pun. Dodirni slovo na stolu da ga vratiš."); bonk(); return; }
+  if(S.grid[cellIdx]) unplace(cellIdx,true);
+  S.grid[cellIdx]={ch:it.ch,invId:it.id}; if(!it.inf) it.used=true;
+  S.sel=-1; clack(); afterChange();
+}
+function unplace(i,silent){ const c=S.grid[i]; if(!c) return; const it=S.inv.find(x=>x.id===c.invId); if(it) it.used=false; S.grid[i]=null; if(!silent){clack(); afterChange();} }
+function moveCell(a,b){ if(a===b) return render(); [S.grid[a],S.grid[b]]=[S.grid[b],S.grid[a]]; clack(); afterChange(); }
+let lastState="";
+function afterChange(){
+  const r=evaluate();
+  if(r.state==="ok" && lastState!=="ok"){ lastState="ok"; forge(r.w); return; }
+  else if(r.state==="order" && lastState!=="order"){ bonk(); say("Sva slova su prava, ali redoslijed nije. Pročitaj stol kao knjigu."); }
+  else if(r.state!=="ok" && r.state!=="order" && (lastState==="ok"||lastState==="order")) say("");
+  lastState=r.state; render();
+}
+// čekić dvaput lupi u stol, tek onda se pojavi riječ
+let forging=false, forgeTimers=[];
+function forge(w){
+  forgeTimers.forEach(clearTimeout); forgeTimers=[];
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const done = () => { forging=false; render(); $("arrowEl")?.classList.add("lit"); ding(); say(`Gotovo je! Dodirni ${w.w.toLowerCase()} da ga staviš u škrinju.`); };
+  if(reduce){ done(); return; }
+  forging=true; say("Kuc, kuc…"); render();
+  const h=$("hammer"); h.classList.remove("hit"); void h.offsetWidth; h.classList.add("hit");
+  [350,850].forEach(t=>forgeTimers.push(setTimeout(smash,t)));
+  forgeTimers.push(setTimeout(()=>{ h.classList.remove("hit"); done(); },1000));
+}
+function smash(){
+  tone(90,.16,"square",.14); tone(60,.22,"sine",.2);
+  const b=document.querySelector(".bench"); b.classList.remove("thud"); void b.offsetWidth; b.classList.add("thud");
+  const a=document.querySelector(".arrow").getBoundingClientRect();
+  for(let i=0;i<7;i++){ const d=document.createElement("div"); d.className="dust";
+    d.style.left=(a.left+a.width/2)+"px"; d.style.top=(a.top+a.height/2)+"px";
+    d.style.setProperty("--dx",(Math.random()-.5)*90+"px"); d.style.setProperty("--dy",(-Math.random()*50-5)+"px");
+    document.body.appendChild(d); setTimeout(()=>d.remove(),550); }
+}
+function take(){
+  if(forging) return;
+  const r=evaluate(); if(r.state!=="ok") { if(r.state!=="empty"){bonk();} return; }
+  const w=r.w; ding(); speak(w.w); burst(w.e);
+  S.chest[w.w]=(S.chest[w.w]||0)+1; if(!S.found.includes(w.w)) S.found.push(w.w);
+  store.set("rr-chest",S.chest); store.set("rr-found",S.found);
+  S.grid.forEach((c,i)=>{ if(c){ const it=S.inv.find(x=>x.id===c.invId); if(it&&!it.inf) it.used=true; } S.grid[i]=null; });
+  lastState="";
+  const t=S.mode==="zad"&&S.round[S.idx];
+  if(t && t.w===w.w){
+    S.done.push(S.idx); S.idx++;
+    if(S.idx>=S.round.length){ say("Bravo! Svih pet riječi je u škrinji."); render(); return; }
+    say(`Bravo, ${w.w.toLowerCase()}! Idemo dalje.`); render(); setTimeout(loadTask,1100); return;
+  }
+  if(t) { say(`I ${w.w.toLowerCase()} je prava riječ! Ali tražimo nešto drugo.`); S.inv.forEach(x=>x.used=false); }
+  else say(`Nova riječ u škrinji: ${w.w.toLowerCase()}!`);
+  render();
+}
+function burst(e){
+  const o=$("out").getBoundingClientRect(), c=$("chest").getBoundingClientRect();
+  for(let i=0;i<6;i++){ const d=document.createElement("div"); d.className="burst"; d.textContent=i?"✦":e;
+    d.style.left=(o.left+o.width/2-11)+"px"; d.style.top=(o.top+o.height/2-11)+"px";
+    const tx = i? (Math.random()-.5)*160 : (c.left+30)-(o.left+o.width/2), ty = i? (Math.random()-.5)*160 : (c.top+20)-(o.top+o.height/2);
+    d.style.setProperty("--dx",tx+"px"); d.style.setProperty("--dy",ty+"px"); d.style.color="var(--gold)";
+    document.body.appendChild(d); setTimeout(()=>d.remove(),950); }
+}
+function say(t){ $("say").textContent=t; }
+
+// ---- render ----
+function tileHTML(ch,extra=""){ return `<span class="tile${VOW.has(ch)?" v":""}${ch.length>1?" di":""} ${extra}">${ch}</span>`; }
+function render(){
+  // zadatak
+  const T=$("task");
+  if(S.mode==="zad"){
+    const t=S.round[S.idx];
+    const prog = S.round.map((_,i)=>`<b class="${S.done.includes(i)?"done":i===S.idx?"now":""}"></b>`).join("");
+    const lv = [1,2,3].map(l=>`<button data-lv="${l}" aria-pressed="${S.level===l}">${["Kratke","Srednje","Duge"][l-1]}</button>`).join("");
+    if(!t){ T.innerHTML=`<div class="pic">🏆</div><div class="txt"><span class="lbl">Niz gotov</span><div class="progress">${prog}</div><div class="acts"><button class="btn gold" id="again">Novi niz</button></div></div><div class="levels">${lv}</div>`; }
+    else T.innerHTML = `<div class="pic" aria-label="Slika riječi">${t.e}</div>
+      <div class="txt"><span class="lbl">Iskuj ovu riječ · ${t.t.length} slova</span>
+        <div class="dots">${t.t.map(()=>"<i></i>").join("")}</div>
+        <div class="acts"><button class="btn" id="listen">🔊 Poslušaj</button><button class="btn" id="hint">${S.hint?"Sakrij recept":"Pokaži recept"}</button></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><div class="progress" aria-label="Napredak">${prog}</div><div class="levels">${lv}</div></div>`;
+    T.hidden=false;
+  } else T.hidden=true;
+
+  // stol
+  const t=S.mode==="zad"&&S.round[S.idx];
+  $("grid").innerHTML = S.grid.map((c,i)=>{
+    const g = !c && S.hint && t && t.t[i] ? `<span class="ghost">${t.t[i]}</span>` : "";
+    return `<button class="cell${S.sel===i?" sel":""}" data-cell="${i}" aria-label="Polje ${i+1}${c?": "+c.ch:""}"><span class="n">${i+1}</span>${c?tileHTML(c.ch):g}</button>`;
+  }).join("");
+  const r=evaluate(), O=$("out"), A=document.querySelector(".arrow");
+  A.id="arrowEl"; A.classList.toggle("lit", r.state==="ok" && !forging);
+  if(r.state!=="ok" && forging){ forging=false; forgeTimers.forEach(clearTimeout); $("hammer").classList.remove("hit"); }
+  O.className="out"+(r.state==="ok"&&!forging?" ready":r.state==="order"?" wrong":"");
+  O.innerHTML = r.state==="ok" && forging ? "" : r.state==="ok" ? `<span class="em">${r.w.e}</span><span class="w">${r.w.w}</span><b class="cnt">×1</b>` : r.state==="order" ? `<span class="em">?</span>` : "";
+
+  // ladica
+  $("inv").innerHTML = S.inv.map(x=>`<button class="tile${VOW.has(x.ch)?" v":""}${x.ch.length>1?" di":""}${x.used?" used":""}" data-inv="${x.id}" aria-label="Slovo ${x.ch}">${x.ch}</button>`).join("");
+
+  // škrinja
+  const ch=Object.entries(S.chest);
+  $("chest").innerHTML = ch.length ? ch.map(([w,n])=>{const x=WORDS.find(y=>y.w===w);return `<div class="it" title="${w}">${x?x.e:"?"}<b>${n}</b></div>`}).join("") : `<span class="empty">Još prazno. Iskuj prvu riječ.</span>`;
+  // knjiga
+  $("book").innerHTML = WORDS.map(x=>{ const f=S.found.includes(x.w);
+    return `<button class="rc${f?"":" lock"}" data-rc="${x.w}" aria-label="${f?x.w:"Neotkrivena riječ, "+x.t.length+" slova"}"><span class="e">${x.e}</span><span class="t">${f?x.w:"·".repeat(x.t.length)}</span></button>`;}).join("");
+  $("bookcount").textContent = `${S.found.length} / ${WORDS.length}`;
+}
+
+// ---- povlačenje i dodir ----
+let drag=null;
+document.addEventListener("pointerdown",e=>{
+  const inv=e.target.closest("[data-inv]"), cell=e.target.closest("[data-cell]");
+  if(!inv && !(cell && S.grid[+cell.dataset.cell])) return;
+  drag={x:e.clientX,y:e.clientY,moved:false,src: inv?{inv:isNaN(+inv.dataset.inv)?inv.dataset.inv:+inv.dataset.inv}:{cell:+cell.dataset.cell}, el:null,
+    srcEl: inv||cell.querySelector(".tile"), oy: e.pointerType==="touch"?-48:0};
+});
+// pločica na dodir lebdi iznad prsta da je prst ne pokrije; spušta se tamo gdje je pločica
+const target = (d,e) => document.elementFromPoint(e.clientX,e.clientY+d.oy)?.closest("[data-cell]");
+document.addEventListener("pointermove",e=>{
+  if(!drag) return;
+  if(!drag.moved && Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<8) return;
+  if(!drag.moved){ drag.moved=true; const ch = drag.src.inv!=null ? S.inv.find(x=>x.id===drag.src.inv).ch : S.grid[drag.src.cell].ch;
+    const w=document.createElement("div"); w.className="drag"; w.innerHTML=tileHTML(ch); document.body.appendChild(w); drag.el=w;
+    if(drag.srcEl) drag.srcEl.style.opacity=".25"; tone(520,.05,"triangle",.06); }
+  e.preventDefault();
+  drag.el.style.left=e.clientX+"px"; drag.el.style.top=(e.clientY+drag.oy)+"px";
+  document.querySelectorAll(".cell.over").forEach(c=>c.classList.remove("over"));
+  const under=target(drag,e); if(under) under.classList.add("over");
+});
+document.addEventListener("pointerup",e=>{
+  if(!drag) return; const d=drag; drag=null;
+  if(d.el) d.el.remove();
+  if(!d.moved) return; // dodir obrađuje click
+  suppressClick=true; setTimeout(()=>suppressClick=false,0);
+  const under=target(d,e);
+  if(d.src.inv!=null){ if(under) place(d.src.inv,+under.dataset.cell); else render(); }
+  else { if(under) moveCell(d.src.cell,+under.dataset.cell); else unplace(d.src.cell); }
+});
+let suppressClick=false;
+document.addEventListener("click",e=>{
+  if(suppressClick){ suppressClick=false; return; }
+  const q=s=>e.target.closest(s);
+  let el;
+  if(el=q("[data-inv]")) return place(isNaN(+el.dataset.inv)?el.dataset.inv:+el.dataset.inv);
+  if(el=q("[data-cell]")){ const i=+el.dataset.cell; if(S.grid[i]) unplace(i); else { S.sel = S.sel===i?-1:i; render(); } return; }
+  if(q("#out")) return take();
+  if(q("#m-zad")) return setMode("zad");
+  if(q("#m-slo")) return setMode("slo");
+  if(el=q("[data-lv]")){ S.level=+el.dataset.lv; return newRound(); }
+  if(q("#again")) return newRound();
+  if(q("#listen")){ const t=S.round[S.idx]; if(t) speak(t.w); return; }
+  if(q("#hint")){ S.hint=!S.hint; return render(); }
+  if(el=q("[data-rc]")){ const w=WORDS.find(x=>x.w===el.dataset.rc);
+    if(S.found.includes(w.w)){ speak(w.w); say(`Recept za ${w.w.toLowerCase()}: ${w.t.join(" · ")}`); }
+    else say(`Ova riječ ima ${w.t.length} slova. Još čeka da je netko iskuje.`);
+  }
+});
+
+// stanje preživi osvježavanje u pregledniku artefakta
+window.claude?.hot?.snapshot?.(()=>S);
+const start = data => { if(data && data.grid){ S=Object.assign(S,data); setMode.bind(null); $("m-zad").setAttribute("aria-pressed",S.mode==="zad"); $("m-slo").setAttribute("aria-pressed",S.mode==="slo"); $("drawer").classList.toggle("free",S.mode==="slo"); render(); } else newRound(); };
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
