@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { TRAKE, stavkeTrake } from "./navigacija.ts";
+import { TRAKE, stavkeTrake, type Traka } from "./navigacija.ts";
 import { rutaSamoSuperadmin, smijeNa } from "./rute.ts";
 
 const stranica = (href: string) => {
@@ -15,7 +15,7 @@ test("svaka stavka obje trake vodi na postojeću stranicu", () => {
 });
 
 test("skupine Uprave su sve pod /admin/uprava, dakle samo superadmin", () => {
-  for (const s of TRAKE.uprava.skupine.flatMap((g) => g.stavke)) {
+  for (const s of (TRAKE.uprava as Traka).skupine.flatMap((g) => g.stavke)) {
     assert.ok(s.href.startsWith("/admin/uprava/"), s.href);
     assert.equal(rutaSamoSuperadmin(s.href), true, s.href);
   }

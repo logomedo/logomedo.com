@@ -106,6 +106,11 @@ const oznaka = uprava ? "uprava" : "admin";
           </>
         )}
         <nav aria-label="Izbornik">
+          {uprava && (
+            <a href="/admin/uprava" class:list={["stavka", "pregled-uprave", { aktivno: aktivno === "pregled-uprave" }]} aria-current={aktivno === "pregled-uprave" ? "page" : undefined} title="Pregled">
+              <Ikona ime="ploca" /><span>Pregled</span>
+            </a>
+          )}
           {skupine.map((g) => (
             <section class="skupina" aria-label={g.naslov}>
               <h2 class="skupina-naslov"><span style={`background:${g.boja}`}></span>{g.naslov}</h2>
@@ -118,11 +123,6 @@ const oznaka = uprava ? "uprava" : "admin";
               ))}
             </section>
           ))}
-          {uprava && (
-            <a href="/admin/uprava" class:list={["stavka", "pregled-uprave", { aktivno: aktivno === "pregled-uprave" }]} aria-current={aktivno === "pregled-uprave" ? "page" : undefined} title="Pregled">
-              <Ikona ime="ploca" /><span>Pregled</span>
-            </a>
-          )}
           {alati.length > 0 && (
             <section class="skupina alati-skupina" aria-label="Alati">
               <h2 class="skupina-naslov">Alati</h2>
@@ -339,7 +339,8 @@ const oznaka = uprava ? "uprava" : "admin";
       body.uprava .traka { background: linear-gradient(var(--info-blago), var(--povrsina) 220px); }
       body.uprava .traka .stavka.aktivno { color: var(--info); box-shadow: var(--sjena-1), inset 3px 0 0 var(--info); }
       body.uprava .traka .marka .dodatak { color: var(--info); border-color: var(--info); }
-      .stavka.pregled-uprave { margin-bottom: 4px; }
+      .stavka.pregled-uprave { margin-bottom: 2px; }
+      body.uprava .traka .vrh .dodatak { display: inline; color: var(--info); border-color: var(--info); }
       .stavka .broj { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--med); color: var(--med-tekst);
         font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
       .stavka .broj.greska { background: var(--greska); color: #fff; }
