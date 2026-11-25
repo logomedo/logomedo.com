@@ -98,13 +98,19 @@ export async function izdaj(
 
 /** Pozivnica iz tokena ako je otvorena (postoji, nije istekla, opozvana ni iskorištena); inače null. */
 export async function provjeri(token: unknown, sada = new Date()): Promise<Poziv | null> {
+  const r = await otvorenaPoTokenu(token, sada);
+  return r && { id: r.id, email: r.email, ime: r.ime, korisnikId: r.korisnikId };
+}
+
+/** Kao `provjeri`, s rokom: za „Pošalji e-poštom” na /admin/uprava/korisnici (link se ne sprema, vraća ga obrazac). */
+export async function otvorenaPoTokenu(token: unknown, sada = new Date()): Promise<(Poziv & { istjece: string }) | null> {
   if (!ispravanToken(token)) return null;
-  const r = await env.DB.prepare(`SELECT id, email, ime, korisnik_id FROM pozivi WHERE token_hash = ? AND ${OTVORENA}`)
+  const r = await env.DB.prepare(`SELECT id, email, ime, korisnik_id, istjece FROM pozivi WHERE token_hash = ? AND ${OTVORENA}`)
     .bind(await sha256Hex(token), sada.toISOString())
-    .first<{ id: number; email: string; ime: string | null; korisnik_id: number | null }>();
+    .first<{ id: number; email: string; ime: string | null; korisnik_id: number | null; istjece: string }>();
   // ADMIN_EMAILS se mogao promijeniti nakon izdavanja.
   if (!r || adminEmails().has(normalizirajEmail(r.email))) return null;
-  return { id: r.id, email: r.email, ime: r.ime, korisnikId: r.korisnik_id };
+  return { id: r.id, email: r.email, ime: r.ime, korisnikId: r.korisnik_id, istjece: r.istjece };
 }
 
 /**

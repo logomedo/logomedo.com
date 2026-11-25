@@ -9,7 +9,7 @@ import { kad } from "../../../lib/katalog";
 import { smije } from "../../../lib/admin/ovlasti";
 import { LIMIT_MAX, popisKorisnika, postaviAktivan, postaviLimite, procitajLimit } from "../../../lib/admin/korisnici";
 import { LIMIT_UREDAJA_MAX, ZADANI_LIMIT_UREDAJA, procitajLimitUredaja, provedba, sazeciUredaja } from "../../../lib/admin/uredaji";
-import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice } from "../../../lib/admin/pozivi";
+import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice, otvorenaPoTokenu } from "../../../lib/admin/pozivi";
 import { posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
 
 const s = Astro.locals.admin;
@@ -25,7 +25,7 @@ const PORUKE_OK: Record<string, string> = {
 let poruka: string | null = PORUKE_OK[Astro.url.searchParams.get("ok") ?? ""] ?? null;
 let greska: string | null = null;
 let link: { url: string; email: string; istjece: string } | null = null;
-/** „Napravi link i pošalji”: pozivnica ide i e-poštom (Resend), kao „Odobri” na Zahtjevima. */
+/** „Pošalji e-poštom” u rezultatu: pozivnica ide i mailom (Resend), kao „Odobri” na Zahtjevima. */
 let slanje: IshodSlanja | null = null;
 
 if (Astro.request.method === "POST") {
@@ -39,8 +39,15 @@ if (Astro.request.method === "POST") {
         ? await izdaj({ email: String(f.get("email") ?? ""), ime: String(f.get("ime") ?? "") }, s.email)
         : await izdaj({ email: String(f.get("email") ?? ""), korisnikId: id }, s.email);
       link = { url: `${Astro.url.origin}/admin/poziv#${p.token}`, email: p.email, istjece: p.istjece };
-      if (f.get("posalji") === "1") {
-        slanje = await posaljiPozivnicu({ ...link, ime: String(f.get("ime") ?? "") });
+
+    } else if (akcija === "posalji_poziv") {
+      // Link se ne sprema, pa ga obrazac rezultata vraća; šalje se samo ako je token otvorena pozivnica (i to za njen e-mail).
+      const token = String(f.get("token") ?? "");
+      const p = await otvorenaPoTokenu(token);
+      if (!p) greska = "Pozivnica više ne vrijedi (iskorištena, opozvana ili istekla). Napravi novu.";
+      else {
+        link = { url: `${Astro.url.origin}/admin/poziv#${token}`, email: p.email, istjece: p.istjece };
+        slanje = await posaljiPozivnicu({ ...link, ime: p.ime ?? "" });
         if (!slanje.ok) console.error("pozivnica e-poštom nije poslana", slanje);
       }
     } else if (akcija === "opozovi") {
@@ -91,7 +98,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     <input type="hidden" name="akcija" value="poziv" />
     <div class="dodaj-naslov">
       <h2>Nova pozivnica</h2>
-      <p class="blijedo sitno">Za novog logopeda ili povratak deaktiviranog. „Pošalji” šalje e-poštu s pozivnica@logomedo.com; link se uvijek prikaže jednom i kao rezerva.</p>
+      <p class="blijedo sitno">Za novog logopeda ili povratak deaktiviranog. Dobiješ link za kopiranje, a možeš ga i poslati e-poštom (s pozivnica@logomedo.com).</p>
     </div>
     <div class="polje">
       <label for="poziv-ime">Ime i prezime</label>
@@ -101,10 +108,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
       <label for="poziv-email">E-mail</label>
       <input id="poziv-email" type="email" name="email" placeholder="ime@primjer.hr" required maxlength="254" autocomplete="off" />
     </div>
-    <div class="dodaj-gumbi">
-      <button class="gumb glavni" type="submit" name="posalji" value="1"><Ikona ime="pismo" /> Napravi link i pošalji</button>
-      <button class="gumb tihi mali" type="submit"><Ikona ime="plus" /> Samo link</button>
-    </div>
+    <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi pozivnicu</button>
   </form>
 
   {poruka && <p class="poruka ok" role="status">{poruka}</p>}
@@ -113,12 +117,17 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     <section class="ploha link" id="poziv-rezultat">
       <h2>Pozivnica za {link.email}</h2>
       {slanje?.ok && <p class="poruka ok" role="status" id="poziv-poslan">Pozivnica je poslana e-poštom na {link.email}. Link ispod je rezerva, ako ne stigne.</p>}
-      {slanje && !slanje.ok && <p class="poruka greska" role="alert" id="poziv-nije-poslan">{zastoNijePoslano(slanje.razlog)} Pošalji link osobno.</p>}
-      <p class="blijedo sitno">{slanje?.ok ? "" : "Pošalji link osobno (poruka, ne javni kanal). "}Vidi se samo sada; vrijedi do {kad(link.istjece)}.
+      {slanje && !slanje.ok && <p class="poruka greska" role="alert" id="poziv-nije-poslan">{zastoNijePoslano(slanje.razlog)} Kopiraj link i pošalji ga osobno.</p>}
+      <p class="blijedo sitno">{slanje?.ok ? "" : "Kopiraj i pošalji osobno (poruka, ne javni kanal) ili e-poštom. "}Link se vidi samo sada; vrijedi do {kad(link.istjece)}.
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
       <div class="red-linka">
         <input id="poziv-link" type="text" readonly value={link.url} />
-        <button id="kopiraj-link" class="gumb glavni mali" type="button">Kopiraj</button>
+        <button id="kopiraj-link" class="gumb mali" type="button">Kopiraj</button>
+        <form method="post">
+          <input type="hidden" name="akcija" value="posalji_poziv" />
+          <input type="hidden" name="token" value={link.url.split("#")[1]} />
+          <button class="gumb glavni mali" type="submit" id="posalji-mail"><Ikona ime="pismo" /> {slanje?.ok ? "Pošalji ponovno" : "Pošalji e-poštom"}</button>
+        </form>
       </div>
     </section>
   )}
@@ -256,7 +265,6 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     gap: 14px; align-items: end; }
   .dodaj .polje label { margin-bottom: 6px; }
   .dodaj .gumb { white-space: nowrap; }
-  .dodaj-gumbi { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
   @media (max-width: 1000px) { .dodaj { grid-template-columns: 1fr 1fr; } .dodaj-naslov { grid-column: 1 / -1; } }
   @media (max-width: 600px) { .dodaj { grid-template-columns: 1fr; } }
   .dodaj-naslov { align-self: center; }
@@ -281,6 +289,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   .poruka.ok { color: var(--uspjeh); }
   .poruka.greska { color: var(--greska); }
   .link { margin-top: 16px; padding: 20px; display: flex; flex-direction: column; gap: 10px; border-color: var(--med); }
-  .red-linka { display: flex; gap: 8px; }
+  .red-linka { display: flex; gap: 8px; align-items: center; }
+  .red-linka form { margin: 0; }
   .red-linka input { flex: 1; min-width: 0; font-family: ui-monospace, "SF Mono", monospace; font-size: .82rem; }
 </style>

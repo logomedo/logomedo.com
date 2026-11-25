@@ -6,6 +6,7 @@ import { napraviD1 } from "../test/d1.ts";
 import { env } from "../test/cloudflare-workers.ts";
 import { sha256Hex } from "./sesija.ts";
 import {
+  otvorenaPoTokenu,
   POZIV_SATI, PozivOdbijen, ispravanToken, iskoristi, izdaj, naredbeIskoristenja, opozovi, otvorenePozivnice, provjeri,
 } from "./pozivi.ts";
 import { vrati } from "../aktivnost.ts";
@@ -64,6 +65,14 @@ test("provjeri: otvorena → podaci; nepoznat, neispravan, istekao → null", as
   assert.equal(await provjeri(undefined), null);
   assert.equal(await provjeri(token, za(POZIV_SATI - 0.1)) !== null, true);
   assert.equal(await provjeri(token, za(POZIV_SATI + 0.1)), null);
+});
+
+test("otvorenaPoTokenu (Pošalji e-poštom): e-mail i rok samo za otvorenu; opozvana → null", async () => {
+  const { token, id, istjece } = await izdaj({ email: LOGOPED, ime: "Ana" }, SA);
+  assert.deepEqual(await otvorenaPoTokenu(token), { id, email: LOGOPED, ime: "Ana", korisnikId: null, istjece });
+  assert.equal(await otvorenaPoTokenu("x".repeat(43)), null);
+  await opozovi(id, SA);
+  assert.equal(await otvorenaPoTokenu(token), null);
 });
 
 test("izdaj: e-mail superadmina se odbija (i velikim slovima)", async () => {
