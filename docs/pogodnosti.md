@@ -41,3 +41,7 @@ Pogodnost je po e-mailu, pa se može dati i osobi koja još nema račun. Promjen
 - Otvoreno pitanje prije checkouta: račun izdaje ITalk d.o.o. → kartično plaćanje vjerojatno znači fiskalizaciju;
   alternativa je merchant of record (Paddle, Lemon Squeezy) koji sam izdaje račun kupcu. Nije provjereno.
 - E-mail pozivnice pogodnost ne spominje (predložak `emails/`); može se dodati.
+
+## Vezani dokumenti
+
+- `docs/kuponi.md`: kuponi na `/pristup` (auto-odobravanje, uz kupon može ići pogodnost).
