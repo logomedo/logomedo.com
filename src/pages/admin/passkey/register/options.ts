@@ -4,7 +4,7 @@ import { registerRefusal, registrationOptions } from "../../../../lib/admin/pass
 export const POST: APIRoute = async ({ url, locals }) => {
   const s = locals.admin;
   if (!s) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const odbijeno = await registerRefusal(s);
+  const odbijeno = await registerRefusal(s, url);
   if (odbijeno) return Response.json({ error: odbijeno }, { status: 403 });
   return Response.json(await registrationOptions(url, s.email));
 };

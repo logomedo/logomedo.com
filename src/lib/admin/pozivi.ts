@@ -148,9 +148,9 @@ export function naredbeIskoristenja(tokenHash: string, kljuc: NoviPasskey, label
         ).bind(tokenHash, kljuc.id),
       ]),
     db.prepare(
-      `INSERT INTO admin_passkeys (id, email, public_key, counter, transports, label, created_at)
-       SELECT ?, p.email, ?, ?, ?, ?, ? ${MOJA}`,
-    ).bind(kljuc.id, kljuc.publicKey, kljuc.counter, kljuc.transports, oznakaKljuca(label), at, tokenHash, kljuc.id),
+      `INSERT INTO admin_passkeys (id, email, public_key, counter, transports, label, created_at, rp_id)
+       SELECT ?, p.email, ?, ?, ?, ?, ?, ? ${MOJA}`,
+    ).bind(kljuc.id, kljuc.publicKey, kljuc.counter, kljuc.transports, oznakaKljuca(label), at, kljuc.rpId, tokenHash, kljuc.id),
   ];
   return { naredbe, potrosnja: 1 };
 }

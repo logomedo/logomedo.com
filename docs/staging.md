@@ -38,9 +38,8 @@ lice projekta. Basic Auth je uklonjen 19. 11. 2026. `/admin` štiti isti middlew
 `OKRUZENJE=staging`, `src/lib/staging.ts` svim odgovorima, i statičkim datotekama
 (`assets.run_worker_first: true`), dodaje `x-robots-tag: noindex`.
 
-Prijava u admin na stagingu: passkeyevi s produkcije ne vrijede (rpID je hostname), a dok nema Access
-aplikacije za `staging.logomedo.com` (`ACCESS_AUD` prazan), `/admin/sso` vraća 503. Do tada sesiju
-upisuje `scripts/staging-sesija.sh` (ispod); passkey registriran na stagingu nakon toga radi i dalje.
+Prijava u admin na stagingu: „Prijava Accessom” (od 25. 11. 2026., vlastita Access aplikacija) ili passkey
+upisan na stagingu; passkeyevi s produkcije ne vrijede (rpID je hostname). Detalji u „Prijava u admin”.
 Secret `STAGING_LOZINKA` se više ne čita (može se obrisati `wrangler secret delete … --env staging`).
 
 ## Podaci: kopija produkcije
@@ -64,8 +63,17 @@ tablica na stagingu i na produkciji.
 
 ## Prijava u admin
 
-Passkeyevi i sesije s produkcije na stagingu ne vrijede (rpID je hostname), a Accessa nema
-(`ACCESS_AUD` prazan, `/admin/sso` vraća 503). Sesija se upisuje izravno:
+**Access:** Cloudflare Access aplikacija „LogoMedo staging admin (sso)” štiti
+`staging.logomedo.com/admin/sso`, s istim politikama kao produkcijska („OMM admini”, „LogoMedo admini”,
+OTP na e-mail). AUD je u `env.staging.vars.ACCESS_AUD`. Uloga se i dalje računa iz secreta `ADMIN_EMAILS`
+**staginga** i tablice `korisnici`, pa Access sam po sebi ne daje pristup.
+
+**Passkey:** radi samo na domeni na kojoj je dodan. Staging je kopija produkcijske baze, pa
+`/admin/passkeys` ključeve s `logomedo.com` (`admin_passkeys.rp_id`, migracija 0049; NULL = produkcija)
+pokazuje odvojeno, pod „Ključevi za drugu domenu”, i ne broji ih u limit od 5. Passkey dodan na stagingu
+nestaje pri idućem osvježavanju podataka.
+
+**Bez Accessa** (npr. curl): sesija se upisuje izravno:
 
 ```bash
 scripts/staging-sesija.sh <email> [--superadmin]
@@ -75,9 +83,7 @@ Ispiše kolačić `__Host-logomedo_admin=<token>` (12 h). U pregledniku ga posta
 `https://staging.logomedo.com/admin/login`:
 `document.cookie = "__Host-logomedo_admin=<token>; path=/; secure; samesite=lax"`.
 Superadmin dolazi iz secreta `ADMIN_EMAILS` **staginga** (`--superadmin` ga postavi na taj jedan
-e-mail); logoped iz tablice `korisnici` (kopija produkcije). Kad je sesija svježa, na
-`/admin/passkeys` se može dodati passkey za `staging.logomedo.com`; nakon idućeg osvježavanja
-podataka nestaje.
+e-mail); logoped iz tablice `korisnici` (kopija produkcije).
 
 ## Što na stagingu ne radi
 
@@ -85,13 +91,6 @@ podataka nestaje.
   Učitavanje novih slika na stagingu ide u `logomedo-staging-*` i ne vidi se na `cdn`.
 - **Izgovor (ElevenLabs), runner, Vertex, čišćenje cachea:** nema secreta (`ELEVENLABS_API_KEY`,
   `RUNNER_TOKEN`, `CF_PURGE_TOKEN`), odluka 9. Poslovi izgovora padaju u redu i ponavljaju se.
-- **Passkey i sesije s produkcije**, **Access** (`/admin/sso` 503).
+- **Passkey i sesije s produkcije** (rpID je hostname).
 - **Mobilna aplikacija** može na staging (`/api/v1` ima vlastiti bearer), ali tokeni s produkcije
   vrijede samo dok se podaci ne osvježe.
-
-## Access kasnije
-
-Wrangler OAuth nema Access ovlast (landing odluka 7), pa aplikaciju radi korisnik u dashboardu:
-Zero Trust → Access → Applications → Self-hosted, domena `staging.logomedo.com`, putanja `admin/sso`,
-ista politika kao produkcijska aplikacija za `logomedo.com/admin/sso`. Njezin AUD tag se upiše u
-`env.staging.vars.ACCESS_AUD` u `wrangler.jsonc`, pa `npm run deploy:staging`.

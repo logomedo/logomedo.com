@@ -5,7 +5,7 @@ import { registerRefusal, verifyRegistration } from "../../../../lib/admin/passk
 export const POST: APIRoute = async ({ request, url, locals }) => {
   const s = locals.admin;
   if (!s) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const odbijeno = await registerRefusal(s);
+  const odbijeno = await registerRefusal(s, url);
   if (odbijeno) return Response.json({ error: odbijeno }, { status: 403 });
   const body = await request.json<{ response?: RegistrationResponseJSON; label?: string }>().catch(() => null);
   if (!body?.response?.id) return Response.json({ error: "bad_request" }, { status: 400 });

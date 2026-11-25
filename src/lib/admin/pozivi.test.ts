@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 
 const db = () => env.DB as D1Database;
-const kljuc = (id: string): NoviPasskey => ({ id, publicKey: "AAAA", counter: 0, transports: "internal" });
+const kljuc = (id: string): NoviPasskey => ({ id, publicKey: "AAAA", counter: 0, transports: "internal", rpId: "logomedo.com" });
 const za = (sati: number) => new Date(Date.now() + sati * 3600_000);
 
 async function korisnik(email: string, uloga: "logoped" | "admin", aktivan: number, ime: string | null = null): Promise<number> {

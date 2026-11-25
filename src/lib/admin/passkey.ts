@@ -46,7 +46,7 @@ export async function registrationOptions(url: URL, email: string, purpose: "reg
 }
 
 /** Provjereni novi ključ, spreman za upis u `admin_passkeys`. */
-export interface NoviPasskey { id: string; publicKey: string; counter: number; transports: string | null }
+export interface NoviPasskey { id: string; publicKey: string; counter: number; transports: string | null; rpId: string }
 
 /** Oznaka ključa kako se upisuje (najviše 80 znakova, prazna → „passkey”). */
 export const oznakaKljuca = (label: string) => label.trim().slice(0, 80) || "passkey";
@@ -70,7 +70,7 @@ export async function provjeriRegistraciju(
   const { credential } = result.registrationInfo;
   return {
     id: credential.id, publicKey: isoBase64URL.fromBuffer(credential.publicKey), counter: credential.counter,
-    transports: credential.transports?.join(",") ?? null,
+    transports: credential.transports?.join(",") ?? null, rpId: rpID,
   };
 }
 
@@ -78,10 +78,10 @@ export async function verifyRegistration(url: URL, email: string, response: Regi
   const k = await provjeriRegistraciju(url, email, response, "register");
   if (!k) return false;
   await env.DB.prepare(
-    `INSERT INTO admin_passkeys (id, email, public_key, counter, transports, label, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO admin_passkeys (id, email, public_key, counter, transports, label, created_at, rp_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(k.id, email, k.publicKey, k.counter, k.transports, oznakaKljuca(label), new Date().toISOString())
+    .bind(k.id, email, k.publicKey, k.counter, k.transports, oznakaKljuca(label), new Date().toISOString(), k.rpId)
     .run();
   return true;
 }
@@ -125,12 +125,14 @@ export async function verifyLogin(url: URL, response: AuthenticationResponseJSON
 const PASSKEY_REAUTH_SECONDS = 10 * 60;
 const MAX_PASSKEYS_PER_EMAIL = 5;
 
-export async function registerRefusal(s: { email: string; createdAt: string }): Promise<string | null> {
+export async function registerRefusal(s: { email: string; createdAt: string }, url: URL): Promise<string | null> {
   const age = (Date.now() - Date.parse(s.createdAt)) / 1000;
   if (!(age <= PASSKEY_REAUTH_SECONDS)) {
     return "Za dodavanje passkeya prijava mora biti svježa (< 10 min): odjavi se i prijavi ponovno.";
   }
-  const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM admin_passkeys WHERE email = ?").bind(s.email).first<{ n: number }>();
+  // Broje se samo ključevi ove domene: na stagingu (kopija produkcije) produkcijski ne zauzimaju mjesto.
+  const row = await env.DB.prepare(`SELECT COUNT(*) AS n FROM admin_passkeys WHERE email = ? AND ${RP} = ?`)
+    .bind(s.email, ctx(url).rpID).first<{ n: number }>();
   if ((row?.n ?? 0) >= MAX_PASSKEYS_PER_EMAIL) {
     return `Najviše ${MAX_PASSKEYS_PER_EMAIL} passkeya po e-mailu — obriši stari pa dodaj novi.`;
   }
@@ -139,10 +141,15 @@ export async function registerRefusal(s: { email: string; createdAt: string }): 
 
 // ---- /admin/passkeys: svatko vidi i briše samo svoje ključeve (e-mail iz sesije) ----
 
+/** Domena ključa; NULL = upisan prije migracije 0049, dakle na produkciji. */
+export const PRODUKCIJSKA_DOMENA = "logomedo.com";
+const RP = `COALESCE(rp_id, '${PRODUKCIJSKA_DOMENA}')`;
+
+/** Ključevi e-maila; `rpId` je domena na kojoj ključ radi (usporedi s hostom zahtjeva). */
 export async function mojiKljucevi(email: string) {
   return (await env.DB.prepare(
-    "SELECT id, label, created_at, last_used_at FROM admin_passkeys WHERE email = ? ORDER BY created_at",
-  ).bind(email).all<{ id: string; label: string; created_at: string; last_used_at: string | null }>()).results;
+    `SELECT id, label, created_at, last_used_at, ${RP} AS rp_id FROM admin_passkeys WHERE email = ? ORDER BY created_at`,
+  ).bind(email).all<{ id: string; label: string; created_at: string; last_used_at: string | null; rp_id: string }>()).results;
 }
 
 /** Briše ključ samo ako je vlasnik `email`; tuđi id ne radi ništa. */

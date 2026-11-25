@@ -93,3 +93,18 @@ test("mojiKljucevi/obrisiKljuc: samo ključevi e-maila iz sesije; tuđi id se ne
   assert.deepEqual(await mojiKljucevi("b@primjer.hr"), []);
   assert.deepEqual((await mojiKljucevi(SA)).map((k) => k.id), ["tudji"]);
 });
+
+// Domena ključa (0049): NULL = upisan na produkciji; na stagingu se ne broji u limit od 5.
+import { registerRefusal } from "./passkey.ts";
+
+test("mojiKljucevi: rp_id NULL je logomedo.com; registerRefusal broji samo ključeve domene zahtjeva", async () => {
+  const c = "c@primjer.hr";
+  for (const id of ["p1", "p2", "p3", "p4", "p5"]) await kljuc(id, c);
+  await db().prepare("UPDATE admin_passkeys SET rp_id = 'staging.logomedo.com' WHERE id = 'p5'").run();
+  const k = await mojiKljucevi(c);
+  assert.deepEqual(k.map((x) => x.rp_id), ["logomedo.com", "logomedo.com", "logomedo.com", "logomedo.com", "staging.logomedo.com"]);
+  const s = { email: c, createdAt: new Date().toISOString() };
+  assert.equal(await registerRefusal(s, new URL("https://staging.logomedo.com/admin/passkeys")), null);
+  await db().prepare("UPDATE admin_passkeys SET rp_id = NULL WHERE id = 'p5'").run();
+  assert.match((await registerRefusal(s, new URL("https://logomedo.com/admin/passkeys"))) ?? "", /Najviše 5/);
+});

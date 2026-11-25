@@ -65,7 +65,8 @@
   // Staging (docs/staging.md, landing odluke 4–9): `npm run build:staging` / `deploy:staging`.
   // Bindingi se u okruženjima ne nasljeđuju, pa je sve navedeno; staging nikad ne binda
   // produkcijske resurse. OKRUZENJE=staging dodaje noindex (src/lib/staging.ts), i statičkim
-  // datotekama (assets.run_worker_first). ACCESS_AUD prazan: /admin/sso vraća 503.
+  // datotekama (assets.run_worker_first). ACCESS_AUD: Access aplikacija „LogoMedo staging admin (sso)”
+  // (staging.logomedo.com/admin/sso, iste politike kao produkcijska, 25. 11. 2026.).
   "env": {
     "staging": {
       "name": "logomedo-staging",
@@ -94,7 +95,7 @@
       "vars": {
         "ADMIN_HOST": "staging.logomedo.com",
         "ACCESS_TEAM_DOMAIN": "domovina.cloudflareaccess.com",
-        "ACCESS_AUD": "",
+        "ACCESS_AUD": "bf95e9d48450eaa94dcc16821dead0bf8a09c707d822ad8c65abe6381a809e82",
         "CDN_URL": "https://cdn.logomedo.com",
         "ZONE_ID": "c12293517eb61e46975c4145f8e66a61",
         "OKRUZENJE": "staging",
