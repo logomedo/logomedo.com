@@ -4,7 +4,7 @@ import Ikona from "../../../components/Ikona.astro";
 import { generirajSlike, poId, provjeriPolja, spremi, stanjeSlika, tekstoviBiljeznice, zadaciBiljeznice } from "../../../lib/biljeznice";
 import { dodajZvukove, stanjeZvukova } from "../../../lib/zvukovi";
 import { izgovorZa } from "../../../lib/zvukovi-tekst";
-import { brojEkrana } from "../../../lib/biljeznice-ekrani";
+import { brojEkrana, brojLampica } from "../../../lib/biljeznice-ekrani";
 import { jeTema, TEME, type Tema } from "../../../lib/teme";
 import { popis as sviZadaci } from "../../../lib/zadaci/baza";
 import { VRSTE } from "../../../lib/zadaci/vrste";
@@ -59,7 +59,7 @@ const zvukaOdobreno = zvuci.filter((z) => z.odobren).length;
 const zvukaBez = zvuci.filter((z) => !z.odobren && !z.kandidata && !z.u_redu && !z.bez_ponavljanja).length;
 const ukljuceni = new Set(zadaci.map((z) => z.id));
 const ostali = svi.filter((z) => !ukljuceni.has(z.id));
-const ekrana = brojEkrana(zadaci);
+const ekrana = brojEkrana(zadaci), lampica = brojLampica(zadaci);
 const tema = TEME[b.tema];
 const odobrenih = stanje.filter((s) => s.odobrena).length;
 const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).length;
@@ -69,7 +69,7 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
     <div>
       <a class="mrvice" href="/admin/biljeznice"><Ikona ime="natrag" velicina={16} /> Bilježnice</a>
       <h1>{b.naslov}</h1>
-      <p class="podnaslov">{ekrana} ekrana = {ekrana} × {tema.jedinica[0]} · tema <b>{tema.naziv}</b> · slike u stilu <b>{b.stil}</b>: {odobrenih} od {stanje.length} odobreno</p>
+      <p class="podnaslov">{ekrana} ekrana, {lampica} × {tema.jedinica[0]} · tema <b>{tema.naziv}</b> · slike u stilu <b>{b.stil}</b>: {odobrenih} od {stanje.length} odobreno</p>
     </div>
     <div class="akcije">
       <a class="gumb" href={`/b/${b.slug}`} target="_blank" rel="noopener">Otvori igru</a>
