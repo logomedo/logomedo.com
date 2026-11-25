@@ -80,6 +80,23 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     </div>
   </div>
 
+  <form method="post" class="ploha dodaj" id="nova-pozivnica">
+    <input type="hidden" name="akcija" value="poziv" />
+    <div class="dodaj-naslov">
+      <h2>Nova pozivnica</h2>
+      <p class="blijedo sitno">Za novog logopeda ili povratak deaktiviranog. Link se prikaže jednom; pošalji ga osobno.</p>
+    </div>
+    <div class="polje">
+      <label for="poziv-ime">Ime i prezime</label>
+      <input id="poziv-ime" type="text" name="ime" placeholder="npr. Ana Horvat" maxlength="80" autocomplete="off" />
+    </div>
+    <div class="polje">
+      <label for="poziv-email">E-mail</label>
+      <input id="poziv-email" type="email" name="email" placeholder="ime@primjer.hr" required maxlength="254" autocomplete="off" />
+    </div>
+    <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi link</button>
+  </form>
+
   {poruka && <p class="poruka ok" role="status">{poruka}</p>}
   {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
   {link && (
@@ -94,8 +111,8 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     </section>
   )}
 
-  <div class="raspored">
-    <div class="ploha">
+  <h2 class="podnaslov-popisa">Korisnici <span class="blijedo">({korisnici.length})</span></h2>
+  <div class="ploha tablica">
       <table id="korisnici">
         <thead><tr><th>Korisnik</th><th>Uloga</th><th>Ključevi</th><th>Zadnja prijava</th><th title="Uređaj = preglednik. Aktivan = korišten u zadnjih 15 min.">Uređaji</th><th>AI limit (7 dana)</th><th>Potrošeno (7 dana)</th><th>Doprinos</th><th></th></tr></thead>
         <tbody>
@@ -147,7 +164,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
                 <td class="brojke" title="Dodane riječi (u katalogu) i trenutno odobrene slike i izgovori koje je odobrio">
                   riječi {k.doprinos.rijeci}<br />odobrio slika {k.doprinos.odobreneSlike}<br />izgovora {k.doprinos.odobreniZvukovi}
                 </td>
-                <td class="akcije">
+                <td class="akcije-celija"><div class="akcije">
                   {logoped && (
                     <>
                       {k.aktivan === 1 && (
@@ -170,14 +187,17 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
                       <button class="gumb mali tihi" type="submit">Pozovi kao logopeda</button>
                     </form>
                   )}
+                </div>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+  </div>
 
-      <h2 class="podnaslov-tablice">Otvorene pozivnice</h2>
+  <h2 class="podnaslov-popisa">Otvorene pozivnice <span class="blijedo">({pozivnice.length})</span></h2>
+  <div class="ploha tablica">
       {pozivnice.length ? (
         <table id="pozivnice">
           <thead><tr><th>Za</th><th>Vrsta</th><th>Izdao</th><th>Vrijedi do</th><th></th></tr></thead>
@@ -199,22 +219,6 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
           </tbody>
         </table>
       ) : <p class="blijedo sitno prazne">Nema otvorenih pozivnica.</p>}
-    </div>
-
-    <form method="post" class="ploha dodaj" id="nova-pozivnica">
-      <h2>Nova pozivnica</h2>
-      <p class="blijedo sitno">Za novog logopeda ili za povratak deaktiviranog. Link se prikaže jednom; pošalji ga osobno.</p>
-      <input type="hidden" name="akcija" value="poziv" />
-      <div class="polje">
-        <label for="poziv-ime">Ime i prezime</label>
-        <input id="poziv-ime" type="text" name="ime" placeholder="npr. Ana Horvat" maxlength="80" autocomplete="off" />
-      </div>
-      <div class="polje">
-        <label for="poziv-email">E-mail</label>
-        <input id="poziv-email" type="email" name="email" placeholder="ime@primjer.hr" required maxlength="254" autocomplete="off" />
-      </div>
-      <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi link</button>
-    </form>
   </div>
 </AdminOkvir>
 <script>
@@ -231,26 +235,35 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   });
 </script>
 <style>
-  .raspored { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; margin-top: 16px; }
-  @media (max-width: 1000px) { .raspored { grid-template-columns: 1fr; } }
-  .ploha { overflow-x: auto; }
-  .dodaj { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  /* Široka stranica: tablica korisnika ima 9 stupaca (docs/uprava/plan.md). */
+  :global(main.sadrzaj) { max-width: none; }
+  .tablica { overflow-x: auto; padding: 0; }
+  #korisnici th { white-space: nowrap; }
+  #korisnici td { vertical-align: middle; }
+  .dodaj { margin-top: 20px; padding: 16px 20px; display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) minmax(200px, 1fr) auto;
+    gap: 14px; align-items: end; }
   .dodaj .polje label { margin-bottom: 6px; }
-  .dodaj .gumb { align-self: stretch; justify-content: center; margin-top: 4px; }
+  .dodaj .gumb { white-space: nowrap; }
+  @media (max-width: 1000px) { .dodaj { grid-template-columns: 1fr 1fr; } .dodaj-naslov { grid-column: 1 / -1; } }
+  @media (max-width: 600px) { .dodaj { grid-template-columns: 1fr; } }
+  .dodaj-naslov { align-self: center; }
+  .dodaj-naslov .sitno { margin-top: 2px; }
+  .podnaslov-popisa { margin: 28px 0 10px; font-family: var(--font-slova); font-weight: 600; font-size: 1.15rem; }
+  .podnaslov-popisa .blijedo { font-weight: 400; font-size: .95rem; }
   .dodaj h2, .link h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; }
   .sitno { font-size: .82rem; margin: 0; }
   form { margin: 0; }
-  .akcije { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .akcije { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .akcije-celija { white-space: nowrap; }
   .limiti { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .limiti label { display: inline-flex; gap: 4px; align-items: center; font-size: .8rem; color: var(--blijedo); margin: 0; }
   .limiti input { width: 76px; font: inherit; font-size: .84rem; padding: 5px 8px; border: 1px solid var(--rub-jak); border-radius: 8px;
     background: var(--povrsina); color: var(--tinta); font-variant-numeric: tabular-nums; }
   .limiti input:focus { outline: none; border-color: var(--med); box-shadow: 0 0 0 3px var(--med-blago); }
   .sumnja { color: var(--greska); font-weight: 600; }
-  .brojke .limiti { margin-top: 6px; }
+  .brojke .limiti { margin-top: 6px; flex-wrap: nowrap; }
   .brojke { font-size: .84rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .podnaslov-tablice { margin: 24px 16px 8px; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
-  .prazne { padding: 0 16px 16px; }
+  .prazne { padding: 16px; }
   .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }
   .poruka.ok { color: var(--uspjeh); }
   .poruka.greska { color: var(--greska); }

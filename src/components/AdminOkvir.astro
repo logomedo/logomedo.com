@@ -107,8 +107,8 @@ const oznaka = uprava ? "uprava" : "admin";
         )}
         <nav aria-label="Izbornik">
           {uprava && (
-            <a href="/admin/uprava" class:list={["stavka", "pregled-uprave", { aktivno: aktivno === "pregled-uprave" }]} aria-current={aktivno === "pregled-uprave" ? "page" : undefined} title="Pregled">
-              <Ikona ime="ploca" /><span>Pregled</span>
+            <a href="/admin/uprava" class:list={["stavka", "pregled-uprave", { aktivno: aktivno === "pregled-uprave" }]} aria-current={aktivno === "pregled-uprave" ? "page" : undefined} title="Uprava: pregled">
+              <Ikona ime="ploca" /><span>Uprava</span>
             </a>
           )}
           {skupine.map((g) => (
@@ -340,7 +340,6 @@ const oznaka = uprava ? "uprava" : "admin";
       body.uprava .traka .stavka.aktivno { color: var(--info); box-shadow: var(--sjena-1), inset 3px 0 0 var(--info); }
       body.uprava .traka .marka .dodatak { color: var(--info); border-color: var(--info); }
       .stavka.pregled-uprave { margin-bottom: 2px; }
-      body.uprava .traka .vrh .dodatak { display: inline; color: var(--info); border-color: var(--info); }
       .stavka .broj { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--med); color: var(--med-tekst);
         font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
       .stavka .broj.greska { background: var(--greska); color: #fff; }
