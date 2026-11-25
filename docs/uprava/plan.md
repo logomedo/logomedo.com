@@ -137,3 +137,21 @@ Koraci 1 i 2 su jedna sesija; 3–5 druga.
    sadržaja), ili ih seliti u Upravu kao „Sustav”?
 3. **Organizacije:** treba li ih sad samo predvidjeti u traci (sivo, „uskoro”) ili ništa dok ne
    postoji model ustanova u bazi? Preporuka: ništa, da traka ne laže.
+
+## 6. Zamke i otvoreno (25. 11. 2026.)
+
+- **Preusmjeravanje iz middlewarea ne radi za rutu koja ne postoji.** Za `/admin/korisnici` nakon selidbe Astro
+  (Cloudflare adapter) vrati 404 i ne dođe do grane middlewarea koja preusmjerava (`PRESELJENO` u `rute.ts`). Zato
+  stare adrese imaju catch-all rute `src/pages/admin/<staro>/[...ostalo].ts` (`lib/admin/preseljeno-ruta.ts`).
+  `[...ostalo]` pogađa i samu `/admin/korisnici`. Nova selidba stranice: dodati i par u `PRESELJENO` i takvu rutu.
+- **Redoslijed u middlewareu:** 301 ide tek nakon provjere uloge, da logoped na staroj adresi dobije „Nemaš pristup”,
+  a ne novu adresu. Provjereno curlom s logopedskom sesijom na stagingu.
+- **„Pošalji e-poštom” na Korisnicima:** link se ne sprema (u bazi je samo sha-256 tokena), pa ga obrazac rezultata
+  vraća u skrivenom polju; server šalje samo ako je token otvorena pozivnica (`otvorenaPoTokenu`) i samo na njen e-mail.
+- **Vrtuljak na gumbima** (AdminOkvir, svi POST obrasci): gumb se onemogućuje u `setTimeout(0)`, jer onemogućen
+  gumb ne šalje svoj `name/value` (npr. `akcija`). Obrasci s `preventDefault` (fetch) se ne diraju; `data-bez-cekanja`
+  isključuje; `data-cekanje="Šaljem…"` mijenja tekst.
+- **Otvoreno:** na stagingu se superadmin ponaša kao da ima limit od 2 uređaja (curl pozivi su ga popunili), iako
+  `docs/uredaji.md` kaže da je superadmin bez limita. Korisnici pokazuju „limit … se provodi i za superadmina”, dakle
+  `UREDAJI_PROVEDBA` na stagingu je vjerojatno „svi”. Nije provjereno je li to namjerno.
+- **Neprovjereno:** pravo slanje pozivnice kroz Resend sa staginga (gumb „Pošalji e-poštom”) nitko još nije stisnuo.
