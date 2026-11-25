@@ -93,6 +93,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
           <p class="email">{z.email}</p>
           <p><span class:list={["paket", { placeno: z.paket !== "beta" }]}>{paketTekst(z.paket)}</span>
             {z.paket === "ustanova" && z.broj_licenci && <span class="sitno"> · {z.broj_licenci} licenci: {licence(z.broj_licenci)}</span>}</p>
+          {z.kupon && <p class="sitno" data-kupon={z.kupon}>Kupon: <b>{z.kupon}</b> <span class="blijedo">(ne vrijedi ili nije za auto-odobravanje; vidi <a href="/admin/kuponi">Kupone</a>)</span></p>}
           {z.paket !== "beta" && <p class="sitno blijedo">Narudžba: pošalji račun ili ponudu („Napiši”), a „Odobri” kad uplata stigne.</p>}
           <p class="blijedo">{[z.ustanova, z.grad].filter(Boolean).join(" · ") || "—"}</p>
           {z.poruka && <p class="poruka-zahtjeva">{z.poruka}</p>}
@@ -128,7 +129,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
           <tbody>
             {obradjeni.map((z) => (
               <tr>
-                <td><b>{z.ime}</b><br /><span class="blijedo sitno">{z.email} · {paketTekst(z.paket)}{z.broj_licenci ? ` × ${z.broj_licenci}` : ""}</span></td>
+                <td><b>{z.ime}</b><br /><span class="blijedo sitno">{z.email} · {paketTekst(z.paket)}{z.broj_licenci ? ` × ${z.broj_licenci}` : ""}{z.kupon ? ` · kupon ${z.kupon}` : ""}</span></td>
                 <td><span class:list={["status", z.status]}>{STATUS[z.status]}</span></td>
                 <td class="sitno">{z.obradio ?? "—"}</td>
                 <td class="sitno">{kad(z.obradjen_at)}</td>

@@ -6,15 +6,17 @@
 import Okvir from "../landing/Okvir.astro";
 import { PAKETI_ZAHTJEVA, PRIJAVA, cijenaLicence, eura } from "../landing/konstante";
 import {
-  HONEYPOT, LICENCI_MAX, MAX, ZIG, istiOrigin, posalji, prazanUnos, vremenskiZig, type Greske, type Polje, type Unos,
+  HONEYPOT, KUPON_MAX, LICENCI_MAX, MAX, ZIG, istiOrigin, posalji, prazanUnos, vremenskiZig, type Greske, type Polje, type Unos,
 } from "../lib/pristup";
 
 export const prerender = false;
 
 Astro.response.headers.set("cache-control", "no-store");
 
-let stanje: "obrazac" | "hvala" | "previse" = Astro.url.searchParams.get("poslano") === "1" ? "hvala" : "obrazac";
-let unos: Unos = prazanUnos(Astro.url.searchParams.get("paket") ?? "beta");
+const poslano = Astro.url.searchParams.get("poslano");
+let stanje: "obrazac" | "hvala" | "odobreno" | "previse" = poslano === "1" ? "hvala" : poslano === "kupon" ? "odobreno" : "obrazac";
+// Kupon iz linka (/pristup?kupon=KOD, docs/kuponi.md) je već upisan u polje.
+let unos: Unos = prazanUnos(Astro.url.searchParams.get("paket") ?? "beta", Astro.url.searchParams.get("kupon") ?? "");
 let greske: Greske = {};
 let zig: string | null = null;
 
@@ -22,8 +24,9 @@ if (Astro.request.method === "POST") {
   if (!istiOrigin(Astro.request, Astro.url.origin)) {
     return new Response("Zabranjeno: zahtjev nije poslan s ove stranice.", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
-  const ishod = await posalji(await Astro.request.formData(), Astro.request.headers.get("cf-connecting-ip"));
+  const ishod = await posalji(await Astro.request.formData(), Astro.request.headers.get("cf-connecting-ip"), new Date(), fetch, Astro.url.origin);
   if (ishod.vrsta === "hvala") return Astro.redirect("/pristup?poslano=1", 303);
+  if (ishod.vrsta === "odobreno") return Astro.redirect("/pristup?poslano=kupon", 303);
   if (ishod.vrsta === "previse") {
     stanje = "previse";
     Astro.response.status = 429;
@@ -54,9 +57,22 @@ const aria = (p: Polje, opis?: string) => {
             <p class="uvodni">Zahtjev je stigao. Javit ćemo vam se na e-mail koji ste upisali: s računom ili ponudom ako ste naručili paket, a s osobnim linkom za prijavu kad je pristup otvoren.</p>
             <p class="sitno"><a href="/">Natrag na naslovnu</a></p>
           </>
+        ) : stanje === "odobreno" ? (
+          <>
+            <h1 class="landing-h1" id="naslov">Pristup je odobren.</h1>
+            <p class="uvodni">Kupon vrijedi. Na e-mail koji ste upisali upravo smo poslali osobni link za prijavu. Link vrijedi 72 sata i
+              može se iskoristiti jednom. Ako ga ne vidite za nekoliko minuta, pogledajte i mapu neželjene pošte.</p>
+            <p class="sitno"><a href="/">Natrag na naslovnu</a></p>
+          </>
         ) : (
           <>
-            {unos.paket === "beta" ? (
+            {unos.kupon && unos.paket === "beta" ? (
+              <>
+                <h1 class="landing-h1" id="naslov">Pristup s kuponom</h1>
+                <p class="uvodni">S važećim kuponom pristup dobivate odmah, bez čekanja na odobrenje: pošaljite obrazac i link za prijavu
+                  stiže na vaš e-mail.</p>
+              </>
+            ) : unos.paket === "beta" ? (
               <>
                 <h1 class="landing-h1" id="naslov">Besplatno za vrijeme bete</h1>
                 <p class="uvodni">Dok je LogoMedo u beti, možete zatražiti besplatan pristup. O svakom zahtjevu odlučujemo pojedinačno i
@@ -145,6 +161,15 @@ const aria = (p: Polje, opis?: string) => {
           </div>
 
           <div class="polje">
+            <label for="kupon">Kupon <span class="neobavezno">(nije obavezno)</span></label>
+            <input id="kupon" name="kupon" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+              maxlength={KUPON_MAX} value={unos.kupon} {...aria("kupon", "opis-kupon")} />
+            <p class="opis" id="opis-kupon">Ako ste dobili kod kupona, upišite ga. Kod koji ne vrijedi ne smeta: zahtjev tada obrađujemo
+              kao i svaki drugi.</p>
+            {greske.kupon && <p class="greska" id="greska-kupon">{greske.kupon}</p>}
+          </div>
+
+          <div class="polje">
             <label for="poruka">Kratka poruka <span class="neobavezno">(nije obavezno)</span></label>
             <textarea id="poruka" name="poruka" rows="4" maxlength={MAX.poruka} {...aria("poruka", "opis-poruka")}>{unos.poruka}</textarea>
             <p class="opis" id="opis-poruka">Npr. s kojom djecom radite ili što biste htjeli isprobati.</p>
@@ -163,7 +188,7 @@ const aria = (p: Polje, opis?: string) => {
             {greske.privola && <p class="greska" id="greska-privola">{greske.privola}</p>}
           </div>
 
-          <button class="gumb" type="submit">{unos.paket === "beta" ? "Zatraži pristup" : unos.paket === "ustanova" ? "Zatraži ponudu" : "Pošalji narudžbu"}</button>
+          <button class="gumb" type="submit">{unos.paket === "beta" && unos.kupon ? "Pošalji i otvori pristup" : unos.paket === "beta" ? "Zatraži pristup" : unos.paket === "ustanova" ? "Zatraži ponudu" : "Pošalji narudžbu"}</button>
         </form>
       )}
     </div>

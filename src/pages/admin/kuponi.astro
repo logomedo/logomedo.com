@@ -1,0 +1,151 @@
+---
+// Kuponi za /pristup (docs/kuponi.md). Samo superadmin (rute.ts). Kupon s auto-odobravanjem otvara pristup sam:
+// zahtjev s važećim kodom odmah dobiva pozivnicu e-poštom. Link /pristup?kupon=KOD upisuje kod u obrazac.
+import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { kad } from "../../lib/katalog";
+import { smije } from "../../lib/admin/ovlasti";
+import { IZBORI, opisPogodnosti, procitajIzbor } from "../../lib/admin/pogodnosti";
+import { OPIS_MAX, linkKupona, pogodnostKupona, postaviAktivan, stvori, svi, vrijedi } from "../../lib/admin/kuponi";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+const ok = Astro.url.searchParams.get("ok");
+let poruka: string | null = ok === "stvoren" ? "Kupon je stvoren." : ok === "promijenjen" ? "Kupon je promijenjen." : null;
+let greska: string | null = null;
+let unos = { kod: "", opis: "", auto: true, pogodnost: "", max: "", do: "" };
+
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const akcija = String(f.get("akcija") ?? "");
+  if (akcija === "stvori") {
+    unos = {
+      kod: String(f.get("kod") ?? ""), opis: String(f.get("opis") ?? ""), auto: f.get("auto") === "da",
+      pogodnost: String(f.get("pogodnost") ?? ""), max: String(f.get("max") ?? ""), do: String(f.get("do") ?? ""),
+    };
+    const p = procitajIzbor(unos.pogodnost);
+    if (p === undefined) greska = "Nepoznata pogodnost.";
+    else {
+      const r = await stvori({ kod: unos.kod, opis: unos.opis, autoOdobri: unos.auto, pogodnost: p, maxKoristenja: unos.max, vrijediDo: unos.do }, s.email);
+      if (r.ok) return Astro.redirect("/admin/kuponi?ok=stvoren", 303);
+      greska = r.greska;
+    }
+  } else if (akcija === "aktivan") {
+    const id = Number(f.get("id"));
+    if (Number.isInteger(id) && id > 0 && await postaviAktivan(id, f.get("aktivan") === "1")) return Astro.redirect("/admin/kuponi?ok=promijenjen", 303);
+    greska = "Nepoznat kupon.";
+  } else greska = "Nepoznata radnja.";
+  poruka = null;
+  Astro.response.status = 400;
+}
+
+const kuponi = await svi();
+const sada = new Date();
+const stanje = (k: (typeof kuponi)[number]) =>
+  k.aktivan !== 1 ? "isključen" : vrijedi(k, sada) ? "vrijedi" : k.vrijedi_do && k.vrijedi_do <= sada.toISOString() ? "istekao" : "potrošen";
+---
+<AdminOkvir naslov="Kuponi" aktivno="kuponi">
+  <div class="naslov">
+    <div>
+      <h1>Kuponi</h1>
+      <p class="podnaslov">Kod koji osoba upiše na <a href="/pristup">/pristup</a> ili dobije u linku. Kupon s auto-odobravanjem otvara
+        pristup odmah: pozivnica ide e-poštom bez tvog „Odobri”. Uz kupon može ići i pogodnost nakon bete. Kod koji ne vrijedi
+        (isključen, istekao, potrošen) ne javlja grešku: zahtjev čeka na <a href="/admin/zahtjevi">Zahtjevima</a> s upisanim kodom.
+        Narudžba za ustanovu se nikad ne odobrava sama.</p>
+    </div>
+  </div>
+
+  {poruka && <p class="poruka ok" role="status">{poruka}</p>}
+  {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
+
+  <form method="post" class="ploha obrazac" id="stvori">
+    <input type="hidden" name="akcija" value="stvori" />
+    <h2>Novi kupon</h2>
+    <div class="polja">
+      <div>
+        <label for="k-kod">Kod</label>
+        <input id="k-kod" type="text" name="kod" required maxlength="32" pattern="[A-Za-z0-9\-]{4,32}"
+          value={unos.kod} placeholder="npr. SPLIT-2026" autocapitalize="characters" spellcheck="false" />
+      </div>
+      <div>
+        <label for="k-pogodnost">Pogodnost nakon bete</label>
+        <select id="k-pogodnost" name="pogodnost">
+          {IZBORI.map((i) => <option value={i.kod} selected={i.kod === unos.pogodnost}>{i.tekst}</option>)}
+        </select>
+      </div>
+      <div>
+        <label for="k-max">Najviše korištenja</label>
+        <input id="k-max" type="number" name="max" min="1" max="10000" value={unos.max} placeholder="bez ograničenja" />
+      </div>
+      <div>
+        <label for="k-do">Vrijedi do (uključivo)</label>
+        <input id="k-do" type="date" name="do" value={unos.do} />
+      </div>
+      <div class="sire">
+        <label for="k-opis">Opis (vidiš samo ti)</label>
+        <input id="k-opis" type="text" name="opis" maxlength={OPIS_MAX} value={unos.opis} placeholder="npr. predavanje u Splitu" />
+      </div>
+    </div>
+    <label class="kvacica"><input type="checkbox" name="auto" value="da" checked={unos.auto} /> Auto-odobri: pristup odmah, bez mog „Odobri”</label>
+    <p class="blijedo sitno">Kod: 4 do 32 znaka, slova A–Z, brojke i crtica (mala slova postaju velika).</p>
+    <div><button class="gumb glavni mali" type="submit"><Ikona ime="plus" /> Stvori</button></div>
+  </form>
+
+  <h2 class="podnaslov-popisa">Svi kuponi ({kuponi.length})</h2>
+  {kuponi.length === 0 ? <p class="blijedo" id="nema-kupona">Još nema kupona.</p> : (
+    <div class="ploha tablica">
+      <table id="kuponi">
+        <thead><tr><th>Kod</th><th>Što daje</th><th>Korišteno</th><th>Stanje</th><th></th></tr></thead>
+        <tbody>
+          {kuponi.map((k) => {
+            const p = pogodnostKupona(k);
+            return (
+              <tr data-kod={k.kod}>
+                <td><b class="kod">{k.kod}</b>{k.opis && <><br /><span class="blijedo sitno">{k.opis}</span></>}
+                  <input class="link" type="text" readonly value={linkKupona(Astro.url.origin, k.kod)} aria-label={`Link kupona ${k.kod}`} /></td>
+                <td class="sitno">{k.auto_odobri ? "Pristup odmah" : "Samo oznaka (ručno odobri)"}{p && <><br /><span class="oznaka med">{opisPogodnosti(p)}</span></>}</td>
+                <td class="sitno">{k.iskoristen}{k.max_koristenja !== null && ` / ${k.max_koristenja}`}
+                  {k.vrijedi_do && <><br /><span class="blijedo">do {kad(k.vrijedi_do)}</span></>}</td>
+                <td><span class:list={["stanje", { vrijedi: stanje(k) === "vrijedi" }]}>{stanje(k)}</span></td>
+                <td>
+                  <form method="post">
+                    <input type="hidden" name="akcija" value="aktivan" />
+                    <input type="hidden" name="id" value={k.id} />
+                    <input type="hidden" name="aktivan" value={k.aktivan ? "0" : "1"} />
+                    <button class:list={["gumb", "mali", { opasno: k.aktivan }]} type="submit">{k.aktivan ? "Isključi" : "Uključi"}</button>
+                  </form>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  )}
+</AdminOkvir>
+<style>
+  .podnaslov a { color: var(--med-tamno); }
+  .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }
+  .poruka.ok { color: var(--uspjeh); }
+  .poruka.greska { color: var(--greska); }
+  .sitno { font-size: .82rem; margin: 0; }
+  .obrazac { margin-top: 16px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .obrazac h2 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
+  .polja { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; }
+  .polja label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 4px; }
+  .polja input, .polja select { width: 100%; }
+  .sire { grid-column: 1 / -1; }
+  .kvacica { display: flex; gap: 8px; align-items: center; font-size: .9rem; font-weight: 600; }
+  .podnaslov-popisa { margin: 28px 0 12px; font-family: var(--font-slova); font-weight: 600; font-size: 1.15rem; }
+  .tablica { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rub); vertical-align: top; }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--blijedo); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  .kod { font-family: ui-monospace, monospace; letter-spacing: .03em; }
+  .link { display: block; width: 100%; min-width: 260px; margin-top: 6px; font-size: .78rem; }
+  .stanje { font-size: .8rem; font-weight: 600; color: var(--blijedo); }
+  .stanje.vrijedi { color: var(--uspjeh); }
+  form { margin: 0; }
+</style>

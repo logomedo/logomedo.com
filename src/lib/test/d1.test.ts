@@ -11,7 +11,7 @@ test("sve migracije se primijene, redom kao wrangler", async () => {
   const imena = migracije();
   assert.ok(imena.length >= 33);
   assert.ok(imena.indexOf("0030_okvir_zadatka.sql") < imena.indexOf("0030_zvuk_nacini_probe.sql"));
-  assert.equal(imena.at(-1), "0046_zahtjevi_paket.sql");
+  assert.equal(imena.at(-1), "0047_kuponi.sql");
   const db = napraviD1();
   const t = await db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table'").first<number>("n");
   assert.ok(t! > 10);
@@ -123,7 +123,7 @@ test("0035: slušne vrste prolaze CHECK, područja pod predvještinama", async (
 test("0038: zahtjevi_pristupa, CHECK statusa i indeksi", async () => {
   const db = napraviD1();
   assert.deepEqual(await stupci(db, "zahtjevi_pristupa"), [
-    "id", "ime", "email", "ustanova", "grad", "poruka", "privola_at", "created_at", "status", "obradio", "obradjen_at", "poziv_token_hash", "ip_hash", "paket", "broj_licenci",
+    "id", "ime", "email", "ustanova", "grad", "poruka", "privola_at", "created_at", "status", "obradio", "obradjen_at", "poziv_token_hash", "ip_hash", "paket", "broj_licenci", "kupon",
   ]);
   const ubaci = (status?: string) => db.prepare(
     `INSERT INTO zahtjevi_pristupa (ime, email, privola_at, created_at${status ? ", status" : ""}) VALUES ('A', 'a@primjer.test', 't', 't'${status ? ", ?" : ""}) RETURNING status`,

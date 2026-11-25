@@ -14,7 +14,7 @@ import { brojNovih } from "../lib/admin/zahtjevi";
 import { brojNeprocitanih } from "../lib/poruke";
 import { kvotaIzAdrese, porukaZaKorisnika, preostalo, type StanjeKvote, type VrstaKvote } from "../lib/kvota";
 
-interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "zahtjevi" | "pogodnosti" | "poruke" | "postavke"; puno?: boolean }
+interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "zahtjevi" | "pogodnosti" | "kuponi" | "poruke" | "postavke"; puno?: boolean }
 const { naslov, javno = false, aktivno, puno = false } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
@@ -67,6 +67,7 @@ const sustav: Stavka[] = ([
   { kod: "korisnici", href: "/admin/korisnici", tekst: "Korisnici", ikona: "korisnici", broj: 0 },
   { kod: "zahtjevi", href: "/admin/zahtjevi", tekst: "Zahtjevi", ikona: "pismo", broj: zahtjeva },
   { kod: "pogodnosti", href: "/admin/pogodnosti", tekst: "Pogodnosti", ikona: "iskra", broj: 0 },
+  { kod: "kuponi", href: "/admin/kuponi", tekst: "Kuponi", ikona: "kljuc", broj: 0 },
   { kod: "poruke", href: "/admin/poruke", tekst: "Poruke", ikona: "poruke", broj: neprocitanih },
   { kod: "postavke", href: "/admin/postavke", tekst: "Postavke", ikona: "postavke", broj: 0 },
 ] satisfies Stavka[]).filter(vidljivo);

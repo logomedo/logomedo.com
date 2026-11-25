@@ -9,6 +9,9 @@ import { sha256Hex } from "./admin/sesija";
 import { IP_SATI, ROK_MJESECI } from "./pristup-rokovi";
 import { obavijesti } from "./obavijesti";
 import { jePaket } from "../landing/konstante";
+import { normalizirajKod, oslobodi, pogodnostKupona, zauzmi } from "./admin/kuponi";
+import { odobri } from "./admin/zahtjevi";
+import { posaljiPozivnicu } from "./email";
 
 export { IP_SATI, ROK_MJESECI };
 /** Najviše spremljenih zahtjeva s iste IP adrese u zadnjih sat vremena. */
@@ -22,16 +25,22 @@ export const MAX = { ime: 80, ustanova: 120, grad: 120, poruka: 1000 } as const;
 export const HONEYPOT = "web_stranica";
 export const ZIG = "otvoreno";
 
-export type Polje = "ime" | "email" | "ustanova" | "grad" | "poruka" | "privola" | "paket" | "licenci";
+export type Polje = "ime" | "email" | "ustanova" | "grad" | "poruka" | "privola" | "paket" | "licenci" | "kupon";
 export interface Unos {
   ime: string; email: string; ustanova: string; grad: string; poruka: string; privola: boolean;
   /** Odluka 816: što se traži (beta ili paket); `licenci` samo za ustanovu (tekst iz polja, broj se provjerava). */
   paket: string; licenci: string;
+  /** Kod kupona (docs/kuponi.md), velikim slovima; prazno = bez. */
+  kupon: string;
 }
 export const LICENCI_MAX = 1000;
 export type Greske = Partial<Record<Polje | "obrazac", string>>;
 
-export const prazanUnos = (paket: string = "beta"): Unos => ({ ime: "", email: "", ustanova: "", grad: "", poruka: "", privola: false, paket: jePaket(paket) ? paket : "beta", licenci: "" });
+export const KUPON_MAX = 32;
+export const prazanUnos = (paket: string = "beta", kupon: string = ""): Unos => ({
+  ime: "", email: "", ustanova: "", grad: "", poruka: "", privola: false, paket: jePaket(paket) ? paket : "beta", licenci: "",
+  kupon: normalizirajKod(kupon).slice(0, KUPON_MAX),
+});
 
 // Kontrolni znakovi van (poruka smije imati novi red i tab).
 const cisto = (v: FormDataEntryValue | null) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").trim() : "");
@@ -48,6 +57,7 @@ export function procitajUnos(f: FormData): Unos {
     privola: f.get("privola") === "da",
     paket: cisto(f.get("paket")) || "beta",
     licenci: cisto(f.get("licenci")),
+    kupon: normalizirajKod(cisto(f.get("kupon"))),
   };
 }
 
@@ -68,6 +78,7 @@ export function provjeriUnos(u: Unos): Greske {
     const n = Number(u.licenci);
     if (!/^\d{1,4}$/.test(u.licenci) || n < 1 || n > LICENCI_MAX) g.licenci = `Upišite broj licenci (1 do ${LICENCI_MAX}).`;
   }
+  if (u.kupon.length > KUPON_MAX) g.kupon = `Kod kupona ima najviše ${KUPON_MAX} znaka.`;
   if (!u.privola) g.privola = "Bez ove potvrde ne možemo spremiti zahtjev.";
   return g;
 }
@@ -141,6 +152,8 @@ export const pocisti = async (sada = new Date()) => { await env.DB.batch(naredbe
 
 export type Ishod =
   | { vrsta: "hvala" }
+  /** Kupon s auto-odobravanjem: zahtjev je odobren i pozivnica poslana e-poštom (docs/kuponi.md). */
+  | { vrsta: "odobreno" }
   /** `zig`: vremenski žig za ponovni prikaz obrasca (stari ako je bio dobar, da ispravak ne bude „prebrz”). */
   | { vrsta: "greske"; greske: Greske; unos: Unos; zig: string }
   | { vrsta: "previse" };
@@ -150,7 +163,9 @@ export type Ishod =
  * (prebrz ili nevaljao tiho; istekao 400 s porukom), limit po IP-u (429), pa upis koji ništa ne radi ako za
  * isti e-mail već postoji otvoreni zahtjev. Polja prije žiga: prazan ili nepotpun obrazac uvijek dobije 400.
  */
-export async function posalji(f: FormData, ip: string | null, sada = new Date(), dohvat: typeof fetch = fetch): Promise<Ishod> {
+export async function posalji(
+  f: FormData, ip: string | null, sada = new Date(), dohvat: typeof fetch = fetch, origin = "https://logomedo.com",
+): Promise<Ishod> {
   const hp = f.get(HONEYPOT);
   if (typeof hp === "string" && hp.trim() !== "") return { vrsta: "hvala" };
   const unos = procitajUnos(f);
@@ -177,16 +192,51 @@ export async function posalji(f: FormData, ip: string | null, sada = new Date(),
   }
 
   const email = normalizirajEmail(unos.email);
+  const kupon = unos.kupon || null;
   const rez = await env.DB.batch([
     ...naredbeCiscenja(sada),
     env.DB.prepare(
-      `INSERT INTO zahtjevi_pristupa (ime, email, ustanova, grad, poruka, privola_at, created_at, ip_hash, paket, broj_licenci)
-       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      `INSERT INTO zahtjevi_pristupa (ime, email, ustanova, grad, poruka, privola_at, created_at, ip_hash, paket, broj_licenci, kupon)
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
        WHERE NOT EXISTS (SELECT 1 FROM zahtjevi_pristupa WHERE email = ? AND status = 'novi')`,
     ).bind(unos.ime, email, unos.ustanova, unos.grad, unos.poruka || null, at, at, hash, unos.paket,
-      unos.paket === "ustanova" ? Number(unos.licenci) : null, email),
+      unos.paket === "ustanova" ? Number(unos.licenci) : null, kupon, email),
   ]);
+  const upisan = !!rez.at(-1)?.meta.changes;
+  // Kupon s auto-odobravanjem (docs/kuponi.md): odobri odmah (i otvoreni zahtjev istog e-maila). Ustanova se ne
+  // odobrava sama (narudžba više licenci treba ponudu). Ako išta ne uspije, zahtjev ostaje 'novi' za ručnu obradu.
+  if (kupon && unos.paket !== "ustanova" && await autoOdobri(email, kupon, upisan, sada, dohvat, origin)) return { vrsta: "odobreno" };
   // Obavijest superadminu (S4 inboxa) samo za stvarno upisan zahtjev; ne baca, najviše jedna na sat.
-  if (rez.at(-1)?.meta.changes) await obavijesti({ vrsta: "zahtjev" }, dohvat, sada);
+  if (upisan) await obavijesti({ vrsta: "zahtjev" }, dohvat, sada);
   return { vrsta: "hvala" };
+}
+
+async function autoOdobri(email: string, kod: string, upisan: boolean, sada: Date, dohvat: typeof fetch, origin: string): Promise<boolean> {
+  const z = await env.DB.prepare("SELECT id FROM zahtjevi_pristupa WHERE email = ? AND status = 'novi' ORDER BY id DESC LIMIT 1")
+    .bind(email).first<{ id: number }>();
+  if (!z) return false;
+  if (!upisan) await env.DB.prepare("UPDATE zahtjevi_pristupa SET kupon = ? WHERE id = ?").bind(kod, z.id).run();
+  const k = await zauzmi(kod, sada);
+  if (!k) return false;
+  try {
+    const p = pogodnostKupona(k);
+    const r = await odobri(z.id, `kupon:${k.kod}`, sada, p ? { p, napomena: `kupon ${k.kod}` } : null);
+    if (!r.ok) {
+      await oslobodi(k.kod);
+      return false;
+    }
+    const slanje = await posaljiPozivnicu({ url: `${origin}/admin/poziv#${r.token}`, email: r.email, istjece: r.istjece, ime: r.ime }, dohvat);
+    if (slanje.ok) return true;
+    // Link nitko ne vidi: zahtjev natrag u red, superadmin ga odobri ručno (nova pozivnica zamijeni ovu).
+    console.error("kupon: pozivnica nije poslana, zahtjev vraćen u red", slanje);
+    await env.DB.prepare(
+      "UPDATE zahtjevi_pristupa SET status = 'novi', obradio = NULL, obradjen_at = NULL, poziv_token_hash = NULL WHERE id = ?",
+    ).bind(z.id).run();
+    await oslobodi(k.kod);
+    return false;
+  } catch (e) {
+    console.error("kupon: auto-odobravanje", String(e));
+    await oslobodi(k.kod);
+    return false;
+  }
 }
