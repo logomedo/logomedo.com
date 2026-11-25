@@ -1,6 +1,8 @@
 # Plan: odvojiti Upravu od sadržaja u adminu
 
-> **Stanje 25. 11. 2026.: koraci 1–5 napravljeni, na stagingu.** Produkcija čeka nalog. Odluke: ime „Uprava”
+> **Stanje 25. 11. 2026.: koraci 1–5 napravljeni, na produkciji (25. 11. navečer, verzija 1869de69).** Uz to: korisnici
+> preko cijele širine s novom pozivnicom na vrhu („Napravi pozivnicu”, pa Kopiraj / Pošalji e-poštom), vrtuljak na
+> POST gumbima u cijelom adminu, staging smije slati mail (samo admini, +aliasi, @logomedo.com). Odluke: ime „Uprava”
 > (`/admin/uprava`), Red/Prompt/Aktivnost ostaju u Sadržaju pod „Alati”, Organizacije se ne prikazuju dok ne
 > postoje u bazi. Kod: `src/lib/admin/navigacija.ts` (trake), `rute.ts` (`/admin/uprava` prefiks, `PRESELJENO`),
 > `src/pages/admin/uprava/` (pregled, korisnici, zahtjevi, uplate, pogodnosti, kuponi, poruke), `lib/admin/uprava.ts`.
