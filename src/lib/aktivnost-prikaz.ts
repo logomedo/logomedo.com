@@ -31,6 +31,7 @@ export const RADNJE: Record<string, string> = {
   "rijec.glas_potvrden": "Potvrđena pozicija glasa",
   "rijec.glas_maknut": "Maknuta pozicija glasa",
   "biljeznica.spremljena": "Spremljena bilježnica",
+  "biljeznica.obrisana": "Obrisana bilježnica",
   "znak.novi": "Novi znak",
   "znak.skriven": "Skriven znak",
   "znak.vracen": "Znak vraćen u katalog",

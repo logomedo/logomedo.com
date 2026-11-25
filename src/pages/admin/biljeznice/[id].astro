@@ -1,7 +1,7 @@
 ---
 import AdminOkvir from "../../../components/AdminOkvir.astro";
 import Ikona from "../../../components/Ikona.astro";
-import { generirajSlike, poId, provjeriPolja, spremi, stanjeSlika, tekstoviBiljeznice, zadaciBiljeznice } from "../../../lib/biljeznice";
+import { generirajSlike, obrisi, poId, provjeriPolja, spremi, stanjeSlika, tekstoviBiljeznice, zadaciBiljeznice } from "../../../lib/biljeznice";
 import { dodajZvukove, stanjeZvukova } from "../../../lib/zvukovi";
 import { izgovorZa } from "../../../lib/zvukovi-tekst";
 import { brojEkrana, brojLampica } from "../../../lib/biljeznice-ekrani";
@@ -27,6 +27,10 @@ if (Astro.request.method === "POST") {
   if (f.get("akcija") === "zvukovi") {
     const n = await dodajZvukove(await tekstoviBiljeznice(b), Astro.locals.admin!.email);
     return Astro.redirect(`/admin/biljeznice/${id}?zvukova=${n}#zvukovi`, 303);
+  }
+  if (f.get("akcija") === "obrisi") {
+    await obrisi(id, Astro.locals.admin!.email, autor);
+    return Astro.redirect("/admin/biljeznice?obrisana=1", 303);
   }
   if (f.get("akcija") === "spremi") {
     // Redoslijed: polje red_<zadatak> (broj); prazno ili 0 = makni iz bilježnice. `dodaj` ide na kraj.
@@ -74,6 +78,9 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
     <div class="akcije">
       <a class="gumb" href={`/b/${b.slug}`} target="_blank" rel="noopener">Otvori igru</a>
       <a class="gumb" href={`/b/${b.slug}/ispis`} target="_blank" rel="noopener">Ispis</a>
+      <form method="post" class="brisi" data-potvrda={`Obrisati bilježnicu „${b.naslov}”? Zadaci ostaju u Zadacima, a poveznica za roditelje prestaje raditi.`}>
+        <button class="gumb opasno" name="akcija" value="obrisi" type="submit">Obriši bilježnicu</button>
+      </form>
     </div>
   </div>
 
@@ -179,7 +186,7 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
 </AdminOkvir>
 
 <style>
-  .akcije { display: flex; gap: 8px; }
+  .akcije { display: flex; gap: 8px; flex-wrap: wrap; } .akcije .brisi { margin: 0; }
   .sitno { font-size: .82rem; margin: 0; }
   .poruka { padding: 12px 16px; }
   .poruka.greska { background: var(--greska-blago); color: var(--greska); font-weight: 600; }
@@ -199,3 +206,7 @@ const bez = stanje.filter((s) => !s.odobrena && !s.kandidata && !s.u_redu).lengt
   .slike-vrh { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .slike-vrh .odjeljak { margin: 0; }
   .slike td a { text-decoration: none; }
 </style>
+<script>
+  for (const f of document.querySelectorAll<HTMLFormElement>("form[data-potvrda]"))
+    f.addEventListener("submit", (e) => { if (!confirm(f.dataset.potvrda!)) e.preventDefault(); });
+</script>

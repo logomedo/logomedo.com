@@ -128,6 +128,19 @@ test("bilježnice: popis i poId filtrirani po autoru", async () => {
   assert.equal((await biljeznice.poId(bb, null))?.naslov, "Borisova");
 });
 
+test("bilježnica: brisanje samo svoje; zadaci ostaju", async () => {
+  const za = await noviZadatak(ana, "Anin za brisanje");
+  const ba = await biljeznice.nova(ANA, { naslov: "Anina brisanje", podnaslov: "", slug: "", tema: "bozic" });
+  const bb = await biljeznice.nova(BORIS, { naslov: "Borisova brisanje", podnaslov: "", slug: "", tema: "bozic" });
+  await biljeznice.spremi(ba, ANA, polja("Anina brisanje", [za]), ana);
+  await biljeznice.obrisi(bb, ANA, ana);
+  assert.equal((await biljeznice.poId(bb, null))?.naslov, "Borisova brisanje");
+  await biljeznice.obrisi(ba, ANA, ana);
+  assert.equal(await biljeznice.poId(ba, null), null);
+  assert.deepEqual(await sadrzajBiljeznice(ba), []);
+  assert.ok((await zadaci.popis(ana)).some((z) => z.id === za));
+});
+
 test("bilježnica: logoped ne može staviti tuđi zadatak; svoj ide", async () => {
   const za = await noviZadatak(ana, "Anin");
   const zb = await noviZadatak(boris, "Borisov");

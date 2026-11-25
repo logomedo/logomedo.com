@@ -44,6 +44,7 @@ const teme = Object.entries(TEME) as [Tema, (typeof TEME)[Tema]][];
     </form>
   </div>
 
+  {q.has("obrisana") && <div class="obavijest">Bilježnica je obrisana. Zadaci su ostali u Zadacima.</div>}
   {q.get("greska") && <div class="obavijest upozorenje"><Ikona ime="upozorenje" /> {q.get("greska")}</div>}
 
   <form class="ploha nova" id="nova" method="post" novalidate>

@@ -134,6 +134,15 @@ export async function nova(email: string, x: { naslov: string; podnaslov: string
  * autorov ili je već bio u ovoj bilježnici (npr. dodao ga superadmin): logoped tako ne može tuđi
  * zadatak izložiti na javnoj /b/<slug>, a spremanje ne izbacuje ono što je tamo već bilo.
  */
+/** Brisanje bilježnice (samo svoje; superadmin bilo koje). Zadaci ostaju u Zadacima, poveznica /b/ prestaje raditi. */
+export async function obrisi(id: number, email: string, autor: AutorFiltar) {
+  const vlastita = "id = ?1 AND (?2 IS NULL OR autor_id = ?2)";
+  await DB().batch(sZapisom({ tko: email, radnja: "biljeznica.obrisana", tablica: "biljeznice", grupa: novaGrupa() }, id, [
+    DB().prepare(`DELETE FROM biljeznica_zadaci WHERE biljeznica_id IN (SELECT id FROM biljeznice WHERE ${vlastita})`).bind(id, autor),
+    DB().prepare(`DELETE FROM biljeznice WHERE ${vlastita}`).bind(id, autor),
+  ]));
+}
+
 export async function spremi(id: number, email: string, x: { naslov: string; podnaslov: string; slug: string; javna: boolean; tema: Tema; zadaci: number[] }, autor: AutorFiltar) {
   const s = uSlug(x.slug) || `biljeznica-${id}`;
   const vlastita = "id = ?1 AND (?2 IS NULL OR autor_id = ?2)";
