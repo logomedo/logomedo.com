@@ -1,6 +1,7 @@
 // Slanje e-pošte kroz Resend (domena logomedo.com, regija eu-west-1; DNS samo na poddomenama send/rsend i
-// resend._domainkey, MX i SPF apexa ostaju Googleovi). Ključ je secret RESEND_API_KEY samo u produkciji:
-// staging je kopija produkcijske D1 sa stvarnim adresama, pa bez ključa ne šalje ništa i admin dobije link kao prije.
+// resend._domainkey, MX i SPF apexa ostaju Googleovi). Ključ je secret RESEND_API_KEY. Bez ključa ne šalje ništa i
+// admin dobije link. Staging (od 25. 11. 2026. smije imati ključ) je kopija produkcijske D1 sa stvarnim adresama,
+// pa tamo `smijePrimiti` pušta samo adrese iz ADMIN_EMAILS staginga (i njihove +aliase) i @logomedo.com.
 import { env } from "cloudflare:workers";
 import { odgovor, pozivnica } from "./emails/generirano";
 import {
@@ -17,7 +18,29 @@ export const ODGOVOR_NA = "bok@logomedo.com";
 /** U D1 se sprema kopija pozivnice bez tokena: poveznica vrijedi do isteka i ne smije ležati u `poruke`. */
 export const SKRIVENA_POVEZNICA = "[poveznica pozivnice nije spremljena]";
 
-export type IshodSlanja = { ok: true; id: string } | { ok: false; razlog: "nema_kljuca" | "greska"; detalj?: string };
+export type IshodSlanja = { ok: true; id: string } | { ok: false; razlog: "nema_kljuca" | "greska" | "staging"; detalj?: string };
+
+/** Bez +oznake: ana+test@x.hr → ana@x.hr. */
+const bezOznake = (e: string) => e.replace(/\+[^@]*@/, "@");
+
+/**
+ * Smije li ova okolina poslati mail na adresu. Produkcija: svima. Staging: samo superadminima staginga
+ * (ADMIN_EMAILS, i njihovi +aliasi) i na @logomedo.com, da kopija produkcijske baze ne piše stvarnim logopedima.
+ */
+export function smijePrimiti(email: string): boolean {
+  if (env.OKRUZENJE !== "staging") return true;
+  const e = normalizirajEmail(email);
+  if (e.endsWith("@logomedo.com")) return true;
+  const admini = (env.ADMIN_EMAILS ?? "").split(",").map((a) => bezOznake(normalizirajEmail(a))).filter(Boolean);
+  return admini.includes(bezOznake(e));
+}
+
+/** Tekst za admina kad mail nije otišao (nema ključa ili staging ne pušta adresu). */
+export function zastoNijePoslano(razlog: string): string {
+  if (razlog === "nema_kljuca") return "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY).";
+  if (razlog === "staging") return "Staging šalje samo adminima (ADMIN_EMAILS, i +aliasi) i na @logomedo.com, ne stvarnim korisnicima.";
+  return "E-pošta nije poslana.";
+}
 
 export interface Pozivnica { email: string; ime: string; url: string; istjece: string }
 
@@ -58,6 +81,7 @@ export function sadrzajPozivnice(p: Pozivnica): { subject: string; text: string;
 export async function posaljiPozivnicu(p: Pozivnica, f: typeof fetch = fetch, cekaj = 1500): Promise<IshodSlanja> {
   const kljuc = env.RESEND_API_KEY;
   if (!kljuc) return { ok: false, razlog: "nema_kljuca" };
+  if (!smijePrimiti(p.email)) return { ok: false, razlog: "staging" };
   const { subject, text, html } = sadrzajPozivnice(p);
   let razgovor: { id: number; kljuc: string } | null = null;
   try {
@@ -194,6 +218,7 @@ export async function posaljiOdgovor(o: Odgovor, f: typeof fetch = fetch, cekaj 
   if (!tekst) return { ok: false, razlog: "prazno" };
   const z = await zaOdgovor(o.razgovorId);
   if (!z) return { ok: false, razlog: "nema_razgovora" };
+  if (!smijePrimiti(z.razgovor.email)) return { ok: false, razlog: "staging" };
   const izvor = z.dolazna?.message_id ? z.dolazna : z.odlazna;
   const inReplyTo = izvor?.message_id ?? null;
   const reference = inReplyTo ? messageIdovi(izvor!.reference, inReplyTo).slice(-20) : [];
@@ -248,7 +273,7 @@ export interface NoviRazgovor {
 }
 export type IshodNovog =
   | { ok: true; razgovorId: number }
-  | { ok: false; razlog: "nema_kljuca" | "greska" | "u_tijeku" | "prazno" | "email" | "predmet"; detalj?: string };
+  | { ok: false; razlog: "nema_kljuca" | "greska" | "staging" | "u_tijeku" | "prazno" | "email" | "predmet"; detalj?: string };
 
 export const PREDMET_MAX = 200;
 
@@ -261,6 +286,7 @@ export async function posaljiNoviRazgovor(n: NoviRazgovor, f: typeof fetch = fet
   if (!env.RESEND_API_KEY) return { ok: false, razlog: "nema_kljuca" };
   const email = normalizirajEmail(n.email);
   if (!ispravanEmail(email)) return { ok: false, razlog: "email" };
+  if (!smijePrimiti(email)) return { ok: false, razlog: "staging" };
   const predmet = n.predmet.replace(/[\r\n]+/g, " ").trim();
   if (!predmet || predmet.length > PREDMET_MAX) return { ok: false, razlog: "predmet" };
   if (!n.tekst.trim()) return { ok: false, razlog: "prazno" };

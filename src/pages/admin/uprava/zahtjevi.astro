@@ -9,7 +9,7 @@ import { smije } from "../../../lib/admin/ovlasti";
 import { PORUKE_ODBIJANJA } from "../../../lib/admin/pozivi";
 import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../../lib/admin/zahtjevi";
 import { ROK_MJESECI, pocisti } from "../../../lib/pristup";
-import { posaljiPozivnicu, type IshodSlanja } from "../../../lib/email";
+import { posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
 import { PAKETI_ZAHTJEVA, cijenaLicence, eura } from "../../../landing/konstante";
 import { IZBORI, NAPOMENA_MAX, opisPogodnosti, procitajIzbor, type Pogodnost } from "../../../lib/admin/pogodnosti";
 import {
@@ -102,9 +102,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
       <h2>Pozivnica za {link.email}</h2>
       {slanje?.ok
         ? <p class="poruka ok" role="status" id="poziv-poslan">Pozivnica je poslana e-poštom na {link.email}. Link ispod je rezerva, ako ne stigne.</p>
-        : <p class="poruka greska" role="alert" id="poziv-nije-poslan">{slanje?.ok === false && slanje.razlog === "nema_kljuca"
-            ? "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY)."
-            : "E-pošta nije poslana."} Pošalji link osobno.</p>}
+        : <p class="poruka greska" role="alert" id="poziv-nije-poslan">{zastoNijePoslano(slanje?.ok === false ? slanje.razlog : "")} Pošalji link osobno.</p>}
       {dodijeljena && <p class="sitno" id="poziv-pogodnost">Pogodnost nakon bete: <b>{opisPogodnosti(dodijeljena)}</b> (vidi <a href="/admin/uprava/pogodnosti">Pogodnosti</a>).</p>}
       <p class="blijedo sitno">Link se vidi samo sada; vrijedi do {kad(link.istjece)}. Ne šalji ga u javni kanal.
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>

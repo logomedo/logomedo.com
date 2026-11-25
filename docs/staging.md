@@ -85,6 +85,13 @@ Ispiše kolačić `__Host-logomedo_admin=<token>` (12 h). U pregledniku ga posta
 Superadmin dolazi iz secreta `ADMIN_EMAILS` **staginga** (`--superadmin` ga postavi na taj jedan
 e-mail); logoped iz tablice `korisnici` (kopija produkcije).
 
+## E-pošta (Resend)
+
+Od 25. 11. 2026. staging ima `RESEND_API_KEY` (isti ključ kao produkcija, secret staginga). Baza je kopija produkcijske
+sa stvarnim adresama, pa `smijePrimiti` u `src/lib/email.ts` na stagingu (`OKRUZENJE=staging`) pušta samo adrese iz
+`ADMIN_EMAILS` staginga, njihove `+aliase` (npr. ime+proba1@…) i `@logomedo.com`. Ostalima admin dobije poruku
+„Staging šalje samo adminima…” i link za ručno slanje. Testne pozivnice zato idu na +alias svog e-maila.
+
 ## Što na stagingu ne radi
 
 - **Kandidati slika:** privatni R2 staginga je prazan; vide se samo odobrene slike s `cdn.logomedo.com`.

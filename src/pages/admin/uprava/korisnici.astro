@@ -10,6 +10,7 @@ import { smije } from "../../../lib/admin/ovlasti";
 import { LIMIT_MAX, popisKorisnika, postaviAktivan, postaviLimite, procitajLimit } from "../../../lib/admin/korisnici";
 import { LIMIT_UREDAJA_MAX, ZADANI_LIMIT_UREDAJA, procitajLimitUredaja, provedba, sazeciUredaja } from "../../../lib/admin/uredaji";
 import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice } from "../../../lib/admin/pozivi";
+import { posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -24,6 +25,8 @@ const PORUKE_OK: Record<string, string> = {
 let poruka: string | null = PORUKE_OK[Astro.url.searchParams.get("ok") ?? ""] ?? null;
 let greska: string | null = null;
 let link: { url: string; email: string; istjece: string } | null = null;
+/** „Napravi link i pošalji”: pozivnica ide i e-poštom (Resend), kao „Odobri” na Zahtjevima. */
+let slanje: IshodSlanja | null = null;
 
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
@@ -36,6 +39,10 @@ if (Astro.request.method === "POST") {
         ? await izdaj({ email: String(f.get("email") ?? ""), ime: String(f.get("ime") ?? "") }, s.email)
         : await izdaj({ email: String(f.get("email") ?? ""), korisnikId: id }, s.email);
       link = { url: `${Astro.url.origin}/admin/poziv#${p.token}`, email: p.email, istjece: p.istjece };
+      if (f.get("posalji") === "1") {
+        slanje = await posaljiPozivnicu({ ...link, ime: String(f.get("ime") ?? "") });
+        if (!slanje.ok) console.error("pozivnica e-poštom nije poslana", slanje);
+      }
     } else if (akcija === "opozovi") {
       if (await opozovi(Number(f.get("poziv_id")), s.email)) return natrag("opozvana");
       greska = "Pozivnica je već iskorištena ili opozvana.";
@@ -84,7 +91,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     <input type="hidden" name="akcija" value="poziv" />
     <div class="dodaj-naslov">
       <h2>Nova pozivnica</h2>
-      <p class="blijedo sitno">Za novog logopeda ili povratak deaktiviranog. Link se prikaže jednom; pošalji ga osobno.</p>
+      <p class="blijedo sitno">Za novog logopeda ili povratak deaktiviranog. „Pošalji” šalje e-poštu s pozivnica@logomedo.com; link se uvijek prikaže jednom i kao rezerva.</p>
     </div>
     <div class="polje">
       <label for="poziv-ime">Ime i prezime</label>
@@ -94,7 +101,10 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
       <label for="poziv-email">E-mail</label>
       <input id="poziv-email" type="email" name="email" placeholder="ime@primjer.hr" required maxlength="254" autocomplete="off" />
     </div>
-    <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi link</button>
+    <div class="dodaj-gumbi">
+      <button class="gumb glavni" type="submit" name="posalji" value="1"><Ikona ime="pismo" /> Napravi link i pošalji</button>
+      <button class="gumb tihi mali" type="submit"><Ikona ime="plus" /> Samo link</button>
+    </div>
   </form>
 
   {poruka && <p class="poruka ok" role="status">{poruka}</p>}
@@ -102,7 +112,9 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   {link && (
     <section class="ploha link" id="poziv-rezultat">
       <h2>Pozivnica za {link.email}</h2>
-      <p class="blijedo sitno">Pošalji link osobno (poruka, ne javni kanal). Vidi se samo sada; vrijedi do {kad(link.istjece)}.
+      {slanje?.ok && <p class="poruka ok" role="status" id="poziv-poslan">Pozivnica je poslana e-poštom na {link.email}. Link ispod je rezerva, ako ne stigne.</p>}
+      {slanje && !slanje.ok && <p class="poruka greska" role="alert" id="poziv-nije-poslan">{zastoNijePoslano(slanje.razlog)} Pošalji link osobno.</p>}
+      <p class="blijedo sitno">{slanje?.ok ? "" : "Pošalji link osobno (poruka, ne javni kanal). "}Vidi se samo sada; vrijedi do {kad(link.istjece)}.
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
       <div class="red-linka">
         <input id="poziv-link" type="text" readonly value={link.url} />
@@ -244,6 +256,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
     gap: 14px; align-items: end; }
   .dodaj .polje label { margin-bottom: 6px; }
   .dodaj .gumb { white-space: nowrap; }
+  .dodaj-gumbi { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
   @media (max-width: 1000px) { .dodaj { grid-template-columns: 1fr 1fr; } .dodaj-naslov { grid-column: 1 / -1; } }
   @media (max-width: 600px) { .dodaj { grid-template-columns: 1fr; } }
   .dodaj-naslov { align-self: center; }

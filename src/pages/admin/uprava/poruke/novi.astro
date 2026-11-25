@@ -24,6 +24,7 @@ if (Astro.request.method === "POST") {
     if (r.ok) return Astro.redirect(`/admin/uprava/poruke/${r.razgovorId}?ok=poslano`, 303);
     greska = {
       nema_kljuca: "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY). Ništa nije poslano ni upisano.",
+      staging: "Staging šalje samo adminima (ADMIN_EMAILS, i +aliasi) i na @logomedo.com. Ništa nije poslano ni upisano.",
       email: "E-mail nije ispravan.",
       predmet: `Upiši predmet (najviše ${PREDMET_MAX} znakova).`,
       prazno: "Poruka je prazna.",

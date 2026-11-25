@@ -35,6 +35,6 @@ Završeno 19. 11. 2026. (landing na produkciji, `docs/landing/`). Uređivanje sa
 
 Plan od 19. 11. 2026. u `docs/inbox/` (`TODO.md`, `plan.md`, `decisions.md`, `handoffs/`), grana `inbox`.
 „Nastavi inbox” znači prvi red koji nije „gotovo” u „Stanje lanca” u `docs/inbox/handoffs/README.md`; prompt je `SN.md`.
-Slanje već radi: Resend (`src/lib/email.ts`, predlošci `emails/*.tsx` → `npm run emails`), `RESEND_API_KEY` samo produkcija.
+Slanje već radi: Resend (`src/lib/email.ts`, predlošci `emails/*.tsx` → `npm run emails`), `RESEND_API_KEY` u produkciji i (od 25. 11. 2026.) na stagingu, gdje `smijePrimiti` pušta samo ADMIN_EMAILS (+aliase) i @logomedo.com.
 Gotovo 19. 11. 2026. (S1–S5, lanac zatvoren): kako radi, DNS, secreti i testiranje u `docs/inbox.md`. Google DKIM
 apexa u S5 (odluka 500); DMARC `quarantine` je korisnikov korak nakon 2–4 tjedna izvještaja.

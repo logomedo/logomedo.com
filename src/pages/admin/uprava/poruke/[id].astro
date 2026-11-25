@@ -38,6 +38,7 @@ if (Astro.request.method === "POST") {
       if (r.razlog === "u_tijeku") return Astro.redirect(`/admin/uprava/poruke/${id}?ok=u_tijeku#odgovor`, 303);
       if (r.razlog === "nema_razgovora") return new Response("Nema razgovora", { status: 404 });
       greska = r.razlog === "nema_kljuca" ? "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY). Ništa nije poslano ni upisano."
+        : r.razlog === "staging" ? "Staging šalje samo adminima (ADMIN_EMAILS, i +aliasi) i na @logomedo.com. Ništa nije poslano ni upisano."
         : r.razlog === "prazno" ? "Odgovor je prazan."
         : "Slanje nije uspjelo, ništa nije upisano. Pokušaj ponovno za minutu.";
       if (r.razlog === "greska") console.error("odgovor nije poslan", r.detalj);
