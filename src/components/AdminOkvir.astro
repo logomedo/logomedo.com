@@ -195,6 +195,34 @@ const oznaka = uprava ? "uprava" : "admin";
           return r;
         };
       }
+      // Obrasci (POST): nakon klika gumb čeka (vrtuljak, neaktivan) i drugi klik ne šalje ponovno. Obrasce koje
+      // stranica šalje sama (preventDefault, fetch) ne dira; `data-bez-cekanja` na obrascu isključuje. Tekst za vrijeme
+      // čekanja: `data-cekanje` na gumbu. Gumb se onemogući tek nakon slanja (disabled gumb ne šalje name/value).
+      {
+        const otpusti = (f: HTMLFormElement) => {
+          delete f.dataset.salje;
+          f.querySelectorAll<HTMLButtonElement>("button.ceka").forEach((b) => {
+            b.disabled = false; b.classList.remove("ceka"); b.removeAttribute("aria-busy");
+            if (b.dataset.tekst) { const t = b.querySelector("span") ?? b; t.textContent = b.dataset.tekst; }
+          });
+        };
+        document.addEventListener("submit", (e) => {
+          const f = e.target as HTMLFormElement;
+          if (e.defaultPrevented || f.method !== "post" || f.target === "_blank" || "bezCekanja" in f.dataset) return;
+          if (f.dataset.salje) { e.preventDefault(); return; }
+          f.dataset.salje = "1";
+          const b = (e.submitter as HTMLButtonElement | null) ?? f.querySelector<HTMLButtonElement>("button[type=submit], button:not([type])");
+          if (b) {
+            b.classList.add("ceka"); b.setAttribute("aria-busy", "true");
+            if (b.dataset.cekanje) { const t = b.querySelector("span") ?? b; b.dataset.tekst = t.textContent ?? ""; t.textContent = b.dataset.cekanje; }
+            setTimeout(() => { b.disabled = true; }, 0);
+          }
+          // Odgovor koji ne mijenja stranicu (npr. preuzimanje datoteke): gumb se vrati nakon 20 s.
+          setTimeout(() => otpusti(f), 20_000);
+        });
+        // Natrag u pregledniku (bfcache) vraća stranicu s čekajućim gumbima.
+        addEventListener("pageshow", (e) => { if (e.persisted) document.querySelectorAll<HTMLFormElement>("form[data-salje]").forEach(otpusti); });
+      }
     </script>
     <script>
       // Tražilica riječi: indeks se dohvati jednom (na prvi fokus), filtrira se lokalno.
@@ -431,6 +459,12 @@ const oznaka = uprava ? "uprava" : "admin";
       .gumb.mali { min-height: 32px; padding: 0 11px; font-size: .84rem; border-radius: 8px; }
       .gumb.opasno { color: var(--greska); }
       .gumb:disabled { opacity: .5; cursor: default; }
+      .gumb.ceka { opacity: .75; cursor: progress; pointer-events: none; }
+      .gumb.ceka > svg { display: none; }
+      .gumb.ceka::before { content: ""; width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid currentColor;
+        border-right-color: transparent; animation: gumb-vrti .7s linear infinite; }
+      @keyframes gumb-vrti { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .gumb.ceka::before { animation-duration: 2s; } }
       .ploha { background: var(--povrsina); border: 1px solid var(--rub); border-radius: 16px; box-shadow: var(--sjena-1); }
       .oznaka { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .72rem; font-weight: 650;
         background: var(--povrsina-2); color: var(--blijedo); white-space: nowrap; }

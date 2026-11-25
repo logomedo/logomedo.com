@@ -108,7 +108,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
       <label for="poziv-email">E-mail</label>
       <input id="poziv-email" type="email" name="email" placeholder="ime@primjer.hr" required maxlength="254" autocomplete="off" />
     </div>
-    <button class="gumb glavni" type="submit"><Ikona ime="plus" /> Napravi pozivnicu</button>
+    <button class="gumb glavni" type="submit" data-cekanje="Radim…"><Ikona ime="plus" /> <span>Napravi pozivnicu</span></button>
   </form>
 
   {poruka && <p class="poruka ok" role="status">{poruka}</p>}
@@ -126,7 +126,7 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
         <form method="post">
           <input type="hidden" name="akcija" value="posalji_poziv" />
           <input type="hidden" name="token" value={link.url.split("#")[1]} />
-          <button class="gumb glavni mali" type="submit" id="posalji-mail"><Ikona ime="pismo" /> {slanje?.ok ? "Pošalji ponovno" : "Pošalji e-poštom"}</button>
+          <button class="gumb glavni mali" type="submit" id="posalji-mail" data-cekanje="Šaljem…"><Ikona ime="pismo" /> <span>{slanje?.ok ? "Pošalji ponovno" : "Pošalji e-poštom"}</span></button>
         </form>
       </div>
     </section>
