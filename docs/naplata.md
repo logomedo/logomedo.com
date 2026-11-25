@@ -53,7 +53,7 @@ adresama. eRačun na stagingu ide kroz doku **test** okolinu.
 | `FISKAL_API_KLJUC` (secret) | ključ `dfk_8250856a…` („logomedo-staging”), kopija u `domovina-fiskal/secrets/logomedo-staging-api-kljuc.txt` | |
 | `FISKAL_OPERATER_OIB` (secret) | OIB operatera iz ITalk tenanta | |
 | `NAPLATA_SIMULACIJA` (var) | `da` | nikad |
-| D1 `uplate` (0048) | da | **ne**: prije uključivanja na produkciji `npm run db:migrate` |
+| D1 `uplate` (0048) | da | da (prazna, od 25. 11.) |
 
 Na fiskal-testu ITalk tenant (id 1) ima prostor `PP1` (prijavljen), uređaj `1` („API blagajna”) i od 25. 11. uređaj
 `2` („LogoMedo web”), da se brojevi računa (`N/PP1/2`) ne miješaju s ručno izdanima. Na produkcijskom fiskalu ITalk ima
@@ -70,4 +70,4 @@ produkciju i bez migracije 0048.
   aplikacije → webhook `account.credit`), uparivanje po pozivu na broj i iznosu → `plati()` s `izvor = 'banka'`.
 - Javne ustanove obično plaćaju po računu, ne unaprijed: eRačun prvo (s rokom plaćanja), pristup odmah.
 - Storno i eRačun naknadno (gore), povrat novca (storno na `charge.refunded`).
-- Produkcija: doku za ITalk na produkcijskom fiskalu, ključ i uređaj na produkciji, migracija 0048.
+- Produkcija: doku za ITalk na produkcijskom fiskalu te ključ i uređaj na produkciji.
