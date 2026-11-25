@@ -46,7 +46,7 @@ Plan, odluke i povijest: [`docs/rbac/`](rbac/plan.md) (odluke u [`decisions.md`]
 Popis ruta samo za superadmina je u `src/lib/admin/rute.ts`; nova administracijska stranica ide
 tamo i u test.
 
-**Izdavanje pozivnice:** `/admin/korisnici` → „Nova pozivnica” (e-mail, ime) → „Napravi link”.
+**Izdavanje pozivnice:** `/admin/uprava/korisnici` → „Nova pozivnica” (e-mail, ime) → „Napravi link”.
 Link `https://logomedo.com/admin/poziv#…` prikaže se **jednom**; pošalji ga osobno (ne u javni
 kanal, ne u repo). Vrijedi 72 h i jednom: troši se tek kad logoped registrira passkey, a tada
 odmah dobiva sesiju. Nova pozivnica za isti e-mail poništava staru. Otvorene pozivnice su u
@@ -68,7 +68,7 @@ ostalo i kad se prvi krediti vraćaju. Naplaćuje se i „Pokušaj ponovo” za 
 (logoped na `/admin/zvukovi` vidi i vraća samo izgovore koje je sam zatražio); „Pogurni red” i
 probe glasova ne.
 
-**Potrošnja:** `/admin/korisnici`, stupci „Potrošeno (7 dana)” i „Doprinos” (dodane riječi,
+**Potrošnja:** `/admin/uprava/korisnici`, stupci „Potrošeno (7 dana)” i „Doprinos” (dodane riječi,
 odobrene slike i izgovori). Logoped svoje preostalo vidi u bočnoj traci. Svaki upis je redak u
 `ai_potrosnja` (tko, vrsta, količina, vrijeme); svaka radnja nad korisnicima i pozivnicama je u
 Aktivnosti (`poziv.*`, `korisnik.*`).

@@ -13,8 +13,8 @@ traži zahtjevom i odobrava ručno.
 | --- | --- |
 | Tablica | `migrations/0045_pogodnosti.sql` (`pogodnosti`, jedna važeća po e-mailu, povijest kroz `opozvana_at`) |
 | Logika | `src/lib/admin/pogodnosti.ts` (+ `.test.ts`) |
-| Dodjela uz pozivnicu | `/admin/zahtjevi`: padajući izbornik i napomena uz „Odobri”; upiše se tek kad je pozivnica izdana |
-| Pregled, dodjela po e-mailu, uklanjanje | `/admin/pogodnosti` (samo superadmin, `rute.ts`) |
+| Dodjela uz pozivnicu | `/admin/uprava/zahtjevi`: padajući izbornik i napomena uz „Odobri”; upiše se tek kad je pozivnica izdana |
+| Pregled, dodjela po e-mailu, uklanjanje | `/admin/uprava/pogodnosti` (samo superadmin, `rute.ts`) |
 | Korisnik vidi svoju | `/admin/postavke`, kartica „Nakon bete” (bez napomene) |
 
 Pogodnost je po e-mailu, pa se može dati i osobi koja još nema račun. Promjena e-maila u profilu je prenosi
@@ -24,7 +24,7 @@ Pogodnost je po e-mailu, pa se može dati i osobi koja još nema račun. Promjen
 
 - Licenca je za **jednu osobu** (piše na `/cijene` i u `/uvjeti`); više ljudi = više licenci.
 - Narudžba ide kroz isti obrazac `/pristup?paket=mjesecno|godisnje|dozivotno|ustanova|beta` (0046: `paket`,
-  `broj_licenci` 1–1000 u `zahtjevi_pristupa`). `/admin/zahtjevi` pokazuje paket, broj licenci i cijenu.
+  `broj_licenci` 1–1000 u `zahtjevi_pristupa`). `/admin/uprava/zahtjevi` pokazuje paket, broj licenci i cijenu.
 - Ustanove (godišnje licence, `LICENCE_USTANOVE` u `src/landing/konstante.ts`): 1–4 puna cijena, 5–9 −10 %,
   10–24 −15 %, 25–49 −20 %, 50+ po dogovoru. Ponudu i račun (osnovica + PDV) izdaje ITalk, plaćanje virmanom.
 - Tijek dok nema kartice: obrazac → ručno pošalji račun/ponudu → kad uplata stigne, „Odobri” (izdaje pozivnicu).

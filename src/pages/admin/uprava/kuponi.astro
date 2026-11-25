@@ -1,12 +1,12 @@
 ---
 // Kuponi za /pristup (docs/kuponi.md). Samo superadmin (rute.ts). Kupon s auto-odobravanjem otvara pristup sam:
 // zahtjev s važećim kodom odmah dobiva pozivnicu e-poštom. Link /pristup?kupon=KOD upisuje kod u obrazac.
-import AdminOkvir from "../../components/AdminOkvir.astro";
-import Ikona from "../../components/Ikona.astro";
-import { kad } from "../../lib/katalog";
-import { smije } from "../../lib/admin/ovlasti";
-import { IZBORI, opisPogodnosti, procitajIzbor } from "../../lib/admin/pogodnosti";
-import { OPIS_MAX, linkKupona, pogodnostKupona, postaviAktivan, stvori, svi, vrijedi } from "../../lib/admin/kuponi";
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { kad } from "../../../lib/katalog";
+import { smije } from "../../../lib/admin/ovlasti";
+import { IZBORI, opisPogodnosti, procitajIzbor } from "../../../lib/admin/pogodnosti";
+import { OPIS_MAX, linkKupona, pogodnostKupona, postaviAktivan, stvori, svi, vrijedi } from "../../../lib/admin/kuponi";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -28,12 +28,12 @@ if (Astro.request.method === "POST") {
     if (p === undefined) greska = "Nepoznata pogodnost.";
     else {
       const r = await stvori({ kod: unos.kod, opis: unos.opis, autoOdobri: unos.auto, pogodnost: p, maxKoristenja: unos.max, vrijediDo: unos.do }, s.email);
-      if (r.ok) return Astro.redirect("/admin/kuponi?ok=stvoren", 303);
+      if (r.ok) return Astro.redirect("/admin/uprava/kuponi?ok=stvoren", 303);
       greska = r.greska;
     }
   } else if (akcija === "aktivan") {
     const id = Number(f.get("id"));
-    if (Number.isInteger(id) && id > 0 && await postaviAktivan(id, f.get("aktivan") === "1")) return Astro.redirect("/admin/kuponi?ok=promijenjen", 303);
+    if (Number.isInteger(id) && id > 0 && await postaviAktivan(id, f.get("aktivan") === "1")) return Astro.redirect("/admin/uprava/kuponi?ok=promijenjen", 303);
     greska = "Nepoznat kupon.";
   } else greska = "Nepoznata radnja.";
   poruka = null;
@@ -45,13 +45,13 @@ const sada = new Date();
 const stanje = (k: (typeof kuponi)[number]) =>
   k.aktivan !== 1 ? "isključen" : vrijedi(k, sada) ? "vrijedi" : k.vrijedi_do && k.vrijedi_do <= sada.toISOString() ? "istekao" : "potrošen";
 ---
-<AdminOkvir naslov="Kuponi" aktivno="kuponi">
+<AdminOkvir naslov="Kuponi" podrucje="uprava" aktivno="kuponi">
   <div class="naslov">
     <div>
       <h1>Kuponi</h1>
       <p class="podnaslov">Kod koji osoba upiše na <a href="/pristup">/pristup</a> ili dobije u linku. Kupon s auto-odobravanjem otvara
         pristup odmah: pozivnica ide e-poštom bez tvog „Odobri”. Uz kupon može ići i pogodnost nakon bete. Kod koji ne vrijedi
-        (isključen, istekao, potrošen) ne javlja grešku: zahtjev čeka na <a href="/admin/zahtjevi">Zahtjevima</a> s upisanim kodom.
+        (isključen, istekao, potrošen) ne javlja grešku: zahtjev čeka na <a href="/admin/uprava/zahtjevi">Zahtjevima</a> s upisanim kodom.
         Narudžba za ustanovu se nikad ne odobrava sama.</p>
     </div>
   </div>

@@ -1,4 +1,4 @@
-// Praćenje novih poruka u /admin/poruke bez WebSocketa (odluka 313): GET /admin/poruke/stanje svakih ~12 s,
+// Praćenje novih poruka u /admin/uprava/poruke bez WebSocketa (odluka 313): GET /admin/uprava/poruke/stanje svakih ~12 s,
 // samo dok je tab vidljiv (i odmah kad postane vidljiv). Kad se potpis promijeni, poziva `promjena()`.
 
 export function pratiPoruke(url: string, pocetni: string, promjena: () => void, razmak = 12_000): void {

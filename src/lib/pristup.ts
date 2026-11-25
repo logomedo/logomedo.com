@@ -1,5 +1,5 @@
 // Obrazac „Zatraži pristup” (/pristup, S7 landinga): logoped s landinga pošalje zahtjev, superadmin ga
-// odobri na /admin/zahtjevi (src/lib/admin/zahtjevi.ts). Ovdje je javni dio: čitanje i provjera unosa,
+// odobri na /admin/uprava/zahtjevi (src/lib/admin/zahtjevi.ts). Ovdje je javni dio: čitanje i provjera unosa,
 // zaštita od spama bez vanjske skripte (honeypot, vremenski žig, limit po IP-u, jedan otvoreni zahtjev po
 // e-mailu) i retencija. Odgovori koji bi otkrili nešto o bazi (postoji li već zahtjev) ili pomogli botu
 // (honeypot, prebrz obrazac) su isti „hvala” kao uspjeh, bez upisa.
@@ -133,7 +133,7 @@ const prije = (sada: Date, mjeseci: number) => {
   return d.toISOString();
 };
 
-/** Retencija (odluka u 0038): naredbe za batch pri upisu i pri učitavanju /admin/zahtjevi. */
+/** Retencija (odluka u 0038): naredbe za batch pri upisu i pri učitavanju /admin/uprava/zahtjevi. */
 export function naredbeCiscenja(sada = new Date()): D1PreparedStatement[] {
   const granica = prije(sada, ROK_MJESECI);
   const ipGranica = new Date(sada.getTime() - IP_SATI * 3600_000).toISOString();

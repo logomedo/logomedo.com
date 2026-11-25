@@ -1,8 +1,8 @@
 // Lagani potpis stanja inboxa za praćenje novih poruka (odluka 313): `?razgovor=<id>` za nit, inače cijeli popis.
 // Samo superadmin (rute.ts i ovdje). Bez sadržaja poruka; middleware postavlja `cache-control: no-store`.
 import type { APIRoute } from "astro";
-import { smije } from "../../../lib/admin/ovlasti";
-import { potpisPoruka } from "../../../lib/poruke";
+import { smije } from "../../../../lib/admin/ovlasti";
+import { potpisPoruka } from "../../../../lib/poruke";
 
 export const GET: APIRoute = async ({ locals, url }) => {
   const s = locals.admin;

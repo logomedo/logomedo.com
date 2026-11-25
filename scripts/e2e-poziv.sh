@@ -30,7 +30,7 @@ d1 "INSERT INTO admin_sessions (token_hash,email,method,created_at,expires_at,la
 SA=(-s -H "Origin: $BASE" -b "$KOLACIC=$T")
 
 # 2. Pozivnica.
-curl "${SA[@]}" -o "$TMP/izdaj.html" --data-urlencode akcija=poziv --data-urlencode ime="E2E Logoped" --data-urlencode email="$LOGOPED" "$BASE/admin/korisnici"
+curl "${SA[@]}" -o "$TMP/izdaj.html" --data-urlencode akcija=poziv --data-urlencode ime="E2E Logoped" --data-urlencode email="$LOGOPED" "$BASE/admin/uprava/korisnici"
 LINK=$(grep -o 'id="poziv-link"[^>]*' "$TMP/izdaj.html" | grep -o 'value="[^"]*"' | sed 's/value="//;s/"$//' | sed 's/&#35;/#/')
 case "$LINK" in */admin/poziv\#*) ok "pozivnica izdana";; *) pao "nema linka pozivnice u odgovoru";; esac
 LINK="$BASE/admin/poziv#${LINK#*#}"
@@ -79,20 +79,20 @@ M=$(d1 "SELECT group_concat(method) AS m FROM admin_sessions WHERE email='$LOGOP
 echo "$M" | grep -q passkey || pao "sesije logopeda: $M"
 ok "poziv.iskoristen u aktivnosti, sesija $M"
 
-STATUS=$(curl -s -o /dev/null -w '%{http_code}' -b "$KOLACIC=$LT" "$BASE/admin/passkeys")
-[ "$STATUS" = 200 ] || pao "logoped /admin/passkeys: $STATUS"
-ok "logoped vidi /admin/passkeys"
+STATUS=$(curl -s -o /dev/null -w '%{http_code}' -b "$KOLACIC=$LT" "$BASE/admin/postavke")
+[ "$STATUS" = 200 ] || pao "logoped /admin/postavke: $STATUS"
+ok "logoped vidi /admin/postavke (ključevi)"
 
 # 3b. Ovlasti logopeda (S3): administracija 403, tuđi zadatak 404, vlastiti se sprema.
 LO=(-s -H "Origin: $BASE" -b "$KOLACIC=$LT")
 kod() { curl -s -o "$TMP/odg" -w '%{http_code}' "$@"; }
-for P in /admin/prompt /admin/red /admin/korisnici /admin/zvukovi/glasovi /admin/app/prijava '/admin%2Fprompt' /ADMIN/Prompt ; do
+for P in /admin/prompt /admin/red /admin/uprava/korisnici /admin/zvukovi/glasovi /admin/app/prijava '/admin%2Fprompt' /ADMIN/Prompt ; do
   S=$(kod -b "$KOLACIC=$LT" "$BASE$P")
   [ "$S" = 403 ] && grep -q "Natrag na katalog" "$TMP/odg" || pao "logoped GET $P: $S"  # stranica kroz rewrite, ne zamjenski HTML
 done
 S=$(kod -b "$KOLACIC=$LT" "$BASE//admin//red"); [ "$S" = 200 ] && pao "logoped //admin//red: 200"  # astro dev daje 404
 ok "logoped: administracija 403 (stranica „Nemaš pristup”)"
-for P in /admin/api/zvuk-proba /admin/api/app-kod /admin/korisnici; do
+for P in /admin/api/zvuk-proba /admin/api/app-kod /admin/uprava/korisnici; do
   S=$(kod "${LO[@]}" -H 'content-type: application/json' --data '{}' "$BASE$P")
   [ "$S" = 403 ] && grep -q forbidden "$TMP/odg" || pao "logoped POST $P: $S"
 done
@@ -125,7 +125,7 @@ d1 "UPDATE zadaci SET obrisan_at=datetime('now') WHERE id IN ($TUDJI,$MOJ)" >/de
 # pokazuje preostalo; riječi koje logoped doda imaju `dodao`. Runner se ne pokreće (posao ostaje 'ceka').
 ID=$(d1 "SELECT id FROM korisnici WHERE email='$LOGOPED' AND uloga='logoped' AND aktivan=1" | grep -o '"id": *[0-9]*' | grep -o '[0-9]*$')
 [ -n "$ID" ] || pao "nema aktivnog retka logopeda"
-S=$(kod "${SA[@]}" --data-urlencode akcija=limiti --data-urlencode id="$ID" --data-urlencode limit_slike_7d=1 --data-urlencode limit_zvukovi_7d=200 "$BASE/admin/korisnici")
+S=$(kod "${SA[@]}" --data-urlencode akcija=limiti --data-urlencode id="$ID" --data-urlencode limit_slike_7d=1 --data-urlencode limit_zvukovi_7d=200 "$BASE/admin/uprava/korisnici")
 [ "$S" = 303 ] || pao "superadmin postavlja limit: $S"
 SUF=$(date +%s | tr '0-9' 'abcdefghij'); R1="ezeprva$SUF"; R2="ezedruga$SUF"
 for R in "$R1" "$R2"; do
@@ -155,8 +155,8 @@ ok "jedan posao (ceka) i jedan redak ai_potrosnja"
 kod -b "$KOLACIC=$LT" "$BASE/admin" >/dev/null
 tr -d '\n' < "$TMP/odg" | grep -o 'class="kvota-stanje".*class="dno"' | grep -q '>0/1</b>.*>200/200</b>' || pao "bočna traka ne pokazuje preostalo (0/1, 200/200)"
 kod -b "$KOLACIC=$T" "$BASE/admin" >/dev/null; grep -q 'class="kvota-stanje"' "$TMP/odg" && pao "superadmin vidi kvotu u traci"
-S=$(kod -b "$KOLACIC=$T" "$BASE/admin/korisnici"); tr -d '\n' < "$TMP/odg" | grep -o "data-email=\"$LOGOPED\".*" | grep -q 'slike 1/1' || pao "/admin/korisnici ne pokazuje potrošnju logopeda: $S"
-ok "bočna traka logopeda: slike 0/1, izgovori 200/200; superadmin bez nje; /admin/korisnici: slike 1/1"
+S=$(kod -b "$KOLACIC=$T" "$BASE/admin/uprava/korisnici"); tr -d '\n' < "$TMP/odg" | grep -o "data-email=\"$LOGOPED\".*" | grep -q 'slike 1/1' || pao "/admin/uprava/korisnici ne pokazuje potrošnju logopeda: $S"
+ok "bočna traka logopeda: slike 0/1, izgovori 200/200; superadmin bez nje; /admin/uprava/korisnici: slike 1/1"
 # Čišćenje lokalne baze: posao, potrošnja, riječi i njihovi zapisi u aktivnosti.
 d1 "DELETE FROM aktivnost WHERE (tablica='generiranja' AND redak_id IN (SELECT id FROM generiranja WHERE rijec_id IN ($RID1,$RID2))) OR (tablica='rijeci' AND redak_id IN ($RID1,$RID2)); DELETE FROM generiranja WHERE rijec_id IN ($RID1,$RID2); DELETE FROM ai_potrosnja WHERE korisnik_id=$ID; DELETE FROM rijeci WHERE id IN ($RID1,$RID2)" >/dev/null
 N=$(d1 "SELECT (SELECT COUNT(*) FROM generiranja WHERE rijec_id IN ($RID1,$RID2)) + (SELECT COUNT(*) FROM ai_potrosnja WHERE korisnik_id=$ID) + (SELECT COUNT(*) FROM rijeci WHERE id IN ($RID1,$RID2)) AS n" | grep -o '"n": *[0-9]*' | grep -o '[0-9]*$')
@@ -166,7 +166,7 @@ ok "posao, potrošnja i riječi obrisani iz lokalne baze"
 # 4. Superadmin deaktivira; logopedov sljedeći zahtjev ide na prijavu.
 ID=$(d1 "SELECT id FROM korisnici WHERE email='$LOGOPED' AND uloga='logoped' AND aktivan=1" | grep -o '"id": *[0-9]*' | grep -o '[0-9]*$')
 [ -n "$ID" ] || pao "nema aktivnog retka logopeda"
-STATUS=$(curl "${SA[@]}" -o /dev/null -w '%{http_code}' --data-urlencode akcija=deaktiviraj --data-urlencode id="$ID" "$BASE/admin/korisnici")
+STATUS=$(curl "${SA[@]}" -o /dev/null -w '%{http_code}' --data-urlencode akcija=deaktiviraj --data-urlencode id="$ID" "$BASE/admin/uprava/korisnici")
 [ "$STATUS" = 303 ] || pao "deaktivacija: $STATUS"
 ok "deaktiviran (id $ID)"
 

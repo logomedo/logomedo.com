@@ -20,8 +20,8 @@ const db = () => env.DB as D1Database;
 /** Naslov, opis, link i gumb obavijesti. Čisto (testovi). */
 export function sadrzajObavijesti(izvor: Izvor): { subject: string; text: string; html: string } {
   const v = izvor.vrsta === "poruka"
-    ? { naslov: "Nova poruka u LogoMedu", opis: "U inboxu LogoMeda je nova poruka.", url: `${ADRESA_ADMINA}/admin/poruke/${izvor.razgovorId}`, gumb: "Otvori razgovor" }
-    : { naslov: "Novi zahtjev za pristup LogoMedu", opis: "Na /pristup je stigao novi zahtjev za pristup.", url: `${ADRESA_ADMINA}/admin/zahtjevi`, gumb: "Otvori zahtjeve" };
+    ? { naslov: "Nova poruka u LogoMedu", opis: "U inboxu LogoMeda je nova poruka.", url: `${ADRESA_ADMINA}/admin/uprava/poruke/${izvor.razgovorId}`, gumb: "Otvori razgovor" }
+    : { naslov: "Novi zahtjev za pristup LogoMedu", opis: "Na /pristup je stigao novi zahtjev za pristup.", url: `${ADRESA_ADMINA}/admin/uprava/zahtjevi`, gumb: "Otvori zahtjeve" };
   return { subject: v.naslov, text: popuni(obavijest.text, v, false), html: popuni(obavijest.html, v, true) };
 }
 

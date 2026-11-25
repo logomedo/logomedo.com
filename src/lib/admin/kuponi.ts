@@ -1,4 +1,4 @@
-// Kuponi na /pristup (migrations/0047, docs/kuponi.md). Superadmin ih stvara na /admin/kuponi; osoba upiše kod u
+// Kuponi na /pristup (migrations/0047, docs/kuponi.md). Superadmin ih stvara na /admin/uprava/kuponi; osoba upiše kod u
 // obrazac ili dobije link /pristup?kupon=KOD. Kupon s `auto_odobri` odobrava zahtjev sam (pristup.ts posalji()):
 // pozivnica odmah ide e-poštom, bez klika „Odobri”. Uz kupon može ići pogodnost nakon bete (pogodnosti.ts).
 import { env } from "cloudflare:workers";

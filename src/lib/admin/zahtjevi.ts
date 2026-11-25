@@ -1,4 +1,4 @@
-// Zahtjevi za pristup s /pristup (S7 landinga), za superadmina na /admin/zahtjevi. „Odobri” izdaje običnu
+// Zahtjevi za pristup s /pristup (S7 landinga), za superadmina na /admin/uprava/zahtjevi. „Odobri” izdaje običnu
 // pozivnicu (pozivi.ts izdaj()); link se prikaže samo u tom odgovoru, u bazi ostaje samo njegov sha-256
 // (`poziv_token_hash`, po njemu retencija zna kad je pozivnica iskorištena). Zahtjevi nisu u `aktivnost`
 // (CHECK na `tablica`), trag je `obradio`/`obradjen_at`; izdaj() sam upiše 'poziv.izdan'.

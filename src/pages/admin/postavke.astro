@@ -1,6 +1,9 @@
 ---
-// Postavke korisnika (migracija 0029). Stranica sama obrađuje POST (kao /admin/zvukovi).
+// Postavke korisnika (migracija 0029): profil, pogodnost, logopedski mod, ključevi (passkeyi, do 25. 11. /admin/passkeys)
+// i uređaji. Stranica sama obrađuje POST (kao /admin/zvukovi).
 import AdminOkvir from "../../components/AdminOkvir.astro";
+import Ikona from "../../components/Ikona.astro";
+import { mojiKljucevi, obrisiKljuc } from "../../lib/admin/passkey";
 import { logopedskiMod, postaviLogopedskiMod } from "../../lib/zadaci/baza";
 import { IME_MAX, profil, spremiProfil } from "../../lib/admin/profil";
 import { kad } from "../../lib/katalog";
@@ -10,12 +13,16 @@ import { opisPogodnosti, vazeca } from "../../lib/admin/pogodnosti";
 const s = Astro.locals.admin!;
 const email = s.email;
 const superadmin = s.uloga === "superadmin";
-let spremljeno: "mod" | "profil" | "uredaj" | null = Astro.url.searchParams.get("ok") === "profil" ? "profil" : null;
+const ok = Astro.url.searchParams.get("ok");
+let spremljeno: "mod" | "profil" | "uredaj" | "kljuc" | null = ok === "profil" ? "profil" : ok === "kljuc" ? "kljuc" : null;
 let greska: string | null = null;
 let unos: { ime: string; email: string } | null = null;
 if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
-  if (f.get("akcija") === "odjavi_uredaj") {
+  if (f.get("akcija") === "obrisi_kljuc") {
+    await obrisiKljuc(String(f.get("id")), email);
+    return Astro.redirect("/admin/postavke?ok=kljuc#kljucevi", 303);
+  } else if (f.get("akcija") === "odjavi_uredaj") {
     await odjaviUredaj(email, Number(f.get("id")), null, Astro.request);
     spremljeno = "uredaj";
   } else if (f.get("akcija") === "profil") {
@@ -38,6 +45,14 @@ const uredaji = await mojiUredaji(email, Astro.request);
 // Pogodnost nakon bete (docs/pogodnosti.md): korisnik vidi samo opis, ne napomenu superadmina.
 const pogodnost = superadmin ? null : await vazeca(email);
 const limitUredaja = limitZa(s.uloga, null, provedba());
+// Ključevi: passkey radi samo na domeni na kojoj je upisan (rpID). Staging je kopija produkcijske baze, pa
+// ključeve s logomedo.com samo pokazuje, odvojeno i s napomenom.
+const kljucevi = await mojiKljucevi(email);
+const domena = Astro.url.hostname;
+const ovdje = kljucevi.filter((k) => k.rp_id === domena);
+const drugdje = kljucevi.filter((k) => k.rp_id !== domena);
+// Isto pravilo kao registerRefusal: svaka prijava mlađa od 10 min (kod, passkey ili pozivnica).
+const svjeza = Date.now() - Date.parse(s.createdAt) < 10 * 60_000;
 const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.mreza].filter(Boolean).join(" · ") || "nepoznato mjesto";
 ---
 <AdminOkvir naslov="Postavke" aktivno="postavke">
@@ -98,6 +113,40 @@ const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.
     </div>
   </form>
 
+  <section class="ploha postavke" id="kljucevi">
+    <h2>Ključevi</h2>
+    <p class="opis">Passkeyi za <b>{email}</b>: prijava bez koda na e-mail, otiskom prsta, licem ili PIN-om uređaja.</p>
+    {ovdje.length ? (
+      <ul class="uredaji kljucevi">
+        {ovdje.map((k) => (
+          <li data-kljuc={k.id}>
+            <div><b>{k.label}</b><span class="opis">dodan {kad(k.created_at)} · zadnje korišten {kad(k.last_used_at)}</span></div>
+            <form method="post">
+              <input type="hidden" name="akcija" value="obrisi_kljuc" /><input type="hidden" name="id" value={k.id} />
+              <button class="gumb mali tihi opasno" type="submit">Obriši</button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    ) : <p class="opis">Još nema ključeva{drugdje.length ? ` za ${domena}` : ""}. Dodaj passkey da sljedeći put uđeš bez koda na e-mail.</p>}
+    {drugdje.length > 0 && (
+      <div id="druga-domena">
+        <p class="opis">Ključevi za drugu domenu: passkey radi samo na domeni na kojoj je dodan, pa ovdje (<b>{domena}</b>) ovi ne otvaraju prijavu.
+          {domena !== "logomedo.com" && " Ova baza je kopija produkcijske, zato su na popisu."}</p>
+        <ul class="uredaji">
+          {drugdje.map((k) => <li class="blijedo"><div>{k.label}<span class="opis">{k.rp_id} · zadnje korišten {kad(k.last_used_at)}</span></div></li>)}
+        </ul>
+      </div>
+    )}
+    <form id="passkey-register" class="dodaj-kljuc">
+      <input type="text" name="label" placeholder="Oznaka, npr. MacBook" maxlength="80" aria-label="Oznaka novog ključa" />
+      <button class="gumb glavni mali" type="submit"><Ikona ime="kljuc" /> Dodaj passkey</button>
+    </form>
+    <p class="opis">{svjeza ? "Prijava je svježa, možeš dodati ključ." : "Dodavanje traži prijavu mlađu od 10 minuta: odjavi se i prijavi ponovno."}</p>
+    <p id="msg" class="greska" hidden></p>
+    {spremljeno === "kljuc" && <div class="dno"><span class="spremljeno" role="status">Ključ obrisan.</span></div>}
+  </section>
+
   <section class="ploha postavke" id="uredaji">
     <h2>Uređaji</h2>
     <p class="opis">Preglednici u kojima je LogoMedo otvoren zadnjih 90 dana. Tabovi i prozori istog preglednika su jedan uređaj.
@@ -124,8 +173,11 @@ const mjesto = (u: { grad: string | null; mreza: string | null }) => [u.grad, u.
     {spremljeno === "uredaj" && <div class="dno"><span class="spremljeno" role="status">Uređaj odjavljen.</span></div>}
   </section>
 </AdminOkvir>
+<script>import "../../lib/admin/klijent";</script>
 
 <style>
+  .dodaj-kljuc { display: flex; gap: 10px; margin: 0; }
+  .dodaj-kljuc input { flex: 1; }
   .uredaji { list-style: none; margin: 0; padding: 0; }
   .uredaji li { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 10px 0; }
   .uredaji li + li { border-top: 1px solid var(--rub); }

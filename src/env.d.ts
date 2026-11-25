@@ -24,7 +24,7 @@ declare namespace Cloudflare {
     /** Oznake poslovnog prostora i naplatnog uređaja u domovina-fiskal (var; zadano PP1 / 2). */
     FISKAL_PROSTOR?: string;
     FISKAL_UREDAJ?: string;
-    /** "da" (samo staging): gumb „Simuliraj uplatu” na /admin/zahtjevi. */
+    /** "da" (samo staging): gumb „Simuliraj uplatu” na /admin/uprava/zahtjevi. */
     NAPLATA_SIMULACIJA?: string;
   }
 }

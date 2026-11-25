@@ -1,4 +1,4 @@
-// Pozivnica nakon „Odobri” na /admin/zahtjevi (src/lib/email.ts). Placeholderi: {{pozdrav}}, {{url}}, {{istjece}}.
+// Pozivnica nakon „Odobri” na /admin/uprava/zahtjevi (src/lib/email.ts). Placeholderi: {{pozdrav}}, {{url}}, {{istjece}}.
 import { Button, Text } from "@react-email/components";
 import { BOJA, Okvir, TAMNA, sitno, tekst } from "./Okvir";
 

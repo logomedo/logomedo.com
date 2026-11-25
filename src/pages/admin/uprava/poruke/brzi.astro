@@ -1,11 +1,11 @@
 ---
-// Brzi odgovori za /admin/poruke (docs/inbox/, S3): česti odgovori logopedima. Samo superadmin. U obrascu
+// Brzi odgovori za /admin/uprava/poruke (docs/inbox/, S3): česti odgovori logopedima. Samo superadmin. U obrascu
 // odgovora umeću se iz izbornika ili upisom `/kratica` + Tab (src/lib/poruke-klijent.ts).
-import AdminOkvir from "../../../components/AdminOkvir.astro";
-import Ikona from "../../../components/Ikona.astro";
-import { kad } from "../../../lib/katalog";
-import { smije } from "../../../lib/admin/ovlasti";
-import { BRZI_TEKST_MAX, brziOdgovori, obrisiBrziOdgovor, spremiBrziOdgovor } from "../../../lib/poruke";
+import AdminOkvir from "../../../../components/AdminOkvir.astro";
+import Ikona from "../../../../components/Ikona.astro";
+import { kad } from "../../../../lib/katalog";
+import { smije } from "../../../../lib/admin/ovlasti";
+import { BRZI_TEKST_MAX, brziOdgovori, obrisiBrziOdgovor, spremiBrziOdgovor } from "../../../../lib/poruke";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -22,11 +22,11 @@ if (Astro.request.method === "POST") {
   if (akcija === "spremi") {
     nacrt = { id, kratica: String(f.get("kratica") ?? ""), naslov: String(f.get("naslov") ?? ""), tekst: String(f.get("tekst") ?? "") };
     const r = await spremiBrziOdgovor(nacrt);
-    if (r.ok) return Astro.redirect(`/admin/poruke/brzi?ok=spremljen#brzi-${r.id}`, 303);
+    if (r.ok) return Astro.redirect(`/admin/uprava/poruke/brzi?ok=spremljen#brzi-${r.id}`, 303);
     greska = r.greska;
   } else if (akcija === "obrisi" && id) {
     await obrisiBrziOdgovor(id);
-    return Astro.redirect("/admin/poruke/brzi?ok=obrisan", 303);
+    return Astro.redirect("/admin/uprava/poruke/brzi?ok=obrisan", 303);
   } else greska = "Nepoznata radnja.";
   Astro.response.status = 400;
 }
@@ -35,8 +35,8 @@ const brzi = await brziOdgovori();
 const novi = nacrt && !nacrt.id ? nacrt : { kratica: "", naslov: "", tekst: "" };
 const uredjivanje = (id: number) => (nacrt?.id === id ? nacrt : null);
 ---
-<AdminOkvir naslov="Brzi odgovori" aktivno="poruke">
-  <p class="natrag"><a href="/admin/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
+<AdminOkvir naslov="Brzi odgovori" podrucje="uprava" aktivno="poruke">
+  <p class="natrag"><a href="/admin/uprava/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
   <h1>Brzi odgovori</h1>
   <p class="podnaslov">Česti odgovori logopedima. U odgovoru ih umetni iz izbornika ili upiši <code>/kratica</code> pa Tab.</p>
 

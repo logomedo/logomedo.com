@@ -1,8 +1,8 @@
-// PDF računa uplate iz domovina-fiskala (docs/naplata.md). Pod /admin/zahtjevi, pa samo superadmin (rute.ts);
+// PDF računa uplate iz domovina-fiskala (docs/naplata.md). Pod /admin/uprava, pa samo superadmin (rute.ts);
 // API ključ fiskala ostaje na serveru.
 import type { APIRoute } from "astro";
-import { smije } from "../../../../lib/admin/ovlasti";
-import { pdfRacuna } from "../../../../lib/admin/uplate";
+import { smije } from "../../../../../lib/admin/ovlasti";
+import { pdfRacuna } from "../../../../../lib/admin/uplate";
 
 export const GET: APIRoute = async ({ params, locals }) => {
   const s = locals.admin;

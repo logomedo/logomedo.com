@@ -1,9 +1,9 @@
 // Privitak dolazne poruke iz R2 (`SLIKE`, prefiks poruke/, privatno; odluka 6). Samo superadmin (rute.ts i ovdje).
-// Zadano `attachment`; `?prikaz=1` za slike ugrađene u HTML poruke (iframe na /admin/poruke/[id]) je `inline`.
+// Zadano `attachment`; `?prikaz=1` za slike ugrađene u HTML poruke (iframe na /admin/uprava/poruke/[id]) je `inline`.
 import type { APIRoute } from "astro";
 import { env } from "cloudflare:workers";
-import { smije } from "../../../../lib/admin/ovlasti";
-import { privitak } from "../../../../lib/poruke";
+import { smije } from "../../../../../lib/admin/ovlasti";
+import { privitak } from "../../../../../lib/poruke";
 
 const SLIKE_INLINE = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 

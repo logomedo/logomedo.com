@@ -23,7 +23,7 @@ uređaja odjednom, a pet logopeda u istom vrtiću rade. Na tome rade i Netflix (
 - **Aktivan** = s njega je bio zahtjev u zadnjih 15 min (`AKTIVAN_MIN`) i nije odjavljen. Pozadinska
   osvježavanja (pregled svake 3 s) drže otvoren tab aktivnim; to je namjerno, jer je otvoren.
 - **Limit**: logoped smije 2 aktivna uređaja odjednom (`ZADANI_LIMIT_UREDAJA`), superadmin mu ga mijenja
-  na `/admin/korisnici` (stupac „Uređaji”, polje „odjednom”, prazno = zadano). Superadmin je bez limita.
+  na `/admin/uprava/korisnici` (stupac „Uređaji”, polje „odjednom”, prazno = zadano). Superadmin je bez limita.
 - **Treći uređaj** ne dobiva zabranu nego stranicu „LogoMedo je otvoren na drugom uređaju” (status 409) s
   popisom aktivnih i gumbom „Odjavi taj i nastavi ovdje”. Odjavljeni uređaj zadržava sesiju; na sljedećem
   zahtjevu vidi „Nastavljeno na drugom uređaju” (koji, gdje, kad). Čim se mjesto oslobodi (drugi uređaji
@@ -39,7 +39,7 @@ LogoMedo, i to stalno. Tome je cilj trenje, ne tvrda zabrana.
 
 ## Signali za superadmina
 
-`/admin/korisnici`, stupac „Uređaji”: aktivnih sada, uređaja / mreža / gradova u 30 dana, preuzimanja i
+`/admin/uprava/korisnici`, stupac „Uređaji”: aktivnih sada, uređaja / mreža / gradova u 30 dana, preuzimanja i
 odbijanja u 7 dana. Crveno kad je ≥ 5 preuzimanja u tjednu ili ≥ 6 uređaja u 30 dana: tada se javiti
 korisniku (možda treba više licenci). Mreža je sha-256 prefiksa /24 (IPv4) ili /48 (IPv6) s paprom
 `PRISTUP_TAJNA`, skraćen na 16 znakova; puna IP adresa se ne sprema. Grad i AS organizacija su iz
@@ -52,7 +52,7 @@ Dnevnik `uredaji_dogadaji`: `novi`, `mreza` (uređaj se javio s druge mreže), `
 
 | Vrijednost | Što |
 |---|---|
-| prazno (produkcija) | samo bilježi: uređaji i sažetak na `/admin/korisnici`, nikoga ne zaustavlja |
+| prazno (produkcija) | samo bilježi: uređaji i sažetak na `/admin/uprava/korisnici`, nikoga ne zaustavlja |
 | `logoped` | limit za logopede |
 | `svi` (staging) | limit i za superadmina, za testiranje vlastitim uređajima |
 
@@ -67,10 +67,10 @@ koriste odjednom, pa `"UREDAJI_PROVEDBA": "logoped"` u `vars` u `wrangler.jsonc`
   `scripts/staging-sesija.sh proba-uredaji@primjer.hr`). Provjereno curlom (3 „uređaja” s istim kolačićem sesije:
   1 i 2 = 200, 3 = 409 i JSON `previse_uredaja`; preuzimanje 303; izbačeni vidi „Nastavljeno na drugom uređaju”)
   i u Braveu (stranica izbora, Postavke → Uređaji).
-- **Sljedeće:** oko 8. 12. 2026. pogledati stupac „Uređaji” na `/admin/korisnici` (koliko aktivnih odjednom imaju
+- **Sljedeće:** oko 8. 12. 2026. pogledati stupac „Uređaji” na `/admin/uprava/korisnici` (koliko aktivnih odjednom imaju
   stvarni logopedi). Ako nitko ne treba više od 2, dodati `"UREDAJI_PROVEDBA": "logoped"` u glavne `vars` u
   `wrangler.jsonc` i deployati; inače podići `ZADANI_LIMIT_UREDAJA` ili limit pojedincu.
-- Promjena limita uređaja na `/admin/korisnici` ne piše se u Aktivnost (AI limiti se pišu); dodati ako zatreba.
+- Promjena limita uređaja na `/admin/uprava/korisnici` ne piše se u Aktivnost (AI limiti se pišu); dodati ako zatreba.
 
 ## Testiranje na stagingu
 

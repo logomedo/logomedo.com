@@ -1,4 +1,4 @@
-// /admin/poruke (S3): popis (nepročitani prvi, isječak bez citata), nit s privitcima, HTML za iframe (cid: samo
+// /admin/uprava/poruke (S3): popis (nepročitani prvi, isječak bez citata), nit s privitcima, HTML za iframe (cid: samo
 // kad se pojavljuje u HTML-u), status, brzi odgovori (validacija, jedinstvena kratica, uredi, obriši).
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
@@ -64,7 +64,7 @@ test("nit s privitcima i HTML za prikaz", async () => {
   const h = htmlZaPrikaz(t.poruke[0].html!, t.poruke[0].privitci);
   assert.deepEqual(h.ugradeni, [slika.id], "samo cid koji je u HTML-u; PDF s content_id je običan privitak");
   assert.ok(h.html.startsWith('<base target="_blank">'));
-  assert.ok(h.html.includes(`src="/admin/poruke/privitak/${slika.id}?prikaz=1"`));
+  assert.ok(h.html.includes(`src="/admin/uprava/poruke/privitak/${slika.id}?prikaz=1"`));
   assert.ok(h.html.includes("src=cid:nema"), "nepoznat cid ostaje");
   assert.deepEqual(htmlZaPrikaz('<img src="cid:video">', [{ id: 5, r2_kljuc: null, content_id: "video" }]).ugradeni, [], "nespremljen privitak se ne ugrađuje");
 

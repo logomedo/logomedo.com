@@ -43,8 +43,8 @@ test("poruka: na sve superadmine, link na razgovor, bez sadržaja", async () => 
   assert.equal(b.from, POSILJATELJ_OBAVIJESTI);
   assert.deepEqual(b.to, ["sa@primjer.test", "drugi@primjer.test"]);
   assert.equal(b.subject, "Nova poruka u LogoMedu");
-  assert.ok(String(b.text).includes("https://logomedo.com/admin/poruke/7"));
-  assert.ok(String(b.html).includes("https://logomedo.com/admin/poruke/7"));
+  assert.ok(String(b.text).includes("https://logomedo.com/admin/uprava/poruke/7"));
+  assert.ok(String(b.html).includes("https://logomedo.com/admin/uprava/poruke/7"));
   assert.ok(!String(b.html).includes("{{"), "svi placeholderi popunjeni");
 });
 
@@ -70,8 +70,8 @@ test("D1 padne: ne baca", async () => {
   assert.equal(await obavijesti({ vrsta: "zahtjev" }, f, T0), "greska");
 });
 
-test("zahtjev: link na /admin/zahtjevi", () => {
+test("zahtjev: link na /admin/uprava/zahtjevi", () => {
   const s = sadrzajObavijesti({ vrsta: "zahtjev" });
   assert.equal(s.subject, "Novi zahtjev za pristup LogoMedu");
-  assert.ok(s.text.includes("https://logomedo.com/admin/zahtjevi"));
+  assert.ok(s.text.includes("https://logomedo.com/admin/uprava/zahtjevi"));
 });

@@ -4,7 +4,7 @@
 // odjavi jedan od aktivnih. Jednoj osobi to ništa ne smeta (nije za dva računala odjednom), a
 // ekipi koja dijeli jedan račun ruši rad svaki put kad netko novi sjedne.
 //
-// Provedba: env.UREDAJI_PROVEDBA. Bez njega se uređaji samo bilježe (pregled na /admin/korisnici);
+// Provedba: env.UREDAJI_PROVEDBA. Bez njega se uređaji samo bilježe (pregled na /admin/uprava/korisnici);
 // "logoped" = provodi se za logopede; "svi" = i za superadmina (za testiranje na stagingu).
 import { env } from "cloudflare:workers";
 import { randomToken, readCookie, sha256Hex, type Session } from "./sesija";
@@ -261,7 +261,7 @@ export interface SazetakUredaja {
   previse7: number;
 }
 
-/** Za /admin/korisnici: po e-mailu, jednim upitom. */
+/** Za /admin/uprava/korisnici: po e-mailu, jednim upitom. */
 export async function sazeciUredaja(): Promise<Map<string, SazetakUredaja>> {
   const sada = Date.now();
   const d30 = new Date(sada - 30 * 86_400_000).toISOString();

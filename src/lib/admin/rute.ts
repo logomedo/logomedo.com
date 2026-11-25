@@ -7,14 +7,14 @@ import type { Uloga } from "./ovlasti.ts";
 export const SAMO_SUPERADMIN = [
   "/admin/prompt",
   "/admin/red",
+  // Uprava (docs/uprava/plan.md): korisnici, zahtjevi, pogodnosti, kuponi, uplate, poruke. Sve ispod je
+  // zaštićeno samo od sebe, pa nova stranica Uprave ne treba svoj redak ovdje.
+  "/admin/uprava",
+  // Stare adrese Uprave (do 25. 11. 2026.): superadmina middleware preusmjerava (PRESELJENO), logoped ih ne smije.
   "/admin/korisnici",
-  // Zahtjevi za pristup s /pristup (S7 landinga): odobravanje izdaje pozivnicu.
   "/admin/zahtjevi",
-  // Pogodnosti nakon bete (docs/pogodnosti.md): privatno obećanje besplatnog pristupa.
   "/admin/pogodnosti",
-  // Kuponi za /pristup (docs/kuponi.md): auto-odobravanje izdaje pozivnice bez klika.
   "/admin/kuponi",
-  // Inbox (docs/inbox/): dopisivanje s logopedima je osobni podatak, samo superadmin.
   "/admin/poruke",
   "/admin/zvukovi/glasovi",
   "/admin/api/zvuk-proba",
@@ -44,3 +44,21 @@ export function rutaSamoSuperadmin(path: string): boolean {
 
 /** Smije li uloga na poveznicu (za skrivanje u UI-ju). */
 export const smijeNa = (uloga: Uloga, href: string) => uloga === "superadmin" || !rutaSamoSuperadmin(href);
+
+/** Preseljene admin stranice (docs/uprava/plan.md): stari prefiks → novi. Bookmarkovi i linkovi u starim mailovima. */
+export const PRESELJENO: readonly (readonly [string, string])[] = [
+  ["/admin/zahtjevi/racun", "/admin/uprava/uplate/racun"],
+  ["/admin/korisnici", "/admin/uprava/korisnici"],
+  ["/admin/zahtjevi", "/admin/uprava/zahtjevi"],
+  ["/admin/pogodnosti", "/admin/uprava/pogodnosti"],
+  ["/admin/kuponi", "/admin/uprava/kuponi"],
+  ["/admin/poruke", "/admin/uprava/poruke"],
+];
+
+/** Nova putanja za preseljenu stranicu (s ostatkom putanje), ili null. */
+export function preseljeno(path: string): string | null {
+  for (const [stara, nova] of PRESELJENO) {
+    if (path === stara || path.startsWith(`${stara}/`)) return nova + path.slice(stara.length);
+  }
+  return null;
+}

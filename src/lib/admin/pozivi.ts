@@ -12,7 +12,7 @@ export const POZIV_SATI = 72;
 
 export type RazlogOdbijanja = "email" | "superadmin" | "aktivan_logoped" | "nema_korisnika" | "nije_logoped" | "drugi_email" | "neaktivan";
 
-/** Poruke za superadmina na /admin/korisnici (pozvani ih nikad ne vidi). */
+/** Poruke za superadmina na /admin/uprava/korisnici (pozvani ih nikad ne vidi). */
 export const PORUKE_ODBIJANJA: Record<RazlogOdbijanja, string> = {
   email: "Neispravan e-mail.",
   superadmin: "Taj e-mail je superadmin (ADMIN_EMAILS): pozivnica mu ne treba.",

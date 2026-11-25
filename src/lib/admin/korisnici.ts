@@ -1,4 +1,4 @@
-// /admin/korisnici (docs/rbac/, S2): popis, (de)aktivacija i AI limiti logopeda. Samo superadmin
+// /admin/uprava/korisnici (docs/rbac/, S2): popis, (de)aktivacija i AI limiti logopeda. Samo superadmin
 // (ovlast `korisnici`), provjera je na stranici. Superadmin (ADMIN_EMAILS) se ovdje ne mijenja
 // (odluke 2 i 106): ni deaktivacija ni limiti, jer se njegov redak za ulogu ne čita.
 import { env } from "cloudflare:workers";

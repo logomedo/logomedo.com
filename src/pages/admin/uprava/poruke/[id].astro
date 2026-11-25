@@ -2,14 +2,14 @@
 // Razgovor (docs/inbox/, S3): nit kronološki, privitci iz R2, odgovor s brzim odgovorima. Samo superadmin.
 // Tekst je zadani prikaz; izvorni HTML ide u `iframe sandbox` (srcdoc, bez skripti; CSP stranice vrijedi i u
 // njemu, pa se vanjske slike ne učitavaju). Otvaranje razgovora označava dolazne poruke pročitanima.
-import AdminOkvir from "../../../components/AdminOkvir.astro";
-import Ikona from "../../../components/Ikona.astro";
-import { kad } from "../../../lib/katalog";
-import { smije } from "../../../lib/admin/ovlasti";
+import AdminOkvir from "../../../../components/AdminOkvir.astro";
+import Ikona from "../../../../components/Ikona.astro";
+import { kad } from "../../../../lib/katalog";
+import { smije } from "../../../../lib/admin/ovlasti";
 import {
   brziOdgovori, htmlZaPrikaz, potpisPoruka, nit, oznaciProcitano, postaviStatus, putanjaPrivitka, razdvojiAdresu, razdvojiCitat, type StatusRazgovora,
-} from "../../../lib/poruke";
-import { posaljiOdgovor } from "../../../lib/email";
+} from "../../../../lib/poruke";
+import { posaljiOdgovor } from "../../../../lib/email";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -34,8 +34,8 @@ if (Astro.request.method === "POST") {
     else {
       const kljuc = String(f.get("kljuc") ?? "");
       const r = await posaljiOdgovor({ razgovorId: id, tekst: nacrt, poslao: s.email, kljucSlanja: kljuc });
-      if (r.ok) return Astro.redirect(`/admin/poruke/${id}?ok=poslano#odgovor`, 303);
-      if (r.razlog === "u_tijeku") return Astro.redirect(`/admin/poruke/${id}?ok=u_tijeku#odgovor`, 303);
+      if (r.ok) return Astro.redirect(`/admin/uprava/poruke/${id}?ok=poslano#odgovor`, 303);
+      if (r.razlog === "u_tijeku") return Astro.redirect(`/admin/uprava/poruke/${id}?ok=u_tijeku#odgovor`, 303);
       if (r.razlog === "nema_razgovora") return new Response("Nema razgovora", { status: 404 });
       greska = r.razlog === "nema_kljuca" ? "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY). Ništa nije poslano ni upisano."
         : r.razlog === "prazno" ? "Odgovor je prazan."
@@ -45,7 +45,7 @@ if (Astro.request.method === "POST") {
   } else if (akcija === "status") {
     const st = String(f.get("status") ?? "") as StatusRazgovora;
     if (!["otvoren", "zatvoren"].includes(st)) greska = "Nepoznat status.";
-    else if (await postaviStatus(id, st)) return Astro.redirect(`/admin/poruke/${id}?ok=status`, 303);
+    else if (await postaviStatus(id, st)) return Astro.redirect(`/admin/uprava/poruke/${id}?ok=status`, 303);
     else return new Response("Nema razgovora", { status: 404 });
   } else greska = "Nepoznata radnja.";
   if (greska) Astro.response.status = 400;
@@ -67,9 +67,9 @@ const zadnja = poruke.at(-1)?.id;
 const STATUS: Record<StatusRazgovora, string> = { otvoren: "otvoren", zatvoren: "zatvoren", nerasporedjen: "neraspoređen" };
 const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} kB` : `${(b / 1024 / 1024).toFixed(1)} MB`;
 ---
-<AdminOkvir naslov={r.predmet ?? "Razgovor"} aktivno="poruke">
-  <div id="pracenje" hidden data-url={`/admin/poruke/stanje?razgovor=${id}`} data-potpis={potpis} data-razgovor={id}></div>
-  <p class="natrag"><a href="/admin/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
+<AdminOkvir naslov={r.predmet ?? "Razgovor"} podrucje="uprava" aktivno="poruke">
+  <div id="pracenje" hidden data-url={`/admin/uprava/poruke/stanje?razgovor=${id}`} data-potpis={potpis} data-razgovor={id}></div>
+  <p class="natrag"><a href="/admin/uprava/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
   <div class="naslov">
     <div class="sugovornik">
       <h1>{r.predmet ?? "(bez predmeta)"}</h1>
@@ -148,7 +148,7 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
       <p class="blijedo sitno" id="odgovor-pomoc">
         {brzi.length > 0 ? <>Upiši <code>/kratica</code> pa Tab za brzi odgovor. </> : null}
         Šalje se s bok@logomedo.com, s kratkim citatom zadnje poruke; odgovor stiže natrag ovamo.{" "}
-        <a href="/admin/poruke/brzi">Uredi brze odgovore</a>
+        <a href="/admin/uprava/poruke/brzi">Uredi brze odgovore</a>
       </p>
       <div class="akcije">
         <button class="gumb glavni" type="submit" id="posalji"><Ikona ime="pismo" /> <span class="natpis-gumba">Pošalji</span><span class="vrtilica" aria-hidden="true"></span></button>
@@ -158,8 +158,8 @@ const velicina = (b: number | null) => b == null ? "" : b < 1024 * 1024 ? `${Mat
   </section>
 </AdminOkvir>
 <script>
-  import { umetniKraticu, umetniNaKursor } from "../../../lib/poruke-klijent";
-  import { nacrtKljuc, pratiPoruke } from "../../../lib/poruke-pracenje";
+  import { umetniKraticu, umetniNaKursor } from "../../../../lib/poruke-klijent";
+  import { nacrtKljuc, pratiPoruke } from "../../../../lib/poruke-pracenje";
 
   const polje = document.getElementById("odgovor-tekst") as HTMLTextAreaElement | null;
   const izbor = document.getElementById("brzi-izbor") as HTMLSelectElement | null;

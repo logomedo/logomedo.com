@@ -1,4 +1,4 @@
-// Brzi odgovori u obrascu odgovora na /admin/poruke/[id] (S3). Čisti TS bez DOM-a (testira se), a stranica ga
+// Brzi odgovori u obrascu odgovora na /admin/uprava/poruke/[id] (S3). Čisti TS bez DOM-a (testira se), a stranica ga
 // uvozi iz <script> (Astro ga bundla; CSP nonce dodaje middleware, nema inline handlera).
 
 export interface Umetanje { vrijednost: string; kursor: number }

@@ -10,7 +10,7 @@ import {
 import { ispravanEmail, normalizirajEmail } from "./admin/pozivi";
 
 export const POSILJATELJ = "LogoMedo <pozivnica@logomedo.com>";
-/** Pošiljatelj odgovora iz /admin/poruke; odgovor na njega ide na `reply_to` razgovora, ne na ovu adresu. */
+/** Pošiljatelj odgovora iz /admin/uprava/poruke; odgovor na njega ide na `reply_to` razgovora, ne na ovu adresu. */
 export const POSILJATELJ_ODGOVORA = "LogoMedo <bok@logomedo.com>";
 /** Rezervna adresa za odgovor (mailovi bez razgovora); pozivnica šalje na `adresaZaOdgovor(kljuc)` (docs/inbox/). */
 export const ODGOVOR_NA = "bok@logomedo.com";
@@ -53,7 +53,7 @@ export function sadrzajPozivnice(p: Pozivnica): { subject: string; text: string;
 /**
  * Pošalji pozivnicu. Ne baca: neuspjeh vraća razlog, a admin i dalje ima link za ručno slanje.
  * Prije slanja otvara razgovor u inboxu, pa `reply_to` nosi njegov ključ i odgovor logopeda stiže u
- * /admin/poruke; poslana pozivnica (bez tokena) se upisuje u taj razgovor. Neuspjelo slanje briše prazan razgovor.
+ * /admin/uprava/poruke; poslana pozivnica (bez tokena) se upisuje u taj razgovor. Neuspjelo slanje briše prazan razgovor.
  */
 export async function posaljiPozivnicu(p: Pozivnica, f: typeof fetch = fetch, cekaj = 1500): Promise<IshodSlanja> {
   const kljuc = env.RESEND_API_KEY;
@@ -253,7 +253,7 @@ export type IshodNovog =
 export const PREDMET_MAX = 200;
 
 /**
- * Novi razgovor iz admina (S4, npr. s /admin/zahtjevi): otvori razgovor, pošalji prvi mail kroz `posaljiOdgovor`
+ * Novi razgovor iz admina (S4, npr. s /admin/uprava/zahtjevi): otvori razgovor, pošalji prvi mail kroz `posaljiOdgovor`
  * (isti predložak, `reply_to` razgovora, bez citata i bez „Re:”) i upiši ga. Neuspjeh briše prazan razgovor.
  * Ponovljeni POST s istim ključem obrasca: Resend vrati id već poslanog maila, pa se vraća onaj razgovor.
  */

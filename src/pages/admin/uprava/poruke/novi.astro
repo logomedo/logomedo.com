@@ -1,11 +1,11 @@
 ---
 // Novi razgovor iz admina (docs/inbox/, S4): prvi mail logopedu ili podnositelju zahtjeva, s `reply_to` novog
-// razgovora, pa odgovor stiže u /admin/poruke. Polja se mogu predati kroz ?email=&ime=&predmet= (link s
-// /admin/zahtjevi i /admin/korisnici). Samo superadmin. Jednokratni ključ obrasca kao u odgovoru (odluka 312).
-import AdminOkvir from "../../../components/AdminOkvir.astro";
-import Ikona from "../../../components/Ikona.astro";
-import { smije } from "../../../lib/admin/ovlasti";
-import { PREDMET_MAX, posaljiNoviRazgovor } from "../../../lib/email";
+// razgovora, pa odgovor stiže u /admin/uprava/poruke. Polja se mogu predati kroz ?email=&ime=&predmet= (link s
+// /admin/uprava/zahtjevi i /admin/uprava/korisnici). Samo superadmin. Jednokratni ključ obrasca kao u odgovoru (odluka 312).
+import AdminOkvir from "../../../../components/AdminOkvir.astro";
+import Ikona from "../../../../components/Ikona.astro";
+import { smije } from "../../../../lib/admin/ovlasti";
+import { PREDMET_MAX, posaljiNoviRazgovor } from "../../../../lib/email";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -21,7 +21,7 @@ if (Astro.request.method === "POST") {
   if (v.tekst.length > 20000) greska = "Poruka je preduga (najviše 20 000 znakova).";
   else {
     const r = await posaljiNoviRazgovor({ ...v, poslao: s.email, kljucSlanja: String(f.get("kljuc") ?? "") });
-    if (r.ok) return Astro.redirect(`/admin/poruke/${r.razgovorId}?ok=poslano`, 303);
+    if (r.ok) return Astro.redirect(`/admin/uprava/poruke/${r.razgovorId}?ok=poslano`, 303);
     greska = {
       nema_kljuca: "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY). Ništa nije poslano ni upisano.",
       email: "E-mail nije ispravan.",
@@ -35,8 +35,8 @@ if (Astro.request.method === "POST") {
   Astro.response.status = 400;
 }
 ---
-<AdminOkvir naslov="Novi razgovor" aktivno="poruke">
-  <p class="natrag"><a href="/admin/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
+<AdminOkvir naslov="Novi razgovor" podrucje="uprava" aktivno="poruke">
+  <p class="natrag"><a href="/admin/uprava/poruke"><Ikona ime="natrag" /> Sve poruke</a></p>
   <h1>Novi razgovor</h1>
   <p class="podnaslov">Prvi mail šalje se s bok@logomedo.com; odgovor stiže ovamo, u Poruke.</p>
 

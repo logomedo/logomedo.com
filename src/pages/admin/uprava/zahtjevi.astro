@@ -1,21 +1,21 @@
 ---
 // Zahtjevi za pristup s /pristup (S7 landinga). Samo superadmin (rute.ts, ovlast `korisnici`), i GET i POST.
-// „Odobri” izdaje pozivnicu (src/lib/admin/zahtjevi.ts) i link prikaže jednom, kao /admin/korisnici; nigdje se
+// „Odobri” izdaje pozivnicu (src/lib/admin/zahtjevi.ts) i link prikaže jednom, kao /admin/uprava/korisnici; nigdje se
 // ne sprema. Pri svakom učitavanju briše se ono čemu je istekao rok (retencija, src/lib/pristup.ts).
-import AdminOkvir from "../../components/AdminOkvir.astro";
-import Ikona from "../../components/Ikona.astro";
-import { kad } from "../../lib/katalog";
-import { smije } from "../../lib/admin/ovlasti";
-import { PORUKE_ODBIJANJA } from "../../lib/admin/pozivi";
-import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../lib/admin/zahtjevi";
-import { ROK_MJESECI, pocisti } from "../../lib/pristup";
-import { posaljiPozivnicu, type IshodSlanja } from "../../lib/email";
-import { PAKETI_ZAHTJEVA, cijenaLicence, eura } from "../../landing/konstante";
-import { IZBORI, NAPOMENA_MAX, opisPogodnosti, procitajIzbor, type Pogodnost } from "../../lib/admin/pogodnosti";
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { kad } from "../../../lib/katalog";
+import { smije } from "../../../lib/admin/ovlasti";
+import { PORUKE_ODBIJANJA } from "../../../lib/admin/pozivi";
+import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../../lib/admin/zahtjevi";
+import { ROK_MJESECI, pocisti } from "../../../lib/pristup";
+import { posaljiPozivnicu, type IshodSlanja } from "../../../lib/email";
+import { PAKETI_ZAHTJEVA, cijenaLicence, eura } from "../../../landing/konstante";
+import { IZBORI, NAPOMENA_MAX, opisPogodnosti, procitajIzbor, type Pogodnost } from "../../../lib/admin/pogodnosti";
 import {
-  fiskalPostavljen, izdajRacun, plati, procitajUnos, simulacijaDopustena, uplata as dohvatiUplatu, zadnjeUplate, type Uplata,
-} from "../../lib/admin/uplate";
-import { KUPCI, NACINI, TIP_TEKST } from "../../lib/naplata";
+  fiskalPostavljen, plati, procitajUnos, simulacijaDopustena, type Uplata,
+} from "../../../lib/admin/uplate";
+import { KUPCI, NACINI, TIP_TEKST } from "../../../lib/naplata";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -59,12 +59,8 @@ if (Astro.request.method === "POST") {
         } else if (o.razlog !== "obradjen") poruka = `Pozivnica nije izdana: ${PORUKE_ODBIJANJA[o.razlog]}`;
       }
     }
-  } else if (akcija === "ponovi") {
-    const u = await dohvatiUplatu(id);
-    if (!u) greska = "Uplata ne postoji.";
-    else placeno = await izdajRacun(id, s.email);
   } else if (akcija === "odbij") {
-    if (await odbij(id, s.email)) return Astro.redirect("/admin/zahtjevi?ok=odbijen", 303);
+    if (await odbij(id, s.email)) return Astro.redirect("/admin/uprava/zahtjevi?ok=odbijen", 303);
     greska = "Zahtjev je već obrađen.";
   } else greska = "Nepoznata radnja.";
   if (!poruka?.startsWith("Pozivnica nije")) poruka = null;
@@ -72,17 +68,15 @@ if (Astro.request.method === "POST") {
 }
 
 await pocisti();
-// Tablica uplate (0048) se čita samo gdje je naplata uključena: produkcija je nema dok se fiskal ne postavi.
-const [novi, obradjeni, uplate] = await Promise.all([
-  noviZahtjevi(), obradjeniZahtjevi(), simulacija || fiskalPostavljen() ? zadnjeUplate() : Promise.resolve([] as Uplata[]),
-]);
+// Popis uplata i računa je na /admin/uprava/uplate; ovdje samo ishod upravo simulirane uplate.
+const [novi, obradjeni] = await Promise.all([noviZahtjevi(), obradjeniZahtjevi()]);
 const eura2 = (c: number) => eura(c / 100, c % 100 !== 0);
 const STATUS_RACUNA = { ceka: "čeka", izdan: "izdan, nije dostavljen", poslan: "poslan", greska: "greška" } as const;
 const paketTekst = (kod: string) => PAKETI_ZAHTJEVA.find((p) => p.kod === kod)?.tekst ?? kod;
 const licence = (n: number) => { const c = cijenaLicence(n); return c === null ? "cijena po dogovoru" : `${eura(c)} po licenci, ukupno ${eura(c * n)} godišnje`; };
 const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren", odbijen: "odbijen" };
 ---
-<AdminOkvir naslov="Zahtjevi za pristup" aktivno="zahtjevi">
+<AdminOkvir naslov="Zahtjevi za pristup" podrucje="uprava" aktivno="zahtjevi">
   <div class="naslov">
     <div>
       <h1>Zahtjevi za pristup</h1>
@@ -97,9 +91,10 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
     <section class="ploha link" id="uplata-rezultat">
       <h2>Uplata {eura2(placeno.iznos_centi)} ({placeno.nacin === "kartica" ? "kartica" : "SEPA instant"}): {placeno.kupac_naziv}</h2>
       {placeno.racun_tip && <p class="sitno">Vrsta računa: <b>{TIP_TEKST[placeno.racun_tip]}</b></p>}
-      {placeno.broj_racuna && <p class="sitno">Račun <b>{placeno.broj_racuna}</b>{placeno.jir && <> · JIR <code>{placeno.jir}</code></>} · <a href={`/admin/zahtjevi/racun/${placeno.id}`} target="_blank" rel="noopener">PDF</a></p>}
+      {placeno.broj_racuna && <p class="sitno">Račun <b>{placeno.broj_racuna}</b>{placeno.jir && <> · JIR <code>{placeno.jir}</code></>} · <a href={`/admin/uprava/uplate/racun/${placeno.id}`} target="_blank" rel="noopener">PDF</a></p>}
       <p class:list={["poruka", placeno.racun_status === "poslan" ? "ok" : "greska"]} id="uplata-status">
         Račun: {STATUS_RACUNA[placeno.racun_status]}{placeno.dostava ? ` (${placeno.dostava})` : ""}{placeno.greska ? `. ${placeno.greska}` : ""}</p>
+      <p class="sitno">Sve uplate i ponovno izdavanje računa: <a href={`/admin/uprava/uplate#uplata-${placeno.id}`}>Uplate i računi</a>.</p>
     </section>
   )}
   {link && (
@@ -110,7 +105,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
         : <p class="poruka greska" role="alert" id="poziv-nije-poslan">{slanje?.ok === false && slanje.razlog === "nema_kljuca"
             ? "Slanje e-pošte ovdje nije uključeno (nema RESEND_API_KEY)."
             : "E-pošta nije poslana."} Pošalji link osobno.</p>}
-      {dodijeljena && <p class="sitno" id="poziv-pogodnost">Pogodnost nakon bete: <b>{opisPogodnosti(dodijeljena)}</b> (vidi <a href="/admin/pogodnosti">Pogodnosti</a>).</p>}
+      {dodijeljena && <p class="sitno" id="poziv-pogodnost">Pogodnost nakon bete: <b>{opisPogodnosti(dodijeljena)}</b> (vidi <a href="/admin/uprava/pogodnosti">Pogodnosti</a>).</p>}
       <p class="blijedo sitno">Link se vidi samo sada; vrijedi do {kad(link.istjece)}. Ne šalji ga u javni kanal.
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
       <div class="red-linka">
@@ -132,7 +127,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
           <p class="email">{z.email}</p>
           <p><span class:list={["paket", { placeno: z.paket !== "beta" }]}>{paketTekst(z.paket)}</span>
             {z.paket === "ustanova" && z.broj_licenci && <span class="sitno"> · {z.broj_licenci} licenci: {licence(z.broj_licenci)}</span>}</p>
-          {z.kupon && <p class="sitno" data-kupon={z.kupon}>Kupon: <b>{z.kupon}</b> <span class="blijedo">(ne vrijedi ili nije za auto-odobravanje; vidi <a href="/admin/kuponi">Kupone</a>)</span></p>}
+          {z.kupon && <p class="sitno" data-kupon={z.kupon}>Kupon: <b>{z.kupon}</b> <span class="blijedo">(ne vrijedi ili nije za auto-odobravanje; vidi <a href="/admin/uprava/kuponi">Kupone</a>)</span></p>}
           {z.paket !== "beta" && <p class="sitno blijedo">Narudžba: pošalji račun ili ponudu („Napiši”), a „Odobri” kad uplata stigne.</p>}
           <p class="blijedo">{[z.ustanova, z.grad].filter(Boolean).join(" · ") || "—"}</p>
           {z.poruka && <p class="poruka-zahtjeva">{z.poruka}</p>}
@@ -152,7 +147,7 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
               <input type="hidden" name="id" value={z.id} />
               <button class="gumb mali opasno" type="submit"><Ikona ime="x" /> Odbij</button>
             </form>
-            <a class="gumb mali" href={`/admin/poruke/novi?${new URLSearchParams({ email: z.email, ime: z.ime, predmet: z.paket === "beta" ? "Vaš zahtjev za pristup LogoMedu" : "Vaša narudžba LogoMeda" })}`}><Ikona ime="pismo" /> Napiši</a>
+            <a class="gumb mali" href={`/admin/uprava/poruke/novi?${new URLSearchParams({ email: z.email, ime: z.ime, predmet: z.paket === "beta" ? "Vaš zahtjev za pristup LogoMedu" : "Vaša narudžba LogoMeda" })}`}><Ikona ime="pismo" /> Napiši</a>
           </div>
           {simulacija && z.paket !== "beta" && (
             <details class="simulacija" id={`simulacija-${z.id}`}>
@@ -183,36 +178,6 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
         </article>
       ))}
     </div>
-  )}
-
-  {uplate.length > 0 && (
-    <>
-      <h2 class="podnaslov-popisa">Uplate i računi</h2>
-      <div class="ploha tablica">
-        <table id="uplate">
-          <thead><tr><th>Kupac</th><th>Uplata</th><th>Račun</th><th></th></tr></thead>
-          <tbody>
-            {uplate.map((u) => (
-              <tr id={`uplata-${u.id}`}>
-                <td><b>{u.kupac_naziv}</b>{u.kupac_oib && <span class="sitno"> · OIB {u.kupac_oib}</span>}<br /><span class="blijedo sitno">{u.email}{u.izvor === "simulacija" ? " · simulacija" : ""}</span></td>
-                <td class="sitno">{eura2(u.iznos_centi)} · {u.nacin === "kartica" ? "kartica" : "SEPA"}<br /><span class="blijedo">{kad(u.placeno_at)}</span></td>
-                <td class="sitno">{u.racun_tip ? TIP_TEKST[u.racun_tip] : "—"}{u.broj_racuna && <> <b>{u.broj_racuna}</b></>}<br />
-                  <span class:list={["status", u.racun_status === "poslan" ? "odobren" : u.racun_status === "greska" ? "odbijen" : ""]}>{STATUS_RACUNA[u.racun_status]}</span>
-                  {u.dostava && <span class="blijedo"> {u.dostava}</span>}
-                  {u.greska && <><br /><span class="blijedo">{u.greska}</span></>}</td>
-                <td class="sitno">
-                  {u.fiskal_id && <a href={`/admin/zahtjevi/racun/${u.id}`} target="_blank" rel="noopener">PDF</a>}
-                  {u.racun_status !== "poslan" && (
-                    <form method="post"><input type="hidden" name="akcija" value="ponovi" /><input type="hidden" name="id" value={u.id} />
-                      <button class="gumb mali" type="submit">Ponovi</button></form>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
   )}
 
   {obradjeni.length > 0 && (

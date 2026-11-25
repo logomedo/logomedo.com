@@ -1,4 +1,4 @@
-// /admin/korisnici: deaktivacija, aktivacija, limiti i popis (docs/rbac/, S2) na harnessu.
+// /admin/uprava/korisnici: deaktivacija, aktivacija, limiti i popis (docs/rbac/, S2) na harnessu.
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { napraviD1 } from "../test/d1.ts";

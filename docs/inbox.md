@@ -1,7 +1,7 @@
 # Inbox: odgovori na mailove iz LogoMeda
 
 Logopedi odgovaraju na mailove koje šalje aplikacija (pozivnica, odgovor iz admina, prvi mail novog razgovora).
-Odgovori stižu kroz Resend u D1 i R2, superadmin ih čita i odgovara na `/admin/poruke`. Odgovore piše čovjek:
+Odgovori stižu kroz Resend u D1 i R2, superadmin ih čita i odgovara na `/admin/uprava/poruke`. Odgovore piše čovjek:
 aplikacija ništa ne odgovara sama. Plan i povijest odluka: `docs/inbox/` (`plan.md`, `decisions.md`).
 
 ## Kako radi
@@ -16,7 +16,7 @@ flowchart LR
   W --> D1[(D1: razgovori, poruke, privitci)]
   W --> R2[(R2 SLIKE: poruke/…)]
   W -->|najviše 1/h po razgovoru| O[Obavijest superadminu]
-  D1 --> UI[/admin/poruke/]
+  D1 --> UI[/admin/uprava/poruke/]
 ```
 
 - **Nit** drži ključ u adresi za odgovor `odgovor+<kljuc>@poruke.logomedo.com` (26 znakova base32 po razgovoru);
@@ -24,13 +24,13 @@ flowchart LR
   novi razgovor „neraspoređen”; ništa se ne baca.
 - **Slanje:** pozivnica `pozivnica@logomedo.com`, odgovori i novi razgovor `bok@logomedo.com`, obavijesti
   `obavijesti@logomedo.com`. Predlošci `emails/*.tsx` → `npm run emails` → `src/lib/emails/generirano.ts`.
-- **Admin** (samo superadmin, ovlast `korisnici`): `/admin/poruke` (popis, brojač u bočnoj traci, polling 12 s),
-  `/admin/poruke/[id]` (nit, HTML u sandbox iframeu, privitci kroz `/admin/poruke/privitak/[id]`, odgovor s
-  Idempotency-Key), `/admin/poruke/brzi` (brzi odgovori, `/kratica` + Tab), `/admin/poruke/novi` (novi razgovor;
-  „Napiši” na `/admin/zahtjevi`).
+- **Admin** (samo superadmin, ovlast `korisnici`): `/admin/uprava/poruke` (popis, brojač u bočnoj traci, polling 12 s),
+  `/admin/uprava/poruke/[id]` (nit, HTML u sandbox iframeu, privitci kroz `/admin/uprava/poruke/privitak/[id]`, odgovor s
+  Idempotency-Key), `/admin/uprava/poruke/brzi` (brzi odgovori, `/kratica` + Tab), `/admin/uprava/poruke/novi` (novi razgovor;
+  „Napiši” na `/admin/uprava/zahtjevi`).
 - **Obavijesti** (`src/lib/obavijesti.ts`): nova dolazna poruka i novi zahtjev na `/pristup` → mail na sve adrese iz
   `ADMIN_EMAILS`, samo s linkom (bez imena i sadržaja), najviše jedan na sat po razgovoru, odnosno za zahtjeve.
-- **Retencija** (`src/lib/poruke-retencija.ts`): pri otvaranju `/admin/poruke` brišu se razgovori 24 mjeseca nakon
+- **Retencija** (`src/lib/poruke-retencija.ts`): pri otvaranju `/admin/uprava/poruke` brišu se razgovori 24 mjeseca nakon
   zadnje poruke (`PORUKE_ROK_MJESECI` u `src/lib/poruke-rokovi.ts`, isti broj kao `/privatnost#dopisivanje`), s
   privitcima u R2, i prazni razgovori stariji od dana.
 

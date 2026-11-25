@@ -1,12 +1,12 @@
 ---
 // Pogodnosti nakon bete (docs/pogodnosti.md). Samo superadmin (rute.ts). Dodjela po e-mailu (i prije nego račun
 // postoji), promjena opoziva staru, povijest ostaje. Dok traje beta ništa se ne provodi: checkout će ih čitati.
-import AdminOkvir from "../../components/AdminOkvir.astro";
-import Ikona from "../../components/Ikona.astro";
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
 import { env } from "cloudflare:workers";
-import { kad } from "../../lib/katalog";
-import { smije } from "../../lib/admin/ovlasti";
-import { IZBORI, NAPOMENA_MAX, dodijeli, opisPogodnosti, opozvane, procitajIzbor, vazece } from "../../lib/admin/pogodnosti";
+import { kad } from "../../../lib/katalog";
+import { smije } from "../../../lib/admin/ovlasti";
+import { IZBORI, NAPOMENA_MAX, dodijeli, opisPogodnosti, opozvane, procitajIzbor, vazece } from "../../../lib/admin/pogodnosti";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -25,12 +25,12 @@ if (Astro.request.method === "POST") {
     if (!p) greska = "Odaberi pogodnost.";
     else {
       const r = await dodijeli(unos.email, p, unos.napomena, s.email);
-      if (r.ok) return Astro.redirect("/admin/pogodnosti?ok=dodijeljena", 303);
+      if (r.ok) return Astro.redirect("/admin/uprava/pogodnosti?ok=dodijeljena", 303);
       greska = r.greska;
     }
   } else if (akcija === "ukloni") {
     const r = await dodijeli(unos.email, null, null, s.email);
-    if (r.ok) return Astro.redirect("/admin/pogodnosti?ok=uklonjena", 303);
+    if (r.ok) return Astro.redirect("/admin/uprava/pogodnosti?ok=uklonjena", 303);
     greska = r.greska;
   } else greska = "Nepoznata radnja.";
   poruka = null;
@@ -45,13 +45,13 @@ const [aktivne, povijest, imena] = await Promise.all([
 ]);
 const izbori = IZBORI.filter((i) => i.kod);
 ---
-<AdminOkvir naslov="Pogodnosti" aktivno="pogodnosti">
+<AdminOkvir naslov="Pogodnosti" podrucje="uprava" aktivno="pogodnosti">
   <div class="naslov">
     <div>
       <h1>Pogodnosti nakon bete</h1>
       <p class="podnaslov">Što si nekome privatno obećao za vrijeme nakon bete: nekoliko mjeseci ili trajno besplatno. Mjeseci se broje
         od početka naplate, ne od danas. Dok traje beta svi koriste LogoMedo besplatno, pa se ovo još ne provodi; kad uvedemo plaćanje,
-        checkout će ga poštovati. Pogodnost možeš dodijeliti i uz „Odobri” na <a href="/admin/zahtjevi">Zahtjevima</a>.</p>
+        checkout će ga poštovati. Pogodnost možeš dodijeliti i uz „Odobri” na <a href="/admin/uprava/zahtjevi">Zahtjevima</a>.</p>
     </div>
   </div>
 

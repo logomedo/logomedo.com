@@ -1,12 +1,12 @@
 ---
 // Inbox (docs/inbox/, S3): razgovori s logopedima iz odgovora na transakcijske mailove. Samo superadmin
 // (rute.ts i ovdje, ovlast `korisnici`). Nepročitani prvi, zatim po zadnjoj poruci. Sadržaj je osobni podatak.
-import AdminOkvir from "../../../components/AdminOkvir.astro";
-import Ikona from "../../../components/Ikona.astro";
-import { kad } from "../../../lib/katalog";
-import { smije } from "../../../lib/admin/ovlasti";
-import { popisRazgovora, potpisPoruka, type StatusRazgovora } from "../../../lib/poruke";
-import { pocistiPoruke } from "../../../lib/poruke-retencija";
+import AdminOkvir from "../../../../components/AdminOkvir.astro";
+import Ikona from "../../../../components/Ikona.astro";
+import { kad } from "../../../../lib/katalog";
+import { smije } from "../../../../lib/admin/ovlasti";
+import { popisRazgovora, potpisPoruka, type StatusRazgovora } from "../../../../lib/poruke";
+import { pocistiPoruke } from "../../../../lib/poruke-retencija";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -16,8 +16,8 @@ await pocistiPoruke().catch((e) => console.error("inbox: retencija nije uspjela"
 const [razgovori, potpis] = await Promise.all([popisRazgovora(), potpisPoruka()]);
 const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvoren", nerasporedjen: "neraspoređen" };
 ---
-<AdminOkvir naslov="Poruke" aktivno="poruke">
-  <div id="pracenje" hidden data-url="/admin/poruke/stanje" data-potpis={potpis}></div>
+<AdminOkvir naslov="Poruke" podrucje="uprava" aktivno="poruke">
+  <div id="pracenje" hidden data-url="/admin/uprava/poruke/stanje" data-potpis={potpis}></div>
   <div class="naslov">
     <div>
       <h1>Poruke</h1>
@@ -25,8 +25,8 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
         poruke.logomedo.com i ostaju ovdje; odgovara se iz razgovora.</p>
     </div>
     <div class="gumbi">
-      <a class="gumb mali" href="/admin/poruke/brzi"><Ikona ime="iskra" /> Brzi odgovori</a>
-      <a class="gumb glavni mali" href="/admin/poruke/novi"><Ikona ime="plus" /> Novi razgovor</a>
+      <a class="gumb mali" href="/admin/uprava/poruke/brzi"><Ikona ime="iskra" /> Brzi odgovori</a>
+      <a class="gumb glavni mali" href="/admin/uprava/poruke/novi"><Ikona ime="plus" /> Novi razgovor</a>
     </div>
   </div>
 
@@ -34,7 +34,7 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
     <ul class="razgovori ploha" id="razgovori">
       {razgovori.map((r) => (
         <li class:list={["razgovor", { novo: r.neprocitano > 0 }]}>
-          <a href={`/admin/poruke/${r.id}`} id={`razgovor-${r.id}`}>
+          <a href={`/admin/uprava/poruke/${r.id}`} id={`razgovor-${r.id}`}>
             <div class="red1">
               <span class="sugovornik">{r.ime ?? r.email}</span>
               {r.neprocitano > 0 && <span class="broj" aria-label={`${r.neprocitano} nepročitano`}>{r.neprocitano}</span>}
@@ -52,7 +52,7 @@ const STATUS: Record<StatusRazgovora, string> = { otvoren: "", zatvoren: "zatvor
 </AdminOkvir>
 <script>
   // Nova poruka ili promjena nepročitanih (odluka 313): popis se osvježi sam dok je tab vidljiv.
-  import { pratiPoruke } from "../../../lib/poruke-pracenje";
+  import { pratiPoruke } from "../../../../lib/poruke-pracenje";
   const p = document.getElementById("pracenje");
   if (p?.dataset.url) pratiPoruke(p.dataset.url, p.dataset.potpis ?? "", () => location.reload());
 </script>

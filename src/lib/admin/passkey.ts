@@ -139,7 +139,7 @@ export async function registerRefusal(s: { email: string; createdAt: string }, u
   return null;
 }
 
-// ---- /admin/passkeys: svatko vidi i briše samo svoje ključeve (e-mail iz sesije) ----
+// ---- Ključevi u /admin/postavke (prije /admin/passkeys): svatko vidi i briše samo svoje ključeve (e-mail iz sesije) ----
 
 /** Domena ključa; NULL = upisan prije migracije 0049, dakle na produkciji. */
 export const PRODUKCIJSKA_DOMENA = "logomedo.com";

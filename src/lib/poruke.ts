@@ -267,7 +267,7 @@ export async function potpisPoruka(razgovorId?: number): Promise<string> {
   return razgovorId ? `${r?.z ?? 0}` : `${r?.z ?? 0}:${await brojNeprocitanih()}`;
 }
 
-// ---- Admin (/admin/poruke, S3) ----
+// ---- Admin (/admin/uprava/poruke, S3) ----
 
 export type StatusRazgovora = "otvoren" | "zatvoren" | "nerasporedjen";
 
@@ -363,7 +363,7 @@ export async function postaviStatus(id: number, status: StatusRazgovora): Promis
   return (r.meta.changes ?? 0) > 0;
 }
 
-export const putanjaPrivitka = (id: number) => `/admin/poruke/privitak/${id}`;
+export const putanjaPrivitka = (id: number) => `/admin/uprava/poruke/privitak/${id}`;
 
 const cidKljuc = (cid: string) => cid.trim().replace(/^<|>$/g, "").toLowerCase();
 

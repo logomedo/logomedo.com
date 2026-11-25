@@ -1,4 +1,4 @@
-// Odgovor iz /admin/poruke (S3, src/lib/email.ts `posaljiOdgovor`): bez ključa ništa, slanje s reply_to razgovora,
+// Odgovor iz /admin/uprava/poruke (S3, src/lib/email.ts `posaljiOdgovor`): bez ključa ništa, slanje s reply_to razgovora,
 // In-Reply-To/References po odluci 206, predmet „Re:”, kratki citat, upis odlazne s Message-ID-jem. Bez mreže.
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";

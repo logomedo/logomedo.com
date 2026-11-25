@@ -1,5 +1,5 @@
 ---
-// Okvir admina: bočna traka po skupinama (Odobravanje, Sadržaj, Vježbe; dolje alati i postavke) i glavni dio.
+// Okvir admina: bočna traka po području (lib/admin/navigacija.ts: Sadržaj ili Uprava, docs/uprava/plan.md) i glavni dio.
 // Bez sesije baca (500) umjesto da prikaže stranicu, osim na prijavi (`javno`):
 // druga obrana ako middleware neku admin putanju ne prepozna.
 import Tema from "./Tema.astro";
@@ -8,14 +8,15 @@ import Ikona from "./Ikona.astro";
 import type { ComponentProps } from "astro/types";
 import { env } from "cloudflare:workers";
 import { smijeNa } from "../lib/admin/rute";
+import { TRAKE, type Aktivno, type Brojac, type Podrucje, type Stavka, type Traka } from "../lib/admin/navigacija";
 import { pregledFiltar } from "../lib/admin/vlasnistvo";
 import { ZATRAZIO_SLIKE, ZATRAZIO_ZVUKA } from "../lib/zatrazio";
 import { brojNovih } from "../lib/admin/zahtjevi";
 import { brojNeprocitanih } from "../lib/poruke";
 import { kvotaIzAdrese, porukaZaKorisnika, preostalo, type StanjeKvote, type VrstaKvote } from "../lib/kvota";
 
-interface Props { naslov: string; javno?: boolean; aktivno?: "katalog" | "predlosci" | "zadaci" | "biljeznice" | "pregled" | "red" | "zvukovi" | "prompt" | "aktivnost" | "kljucevi" | "korisnici" | "zahtjevi" | "pogodnosti" | "kuponi" | "poruke" | "postavke"; puno?: boolean }
-const { naslov, javno = false, aktivno, puno = false } = Astro.props;
+interface Props { naslov: string; javno?: boolean; aktivno?: Aktivno; puno?: boolean; podrucje?: Podrucje }
+const { naslov, javno = false, aktivno, puno = false, podrucje = "sadrzaj" } = Astro.props;
 const admin = Astro.locals.admin;
 if (!admin && !javno) throw new Error("Admin stranica bez sesije");
 /** Odbijen zahtjev zbog AI kvote (middleware, lib/kvota.ts: 303 natrag s `?kvota=<vrsta>`): tekst se gradi ovdje, ne čita iz adrese. */
@@ -23,7 +24,7 @@ const kvotaUAdresi = admin ? kvotaIzAdrese(Astro.url.searchParams) : null;
 const kvota = admin && kvotaUAdresi ? await porukaZaKorisnika(admin.email, kvotaUAdresi) : null;
 
 let brojevi = { kandidata: 0, uRedu: 0, gresaka: 0, zvukova: 0 };
-if (admin) {
+if (admin && podrucje === "sadrzaj") {
   // Za pregled (Slike, Izgovor) logoped broji samo ono što je sam poslao, kao na tim stranicama.
   const vidi = pregledFiltar(admin);
   brojevi = (await env.DB.prepare(
@@ -34,44 +35,32 @@ if (admin) {
        (SELECT COUNT(DISTINCT z.kljuc) FROM zvukovi z WHERE z.status = 'kandidat' AND (?1 IS NULL OR ${ZATRAZIO_ZVUKA} = ?1)) AS zvukova`,
   ).bind(vidi, admin.uloga === "superadmin" ? 0 : 1).first<typeof brojevi>()) ?? brojevi;
 }
-// Novi zahtjevi za pristup s /pristup (S7): samo superadmin ih vidi i broji.
+// Novi zahtjevi za pristup (/pristup) i nepročitane poruke (inbox): samo superadmin; u Sadržaju zbroj na gumbu „Uprava”.
 const zahtjeva = admin?.uloga === "superadmin" ? await brojNovih() : 0;
-// Nepročitane poruke u inboxu (docs/inbox/): isto samo superadmin.
 const neprocitanih = admin?.uloga === "superadmin" ? await brojNeprocitanih() : 0;
 // Logoped vidi koliko mu je AI kredita ostalo (lib/kvota.ts); superadmin je bez limita, pa ništa.
 const kvotaStanje: Record<VrstaKvote, StanjeKvote> | null =
   admin?.uloga === "logoped" && admin.korisnikId !== null ? await preostalo(admin.korisnikId) : null;
-type Stavka = { kod: NonNullable<Props["aktivno"]>; href: string; tekst: string; ikona: ComponentProps<typeof Ikona>["ime"]; broj: number; greska?: boolean };
-// Izbornik po poslu: što čeka odluku, od čega se slaže, što se slaže; dolje alati i postavke.
-const skupine: { naslov: string; boja: string; stavke: Stavka[] }[] = [
-  { naslov: "Odobravanje", boja: "var(--med)", stavke: [
-    { kod: "pregled", href: "/admin/pregled", tekst: "Slike", ikona: "pregled", broj: brojevi.kandidata },
-    { kod: "zvukovi", href: "/admin/zvukovi", tekst: "Izgovor", ikona: "zvuk", broj: brojevi.zvukova },
-  ] },
-  { naslov: "Sadržaj", boja: "var(--info)", stavke: [
-    { kod: "katalog", href: "/admin", tekst: "Katalog", ikona: "katalog", broj: 0 },
-  ] },
-  { naslov: "Vježbe", boja: "var(--uspjeh)", stavke: [
-    { kod: "predlosci", href: "/admin/predlosci", tekst: "Novi zadatak", ikona: "predlosci", broj: 0 },
-    { kod: "zadaci", href: "/admin/zadaci", tekst: "Zadaci", ikona: "zadaci", broj: 0 },
-    { kod: "biljeznice", href: "/admin/biljeznice", tekst: "Bilježnice", ikona: "biljeznica", broj: 0 },
-  ] },
-];
+
+const BROJ: Record<Brojac, number> = {
+  kandidata: brojevi.kandidata, zvukova: brojevi.zvukova, red: brojevi.uRedu + brojevi.gresaka,
+  zahtjeva, poruka: neprocitanih, uprava: zahtjeva + neprocitanih,
+};
+type Prikaz = { kod: string; href: string; tekst: string; ikona: ComponentProps<typeof Ikona>["ime"]; broj: number; greska?: boolean };
+const prikazi = (s: Stavka): Prikaz => ({
+  kod: s.kod, href: s.href, ikona: s.ikona as Prikaz["ikona"], broj: s.brojac ? BROJ[s.brojac] : 0,
+  tekst: s.kod === "red" && brojevi.gresaka ? "Red (greške)" : s.tekst,
+  greska: s.kod === "red" && brojevi.gresaka > 0,
+});
 // Stavke koje uloga ne smije se ne prikazuju (server ih ionako odbija, lib/admin/rute.ts).
 const vidljivo = (s: Stavka) => !!admin && smijeNa(admin.uloga, s.href);
-const sustav: Stavka[] = ([
-  { kod: "red", href: "/admin/red", tekst: brojevi.gresaka ? "Red (greške)" : "Red generiranja", ikona: "red", broj: brojevi.uRedu + brojevi.gresaka, greska: brojevi.gresaka > 0 },
-  { kod: "prompt", href: "/admin/prompt", tekst: "Prompt", ikona: "iskra", broj: 0 },
-  { kod: "aktivnost", href: "/admin/aktivnost", tekst: "Aktivnost", ikona: "sat", broj: 0 },
-  { kod: "kljucevi", href: "/admin/passkeys", tekst: "Ključevi", ikona: "kljuc", broj: 0 },
-  { kod: "korisnici", href: "/admin/korisnici", tekst: "Korisnici", ikona: "korisnici", broj: 0 },
-  { kod: "zahtjevi", href: "/admin/zahtjevi", tekst: "Zahtjevi", ikona: "pismo", broj: zahtjeva },
-  { kod: "pogodnosti", href: "/admin/pogodnosti", tekst: "Pogodnosti", ikona: "iskra", broj: 0 },
-  { kod: "kuponi", href: "/admin/kuponi", tekst: "Kuponi", ikona: "kljuc", broj: 0 },
-  { kod: "poruke", href: "/admin/poruke", tekst: "Poruke", ikona: "poruke", broj: neprocitanih },
-  { kod: "postavke", href: "/admin/postavke", tekst: "Postavke", ikona: "postavke", broj: 0 },
-] satisfies Stavka[]).filter(vidljivo);
-for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
+const traka: Traka = TRAKE[podrucje];
+const skupine = traka.skupine.map((g) => ({ ...g, stavke: g.stavke.filter(vidljivo).map(prikazi) })).filter((g) => g.stavke.length);
+const alati = traka.alati.filter(vidljivo).map(prikazi);
+const dno = traka.dno.filter(vidljivo).map(prikazi);
+const uprava = podrucje === "uprava";
+const pocetna = uprava ? "/admin/uprava" : "/admin";
+const oznaka = uprava ? "uprava" : "admin";
 ---
 <!doctype html>
 <html lang="hr">
@@ -87,31 +76,35 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
       try { if (localStorage.getItem("logomedo-traka") === "uska") document.documentElement.dataset.traka = "uska"; } catch {}
     </script>
   </head>
-  <body class:list={{ "s-trakom": !!admin }}>
+  <body class:list={{ "s-trakom": !!admin, uprava }}>
     {admin && (
       <header class="mob-vrh">
         <button type="button" class="ikona-gumb hamburger" aria-label="Otvori izbornik" aria-controls="traka" aria-expanded="false">
           <Ikona ime="izbornik" />
-          {skupine.some((g) => g.stavke.some((s) => s.broj > 0)) && <span class="hamburger-tocka"></span>}
+          {[...skupine.flatMap((g) => g.stavke), ...alati, ...dno].some((s) => s.broj > 0) && <span class="hamburger-tocka"></span>}
         </button>
-        <Marka href="/admin" dodatak="admin" />
-        <button type="button" class="ikona-gumb mob-trazi" aria-label="Traži riječ"><Ikona ime="trazi" /></button>
+        <Marka href={pocetna} dodatak={oznaka} />
+        {uprava ? <span></span> : <button type="button" class="ikona-gumb mob-trazi" aria-label="Traži riječ"><Ikona ime="trazi" /></button>}
       </header>
       <div class="zastor" aria-hidden="true"></div>
     )}
     {admin && (
       <aside class="traka" id="traka">
         <div class="vrh">
-          <Marka href="/admin" dodatak="admin" />
+          <Marka href={pocetna} dodatak={oznaka} />
           <button type="button" class="ikona-gumb sklopi" aria-label="Sklopi / proširi izbornik" title="Sklopi / proširi izbornik  [" aria-expanded="true"><Ikona ime="traka" /></button>
           <button type="button" class="ikona-gumb zatvori" aria-label="Zatvori izbornik"><Ikona ime="x" /></button>
         </div>
+        {!uprava && (
+          <>
         <button type="button" class="ikona-gumb trazi-gumb" aria-label="Traži riječ" title="Traži riječ  /"><Ikona ime="trazi" /></button>
         <div class="trazilica" role="search">
           <input type="search" id="trazi" placeholder="Traži riječ…  /" autocomplete="off" spellcheck="false"
             aria-label="Traži riječ u katalogu" aria-controls="trazi-rezultati" aria-expanded="false" />
           <ul id="trazi-rezultati" role="listbox" hidden></ul>
         </div>
+          </>
+        )}
         <nav aria-label="Izbornik">
           {skupine.map((g) => (
             <section class="skupina" aria-label={g.naslov}>
@@ -125,12 +118,30 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
               ))}
             </section>
           ))}
-          <section class="skupina sustav" aria-label="Alati i postavke">
-            {sustav.map((s) => (
-              <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod }]} aria-current={aktivno === s.kod ? "page" : undefined} title={s.tekst}>
+          {uprava && (
+            <a href="/admin/uprava" class:list={["stavka", "pregled-uprave", { aktivno: aktivno === "pregled-uprave" }]} aria-current={aktivno === "pregled-uprave" ? "page" : undefined} title="Pregled">
+              <Ikona ime="ploca" /><span>Pregled</span>
+            </a>
+          )}
+          {alati.length > 0 && (
+            <section class="skupina alati-skupina" aria-label="Alati">
+              <h2 class="skupina-naslov">Alati</h2>
+              {alati.map((s) => (
+                <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod }]} aria-current={aktivno === s.kod ? "page" : undefined} title={s.tekst}>
+                  <Ikona ime={s.ikona} />
+                  <span>{s.tekst}</span>
+                  {s.broj > 0 && <span class:list={["broj", { greska: s.greska }]}>{s.broj}</span>}
+                </a>
+              ))}
+            </section>
+          )}
+          <section class="skupina sustav" aria-label={uprava ? "Natrag i postavke" : "Uprava i postavke"}>
+            {dno.map((s) => (
+              <a href={s.href} class:list={["stavka", { aktivno: aktivno === s.kod, prijelaz: s.kod === "uprava" || s.kod === "sadrzaj" }]} aria-current={aktivno === s.kod ? "page" : undefined} title={s.tekst}>
                 <Ikona ime={s.ikona} />
                 <span>{s.tekst}</span>
-                {s.broj > 0 && <span class:list={["broj", { greska: s.greska }]}>{s.broj}</span>}
+                {s.broj > 0 && <span class="broj">{s.broj}</span>}
+                {s.kod === "uprava" && <span class="strelica"><Ikona ime="naprijed" velicina={16} /></span>}
               </a>
             ))}
           </section>
@@ -318,6 +329,17 @@ for (const g of skupine) g.stavke = g.stavke.filter(vidljivo);
       .stavka:hover { background: var(--povrsina); color: var(--tinta); }
       .stavka.aktivno { background: var(--povrsina); color: var(--med-tamno); font-weight: 650; box-shadow: var(--sjena-1), inset 3px 0 0 var(--med); }
       .skupina.sustav .stavka:hover, .skupina.sustav .stavka.aktivno { background: var(--povrsina-2); }
+      /* Alati (Red, Prompt, Aktivnost) bez okvira skupine; prijelaz Sadržaj ↔ Uprava odvojen crtom iznad postavki. */
+      .skupina.alati-skupina { background: none; border: 0; padding: 0 0 0; }
+      .skupina.sustav .stavka.prijelaz { border: 1px solid var(--rub); background: var(--povrsina-2); margin-bottom: 4px; }
+      .skupina.sustav .stavka.prijelaz:hover { border-color: var(--rub-jak); }
+      .stavka .strelica { margin-left: auto; display: inline-flex; color: var(--blijedo); }
+      .stavka .broj + .strelica { margin-left: 4px; }
+      /* Uprava: drugi naglasak (plavi umjesto meda), da se odmah vidi gdje si. */
+      body.uprava .traka { background: linear-gradient(var(--info-blago), var(--povrsina) 220px); }
+      body.uprava .traka .stavka.aktivno { color: var(--info); box-shadow: var(--sjena-1), inset 3px 0 0 var(--info); }
+      body.uprava .traka .marka .dodatak { color: var(--info); border-color: var(--info); }
+      .stavka.pregled-uprave { margin-bottom: 4px; }
       .stavka .broj { margin-left: auto; min-width: 22px; padding: 0 7px; border-radius: 999px; background: var(--med); color: var(--med-tekst);
         font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
       .stavka .broj.greska { background: var(--greska); color: #fff; }

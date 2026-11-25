@@ -1,7 +1,7 @@
 // rutaSamoSuperadmin: prefiksi administracije, normalizacija kao adminPutanja u middlewareu (docs/rbac/).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { rutaSamoSuperadmin, SAMO_SUPERADMIN, smijeNa } from "./rute.ts";
+import { preseljeno, PRESELJENO, rutaSamoSuperadmin, SAMO_SUPERADMIN, smijeNa } from "./rute.ts";
 
 test("svaka ruta, s podputanjom i kosom crtom na kraju", () => {
   for (const r of SAMO_SUPERADMIN) {
@@ -14,7 +14,7 @@ test("svaka ruta, s podputanjom i kosom crtom na kraju", () => {
 test("popis ruta je točno ovaj", () => {
   assert.deepEqual([...SAMO_SUPERADMIN].sort(), [
     "/admin/api/app-kod", "/admin/api/klon", "/admin/api/novi-glas", "/admin/api/rijec", "/admin/api/zvuk-proba", "/admin/app/prijava", "/admin/korisnici",
-    "/admin/kuponi", "/admin/novi-glas", "/admin/pogodnosti", "/admin/poruke", "/admin/prompt", "/admin/red", "/admin/zahtjevi", "/admin/zvukovi/glasovi", "/admin/zvukovi/klonovi",
+    "/admin/kuponi", "/admin/novi-glas", "/admin/pogodnosti", "/admin/poruke", "/admin/prompt", "/admin/red", "/admin/uprava", "/admin/zahtjevi", "/admin/zvukovi/glasovi", "/admin/zvukovi/klonovi",
   ]);
 });
 
@@ -43,7 +43,7 @@ test("neispravno kodiranje ne baca, sirova putanja se i dalje provjerava", () =>
 test("negativni slučajevi: susjedne i javne rute", () => {
   for (const p of [
     "/admin", "/admin/", "/admin/zvukovi", "/admin/zvukovi/", "/admin/redovi", "/admin/red-x", "/admin/promptovi",
-    "/admin/korisnicix", "/admin/poziv", "/admin/poziv/options", "/admin/poziv/verify", "/admin/zadaci",
+    "/admin/korisnicix", "/admin/upravax", "/admin/poziv", "/admin/poziv/options", "/admin/poziv/verify", "/admin/zadaci",
     "/admin/zadaci/1", "/admin/biljeznice", "/admin/aktivnost", "/admin/postavke", "/admin/passkeys",
     "/admin/api/zadatak/1", "/admin/api/zvuk", "/admin/api/rijeci", "/admin/nova-rijec", "/admin/app", "/admin/api/app", "/prompt", "/red", "/",
   ]) assert.equal(rutaSamoSuperadmin(p), false, p);
@@ -62,4 +62,21 @@ test("/admin/zahtjevi (S7 landinga): samo superadmin; javni obrazac /pristup nij
   for (const p of ["/admin/zahtjevix", "/pristup", "/admin/poziv"]) assert.equal(rutaSamoSuperadmin(p), false, p);
   assert.equal(smijeNa("superadmin", "/admin/zahtjevi"), true);
   assert.equal(smijeNa("logoped", "/admin/zahtjevi"), false);
+});
+
+test("Uprava: sve ispod /admin/uprava samo superadmin, i buduće stranice", () => {
+  for (const p of ["/admin/uprava", "/admin/uprava/", "/admin/uprava/korisnici", "/admin/uprava/uplate", "/admin/uprava/nesto-novo/1", "/ADMIN/Uprava", "/admin%2Fuprava%2Fkorisnici"]) {
+    assert.equal(rutaSamoSuperadmin(p), true, p);
+  }
+  assert.equal(smijeNa("logoped", "/admin/uprava/poruke"), false);
+});
+
+test("preseljeno: stare adrese Uprave vode na nove, s ostatkom putanje; stare ostaju zabranjene logopedu", () => {
+  assert.equal(preseljeno("/admin/korisnici"), "/admin/uprava/korisnici");
+  assert.equal(preseljeno("/admin/poruke/7"), "/admin/uprava/poruke/7");
+  assert.equal(preseljeno("/admin/zahtjevi/racun/3"), "/admin/uprava/uplate/racun/3");
+  for (const p of ["/admin/korisnicix", "/admin/uprava/korisnici", "/admin/zadaci", "/admin"]) assert.equal(preseljeno(p), null, p);
+  for (const [stara, nova] of PRESELJENO) {
+    if (nova.startsWith("/admin/uprava")) assert.equal(rutaSamoSuperadmin(stara), true, stara);
+  }
 });

@@ -4,7 +4,7 @@ Od 25. 11. 2026. Kupon je kod koji osoba upiše u obrazac `/pristup` (polje „K
 `/pristup?kupon=KOD` (kod je tada već upisan, a naslov kaže „Pristup s kuponom”).
 
 **Auto-odobravanje:** kupon s kvačicom „Auto-odobri” sam odobrava zahtjev: odmah se izdaje pozivnica i šalje
-e-poštom (kao „Odobri” na `/admin/zahtjevi`), a osoba vidi „Pristup je odobren” (`/pristup?poslano=kupon`).
+e-poštom (kao „Odobri” na `/admin/uprava/zahtjevi`), a osoba vidi „Pristup je odobren” (`/pristup?poslano=kupon`).
 Superadmin ne mora ništa kliknuti; u „Zadnjim obrađenima” stoji `Obradio: kupon:KOD`.
 
 ## Gdje
@@ -13,7 +13,7 @@ Superadmin ne mora ništa kliknuti; u „Zadnjim obrađenima” stoji `Obradio: 
 | --- | --- |
 | Tablica | `migrations/0047_kuponi.sql` (`kuponi`; `zahtjevi_pristupa.kupon` = upisani kod) |
 | Logika | `src/lib/admin/kuponi.ts`, auto-odobravanje u `src/lib/pristup.ts` (`autoOdobri`), testovi `src/lib/kuponi.test.ts` |
-| Stvaranje, link, uključi/isključi | `/admin/kuponi` (samo superadmin, `rute.ts`) |
+| Stvaranje, link, uključi/isključi | `/admin/uprava/kuponi` (samo superadmin, `rute.ts`) |
 
 ## Pravila
 

@@ -2,7 +2,7 @@
 
 Od 25. 11. 2026. Uplata za paket s `/cijene` (narudžba kroz `/pristup?paket=`) završava računom koji izdaje
 **ITalk d.o.o. kao tenant u domovina-fiskal** (`github.com/domovinatv/domovina-fiskal`). Zasad samo na stagingu, sa
-**simuliranom uplatom** na `/admin/zahtjevi`; pravi checkout (kartica) i prepoznavanje SEPA uplate dolaze kasnije.
+**simuliranom uplatom** na `/admin/uprava/zahtjevi`; pravi checkout (kartica) i prepoznavanje SEPA uplate dolaze kasnije.
 
 ## Koji račun za koju uplatu
 
@@ -39,7 +39,7 @@ je po dogovoru i ovdje se ne naplaćuje).
    (doku). Ponovni poziv (gumb „Ponovi”) ne izdaje drugi račun: fiskal po ključu vraća postojeći.
 3. Fiskalizirani račun se ne šalje dok nema JIR-a (fiskal vraća `NEMA_JIR`); status ostaje „izdan”, „Ponovi” ga
    pošalje kad CIS odgovori.
-4. PDF: `/admin/zahtjevi/racun/<id uplate>` (superadmin; API ključ fiskala ostaje na serveru).
+4. PDF: `/admin/uprava/uplate/racun/<id uplate>` (superadmin; API ključ fiskala ostaje na serveru).
 
 **Staging šalje račun e-poštom samo superadminu** koji je unio uplatu: staging je kopija produkcijske D1 sa stvarnim
 adresama. eRačun na stagingu ide kroz doku **test** okolinu.
@@ -59,7 +59,7 @@ Na fiskal-testu ITalk tenant (id 1) ima prostor `PP1` (prijavljen), uređaj `1` 
 `2` („LogoMedo web”), da se brojevi računa (`N/PP1/2`) ne miješaju s ručno izdanima. Na produkcijskom fiskalu ITalk ima
 certifikat i `PP1`, ali **doku nije postavljen**, pa eRačun s produkcije još ne može.
 
-Stranica `/admin/zahtjevi` čita `uplate` samo kad je simulacija ili fiskal postavljen, pa je `main` siguran za deploy na
+Stranica `/admin/uprava/zahtjevi` čita `uplate` samo kad je simulacija ili fiskal postavljen, pa je `main` siguran za deploy na
 produkciju i bez migracije 0048.
 
 ## Što još nije

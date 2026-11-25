@@ -1,6 +1,6 @@
 // Retencija inboxa (docs/inbox/, S4, odluka 400): razgovor s porukama i privitcima briše se PORUKE_ROK_MJESECI
 // nakon zadnje poruke (isti broj kao /privatnost#dopisivanje), a razgovor bez ijedne poruke (pozivnica koja nije
-// otišla, a brisanje nije uspjelo) nakon jednog dana. Pokreće se pri otvaranju /admin/poruke, kao `pocisti()` u
+// otišla, a brisanje nije uspjelo) nakon jednog dana. Pokreće se pri otvaranju /admin/uprava/poruke, kao `pocisti()` u
 // src/lib/pristup.ts: bez crona, a dok nitko ne otvara inbox, nitko ni ne čita stare poruke.
 //
 // Redoslijed: prvo objekti u R2, pa D1. Ako R2 padne, D1 ostaje netaknut i sljedeće otvaranje pokuša ponovno;

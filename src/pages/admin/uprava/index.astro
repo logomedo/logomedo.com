@@ -1,0 +1,54 @@
+---
+// Pregled Uprave (docs/uprava/plan.md): što čeka i koliko čega ima, s poveznicama. Samo čitanje, samo superadmin (rute.ts).
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { smije } from "../../../lib/admin/ovlasti";
+import { eura } from "../../../landing/konstante";
+import { fiskalPostavljen, simulacijaDopustena } from "../../../lib/admin/uplate";
+import { pregledUprave } from "../../../lib/admin/uprava";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+const p = await pregledUprave(new Date(), simulacijaDopustena() || fiskalPostavljen());
+const eura2 = (c: number) => eura(c / 100, c % 100 !== 0);
+const mjesec = new Date().toLocaleDateString("hr", { month: "long" });
+
+type Kartica = { href: string; ikona: "pismo" | "poruke" | "korisnici" | "novac" | "iskra" | "kupon"; naslov: string; broj: string; opis: string; ceka?: boolean };
+const kartice: Kartica[] = [
+  { href: "/admin/uprava/zahtjevi", ikona: "pismo", naslov: "Zahtjevi za pristup", broj: String(p.zahtjeva), opis: p.zahtjeva ? "čeka odluku" : "ništa ne čeka", ceka: p.zahtjeva > 0 },
+  { href: "/admin/uprava/poruke", ikona: "poruke", naslov: "Poruke", broj: String(p.neprocitanih), opis: p.neprocitanih ? "nepročitano" : "sve pročitano", ceka: p.neprocitanih > 0 },
+  { href: "/admin/uprava/korisnici", ikona: "korisnici", naslov: "Logopedi", broj: String(p.logopeda),
+    opis: [`aktivnih`, p.neaktivnih && `${p.neaktivnih} isključenih`, p.pozivnica && `${p.pozivnica} otvorenih pozivnica`].filter(Boolean).join(" · ") },
+  ...(p.uplate ? [{ href: "/admin/uprava/uplate", ikona: "novac" as const, naslov: `Uplate (${mjesec})`, broj: eura2(p.uplate.centi),
+    opis: `${p.uplate.broj} uplata${p.uplate.neposlanih ? ` · ${p.uplate.neposlanih} računa nije poslano` : ""}`, ceka: p.uplate.neposlanih > 0 }] : []),
+  { href: "/admin/uprava/pogodnosti", ikona: "iskra", naslov: "Pogodnosti nakon bete", broj: String(p.pogodnosti), opis: "važećih" },
+  { href: "/admin/uprava/kuponi", ikona: "kupon", naslov: "Kuponi", broj: String(p.kupona), opis: "aktivnih" },
+];
+---
+<AdminOkvir naslov="Uprava" podrucje="uprava" aktivno="pregled-uprave">
+  <div class="naslov">
+    <div>
+      <h1>Uprava</h1>
+      <p class="podnaslov">Korisnici, pristup, novac i poruke. Izrada materijala je u <a href="/admin">Sadržaju</a>.</p>
+    </div>
+  </div>
+  <div class="kartice">
+    {kartice.map((k) => (
+      <a class:list={["ploha", "kartica", { ceka: k.ceka }]} href={k.href}>
+        <span class="glava"><Ikona ime={k.ikona} /> {k.naslov}</span>
+        <span class="broj">{k.broj}</span>
+        <span class="opis">{k.opis}</span>
+      </a>
+    ))}
+  </div>
+</AdminOkvir>
+<style>
+  .podnaslov a { color: var(--med-tamno); }
+  .kartice { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+  .kartica { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; text-decoration: none; color: var(--tinta); transition: border-color .15s; }
+  .kartica:hover { border-color: var(--rub-jak); }
+  .kartica.ceka { border-color: var(--med); box-shadow: inset 3px 0 0 var(--med); }
+  .glava { display: flex; align-items: center; gap: 8px; color: var(--blijedo); font-size: .85rem; font-weight: 600; }
+  .broj { font-family: var(--font-slova); font-size: 2rem; font-weight: 600; letter-spacing: -.02em; }
+  .opis { color: var(--blijedo); font-size: .85rem; }
+</style>

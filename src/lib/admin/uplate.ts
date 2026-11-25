@@ -21,7 +21,7 @@ export interface Uplata {
   fiskal_id: number | null; broj_racuna: string | null; jir: string | null; dostava: string | null; greska: string | null;
 }
 
-/** Simulacija plaćanja na /admin/zahtjevi: samo uz NAPLATA_SIMULACIJA = "da" (staging), nikad na produkciji. */
+/** Simulacija plaćanja na /admin/uprava/zahtjevi: samo uz NAPLATA_SIMULACIJA = "da" (staging), nikad na produkciji. */
 export const simulacijaDopustena = () => env.NAPLATA_SIMULACIJA === "da" && env.OKRUZENJE === "staging";
 export const fiskalPostavljen = () => Boolean(env.FISKAL_URL && env.FISKAL_API_KLJUC && env.FISKAL_OPERATER_OIB);
 

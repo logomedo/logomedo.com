@@ -3,13 +3,13 @@
 // Stranica sama obrađuje POST (`akcija`), kao /admin/postavke. Link pozivnice prikaže se jednom,
 // u odgovoru na POST (#poziv-link), i nigdje se ne sprema.
 import { env } from "cloudflare:workers";
-import AdminOkvir from "../../components/AdminOkvir.astro";
-import Ikona from "../../components/Ikona.astro";
-import { kad } from "../../lib/katalog";
-import { smije } from "../../lib/admin/ovlasti";
-import { LIMIT_MAX, popisKorisnika, postaviAktivan, postaviLimite, procitajLimit } from "../../lib/admin/korisnici";
-import { LIMIT_UREDAJA_MAX, ZADANI_LIMIT_UREDAJA, procitajLimitUredaja, provedba, sazeciUredaja } from "../../lib/admin/uredaji";
-import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice } from "../../lib/admin/pozivi";
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import Ikona from "../../../components/Ikona.astro";
+import { kad } from "../../../lib/katalog";
+import { smije } from "../../../lib/admin/ovlasti";
+import { LIMIT_MAX, popisKorisnika, postaviAktivan, postaviLimite, procitajLimit } from "../../../lib/admin/korisnici";
+import { LIMIT_UREDAJA_MAX, ZADANI_LIMIT_UREDAJA, procitajLimitUredaja, provedba, sazeciUredaja } from "../../../lib/admin/uredaji";
+import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice } from "../../../lib/admin/pozivi";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -29,7 +29,7 @@ if (Astro.request.method === "POST") {
   const f = await Astro.request.formData();
   const akcija = String(f.get("akcija") ?? "");
   const id = Number(f.get("id"));
-  const natrag = (ok: string) => Astro.redirect(`/admin/korisnici?ok=${ok}`, 303);
+  const natrag = (ok: string) => Astro.redirect(`/admin/uprava/korisnici?ok=${ok}`, 303);
   try {
     if (akcija === "poziv" || akcija === "novi_passkey") {
       const p = akcija === "poziv"
@@ -70,7 +70,7 @@ const nacin = provedba();
 const ulogaTekst = (k: (typeof korisnici)[number]) =>
   k.uloga ?? (k.ulogaRetka === "logoped" ? "logoped, deaktiviran" : "bez pristupa");
 ---
-<AdminOkvir naslov="Korisnici" aktivno="korisnici">
+<AdminOkvir naslov="Korisnici" podrucje="uprava" aktivno="korisnici">
   <div class="naslov">
     <div>
       <h1>Korisnici</h1>

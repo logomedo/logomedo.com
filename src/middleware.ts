@@ -9,7 +9,7 @@
 import { defineMiddleware } from "astro:middleware";
 import { env } from "cloudflare:workers";
 import { getSession } from "./lib/admin/sesija";
-import { rutaSamoSuperadmin } from "./lib/admin/rute";
+import { preseljeno, rutaSamoSuperadmin } from "./lib/admin/rute";
 import { runnerOk } from "./lib/runner-auth";
 import { appSesija } from "./lib/app/sesija";
 import { KvotaPrekoracena, odgovorNaKvotu } from "./lib/kvota";
@@ -76,6 +76,9 @@ export const onRequest = defineMiddleware(async ({ request, url, locals }, next)
       if (!["GET", "HEAD"].includes(request.method) || url.pathname.startsWith("/admin/api/")) return json({ error: "forbidden" }, 403);
       return zastiti(await nemasPristup(next), true);
     }
+    // 4b. Preseljene stranice (Uprava, docs/uprava/plan.md): tek nakon provjere uloge, da logoped ne sazna novu adresu.
+    const nova = preseljeno(url.pathname);
+    if (nova) return Response.redirect(new URL(nova + url.search, url), request.method === "GET" || request.method === "HEAD" ? 301 : 308);
     // 5. Uređaji: tabovi istog preglednika su jedan uređaj; treći preglednik odjednom bira „Nastavi ovdje”.
     if (!BEZ_UREDAJA.has(url.pathname)) {
       const u = await provjeriUredaj(request, s);

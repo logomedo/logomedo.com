@@ -1,0 +1,97 @@
+---
+// Uplate i računi (docs/naplata.md, docs/uprava/plan.md): popis uplata, status računa iz domovina-fiskala, PDF i
+// „Ponovi” za račun koji nije poslan. Do 25. 11. 2026. dio /admin/uprava/zahtjevi. Samo superadmin (rute.ts).
+import AdminOkvir from "../../../components/AdminOkvir.astro";
+import { kad } from "../../../lib/katalog";
+import { smije } from "../../../lib/admin/ovlasti";
+import { eura } from "../../../landing/konstante";
+import { fiskalPostavljen, izdajRacun, simulacijaDopustena, uplata as dohvatiUplatu, zadnjeUplate, type Uplata } from "../../../lib/admin/uplate";
+import { TIP_TEKST } from "../../../lib/naplata";
+
+const s = Astro.locals.admin;
+if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
+
+// Tablica uplate (0048) se čita samo gdje je naplata uključena: produkcija je nema dok se fiskal ne postavi.
+const ukljuceno = simulacijaDopustena() || fiskalPostavljen();
+let greska: string | null = null;
+let ponovljeno: Uplata | null = null;
+if (Astro.request.method === "POST") {
+  const f = await Astro.request.formData();
+  const id = Number(f.get("id"));
+  if (!ukljuceno) greska = "Naplata ovdje nije uključena.";
+  else if (f.get("akcija") !== "ponovi" || !Number.isInteger(id) || id <= 0) greska = "Nepoznata radnja.";
+  else if (!(await dohvatiUplatu(id))) greska = "Uplata ne postoji.";
+  else ponovljeno = await izdajRacun(id, s.email);
+  if (greska) Astro.response.status = 400;
+}
+const uplate = ukljuceno ? await zadnjeUplate(100) : [];
+const eura2 = (c: number) => eura(c / 100, c % 100 !== 0);
+const STATUS_RACUNA = { ceka: "čeka", izdan: "izdan, nije dostavljen", poslan: "poslan", greska: "greška" } as const;
+const ukupno = uplate.reduce((z, u) => z + u.iznos_centi, 0);
+---
+<AdminOkvir naslov="Uplate i računi" podrucje="uprava" aktivno="uplate">
+  <div class="naslov">
+    <div>
+      <h1>Uplate i računi</h1>
+      <p class="podnaslov">Računi idu kroz domovina-fiskal (ITalk d.o.o.). Uplata nastaje plaćanjem licence; zasad samo simulirano na
+        <a href="/admin/uprava/zahtjevi">Zahtjevima</a>.</p>
+    </div>
+  </div>
+
+  {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
+  {ponovljeno && (
+    <p class:list={["poruka", ponovljeno.racun_status === "poslan" ? "ok" : "greska"]} role="status" id="ponovljeno">
+      Račun za {ponovljeno.kupac_naziv}: {STATUS_RACUNA[ponovljeno.racun_status]}{ponovljeno.greska ? `. ${ponovljeno.greska}` : ""}</p>
+  )}
+
+  {!ukljuceno ? (
+    <div class="ploha prazno"><h2>Naplata ovdje još nije uključena</h2><p>Na ovoj okolini nema ni simulacije ni domovina-fiskala (docs/naplata.md).</p></div>
+  ) : uplate.length === 0 ? (
+    <div class="ploha prazno"><h2>Još nema uplata</h2><p>Prva će se pojaviti ovdje čim netko plati licencu.</p></div>
+  ) : (
+    <>
+      <p class="sitno blijedo zbroj">Zadnjih {uplate.length} uplata, ukupno <b>{eura2(ukupno)}</b>.</p>
+      <div class="ploha tablica">
+        <table id="uplate">
+          <thead><tr><th>Kupac</th><th>Uplata</th><th>Račun</th><th></th></tr></thead>
+          <tbody>
+            {uplate.map((u) => (
+              <tr id={`uplata-${u.id}`}>
+                <td><b>{u.kupac_naziv}</b>{u.kupac_oib && <span class="sitno"> · OIB {u.kupac_oib}</span>}<br /><span class="blijedo sitno">{u.email}{u.izvor === "simulacija" ? " · simulacija" : ""}</span></td>
+                <td class="sitno">{eura2(u.iznos_centi)} · {u.nacin === "kartica" ? "kartica" : "SEPA"}<br /><span class="blijedo">{kad(u.placeno_at)}</span></td>
+                <td class="sitno">{u.racun_tip ? TIP_TEKST[u.racun_tip] : "—"}{u.broj_racuna && <> <b>{u.broj_racuna}</b></>}<br />
+                  <span class:list={["status", u.racun_status === "poslan" ? "odobren" : u.racun_status === "greska" ? "odbijen" : ""]}>{STATUS_RACUNA[u.racun_status]}</span>
+                  {u.dostava && <span class="blijedo"> {u.dostava}</span>}
+                  {u.greska && <><br /><span class="blijedo">{u.greska}</span></>}</td>
+                <td class="sitno">
+                  {u.fiskal_id && <a href={`/admin/uprava/uplate/racun/${u.id}`} target="_blank" rel="noopener">PDF</a>}
+                  {u.racun_status !== "poslan" && (
+                    <form method="post"><input type="hidden" name="akcija" value="ponovi" /><input type="hidden" name="id" value={u.id} />
+                      <button class="gumb mali" type="submit">Ponovi</button></form>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )}
+</AdminOkvir>
+<style>
+  .podnaslov a { color: var(--med-tamno); }
+  .poruka { margin: 12px 0; font-weight: 600; font-size: .9rem; }
+  .poruka.ok { color: var(--uspjeh); }
+  .poruka.greska { color: var(--greska); }
+  .sitno { font-size: .82rem; margin: 0; }
+  .zbroj { margin: 0 0 10px; }
+  form { margin: 0; }
+  .tablica { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rub); vertical-align: top; }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--blijedo); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  .status { font-size: .8rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .status.odobren { background: var(--uspjeh-blago); color: var(--uspjeh); }
+  .status.odbijen { background: var(--greska-blago); color: var(--greska); }
+</style>
