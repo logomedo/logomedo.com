@@ -69,7 +69,7 @@ OTP na e-mail). AUD je u `env.staging.vars.ACCESS_AUD`. Uloga se i dalje računa
 **staginga** i tablice `korisnici`, pa Access sam po sebi ne daje pristup.
 
 **Passkey:** radi samo na domeni na kojoj je dodan. Staging je kopija produkcijske baze, pa
-`/admin/passkeys` ključeve s `logomedo.com` (`admin_passkeys.rp_id`, migracija 0049; NULL = produkcija)
+`/admin/postavke#kljucevi` (prije `/admin/passkeys`) ključeve s `logomedo.com` (`admin_passkeys.rp_id`, migracija 0049; NULL = produkcija)
 pokazuje odvojeno, pod „Ključevi za drugu domenu”, i ne broji ih u limit od 5. Passkey dodan na stagingu
 nestaje pri idućem osvježavanju podataka.
 

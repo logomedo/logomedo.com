@@ -11,10 +11,12 @@ Aplikacija (Astro 7 + Cloudflare Workers + D1 + R2). Radni prostor iznad (`..`) 
   sesije s notifikacijama po slici: katalog ima 428 riječi, a Vertex se plaća.
 - Izgovor (ElevenLabs) radi sam Worker kroz Cloudflare Queue, bez runnera: `docs/zvukovi.md`.
 - Klon glasa (ElevenLabs Instant, /admin/zvukovi/klonovi, samo superadmin): `docs/klon-glasa.md`.
-- Cijene (`/cijene`) i pogodnosti nakon bete (`/admin/pogodnosti`, uz „Odobri” na zahtjevima): `docs/pogodnosti.md`.
-- Kuponi na `/pristup` (`?kupon=KOD`, auto-odobravanje bez „Odobri”, `/admin/kuponi`): `docs/kuponi.md`.
-- Naplata i računi kroz domovina-fiskal (ITalk tenant; simulirana uplata na `/admin/zahtjevi`, zasad samo staging): `docs/naplata.md`.
+- Cijene (`/cijene`) i pogodnosti nakon bete (`/admin/uprava/pogodnosti`, uz „Odobri” na zahtjevima): `docs/pogodnosti.md`.
+- Kuponi na `/pristup` (`?kupon=KOD`, auto-odobravanje bez „Odobri”, `/admin/uprava/kuponi`): `docs/kuponi.md`.
+- Naplata i računi kroz domovina-fiskal (ITalk tenant; simulirana uplata na `/admin/uprava/zahtjevi`, popis na `/admin/uprava/uplate`, zasad samo staging): `docs/naplata.md`.
 - Uređaji (limit istovremenih uređaja po računu, protiv dijeljenja; `UREDAJI_PROVEDBA`): `docs/uredaji.md`.
+- Admin ima dva područja (`docs/uprava/plan.md`): Sadržaj (`/admin/...`) i Uprava (`/admin/uprava/...`, samo superadmin:
+  korisnici, zahtjevi, uplate, pogodnosti, kuponi, poruke). Trake su u `src/lib/admin/navigacija.ts`.
 - Prije commita: `npm test && npm run check && npm run build`.
 - Staging (`staging.logomedo.com`, kopija produkcijske D1 iza lozinke): `docs/staging.md`. Staging
   naredbe uvijek kroz `npm run …:staging` ili s `--config wrangler.jsonc --env staging`.

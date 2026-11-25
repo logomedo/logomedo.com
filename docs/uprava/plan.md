@@ -1,5 +1,12 @@
 # Plan: odvojiti Upravu od sadržaja u adminu
 
+> **Stanje 25. 11. 2026.: koraci 1–5 napravljeni, na stagingu.** Produkcija čeka nalog. Odluke: ime „Uprava”
+> (`/admin/uprava`), Red/Prompt/Aktivnost ostaju u Sadržaju pod „Alati”, Organizacije se ne prikazuju dok ne
+> postoje u bazi. Kod: `src/lib/admin/navigacija.ts` (trake), `rute.ts` (`/admin/uprava` prefiks, `PRESELJENO`),
+> `src/pages/admin/uprava/` (pregled, korisnici, zahtjevi, uplate, pogodnosti, kuponi, poruke), `lib/admin/uprava.ts`.
+> Nova stranica Uprave: datoteka pod `src/pages/admin/uprava/`, `podrucje="uprava"` u AdminOkviru i stavka u
+> `TRAKE.uprava`; zaštita je automatska.
+
 Stanje 25. 11. 2026. Bočna traka (`src/components/AdminOkvir.astro`) ima tri skupine sadržaja
 (Odobravanje, Sadržaj, Vježbe) i ispod njih deset „alata i postavki” izmiješanih bez reda: Red
 generiranja, Prompt, Aktivnost, Ključevi, Korisnici, Zahtjevi, Pogodnosti, Kuponi, Poruke, Postavke.

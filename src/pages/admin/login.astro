@@ -18,7 +18,7 @@ const access = accessConfigured();
       <button id="passkey-login" class="gumb glavni puno" type="button" data-next={next}><Ikona ime="kljuc" /> Prijava passkeyem</button>
       {access && <a class="gumb puno" href={`/admin/sso?next=${encodeURIComponent(next)}`}>Kod na e-mail (Cloudflare Access)</a>}
       <p id="msg" hidden={!greska}>{greska}</p>
-      <p class="sitno blijedo">Prvi put: uđi kodom na e-mail, pa u „Ključevi” dodaj passkey.</p>
+      <p class="sitno blijedo">Prvi put: uđi kodom na e-mail, pa u Postavkama (Ključevi) dodaj passkey.</p>
     </div>
   </div>
 </AdminOkvir>

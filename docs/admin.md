@@ -54,7 +54,7 @@ tablici ispod i mogu se opozvati. Za e-mail iz `ADMIN_EMAILS` pozivnica se ne iz
 
 **Novi passkey** (izgubljen ili novi uređaj): u retku korisnika „Novi passkey” daje pozivnicu za
 isti račun; stari ključevi ostaju. Samo za aktivnog logopeda: deaktiviranog vraća „Aktiviraj” ili
-opća „Nova pozivnica”. Dodatni ključ logoped može dodati i sam na `/admin/passkeys` unutar 10 min
+opća „Nova pozivnica”. Dodatni ključ logoped može dodati i sam na `/admin/postavke#kljucevi` (prije `/admin/passkeys`) unutar 10 min
 od prijave pozivnicom.
 
 **Deaktivacija:** „Deaktiviraj” odmah briše sve njegove sesije i opoziva otvorene pozivnice;
@@ -121,7 +121,7 @@ slikom, pa brojeve (npr. listić po glasovima) provjeravati istim upitom na `--r
 E-mail za lokalnu sesiju ne vadi `grep`-om iz `.dev.vars`: vrijednost `ADMIN_EMAILS` je u navodnicima, pa sesija dobije
 e-mail s `"` i stranica ne prepozna admina.
 
-Kad je sesija svježa (`method = 'access'`, < 10 min), na `/admin/passkeys` se može dodati
+Kad je sesija svježa (`method = 'access'`, < 10 min), na `/admin/postavke#kljucevi` (prije `/admin/passkeys`) se može dodati
 lokalni passkey (rpID `localhost`, ne vrijedi za produkciju).
 
 ## Bočna traka (14. 11. 2026.)
