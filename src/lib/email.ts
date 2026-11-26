@@ -74,6 +74,25 @@ export function sadrzajPozivnice(p: Pozivnica): { subject: string; text: string;
 }
 
 /**
+ * Ista pozivnica kao običan tekst za ručno slanje (WhatsApp, SMS, poruka): samo retci i prazni retci, bez
+ * oblikovanja. `poslanaMailom`: dodaje uputu da je mail možda u Spamu ili Promocijama.
+ */
+export function porukaPozivnice(p: Pozivnica & { poslanaMailom?: boolean }): string {
+  const ime = p.ime.trim().split(/\s+/)[0] || "";
+  return [
+    ime ? `Pozdrav ${ime},` : "Pozdrav,",
+    "evo vaše pozivnice za LogoMedo. Otvorite link i postavite prijavu (passkey): otiskom prsta, licem ili PIN-om uređaja, bez lozinke.",
+    p.url,
+    `Link vrijedi do ${datum(p.istjece)} i može se iskoristiti jednom. Najbolje ga je otvoriti na uređaju na kojem ćete koristiti LogoMedo.`,
+    ...(p.poslanaMailom
+      ? [`Istu pozivnicu poslali smo i e-poštom (pozivnica@logomedo.com). Ako je niste vidjeli, pogledajte i mape Spam i Promocije.`]
+      : []),
+    "Ako nešto ne radi, samo odgovorite na ovu poruku.",
+    "LogoMedo\nhttps://logomedo.com",
+  ].join("\n\n");
+}
+
+/**
  * Pošalji pozivnicu. Ne baca: neuspjeh vraća razlog, a admin i dalje ima link za ručno slanje.
  * Prije slanja otvara razgovor u inboxu, pa `reply_to` nosi njegov ključ i odgovor logopeda stiže u
  * /admin/uprava/poruke; poslana pozivnica (bez tokena) se upisuje u taj razgovor. Neuspjelo slanje briše prazan razgovor.

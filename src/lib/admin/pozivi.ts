@@ -53,7 +53,7 @@ export async function izdaj(
   p: { email: string; ime?: string | null; korisnikId?: number | null },
   stvorio: string,
   sada = new Date(),
-): Promise<{ token: string; id: number; email: string; istjece: string }> {
+): Promise<{ token: string; id: number; email: string; ime: string | null; istjece: string }> {
   const email = normalizirajEmail(p.email);
   if (!ispravanEmail(email)) throw new PozivOdbijen("email");
   if (adminEmails().has(email)) throw new PozivOdbijen("superadmin");
@@ -93,7 +93,7 @@ export async function izdaj(
     ).bind(hash, email, ime, korisnikId, stvorio, at, istjece),
     zapisNastalih(z("poziv.izdan"), { sql: "x.token_hash = ?", args: [hash] }),
   ]);
-  return { token, id: (rez[4].results[0] as { id: number }).id, email, istjece };
+  return { token, id: (rez[4].results[0] as { id: number }).id, email, ime, istjece };
 }
 
 /** Pozivnica iz tokena ako je otvorena (postoji, nije istekla, opozvana ni iskorištena); inače null. */
@@ -193,4 +193,32 @@ export async function otvorenePozivnice(sada = new Date()): Promise<OtvorenaPozi
   return (await env.DB.prepare(
     `SELECT id, email, ime, korisnik_id, stvorio, created_at, istjece FROM pozivi WHERE ${OTVORENA} ORDER BY created_at DESC`,
   ).bind(sada.toISOString()).all<OtvorenaPozivnica>()).results;
+}
+
+/**
+ * „Nova pozivnica” iz retka otvorene ili istekle pozivnice: isti e-mail, ime i vrsta (novi logoped / novi passkey).
+ * Stara otvorena prestaje vrijediti (kao svaki `izdaj`). Iskorištenu ili opozvanu ne ponavlja: null.
+ */
+export async function ponovi(id: number, stvorio: string, sada = new Date()): Promise<Awaited<ReturnType<typeof izdaj>> | null> {
+  const p = await env.DB.prepare("SELECT email, ime, korisnik_id FROM pozivi WHERE id = ? AND iskoristena_at IS NULL AND opozvana_at IS NULL")
+    .bind(id).first<{ email: string; ime: string | null; korisnik_id: number | null }>();
+  if (!p) return null;
+  return izdaj({ email: p.email, ime: p.ime, korisnikId: p.korisnik_id }, stvorio, sada);
+}
+
+/**
+ * Istekle, a neiskorištene pozivnice iz zadnjih `dana` (zadnja po e-mailu): osoba se nije stigla prijaviti.
+ * Bez onih za koje već postoji otvorena pozivnica ili koji su u međuvremenu aktivni logopedi.
+ * Zamijenjene i opozvane imaju `opozvana_at`, pa ih ovdje nema.
+ */
+export async function isteklePozivnice(sada = new Date(), dana = 30): Promise<OtvorenaPozivnica[]> {
+  const at = sada.toISOString();
+  return (await env.DB.prepare(
+    `SELECT p.id, p.email, p.ime, p.korisnik_id, p.stvorio, p.created_at, p.istjece FROM pozivi p
+     WHERE p.iskoristena_at IS NULL AND p.opozvana_at IS NULL AND p.istjece <= ? AND p.istjece > ?
+       AND p.id = (SELECT MAX(x.id) FROM pozivi x WHERE x.email = p.email)
+       AND NOT EXISTS (SELECT 1 FROM korisnici k WHERE k.email = p.email AND k.uloga = 'logoped' AND k.aktivan = 1 AND p.korisnik_id IS NULL)
+     ORDER BY p.istjece DESC`,
+  ).bind(at, new Date(sada.getTime() - dana * 86400_000).toISOString()).all<OtvorenaPozivnica>()).results
+    .filter((p) => !adminEmails().has(normalizirajEmail(p.email)));
 }

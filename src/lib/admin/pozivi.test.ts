@@ -7,7 +7,7 @@ import { env } from "../test/cloudflare-workers.ts";
 import { sha256Hex } from "./sesija.ts";
 import {
   otvorenaPoTokenu,
-  POZIV_SATI, PozivOdbijen, ispravanToken, iskoristi, izdaj, naredbeIskoristenja, opozovi, otvorenePozivnice, provjeri,
+  POZIV_SATI, PozivOdbijen, ispravanToken, iskoristi, isteklePozivnice, izdaj, naredbeIskoristenja, opozovi, otvorenePozivnice, ponovi, provjeri,
 } from "./pozivi.ts";
 import { vrati } from "../aktivnost.ts";
 import type { NoviPasskey } from "./passkey.ts";
@@ -220,4 +220,40 @@ test("vrati(): zapisi o pozivnicama i korisnicima se ne poništavaju", async () 
   }
   assert.equal((await korisnici())[0].aktivan, 1);
   assert.equal(await db().prepare("SELECT COUNT(*) AS n FROM pozivi WHERE iskoristena_at IS NOT NULL").first<number>("n"), 1);
+});
+
+test("ponovi: isti e-mail i ime, stara otvorena prestaje vrijediti; iskorištena/opozvana se ne ponavlja", async () => {
+  const sada = new Date();
+  const prva = await izdaj({ email: LOGOPED, ime: "Ana Horvat" }, SA, sada);
+  const nova = await ponovi(prva.id, SA, new Date(sada.getTime() + 1000));
+  assert.ok(nova);
+  assert.equal(nova!.email, LOGOPED);
+  assert.equal(await provjeri(prva.token), null, "stari link više ne vrijedi");
+  assert.equal((await provjeri(nova!.token))?.ime, "Ana Horvat");
+  assert.equal(await ponovi(prva.id, SA), null, "zamijenjena (opozvana) se ne ponavlja");
+  assert.ok(await opozovi(nova!.id, SA));
+  assert.equal(await ponovi(nova!.id, SA), null);
+});
+
+test("ponovi: istekla pozivnica za novi passkey ostaje vrsta novi passkey", async () => {
+  const id = await korisnik(LOGOPED, "logoped", 1, "Ana");
+  const davno = new Date(Date.now() - 100 * 3600_000);
+  const p = await izdaj({ email: LOGOPED, korisnikId: id }, SA, davno);
+  assert.equal(await provjeri(p.token), null, "istekla");
+  const nova = await ponovi(p.id, SA);
+  assert.equal((await provjeri(nova!.token))?.korisnikId, id);
+});
+
+test("istekle: zadnja neiskorištena po e-mailu, bez otvorenih, aktivnih logopeda i starijih od 30 dana", async () => {
+  const sada = new Date();
+  const prije = (h: number) => new Date(sada.getTime() - h * 3600_000);
+  await izdaj({ email: "c@primjer.hr", ime: "C" }, SA, prije(100));            // istekla → u popisu
+  await izdaj({ email: "d@primjer.hr" }, SA, prije(100));
+  await izdaj({ email: "d@primjer.hr" }, SA, prije(1));                         // ima otvorenu → ne
+  await izdaj({ email: "e@primjer.hr" }, SA, prije(40 * 24));                   // starija od 30 dana → ne
+  await izdaj({ email: LOGOPED }, SA, prije(100));
+  await korisnik(LOGOPED, "logoped", 1);                                        // u međuvremenu aktivan → ne
+  const ist = await isteklePozivnice(sada);
+  assert.deepEqual(ist.map((p) => p.email), ["c@primjer.hr"]);
+  assert.equal((await otvorenePozivnice(sada)).length, 1);
 });

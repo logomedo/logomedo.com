@@ -9,7 +9,8 @@ import { smije } from "../../../lib/admin/ovlasti";
 import { PORUKE_ODBIJANJA } from "../../../lib/admin/pozivi";
 import { noviZahtjevi, obradjeniZahtjevi, odbij, odobri, type StatusZahtjeva } from "../../../lib/admin/zahtjevi";
 import { ROK_MJESECI, pocisti } from "../../../lib/pristup";
-import { posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
+import { porukaPozivnice, posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
+import PorukaPozivnice from "../../../components/PorukaPozivnice.astro";
 import { PAKETI_ZAHTJEVA, cijenaLicence, eura } from "../../../landing/konstante";
 import { IZBORI, NAPOMENA_MAX, opisPogodnosti, procitajIzbor, type Pogodnost } from "../../../lib/admin/pogodnosti";
 import {
@@ -22,7 +23,7 @@ if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { stat
 
 let poruka: string | null = Astro.url.searchParams.get("ok") === "odbijen" ? "Zahtjev je odbijen." : null;
 let greska: string | null = null;
-let link: { url: string; email: string; istjece: string } | null = null;
+let link: { url: string; email: string; ime: string; istjece: string } | null = null;
 let slanje: IshodSlanja | null = null;
 let dodijeljena: Pogodnost | null = null;
 // Simulirana uplata (docs/naplata.md, samo staging): uplata + odobravanje + račun kroz domovina-fiskal.
@@ -40,8 +41,8 @@ if (Astro.request.method === "POST") {
     dodijeljena = izbor ?? null;
     const r = await odobri(id, s.email, new Date(), dodijeljena ? { p: dodijeljena, napomena: String(f.get("napomena") ?? "") } : null);
     if (r.ok) {
-      link = { url: `${Astro.url.origin}/admin/poziv#${r.token}`, email: r.email, istjece: r.istjece };
-      slanje = await posaljiPozivnicu({ ...link, ime: r.ime });
+      link = { url: `${Astro.url.origin}/admin/poziv#${r.token}`, email: r.email, ime: r.ime, istjece: r.istjece };
+      slanje = await posaljiPozivnicu(link);
       if (!slanje.ok) console.error("pozivnica e-poštom nije poslana", slanje);
     } else if (r.razlog === "obradjen") greska = "Zahtjev je već obrađen (možda u drugoj kartici). Nova pozivnica nije izdana.";
     else greska = `${PORUKE_ODBIJANJA[r.razlog]} Zahtjev je i dalje otvoren: ako pozivnica ne treba, zatvori ga gumbom „Odbij”.`;
@@ -54,8 +55,8 @@ if (Astro.request.method === "POST") {
         placeno = r.uplata;
         const o = r.odobravanje;
         if (o.ok) {
-          link = { url: `${Astro.url.origin}/admin/poziv#${o.token}`, email: o.email, istjece: o.istjece };
-          slanje = await posaljiPozivnicu({ ...link, ime: o.ime });
+          link = { url: `${Astro.url.origin}/admin/poziv#${o.token}`, email: o.email, ime: o.ime, istjece: o.istjece };
+          slanje = await posaljiPozivnicu(link);
         } else if (o.razlog !== "obradjen") poruka = `Pozivnica nije izdana: ${PORUKE_ODBIJANJA[o.razlog]}`;
       }
     }
@@ -108,8 +109,10 @@ const STATUS: Record<StatusZahtjeva, string> = { novi: "novi", odobren: "odobren
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
       <div class="red-linka">
         <input id="poziv-link" type="text" readonly value={link.url} aria-label="Link pozivnice" />
-        <button id="kopiraj-link" class="gumb glavni mali" type="button">Kopiraj</button>
+        <button id="kopiraj-link" class="gumb glavni mali" type="button">Kopiraj link</button>
       </div>
+      <PorukaPozivnice tekst={porukaPozivnice({ ...link, poslanaMailom: slanje?.ok === true })} />
+      <p class="blijedo sitno">Ako se ne javi, novi link i ponovno slanje su na <a href="/admin/uprava/korisnici#pozivnice">Korisnicima</a> („Nova pozivnica”).</p>
     </section>
   )}
 

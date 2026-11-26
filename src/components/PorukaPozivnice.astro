@@ -1,0 +1,36 @@
+---
+// Gotova poruka pozivnice (običan tekst s linkom) za ručno slanje: WhatsApp, SMS, poruka. Ide u rezultat
+// pozivnice na /admin/uprava/korisnici i /admin/uprava/zahtjevi, uz link i „Pošalji e-poštom” (mail zna
+// završiti u Spamu ili Promocijama). Tekst slaže `porukaPozivnice` (src/lib/email.ts).
+interface Props { tekst: string }
+const { tekst } = Astro.props;
+const redaka = Math.min(14, tekst.split("\n").length + 2);
+---
+<div class="poruka-pozivnice">
+  <label for="poziv-poruka">Poruka za WhatsApp ili SMS</label>
+  <textarea id="poziv-poruka" readonly rows={redaka}>{tekst}</textarea>
+  <div class="gumbi">
+    <button id="kopiraj-poruku" class="gumb mali" type="button">Kopiraj poruku</button>
+    <a class="gumb mali tihi" id="whatsapp-poruka" href={`https://wa.me/?text=${encodeURIComponent(tekst)}`} target="_blank" rel="noopener">Otvori u WhatsAppu</a>
+  </div>
+</div>
+<script>
+  const gumb = document.getElementById("kopiraj-poruku");
+  gumb?.addEventListener("click", async () => {
+    const polje = document.getElementById("poziv-poruka") as HTMLTextAreaElement;
+    polje.select();
+    try {
+      await navigator.clipboard.writeText(polje.value);
+      gumb.textContent = "Kopirano";
+    } catch {
+      gumb.textContent = "Označeno: Ctrl+C";
+    }
+  });
+</script>
+<style>
+  .poruka-pozivnice { display: flex; flex-direction: column; gap: 6px; }
+  .poruka-pozivnice label { font-size: .84rem; font-weight: 600; margin: 0; }
+  .poruka-pozivnice textarea { width: 100%; font: inherit; font-size: .88rem; line-height: 1.45; padding: 10px 12px; resize: vertical;
+    border: 1px solid var(--rub-jak); border-radius: 8px; background: var(--povrsina); color: var(--tinta); }
+  .gumbi { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>

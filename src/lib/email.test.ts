@@ -4,7 +4,7 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { env } from "./test/cloudflare-workers.ts";
 import { napraviD1 } from "./test/d1.ts";
-import { POSILJATELJ, SKRIVENA_POVEZNICA, posaljiPozivnicu, sadrzajPozivnice } from "./email.ts";
+import { POSILJATELJ, SKRIVENA_POVEZNICA, porukaPozivnice, posaljiPozivnicu, sadrzajPozivnice } from "./email.ts";
 import { kljucIzAdrese } from "./poruke.ts";
 
 const P = { email: "logoped@primjer.test", ime: "<b>Ana</b> Horvat", url: "https://logomedo.com/admin/poziv#tok", istjece: "2026-11-22T12:00:00.000Z" };
@@ -82,4 +82,16 @@ test("ime je escapano u HTML-u, link je u tekstu", () => {
   assert.ok(s.text.includes("Pozdrav <b>Ana</b>,"));
   assert.ok(!/\{\{/.test(s.html + s.text), "svi placeholderi popunjeni");
   assert.ok(s.html.includes('href="https://logomedo.com/admin/poziv#tok"'));
+});
+
+test("poruka pozivnice za ručno slanje: običan tekst s linkom, uputa za Spam samo kad je mail poslan", () => {
+  const p = { email: "ana@primjer.hr", ime: "Ana Horvat", url: "https://logomedo.com/admin/poziv#tok", istjece: "2026-11-29T13:00:00.000Z" };
+  const m = porukaPozivnice(p);
+  assert.ok(m.startsWith("Pozdrav Ana,\n\n"));
+  assert.ok(m.includes("\n\nhttps://logomedo.com/admin/poziv#tok\n\n"));
+  assert.ok(m.includes("29. 11. 2026."));
+  assert.ok(!m.includes("Spam"));
+  assert.ok(porukaPozivnice({ ...p, poslanaMailom: true }).includes("Spam i Promocije"));
+  assert.ok(porukaPozivnice({ ...p, ime: "" }).startsWith("Pozdrav,\n\n"));
+  assert.ok(!/[<>*]/.test(m), "bez oznaka");
 });

@@ -9,8 +9,9 @@ import { kad } from "../../../lib/katalog";
 import { smije } from "../../../lib/admin/ovlasti";
 import { LIMIT_MAX, popisKorisnika, postaviAktivan, postaviLimite, procitajLimit } from "../../../lib/admin/korisnici";
 import { LIMIT_UREDAJA_MAX, ZADANI_LIMIT_UREDAJA, procitajLimitUredaja, provedba, sazeciUredaja } from "../../../lib/admin/uredaji";
-import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, opozovi, otvorenePozivnice, otvorenaPoTokenu } from "../../../lib/admin/pozivi";
-import { posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
+import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, isteklePozivnice, opozovi, otvorenePozivnice, otvorenaPoTokenu, ponovi } from "../../../lib/admin/pozivi";
+import { porukaPozivnice, posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
+import PorukaPozivnice from "../../../components/PorukaPozivnice.astro";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -24,7 +25,9 @@ const PORUKE_OK: Record<string, string> = {
 };
 let poruka: string | null = PORUKE_OK[Astro.url.searchParams.get("ok") ?? ""] ?? null;
 let greska: string | null = null;
-let link: { url: string; email: string; istjece: string } | null = null;
+let link: { url: string; email: string; ime: string; istjece: string } | null = null;
+/** Pozivnica je napravljena iz retka otvorene/istekle („Nova pozivnica”): stara više ne vrijedi. */
+let ponovljena = false;
 /** „Pošalji e-poštom” u rezultatu: pozivnica ide i mailom (Resend), kao „Odobri” na Zahtjevima. */
 let slanje: IshodSlanja | null = null;
 
@@ -38,16 +41,22 @@ if (Astro.request.method === "POST") {
       const p = akcija === "poziv"
         ? await izdaj({ email: String(f.get("email") ?? ""), ime: String(f.get("ime") ?? "") }, s.email)
         : await izdaj({ email: String(f.get("email") ?? ""), korisnikId: id }, s.email);
-      link = { url: `${Astro.url.origin}/admin/poziv#${p.token}`, email: p.email, istjece: p.istjece };
-
+      link = { url: `${Astro.url.origin}/admin/poziv#${p.token}`, email: p.email, ime: p.ime ?? "", istjece: p.istjece };
+    } else if (akcija === "ponovi") {
+      const p = await ponovi(Number(f.get("poziv_id")), s.email);
+      if (!p) greska = "Ta pozivnica je u međuvremenu iskorištena ili opozvana.";
+      else {
+        link = { url: `${Astro.url.origin}/admin/poziv#${p.token}`, email: p.email, ime: p.ime ?? "", istjece: p.istjece };
+        ponovljena = true;
+      }
     } else if (akcija === "posalji_poziv") {
       // Link se ne sprema, pa ga obrazac rezultata vraća; šalje se samo ako je token otvorena pozivnica (i to za njen e-mail).
       const token = String(f.get("token") ?? "");
       const p = await otvorenaPoTokenu(token);
       if (!p) greska = "Pozivnica više ne vrijedi (iskorištena, opozvana ili istekla). Napravi novu.";
       else {
-        link = { url: `${Astro.url.origin}/admin/poziv#${token}`, email: p.email, istjece: p.istjece };
-        slanje = await posaljiPozivnicu({ ...link, ime: p.ime ?? "" });
+        link = { url: `${Astro.url.origin}/admin/poziv#${token}`, email: p.email, ime: p.ime ?? "", istjece: p.istjece };
+        slanje = await posaljiPozivnicu(link);
         if (!slanje.ok) console.error("pozivnica e-poštom nije poslana", slanje);
       }
     } else if (akcija === "opozovi") {
@@ -79,7 +88,7 @@ if (Astro.request.method === "POST") {
   if (greska) Astro.response.status = 400;
 }
 
-const [korisnici, pozivnice, uredaji] = await Promise.all([popisKorisnika(), otvorenePozivnice(), sazeciUredaja()]);
+const [korisnici, pozivnice, istekle, uredaji] = await Promise.all([popisKorisnika(), otvorenePozivnice(), isteklePozivnice(), sazeciUredaja()]);
 const nacin = provedba();
 const ulogaTekst = (k: (typeof korisnici)[number]) =>
   k.uloga ?? (k.ulogaRetka === "logoped" ? "logoped, deaktiviran" : "bez pristupa");
@@ -115,20 +124,22 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   {greska && <p class="poruka greska" role="alert" id="greska">{greska}</p>}
   {link && (
     <section class="ploha link" id="poziv-rezultat">
-      <h2>Pozivnica za {link.email}</h2>
+      <h2>Pozivnica za {link.ime ? `${link.ime} (${link.email})` : link.email}</h2>
+      {ponovljena && !slanje && <p class="poruka ok" role="status" id="poziv-ponovljen">Nova pozivnica je napravljena; prijašnji link više ne vrijedi. Pošalji je e-poštom ili kopiraj poruku ispod.</p>}
       {slanje?.ok && <p class="poruka ok" role="status" id="poziv-poslan">Pozivnica je poslana e-poštom na {link.email}. Link ispod je rezerva, ako ne stigne.</p>}
       {slanje && !slanje.ok && <p class="poruka greska" role="alert" id="poziv-nije-poslan">{zastoNijePoslano(slanje.razlog)} Kopiraj link i pošalji ga osobno.</p>}
       <p class="blijedo sitno">{slanje?.ok ? "" : "Kopiraj i pošalji osobno (poruka, ne javni kanal) ili e-poštom. "}Link se vidi samo sada; vrijedi do {kad(link.istjece)}.
         Prijašnja otvorena pozivnica za isti e-mail više ne vrijedi.</p>
       <div class="red-linka">
         <input id="poziv-link" type="text" readonly value={link.url} />
-        <button id="kopiraj-link" class="gumb mali" type="button">Kopiraj</button>
+        <button id="kopiraj-link" class="gumb mali" type="button">Kopiraj link</button>
         <form method="post">
           <input type="hidden" name="akcija" value="posalji_poziv" />
           <input type="hidden" name="token" value={link.url.split("#")[1]} />
           <button class="gumb glavni mali" type="submit" id="posalji-mail" data-cekanje="Šaljem…"><Ikona ime="pismo" /> <span>{slanje?.ok ? "Pošalji ponovno" : "Pošalji e-poštom"}</span></button>
         </form>
       </div>
+      <PorukaPozivnice tekst={porukaPozivnice({ ...link, poslanaMailom: slanje?.ok === true })} />
     </section>
   )}
 
@@ -218,6 +229,8 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   </div>
 
   <h2 class="podnaslov-popisa">Otvorene pozivnice <span class="blijedo">({pozivnice.length})</span></h2>
+  <p class="blijedo sitno uputa">„Nova pozivnica” napravi novi link za istu osobu (stari prestaje vrijediti): pošalješ ga e-poštom ili kopiraš
+    gotovu poruku za WhatsApp. „U obrazac” samo prepiše ime i e-mail gore, ako ih treba ispraviti.</p>
   <div class="ploha tablica">
       {pozivnice.length ? (
         <table id="pozivnice">
@@ -229,20 +242,66 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
                 <td>{p.korisnik_id ? "novi passkey" : "novi logoped"}</td>
                 <td class="blijedo sitno">{p.stvorio}</td>
                 <td class="blijedo">{kad(p.istjece)}</td>
-                <td>
+                <td><div class="akcije-poziva">
+                  <form method="post">
+                    <input type="hidden" name="akcija" value="ponovi" /><input type="hidden" name="poziv_id" value={p.id} />
+                    <button class="gumb mali" type="submit" data-cekanje="Radim…" title="Novi link za istu osobu; ovaj prestaje vrijediti"><Ikona ime="pismo" /> Nova pozivnica</button>
+                  </form>
+                  {!p.korisnik_id && <button class="gumb mali tihi u-obrazac" type="button" data-ime={p.ime ?? ""} data-email={p.email}>U obrazac</button>}
                   <form method="post">
                     <input type="hidden" name="akcija" value="opozovi" /><input type="hidden" name="poziv_id" value={p.id} />
                     <button class="gumb mali tihi opasno" type="submit">Opozovi</button>
                   </form>
-                </td>
+                </div></td>
               </tr>
             ))}
           </tbody>
         </table>
       ) : <p class="blijedo sitno prazne">Nema otvorenih pozivnica.</p>}
   </div>
+
+  {istekle.length > 0 && (
+    <>
+      <h2 class="podnaslov-popisa">Istekle, a neiskorištene <span class="blijedo">({istekle.length}, zadnjih 30 dana)</span></h2>
+      <p class="blijedo sitno uputa">Ove osobe se nisu prijavile dok je link vrijedio (72 h). Možda im je mail završio u Spamu ili Promocijama.</p>
+      <div class="ploha tablica">
+        <table id="istekle">
+          <thead><tr><th>Za</th><th>Vrsta</th><th>Izdao</th><th>Istekla</th><th></th></tr></thead>
+          <tbody>
+            {istekle.map((p) => (
+              <tr data-poziv-id={p.id} data-email={p.email}>
+                <td><b>{p.ime ?? "—"}</b><div class="blijedo sitno">{p.email}</div></td>
+                <td>{p.korisnik_id ? "novi passkey" : "novi logoped"}</td>
+                <td class="blijedo sitno">{p.stvorio}</td>
+                <td class="blijedo">{kad(p.istjece)}</td>
+                <td><div class="akcije-poziva">
+                  <form method="post">
+                    <input type="hidden" name="akcija" value="ponovi" /><input type="hidden" name="poziv_id" value={p.id} />
+                    <button class="gumb mali" type="submit" data-cekanje="Radim…"><Ikona ime="pismo" /> Nova pozivnica</button>
+                  </form>
+                  {!p.korisnik_id && <button class="gumb mali tihi u-obrazac" type="button" data-ime={p.ime ?? ""} data-email={p.email}>U obrazac</button>}
+                </div></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )}
 </AdminOkvir>
 <script>
+  // Rezultat pozivnice je ispod obrasca; nakon „Nova pozivnica” iz tablice pri dnu skoči na njega.
+  document.getElementById("poziv-rezultat")?.scrollIntoView({ block: "start" });
+  // „U obrazac”: prepiši ime i e-mail u „Nova pozivnica” gore (za ispravak prije slanja).
+  for (const b of document.querySelectorAll<HTMLButtonElement>(".u-obrazac")) {
+    b.addEventListener("click", () => {
+      (document.getElementById("poziv-ime") as HTMLInputElement).value = b.dataset.ime ?? "";
+      const email = document.getElementById("poziv-email") as HTMLInputElement;
+      email.value = b.dataset.email ?? "";
+      document.getElementById("nova-pozivnica")?.scrollIntoView({ block: "center" });
+      email.focus();
+    });
+  }
   const gumb = document.getElementById("kopiraj-link");
   gumb?.addEventListener("click", async () => {
     const polje = document.getElementById("poziv-link") as HTMLInputElement;
@@ -285,6 +344,9 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   .brojke .limiti { margin-top: 6px; flex-wrap: nowrap; }
   .brojke { font-size: .84rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .prazne { padding: 16px; }
+  .uputa { margin: -4px 0 10px; }
+  .akcije-poziva { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+  #pozivnice td, #istekle td { vertical-align: middle; }
   .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }
   .poruka.ok { color: var(--uspjeh); }
   .poruka.greska { color: var(--greska); }
