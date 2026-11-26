@@ -12,7 +12,9 @@ export const ADRESA_ADMINA = "https://logomedo.com";
 /** Razmak između dvije obavijesti za isti izvor. */
 export const OBAVIJEST_MINUTA = 60;
 
-export type Izvor = { vrsta: "poruka"; razgovorId: number } | { vrsta: "zahtjev" };
+export type Izvor = { vrsta: "poruka"; razgovorId: number } | { vrsta: "zahtjev" }
+  /** „Mail nije stigao” na /pristup nakon kupona (docs/kuponi.md): jedna obavijest po zahtjevu. */
+  | { vrsta: "pomoc"; zahtjevId: number };
 export type IshodObavijesti = "poslano" | "preskoceno" | "nema_kljuca" | "nema_primatelja" | "greska";
 
 const db = () => env.DB as D1Database;
@@ -21,7 +23,9 @@ const db = () => env.DB as D1Database;
 export function sadrzajObavijesti(izvor: Izvor): { subject: string; text: string; html: string } {
   const v = izvor.vrsta === "poruka"
     ? { naslov: "Nova poruka u LogoMedu", opis: "U inboxu LogoMeda je nova poruka.", url: `${ADRESA_ADMINA}/admin/uprava/poruke/${izvor.razgovorId}`, gumb: "Otvori razgovor" }
-    : { naslov: "Novi zahtjev za pristup LogoMedu", opis: "Na /pristup je stigao novi zahtjev za pristup.", url: `${ADRESA_ADMINA}/admin/uprava/zahtjevi`, gumb: "Otvori zahtjeve" };
+    : izvor.vrsta === "pomoc"
+      ? { naslov: "Pozivnica nije stigla", opis: "Osoba koja je dobila pristup kuponom javlja da joj mail s pozivnicom nije stigao.", url: `${ADRESA_ADMINA}/admin/uprava/korisnici#pozivnice`, gumb: "Otvori pozivnice" }
+      : { naslov: "Novi zahtjev za pristup LogoMedu", opis: "Na /pristup je stigao novi zahtjev za pristup.", url: `${ADRESA_ADMINA}/admin/uprava/zahtjevi`, gumb: "Otvori zahtjeve" };
   return { subject: v.naslov, text: popuni(obavijest.text, v, false), html: popuni(obavijest.html, v, true) };
 }
 
@@ -35,7 +39,7 @@ export async function obavijesti(izvor: Izvor, f: typeof fetch = fetch, sada = n
     if (!kljuc) return "nema_kljuca";
     const za = [...adminEmails()];
     if (!za.length) return "nema_primatelja";
-    const id = izvor.vrsta === "poruka" ? `razgovor:${izvor.razgovorId}` : "zahtjevi";
+    const id = izvor.vrsta === "poruka" ? `razgovor:${izvor.razgovorId}` : izvor.vrsta === "pomoc" ? `pomoc:${izvor.zahtjevId}` : "zahtjevi";
     const at = sada.toISOString();
     const granica = new Date(sada.getTime() - OBAVIJEST_MINUTA * 60_000).toISOString();
     const r = await db().prepare(

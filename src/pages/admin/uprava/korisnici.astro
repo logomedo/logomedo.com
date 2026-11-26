@@ -12,6 +12,7 @@ import { LIMIT_UREDAJA_MAX, ZADANI_LIMIT_UREDAJA, procitajLimitUredaja, provedba
 import { PORUKE_ODBIJANJA, PozivOdbijen, izdaj, isteklePozivnice, opozovi, otvorenePozivnice, otvorenaPoTokenu, ponovi } from "../../../lib/admin/pozivi";
 import { porukaPozivnice, posaljiPozivnicu, zastoNijePoslano, type IshodSlanja } from "../../../lib/email";
 import PorukaPozivnice from "../../../components/PorukaPozivnice.astro";
+import { stanjaOnboardinga, type OnboardingStanje } from "../../../lib/pristup-pracenje";
 
 const s = Astro.locals.admin;
 if (!s || !smije(s.uloga, "korisnici")) return new Response("Zabranjeno", { status: 403 });
@@ -88,7 +89,13 @@ if (Astro.request.method === "POST") {
   if (greska) Astro.response.status = 400;
 }
 
-const [korisnici, pozivnice, istekle, uredaji] = await Promise.all([popisKorisnika(), otvorenePozivnice(), isteklePozivnice(), sazeciUredaja()]);
+const [korisnici, pozivnice, istekle, uredaji, onboarding] = await Promise.all([
+  popisKorisnika(), otvorenePozivnice(), isteklePozivnice(), sazeciUredaja(), stanjaOnboardinga(),
+]);
+/** Pozivnice s „Mail nije stigao” prve: na njih treba odgovoriti. */
+const pomocPrvo = <T extends { email: string }>(l: T[]) =>
+  [...l].sort((a, b) => Number(!!onboarding.get(b.email.toLowerCase())?.pomoc_at) - Number(!!onboarding.get(a.email.toLowerCase())?.pomoc_at));
+const ob = (email: string): OnboardingStanje | undefined => onboarding.get(email.toLowerCase());
 const nacin = provedba();
 const ulogaTekst = (k: (typeof korisnici)[number]) =>
   k.uloga ?? (k.ulogaRetka === "logoped" ? "logoped, deaktiviran" : "bez pristupa");
@@ -234,13 +241,24 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   <div class="ploha tablica">
       {pozivnice.length ? (
         <table id="pozivnice">
-          <thead><tr><th>Za</th><th>Vrsta</th><th>Izdao</th><th>Vrijedi do</th><th></th></tr></thead>
+          <thead><tr><th>Za</th><th>Vrsta</th><th>Izdao</th><th title="Pristup kuponom: koliko je puta pozivnica poslana i je li javio da mail ne stiže">Kupon / slanja</th><th>Vrijedi do</th><th></th></tr></thead>
           <tbody>
-            {pozivnice.map((p) => (
+            {pomocPrvo(pozivnice).map((p) => (
               <tr data-poziv-id={p.id} data-email={p.email}>
                 <td><b>{p.ime ?? "—"}</b><div class="blijedo sitno">{p.email}</div></td>
                 <td>{p.korisnik_id ? "novi passkey" : "novi logoped"}</td>
                 <td class="blijedo sitno">{p.stvorio}</td>
+                <td class="sitno onboarding">{(() => {
+                  const o = ob(p.email);
+                  if (!o) return <span class="blijedo">—</span>;
+                  return (
+                    <>
+                      {o.kupon && <code>{o.kupon}</code>} <span class="blijedo">poslano {o.slanja}×</span>
+                      {o.pomoc_at && <div class="pomoc-oznaka" title="Kliknuo „Mail nije stigao” na /pristup">mail nije stigao · {kad(o.pomoc_at)}</div>}
+                      {o.pomoc_kontakt && <div>kontakt: <b>{o.pomoc_kontakt}</b></div>}
+                    </>
+                  );
+                })()}</td>
                 <td class="blijedo">{kad(p.istjece)}</td>
                 <td><div class="akcije-poziva">
                   <form method="post">
@@ -266,13 +284,24 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
       <p class="blijedo sitno uputa">Ove osobe se nisu prijavile dok je link vrijedio (72 h). Možda im je mail završio u Spamu ili Promocijama.</p>
       <div class="ploha tablica">
         <table id="istekle">
-          <thead><tr><th>Za</th><th>Vrsta</th><th>Izdao</th><th>Istekla</th><th></th></tr></thead>
+          <thead><tr><th>Za</th><th>Vrsta</th><th>Izdao</th><th>Kupon / slanja</th><th>Istekla</th><th></th></tr></thead>
           <tbody>
-            {istekle.map((p) => (
+            {pomocPrvo(istekle).map((p) => (
               <tr data-poziv-id={p.id} data-email={p.email}>
                 <td><b>{p.ime ?? "—"}</b><div class="blijedo sitno">{p.email}</div></td>
                 <td>{p.korisnik_id ? "novi passkey" : "novi logoped"}</td>
                 <td class="blijedo sitno">{p.stvorio}</td>
+                <td class="sitno onboarding">{(() => {
+                  const o = ob(p.email);
+                  if (!o) return <span class="blijedo">—</span>;
+                  return (
+                    <>
+                      {o.kupon && <code>{o.kupon}</code>} <span class="blijedo">poslano {o.slanja}×</span>
+                      {o.pomoc_at && <div class="pomoc-oznaka" title="Kliknuo „Mail nije stigao” na /pristup">mail nije stigao · {kad(o.pomoc_at)}</div>}
+                      {o.pomoc_kontakt && <div>kontakt: <b>{o.pomoc_kontakt}</b></div>}
+                    </>
+                  );
+                })()}</td>
                 <td class="blijedo">{kad(p.istjece)}</td>
                 <td><div class="akcije-poziva">
                   <form method="post">
@@ -345,6 +374,9 @@ const ulogaTekst = (k: (typeof korisnici)[number]) =>
   .brojke { font-size: .84rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .prazne { padding: 16px; }
   .uputa { margin: -4px 0 10px; }
+  .onboarding { white-space: nowrap; }
+  .pomoc-oznaka { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px; background: var(--greska-blago, #fde8e8);
+    color: var(--greska); font-weight: 600; }
   .akcije-poziva { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
   #pozivnice td, #istekle td { vertical-align: middle; }
   .poruka { margin: 12px 0 0; font-weight: 600; font-size: .9rem; }

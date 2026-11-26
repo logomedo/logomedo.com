@@ -79,7 +79,7 @@ test("posalji s auto-kuponom: zahtjev odobren, pozivnica poslana podnositelju, p
   env.RESEND_API_KEY = "re_test";
   await stvori({ kod: "SPLIT", autoOdobri: true, pogodnost: { vrsta: "mjeseci", mjeseci: 3 } }, SA, SADA);
   const { f, poslano } = resend();
-  assert.deepEqual(await posalji(obrazac({ kupon: " split " }), "203.0.113.7", SADA, f, "https://primjer.test"), { vrsta: "odobreno" });
+  assert.equal((await posalji(obrazac({ kupon: " split " }), "203.0.113.7", SADA, f, "https://primjer.test")).vrsta, "odobreno");
   const z = await zahtjev();
   assert.equal(z!.status, "odobren");
   assert.equal(z!.obradio, "kupon:SPLIT");
@@ -123,7 +123,7 @@ test("posalji: kupon odobrava i već otvoreni zahtjev istog e-maila; ustanova se
   await posalji(obrazac(), "203.0.113.7", SADA, f);
   assert.deepEqual(await posalji(obrazac({ kupon: "SPLIT", paket: "ustanova", licenci: "5" }), "203.0.113.8", SADA, f), { vrsta: "hvala" });
   assert.equal((await zahtjev())!.status, "novi");
-  assert.deepEqual(await posalji(obrazac({ kupon: "SPLIT" }), "203.0.113.9", SADA, f), { vrsta: "odobreno" });
+  assert.equal((await posalji(obrazac({ kupon: "SPLIT" }), "203.0.113.9", SADA, f)).vrsta, "odobreno");
   const z = await zahtjev();
   assert.equal(z!.status, "odobren");
   assert.equal(z!.kupon, "SPLIT");

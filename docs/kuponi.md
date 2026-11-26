@@ -7,12 +7,30 @@ Od 25. 11. 2026. Kupon je kod koji osoba upiše u obrazac `/pristup` (polje „K
 e-poštom (kao „Odobri” na `/admin/uprava/zahtjevi`), a osoba vidi „Pristup je odobren” (`/pristup?poslano=kupon`).
 Superadmin ne mora ništa kliknuti; u „Zadnjim obrađenima” stoji `Obradio: kupon:KOD`.
 
+## Nakon odobravanja (od 26. 11. 2026.)
+
+Ekran `/pristup?poslano=kupon` u istom pregledniku zna zahtjev po kolačiću `__Host-logomedo_pristup` (72 h, HttpOnly;
+u bazi samo sha-256 u `zahtjevi_pristupa.pracenje_hash`, migracija 0050). Prikazuje:
+
+- na koji je e-mail pozivnica otišla (da osoba vidi tipfeler) i link na obrazac s istim kuponom za ispravak;
+- upute: pošiljatelj, naslov, Spam i Promocije;
+- **Pošalji ponovno**: najranije 60 s nakon zadnjeg slanja (odbrojavanje u `public/landing/pristup.js`, a poslužitelj
+  isto provjerava atomski), najviše 4 slanja. Svako slanje je **nova** pozivnica (`stvorio = sam (ponovno slanje)`),
+  prijašnji link prestaje vrijediti;
+- nakon prvog ponovnog slanja **Mail nije stigao** (+ dobrovoljan broj mobitela ili druga adresa): `pomoc_at`,
+  `pomoc_kontakt`, superadmin dobije obavijest „Pozivnica nije stigla” (jednu po zahtjevu, bez adrese u mailu).
+
+Na `/admin/uprava/korisnici` (otvorene i istekle pozivnice) stupac „Kupon / slanja” pokazuje kupon, broj slanja,
+„mail nije stigao” i kontakt; takve pozivnice su na vrhu. Logika: `src/lib/pristup-pracenje.ts` (+ test).
+
+Link za slanje kolegama (opći kupon za betu, bez pogodnosti, 50 mjesta): `https://logomedo.com/pristup?kupon=LOGOPED-BETA`.
+
 ## Gdje
 
 | Što | Gdje |
 | --- | --- |
 | Tablica | `migrations/0047_kuponi.sql` (`kuponi`; `zahtjevi_pristupa.kupon` = upisani kod) |
-| Logika | `src/lib/admin/kuponi.ts`, auto-odobravanje u `src/lib/pristup.ts` (`autoOdobri`), testovi `src/lib/kuponi.test.ts` |
+| Logika | `src/lib/admin/kuponi.ts`, auto-odobravanje u `src/lib/pristup.ts` (`autoOdobri`), testovi `src/lib/kuponi.test.ts`; ekran nakon odobravanja `src/lib/pristup-pracenje.ts` |
 | Stvaranje, link, uključi/isključi | `/admin/uprava/kuponi` (samo superadmin, `rute.ts`) |
 
 ## Pravila

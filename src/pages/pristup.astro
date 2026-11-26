@@ -1,14 +1,19 @@
 ---
 // /pristup (S7 landinga): obrazac „Zatraži pristup” za privatnu betu. SSR, ne prerender: obrađuje POST i svaki
 // prikaz nosi vremenski žig. CSP s nonceom i ostala zaglavlja daje middleware (zastiti); CSRF provjera iz
-// middlewarea vrijedi samo za /admin, pa Origin provjerava ova stranica. Bez JavaScripta i bez inline skripte.
-// Logika i zaštita od spama: src/lib/pristup.ts. Uspjeh: PRG, 303 na /pristup?poslano=1.
+// middlewarea vrijedi samo za /admin, pa Origin provjerava ova stranica. Obrazac radi bez JavaScripta.
+// Logika i zaštita od spama: src/lib/pristup.ts. Uspjeh: PRG, 303 na /pristup?poslano=1 (kupon: ?poslano=kupon + kolačić
+// praćenja, src/lib/pristup-pracenje.ts). Jedina skripta je odbrojavanje „Pošalji ponovno” (radi i bez nje).
 import Okvir from "../landing/Okvir.astro";
 import { PAKETI_ZAHTJEVA, PRIJAVA, cijenaLicence, eura } from "../landing/konstante";
 import {
   HONEYPOT, KUPON_MAX, LICENCI_MAX, MAX, ZIG, istiOrigin, posalji, prazanUnos, vremenskiZig, type Greske, type Polje, type Unos,
 } from "../lib/pristup";
 import { cjenikVidljiv } from "../lib/cjenik";
+import {
+  KONTAKT_MAX, MAX_SLANJA, kolacicPracenja, posaljiPonovno, procitajPracenje, tokenIzKolacica, trebaPomoc, type Pracenje,
+} from "../lib/pristup-pracenje";
+import { pozivnica } from "../lib/emails/generirano";
 
 export const prerender = false;
 
@@ -23,14 +28,28 @@ let greske: Greske = {};
 const cjenik = cjenikVidljiv();
 const ponudeni = cjenik ? PAKETI_ZAHTJEVA : PAKETI_ZAHTJEVA.filter((p) => p.kod === "beta" || p.kod === "ustanova" || p.kod === unos.paket);
 let zig: string | null = null;
+const tokenPracenja = tokenIzKolacica(Astro.request.headers.get("cookie"));
 
 if (Astro.request.method === "POST") {
   if (!istiOrigin(Astro.request, Astro.url.origin)) {
     return new Response("Zabranjeno: zahtjev nije poslan s ove stranice.", { status: 403, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
-  const ishod = await posalji(await Astro.request.formData(), Astro.request.headers.get("cf-connecting-ip"), new Date(), fetch, Astro.url.origin);
+  const f = await Astro.request.formData();
+  const akcija = String(f.get("akcija") ?? "");
+  // Ekran nakon kupona (src/lib/pristup-pracenje.ts): ponovno slanje i „Mail nije stigao”, samo s kolačićem praćenja.
+  if (akcija === "ponovno") {
+    const r = await posaljiPonovno(tokenPracenja, Astro.url.origin);
+    return Astro.redirect(`/pristup?poslano=kupon&${r.ok ? "ok=ponovno" : `greska=${r.razlog}`}`, 303);
+  }
+  if (akcija === "pomoc") {
+    await trebaPomoc(tokenPracenja, String(f.get("kontakt") ?? ""));
+    return Astro.redirect("/pristup?poslano=kupon&ok=pomoc", 303);
+  }
+  const ishod = await posalji(f, Astro.request.headers.get("cf-connecting-ip"), new Date(), fetch, Astro.url.origin);
   if (ishod.vrsta === "hvala") return Astro.redirect("/pristup?poslano=1", 303);
-  if (ishod.vrsta === "odobreno") return Astro.redirect("/pristup?poslano=kupon", 303);
+  if (ishod.vrsta === "odobreno") {
+    return new Response(null, { status: 303, headers: { location: "/pristup?poslano=kupon", "set-cookie": kolacicPracenja(ishod.pracenje) } });
+  }
   if (ishod.vrsta === "previse") {
     stanje = "previse";
     Astro.response.status = 429;
@@ -43,6 +62,20 @@ if (Astro.request.method === "POST") {
   return new Response(null, { status: 405, headers: { allow: "GET, HEAD, POST" } });
 }
 if (stanje === "obrazac") zig ??= await vremenskiZig();
+// „Pristup je odobren” u istom pregledniku: na koji e-mail, ponovno slanje, pomoć.
+const pracenje: Pracenje | null = stanje === "odobreno" ? await procitajPracenje(tokenPracenja) : null;
+const okPracenja = Astro.url.searchParams.get("ok");
+const greskaPracenja = Astro.url.searchParams.get("greska");
+const PORUKE_PRACENJA: Record<string, string> = {
+  rano: "Pričekajte još malo pa pokušajte ponovno.",
+  previse: `Pozivnicu smo poslali već ${MAX_SLANJA} puta. Ako i dalje ne stiže, javite nam ispod.`,
+  prijavljen: "Pozivnica je već iskorištena: prijavite se.",
+  greska: "Slanje trenutno nije uspjelo. Pokušajte ponovno za minutu ili nam javite ispod.",
+  nema: "Ova stranica više ne zna vaš zahtjev (drugi preglednik ili je prošlo više od 72 sata). Javite nam se na bok@logomedo.com.",
+};
+const datumHr = (iso: string) => new Date(iso).toLocaleString("hr-HR", {
+  timeZone: "Europe/Zagreb", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit",
+});
 
 const imaGresaka = Object.keys(greske).length > 0;
 /** aria atributi polja: opis (ako postoji) i greška. */
@@ -61,11 +94,24 @@ const aria = (p: Polje, opis?: string) => {
             <p class="uvodni">Zahtjev je stigao. Javit ćemo vam se na e-mail koji ste upisali: s računom ili ponudom ako ste naručili paket, a s osobnim linkom za prijavu kad je pristup otvoren.</p>
             <p class="sitno"><a href="/">Natrag na naslovnu</a></p>
           </>
+        ) : stanje === "odobreno" && pracenje?.prijavljen ? (
+          <>
+            <h1 class="landing-h1" id="naslov">Već ste prijavljeni.</h1>
+            <p class="uvodni">Pozivnica je iskorištena i vaš račun je aktivan. Dalje se prijavljujete passkeyem.</p>
+            <p><a class="gumb" href={PRIJAVA}>Prijava</a></p>
+          </>
         ) : stanje === "odobreno" ? (
           <>
             <h1 class="landing-h1" id="naslov">Pristup je odobren.</h1>
-            <p class="uvodni">Kupon vrijedi. Na e-mail koji ste upisali upravo smo poslali osobni link za prijavu. Link vrijedi 72 sata i
-              može se iskoristiti jednom. Ako ga ne vidite za nekoliko minuta, pogledajte i mapu neželjene pošte.</p>
+            {pracenje ? (
+              <p class="uvodni" id="poslano-na">Pozivnicu smo poslali na <b>{pracenje.email}</b>. Otvorite taj mail i kliknite
+                „Prihvati pozivnicu”: postavit ćete prijavu otiskom prsta, licem ili PIN-om uređaja, bez lozinke.</p>
+            ) : (
+              <p class="uvodni">Kupon vrijedi. Na e-mail koji ste upisali upravo smo poslali osobni link za prijavu. Otvorite taj mail i
+                kliknite „Prihvati pozivnicu”.</p>
+            )}
+            <p class="sitno">Link vrijedi 72 sata i može se iskoristiti jednom. Najbolje ga je otvoriti na uređaju na kojem ćete koristiti
+              LogoMedo.</p>
             <p class="sitno"><a href="/">Natrag na naslovnu</a></p>
           </>
         ) : (
@@ -99,6 +145,46 @@ const aria = (p: Polje, opis?: string) => {
           </>
         )}
       </div>
+
+      {stanje === "odobreno" && !pracenje?.prijavljen && (
+        <div class="kartica" id="ne-stize">
+          <h2 class="naslov-kartice">Ne vidite mail?</h2>
+          {okPracenja === "ponovno" && <p class="obavijest ok" role="status" id="ponovno-poslano">Poslali smo novu pozivnicu. Koristite link iz
+            najnovijeg maila: prijašnji više ne vrijedi.</p>}
+          {okPracenja === "pomoc" && <p class="obavijest ok" role="status" id="pomoc-primljena">Hvala, javili ste nam. Javit ćemo vam se čim
+            prije i riješiti pristup drugim putem.</p>}
+          {greskaPracenja && PORUKE_PRACENJA[greskaPracenja] && <p class="obavijest" role="alert">{PORUKE_PRACENJA[greskaPracenja]}</p>}
+          <ol class="koraci">
+            <li>Pričekajte minutu ili dvije. Mail šalje <b>LogoMedo</b> (pozivnica@logomedo.com), s naslovom „{pozivnica.naslov}”.</li>
+            <li>Pogledajte mape <b>Neželjena pošta (Spam)</b> i, u Gmailu, <b>Promocije</b>.</li>
+            {pracenje && <li>Provjerite je li adresa točna: <b>{pracenje.email}</b>. Ako nije,{" "}
+              <a href={pracenje.kupon ? `/pristup?kupon=${encodeURIComponent(pracenje.kupon)}` : "/pristup"}>pošaljite obrazac ponovno</a> s ispravnom.</li>}
+          </ol>
+          {pracenje && pracenje.slanja < MAX_SLANJA && (
+            <form method="post" action="/pristup" class="red-gumba">
+              <input type="hidden" name="akcija" value="ponovno" />
+              <button class="gumb sporedni" type="submit" id="posalji-ponovno" data-cekaj={pracenje.cekajSekundi}
+                disabled={pracenje.cekajSekundi > 0}>{pracenje.cekajSekundi > 0 ? `Pošalji ponovno (za ${pracenje.cekajSekundi} s)` : "Pošalji ponovno"}</button>
+            </form>
+          )}
+          {pracenje && (pracenje.slanja >= 2 || pracenje.pomocAt) && (
+            pracenje.pomocAt ? (
+              <p class="sitno blijedo" id="pomoc-zabiljezena">Javili ste nam da mail ne stiže ({datumHr(pracenje.pomocAt)}). Javit ćemo vam se.</p>
+            ) : (
+              <form method="post" action="/pristup" class="pomoc">
+                <input type="hidden" name="akcija" value="pomoc" />
+                <h3>Mail i dalje ne stiže?</h3>
+                <p class="opis">Javite nam i poslat ćemo vam link drugim putem, npr. porukom.</p>
+                <div class="polje">
+                  <label for="kontakt">Broj mobitela ili druga e-adresa <span class="neobavezno">(nije obavezno)</span></label>
+                  <input id="kontakt" type="text" name="kontakt" maxlength={KONTAKT_MAX} autocomplete="tel" />
+                </div>
+                <button class="gumb sporedni" type="submit" id="mail-nije-stigao">Mail nije stigao</button>
+              </form>
+            )
+          )}
+        </div>
+      )}
 
       {stanje === "previse" && (
         <div class="kartica" role="alert">
@@ -198,6 +284,7 @@ const aria = (p: Polje, opis?: string) => {
     </div>
   </section>
 </Okvir>
+<script src="/landing/pristup.js" defer></script>
 <style>
   .pristup { padding-top: 72px; }
   .raspored { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 56px; align-items: start; }
@@ -228,6 +315,14 @@ const aria = (p: Polje, opis?: string) => {
     border: 0; border-radius: 999px; background: var(--med); color: var(--med-tekst); font: inherit; font-weight: 600; font-size: 1.02rem;
     box-shadow: var(--sjena-1); cursor: pointer; }
   .gumb:hover { filter: brightness(1.05); }
+  .gumb.sporedni { background: var(--papir); color: var(--tinta); border: 1px solid var(--rub-jak); box-shadow: none; }
+  .gumb:disabled { opacity: .55; cursor: default; filter: none; }
+  .koraci { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 10px; line-height: 1.5; }
+  .obavijest { padding: 12px 14px; border-radius: 12px; background: var(--greska-blago); color: var(--greska); font-weight: 600; }
+  .obavijest.ok { background: var(--med-blago); color: var(--tinta); }
+  .pomoc { display: flex; flex-direction: column; gap: 12px; padding-top: 18px; border-top: 1px solid var(--rub); }
+  .pomoc h3 { margin: 0; font-family: var(--font-slova); font-weight: 600; font-size: 1.1rem; }
+  .blijedo { color: var(--blijedo); }
   @media (max-width: 879px) {
     .raspored { grid-template-columns: minmax(0, 1fr); gap: 32px; }
   }

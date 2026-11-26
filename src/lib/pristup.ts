@@ -8,6 +8,7 @@ import { ispravanEmail, normalizirajEmail } from "./admin/pozivi";
 import { sha256Hex } from "./admin/sesija";
 import { IP_SATI, ROK_MJESECI } from "./pristup-rokovi";
 import { obavijesti } from "./obavijesti";
+import { zapocniPracenje } from "./pristup-pracenje";
 import { jePaket } from "../landing/konstante";
 import { normalizirajKod, oslobodi, pogodnostKupona, zauzmi } from "./admin/kuponi";
 import { odobri } from "./admin/zahtjevi";
@@ -153,7 +154,7 @@ export const pocisti = async (sada = new Date()) => { await env.DB.batch(naredbe
 export type Ishod =
   | { vrsta: "hvala" }
   /** Kupon s auto-odobravanjem: zahtjev je odobren i pozivnica poslana e-poštom (docs/kuponi.md). */
-  | { vrsta: "odobreno" }
+  | { vrsta: "odobreno"; pracenje: string }
   /** `zig`: vremenski žig za ponovni prikaz obrasca (stari ako je bio dobar, da ispravak ne bude „prebrz”). */
   | { vrsta: "greske"; greske: Greske; unos: Unos; zig: string }
   | { vrsta: "previse" };
@@ -205,38 +206,43 @@ export async function posalji(
   const upisan = !!rez.at(-1)?.meta.changes;
   // Kupon s auto-odobravanjem (docs/kuponi.md): odobri odmah (i otvoreni zahtjev istog e-maila). Ustanova se ne
   // odobrava sama (narudžba više licenci treba ponudu). Ako išta ne uspije, zahtjev ostaje 'novi' za ručnu obradu.
-  if (kupon && unos.paket !== "ustanova" && await autoOdobri(email, kupon, upisan, sada, dohvat, origin)) return { vrsta: "odobreno" };
+  if (kupon && unos.paket !== "ustanova") {
+    const id = await autoOdobri(email, kupon, upisan, sada, dohvat, origin);
+    // Token praćenja ide u kolačić: ekran „Pristup je odobren” zna e-mail, ponovno slanje i „Mail nije stigao”.
+    if (id !== null) return { vrsta: "odobreno", pracenje: await zapocniPracenje(id, sada) };
+  }
   // Obavijest superadminu (S4 inboxa) samo za stvarno upisan zahtjev; ne baca, najviše jedna na sat.
   if (upisan) await obavijesti({ vrsta: "zahtjev" }, dohvat, sada);
   return { vrsta: "hvala" };
 }
 
-async function autoOdobri(email: string, kod: string, upisan: boolean, sada: Date, dohvat: typeof fetch, origin: string): Promise<boolean> {
+/** Id odobrenog zahtjeva ili null (zahtjev ostaje 'novi' za ručnu obradu). */
+async function autoOdobri(email: string, kod: string, upisan: boolean, sada: Date, dohvat: typeof fetch, origin: string): Promise<number | null> {
   const z = await env.DB.prepare("SELECT id FROM zahtjevi_pristupa WHERE email = ? AND status = 'novi' ORDER BY id DESC LIMIT 1")
     .bind(email).first<{ id: number }>();
-  if (!z) return false;
+  if (!z) return null;
   if (!upisan) await env.DB.prepare("UPDATE zahtjevi_pristupa SET kupon = ? WHERE id = ?").bind(kod, z.id).run();
   const k = await zauzmi(kod, sada);
-  if (!k) return false;
+  if (!k) return null;
   try {
     const p = pogodnostKupona(k);
     const r = await odobri(z.id, `kupon:${k.kod}`, sada, p ? { p, napomena: `kupon ${k.kod}` } : null);
     if (!r.ok) {
       await oslobodi(k.kod);
-      return false;
+      return null;
     }
     const slanje = await posaljiPozivnicu({ url: `${origin}/admin/poziv#${r.token}`, email: r.email, istjece: r.istjece, ime: r.ime }, dohvat);
-    if (slanje.ok) return true;
+    if (slanje.ok) return z.id;
     // Link nitko ne vidi: zahtjev natrag u red, superadmin ga odobri ručno (nova pozivnica zamijeni ovu).
     console.error("kupon: pozivnica nije poslana, zahtjev vraćen u red", slanje);
     await env.DB.prepare(
       "UPDATE zahtjevi_pristupa SET status = 'novi', obradio = NULL, obradjen_at = NULL, poziv_token_hash = NULL WHERE id = ?",
     ).bind(z.id).run();
     await oslobodi(k.kod);
-    return false;
+    return null;
   } catch (e) {
     console.error("kupon: auto-odobravanje", String(e));
     await oslobodi(k.kod);
-    return false;
+    return null;
   }
 }
