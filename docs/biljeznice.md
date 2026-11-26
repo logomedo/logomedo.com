@@ -77,3 +77,21 @@ Izostavljen je GRINČ (zaštićeni lik); dvosmislene riječi BAL, DJED i GRAD im
   grančice u kutovima samo za božić.
 - Upute za logopede: `docs/upute-vjezbenice.md`, PDF `docs/pdf/upute-vjezbenice.pdf`
   (pandoc → HTML → Chromium `page.pdf`).
+
+## Lampice po potezu, brisanje, ✕ i „Uredi” (25. 11. 2026., Anita, na produkciji)
+
+- **Lampice ≠ ekrani.** `lampiceEkrana(e)` u `src/lib/biljeznice-ekrani.ts`: povezivanje pali lampicu
+  za svaki spojen par, razvrstavanje za svaku sliku u pravom spremniku, sve ostalo jednu po ekranu.
+  `brojLampica(zadaci)` određuje broj lampica na boru u igri (`IgraDjeteta.astro`) i u podnaslovu
+  admina; **ispis (`/b/<slug>/ispis`) i oznaka „N ekr.” i dalje broje ekrane**. Igra drži brojač
+  `upaljeno` (sljedeća lampica) odvojeno od `trenutni` (ekran). Razlog: Anita je napravila
+  povezivanje i razvrstavanje i dobila jednu lampicu na kraju, a djeci je zabavno kad svijetli svaki
+  točan potez. Scena još pali jednu lampicu (gumbi bi mogli po jednu, nije traženo).
+- **Brisanje bilježnice:** `obrisi()` u `src/lib/biljeznice.ts`, gumb „Obriši bilježnicu” uz
+  `confirm`, logoped samo svoju (`autorFiltar`), stvarni DELETE (zadaci ostaju), aktivnost
+  `biljeznica.obrisana`. Test u `src/lib/admin/vlasnistvo.test.ts`.
+- **Redak zadatka:** ✕ postavi redoslijed na 0 i `requestSubmit()` (isti put kao ručna nula; ✕ je
+  `type="button"` da Enter u formi ne bi maknuo prvi zadatak), „Uredi” vodi na `/admin/zadaci/<id>`.
+  Bilježnica nema kopiju zadatka: promjena zadatka vrijedi u svim bilježnicama koje ga sadrže.
+- **Dijeljenje s roditeljima** = poveznica `/b/<slug>` uz kvačicu „Javna”. „Dijete rješava” na
+  zadatku traži prijavu, nije za roditelje; jedan zadatak se dijeli kao bilježnica s jednim zadatkom.
