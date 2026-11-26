@@ -175,3 +175,31 @@ Ukupno oko 6–8 dana rada, plus čekanje na validaciju identiteta.
   sesiji. Remote desktop je bolji za podršku, a video u pregledniku možda za terapiju. Vrijedi odvagnuti prije nego fork naraste.
 - **GDPR:** terapija djeteta je posebna kategorija podataka (zdravlje). Bez snimanja, jasna privola roditelja, i
   dopunjena politika privatnosti prije prve stvarne sesije.
+
+## Video za terapiju: WebRTC umjesto kamere kroz RustDesk (razmatranje 26. 11. 2026.)
+
+Vlasnik želi pravi P2P enkriptirani poziv s kamerom i mikrofonom u stvarnom vremenu, „P2P Google Meet”, i pita za Jitsi.
+Ovo je analiza iz znanja modela, **bez pretraživanja i testiranja**. Za RustDesk i cijene vrijedi **[neprovjereno]**.
+
+**Zašto ne kamera i mikrofon kroz RustDesk:** RustDesk je optimiziran za prijenos ekrana. WebRTC već ima poništavanje jeke
+(bez nje razgovor preko zvučnika nije upotrebljiv), jitter buffer, kontrolu zagušenja i prilagodbu kvalitete. Radi u svakom
+pregledniku i u Flutteru (`app/`), bez exe-a za roditelje. Novije verzije RustDeska možda imaju pregled kamere **[neprovjereno]**,
+ali to nije razgovor s poništavanjem jeke.
+
+**Prijedlog podjele:** LogoMedoDesk (fork RustDeska) za podršku i upravljanje računalom. Terapija kao WebRTC poziv u LogoMedu
+(preglednik + Flutter), u istoj sesiji s igrama i listićima.
+
+| Opcija | Za 1:1 terapiju |
+|---|---|
+| Čisti WebRTC P2P, signalizacija u Durable Objectu, Cloudflare TURN | Najmanje infrastrukture, sve na Workers stacku. Pravi E2E kad ide izravno; TURN za stroge mreže. **Prvi korak.** |
+| LiveKit (open source SFU, self-host ili cloud) | Najbolji SDK-ovi (JS, Flutter, Rust, Swift, Kotlin), više sudionika, snimanje i E2EE opcionalno. **Drugi korak** kad P2P nije dovoljan. |
+| Jitsi Meet (self-host) | Gotova soba s linkom, za dvoje prelazi u P2P. Ali to su četiri servisa (Prosody, Jicofo, JVB, web) i Java, i teško se uklapa u vlastito sučelje. Samo ako vlastito sučelje ne treba. |
+| Cloudflare Realtime (SFU) | Upravljan, plaća se po prometu, manje gotovih SDK-ova. |
+| mediasoup / Janus | Previše posla za ovu veličinu. |
+
+**Zvuk za logopediju:** `getUserMedia` s `noiseSuppression: false` i `autoGainControl: false`, poništavanje jeke uključeno.
+Opus mono, 48 kHz, 64–128 kbps. Zadane „govorne” postavke režu sibilante (s, š, c, z, ž), a te logoped mora čuti.
+Testirati na stvarnim snimkama.
+
+**Otvoreno:** odluka P2P WebRTC prvo ili odmah LiveKit; ciljano istraživanje (kamera i zvuk u RustDesku, cijene LiveKita i
+Cloudflare Realtimea, Opus i sibilanti) još nije pokrenuto.
