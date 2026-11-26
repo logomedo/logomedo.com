@@ -3,6 +3,13 @@
 Datum: 26. 11. 2026. Samo istraživanje, ništa nije implementirano.
 Oznaka **[neprovjereno]** znači da tvrdnju nisam uspio potvrditi iz izvora tijekom ovog istraživanja.
 
+## Odluka (26. 11. 2026., vlasnik)
+
+- **Fork RustDeska → „LogoMedoDesk”**, vlasnik ga radi sam. MeshCentral Assistant otpada: prema vlasniku, star je oko 4 godine
+  i nije održavan.
+- Šira namjena osim podrške: **daljinska terapija**. Roditelj i dijete spoje se s logopedom, i to što jednostavnije, P2P.
+- Za drugu namjenu vidi „Daljinska terapija: što provjeriti” na kraju dokumenta. Ostatak dokumenta je istraživanje prije odluke.
+
 ## 1. Preporuka (što prvo i zašto)
 
 1. **Prvo jednodnevni spike, ne gradnja.** Prije bilo kakvog forka isprobati dva puta na čistom Windows 11 računalu (VM ili tuđe), kao netehnički korisnik:
@@ -155,3 +162,16 @@ Ukupno oko 6–8 dana rada, plus čekanje na validaciju identiteta.
 - Chrome Remote Desktop: https://support.google.com/chrome/answer/1649523
 - TeamViewer: https://teamviewer.com/en/custom-modules ; AnyDesk: https://anydesk.com/pricing
 - WebAuthn getClientCapabilities: https://web.dev/articles/webauthn-client-capabilities
+
+## Daljinska terapija: što provjeriti (dodano uz odluku)
+
+- **Kamera i zvuk:** RustDesk prenosi zaslon (i zvuk sustava). Za terapiju logoped mora vidjeti i čuti dijete, pa treba
+  provjeriti podršku za kameru i mikrofon u trenutnoj verziji RustDeska **[neprovjereno]**. Ako je nema, to je najveći posao u forku.
+- **Kašnjenje zvuka:** za rad na izgovoru presudno je malo kašnjenje i čist zvuk (bez agresivnog potiskivanja šuma koje
+  „pojede” glasove poput s, š, c). P2P pomaže; relay kao rezerva dodaje kašnjenje.
+- **Tko instalira:** roditelji su još manje tehnički od logopeda. Exe ide na Windows, a za Mac, tablet ili mobitel
+  (čest kod roditelja) RustDesk ima klijente, ali svaki traži svoje potpisivanje (Apple notarizacija, trgovine).
+- **Usporedba za taj dio:** poziv u pregledniku (WebRTC, npr. Cloudflare Realtime) bez instalacije, s LogoMedo igrom u istoj
+  sesiji. Remote desktop je bolji za podršku, a video u pregledniku možda za terapiju. Vrijedi odvagnuti prije nego fork naraste.
+- **GDPR:** terapija djeteta je posebna kategorija podataka (zdravlje). Bez snimanja, jasna privola roditelja, i
+  dopunjena politika privatnosti prije prve stvarne sesije.
